@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.diguifistudios.tinyrpgstudio",
+      "sha256_cert_fingerprints": [
+        "63:B9:3A:B9:02:9A:42:6C:1D:21:DF:D7:D0:F7:9C:1A:05:BF:19:63:ED:0F:EA:AF:7A:6F:11:ED:2B:9A:18:8D"
+      ]
+    }
+  }
+]
