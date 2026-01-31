@@ -34,9 +34,9 @@ class EditorEnemyService {
         if (!definition) return;
         if (this.state.placingEnemy) return;
 
-        this.manager.npcService?.clearSelection?.();
+        this.manager.npcService.clearSelection();
         if (this.state.placingObjectType) {
-            this.manager.objectService?.togglePlacement?.(this.state.placingObjectType, true);
+            this.manager.objectService.togglePlacement(this.state.placingObjectType, true);
         }
 
         this.state.placingEnemy = true;
@@ -58,14 +58,14 @@ class EditorEnemyService {
 
     placeEnemyAt(coord: { x: number; y: number }) {
         const roomIndex = this.state.activeRoomIndex;
-        const enemyDefs = (this.gameEngine.getEnemyDefinitions?.() ?? []) as EnemyDefinition[];
+        const enemyDefs = (this.gameEngine.getEnemyDefinitions() ?? []) as EnemyDefinition[];
         const existing = enemyDefs.find((enemy: EnemyDefinition) =>
             enemy.roomIndex === roomIndex && enemy.x === coord.x && enemy.y === coord.y
         );
         if (existing) {
             return;
         }
-        const enemies = (this.gameEngine.getActiveEnemies?.() ?? []) as EnemyDefinition[];
+        const enemies = (this.gameEngine.getActiveEnemies() ?? []) as EnemyDefinition[];
         const currentRoomCount = enemies.reduce((count: number, enemy: EnemyDefinition) => (
             enemy.roomIndex === roomIndex ? count + 1 : count
         ), 0);
@@ -140,7 +140,7 @@ class EditorEnemyService {
 
     getEditorIndicator() {
         if (this.editorIndicator) return this.editorIndicator;
-        const container = document?.querySelector?.('.editor-map-wrapper');
+        const container = document.querySelector('.editor-map-wrapper');
         if (!container) return null;
         const indicator = document.createElement('div');
         indicator.className = 'combat-indicator';
@@ -172,11 +172,11 @@ class EditorEnemyService {
             }, 700);
             return;
         }
-        this.gameEngine?.renderer?.showCombatIndicator?.(this.getEnemyLimitMessage(), { duration: 700 });
+        this.gameEngine.renderer.showCombatIndicator(this.getEnemyLimitMessage(), { duration: 700 });
     }
 
     getEnemyLimitMessage() {
-        const message = TextResources?.get ? (TextResources.get('enemies.limitReached', '') as string).trim() : '';
+        const message = (TextResources.get('enemies.limitReached', '') as string).trim();
         if (message) return message;
         return 'Max enemies reached';
     }

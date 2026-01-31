@@ -59,7 +59,7 @@ class RendererTileRenderer {
     drawTiles(ctx: CanvasRenderingContext2D, _canvas: { width: number; height: number }) {
         const room = this.gameState.getCurrentRoom();
         const tileSize = this.canvasHelper.getTilePixelSize();
-        const player = this.gameState.getPlayer() ?? { roomIndex: 0 };
+        const player = this.gameState.getPlayer?.() ?? { roomIndex: 0 };
         const tileMap = this.tileManager.getTileMap(player.roomIndex ?? 0);
         const groundMap = tileMap?.ground || [];
         const overlayMap = tileMap?.overlay || [];
@@ -67,7 +67,7 @@ class RendererTileRenderer {
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
                 const groundId = groundMap[y]?.[x];
-                if (groundId !== null && groundId !== undefined) {
+                if (groundId !== null) {
                     this.canvasHelper.drawCustomTile(groundId, x * tileSize, y * tileSize, tileSize);
                 } else {
                     const colIdx = room.tiles[y][x];
@@ -76,7 +76,7 @@ class RendererTileRenderer {
                 }
 
                 const overlayId = overlayMap[y]?.[x];
-                if (overlayId !== null && overlayId !== undefined) {
+                if (overlayId !== null) {
                     this.canvasHelper.drawCustomTile(overlayId, x * tileSize, y * tileSize, tileSize);
                 }
             }

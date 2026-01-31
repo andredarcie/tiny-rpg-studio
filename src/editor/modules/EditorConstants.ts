@@ -10,16 +10,16 @@ class EditorConstants {
 
     static get OBJECT_DEFINITIONS(): ItemDefinitionData[] {
         if (!this._objectDefinitions) {
-            this._objectDefinitions = ItemDefinitions.definitions || [];
+            this._objectDefinitions = ItemDefinitions.definitions;
         }
         return this._objectDefinitions;
     }
 
     static get ENEMY_DEFINITIONS(): EnemyDefinitionData[] {
-        if (!this._enemyDefinitions || !this._enemyDefinitions.length) {
-            this._enemyDefinitions = EnemyDefinitions.definitions || [];
+        if (!this._enemyDefinitions) {
+            this._enemyDefinitions = EnemyDefinitions.definitions;
         }
-        return this._enemyDefinitions || [];
+        return this._enemyDefinitions;
     }
 
     static get OBJECT_TYPE_ORDER(): string[] {

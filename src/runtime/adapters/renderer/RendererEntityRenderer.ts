@@ -51,9 +51,9 @@ class RendererEntityRenderer {
                     : false;
                 if (isOpen) continue;
             }
-            let sprite = objectSprites?.[object.type];
+            let sprite = objectSprites[object.type];
             if (object.type === OT.SWITCH && object.on) {
-                sprite = objectSprites?.[`${object.type}--on`] || sprite;
+                sprite = objectSprites[`${object.type}--on`] || sprite;
             }
             if (!sprite) continue;
             const px = object.x * tileSize;
@@ -98,19 +98,19 @@ class RendererEntityRenderer {
             const px = npc.x * tileSize;
             const py = npc.y * tileSize;
             let sprite = npcSprites[npc.type] || npcSprites.default;
+            if (!sprite) continue;
             sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
             this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
         }
     }
 
     drawEnemies(ctx: CanvasRenderingContext2D) {
-        const enemies = (this.gameState.getEnemies?.() ?? []) as EnemyState[];
-        if (!enemies.length) return;
+        const enemies = this.gameState.getEnemies?.() as EnemyState[] | undefined;
+        if (!enemies?.length) return;
         const player = this.gameState.getPlayer();
         const tileSize = this.canvasHelper.getTilePixelSize();
         const step = tileSize / 8;
         enemies.forEach((enemy) => {
-            if (!enemy) return;
             if (enemy.roomIndex !== player.roomIndex) return;
             const baseSprite = this.spriteFactory.getEnemySprite(enemy.type);
             if (!baseSprite) return;
@@ -131,20 +131,19 @@ class RendererEntityRenderer {
         const step = tileSize / 8;
         const px = player.x * tileSize;
         const py = player.y * tileSize;
-        let sprite = this.spriteFactory.getPlayerSprite()
-        if (sprite) {
-            sprite = this.adjustSpriteHorizontally(player.x, player.lastX ?? player.x, sprite);
-            const fadeStealth = this.shouldFadePlayerForStealth();
-            if (fadeStealth) ctx.save();
-            if (fadeStealth) ctx.globalAlpha = 0.45;
-            this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
-            if (fadeStealth) ctx.restore();
-        }
+        let sprite = this.spriteFactory.getPlayerSprite();
+        if (!sprite) return;
+        sprite = this.adjustSpriteHorizontally(player.x, player.lastX ?? player.x, sprite);
+        const fadeStealth = this.shouldFadePlayerForStealth();
+        if (fadeStealth) ctx.save();
+        if (fadeStealth) ctx.globalAlpha = 0.45;
+        this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+        if (fadeStealth) ctx.restore();
     }
 
     drawTileIconOnPlayer(ctx: CanvasRenderingContext2D, tileId: string) {
         const objectSprites = this.spriteFactory.getObjectSprites();
-        const tileSprite = objectSprites?.[tileId];
+        const tileSprite = objectSprites[tileId];
         if (!tileSprite) return;
 
         const player = this.gameState.getPlayer();
@@ -169,8 +168,9 @@ class RendererEntityRenderer {
     }
 
     getNow() {
-        if (typeof performance !== 'undefined' && performance.now) {
-            return performance.now();
+        const perf = (globalThis as Partial<typeof globalThis>).performance;
+        if (perf) {
+            return perf.now();
         }
         return Date.now();
     }
@@ -190,13 +190,12 @@ class RendererEntityRenderer {
 
     shouldFadePlayerForStealth() {
         if (!this.gameState.hasSkill?.('stealth')) return false;
-        const enemies = this.gameState.getEnemies?.() || [];
-        const playerRoom = this.gameState.getPlayer?.()?.roomIndex ?? -1;
+        const enemies = this.gameState.getEnemies?.() ?? [];
+        const playerRoom = this.gameState.getPlayer().roomIndex;
         return enemies.some((enemy) => enemy.roomIndex === playerRoom && this.getEnemyDamage(enemy.type) <= 3);
     }
 
     drawEnemyDamageMarkers(ctx: CanvasRenderingContext2D, px: number, py: number, tileSize: number, damage: number) {
-        if (!ctx) return;
         const markers = Math.max(1, Math.floor(damage));
         const size = Math.max(2, Math.floor(tileSize / 8));
         const gap = Math.max(1, Math.floor(size / 2));
@@ -314,8 +313,8 @@ type GameStateApi = {
 };
 
 type SpriteFactoryApi = {
-    getObjectSprites: () => Record<string, Sprite>;
-    getNpcSprites: () => Record<string, Sprite>;
+    getObjectSprites: () => Record<string, Sprite | undefined>;
+    getNpcSprites: () => Record<string, Sprite | undefined>;
     getEnemySprite: (type: string | null) => Sprite | null;
     getPlayerSprite: () => Sprite | null;
     turnSpriteHorizontally: (sprite: Sprite) => Sprite;

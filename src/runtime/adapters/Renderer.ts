@@ -12,7 +12,7 @@ import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
 
 type SpriteMatrix = (string | null)[][];
-type SpriteMap = Record<string, SpriteMatrix>;
+type SpriteMap = Record<string, SpriteMatrix | undefined>;
 
 type RendererGameState = {
     isPickupOverlayActive?: () => boolean;
@@ -263,7 +263,7 @@ class Renderer {
     }
 
     captureGameplayFrame() {
-        if (typeof document === 'undefined' || !this.canvas) {
+        if (typeof document === 'undefined') {
             return null;
         }
         const width = this.gameplayCanvasBounds.width;
@@ -354,7 +354,7 @@ class Renderer {
         stepOverride?: number
     ) {
         const objectSprites = this.spriteFactory.getObjectSprites();
-        const sprite = objectSprites?.[type];
+        const sprite = objectSprites[type];
         if (!sprite) return;
         const step = stepOverride || (this.canvasHelper.getTilePixelSize() / 8);
         this.canvasHelper.drawSprite(ctx, sprite, px, py, step);

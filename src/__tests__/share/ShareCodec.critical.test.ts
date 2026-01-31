@@ -1,6 +1,22 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setupShareGlobals, ShareConstants, ShareEncoder, ShareDecoder } from './shareTestUtils';
 
+type ShareTestData = {
+  title?: string;
+  author?: string;
+  start?: { x?: number; y?: number; roomIndex?: number };
+  sprites?: unknown[];
+  enemies?: unknown[];
+  objects?: unknown[];
+  variables?: unknown[];
+  rooms?: unknown[];
+  world?: unknown;
+  tileset?: unknown;
+};
+
+const decodeShare = (code: string | null | undefined): ShareTestData | null =>
+  ShareDecoder.decodeShareCode(code) as ShareTestData | null;
+
 describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
   beforeAll(() => {
     setupShareGlobals({
@@ -36,7 +52,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       ground[0][0] = 1;
       ground[1][1] = 2;
 
-      const overlay = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+      const overlay: (number | null)[][] = Array.from({ length: size }, () => Array.from({ length: size }, () => null as number | null));
       overlay[2][2] = 3;
 
       const original = {
@@ -81,7 +97,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       const encoded = ShareEncoder.buildShareCode(original);
       expect(encoded).toBeTruthy();
 
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
       expect(decoded).toBeTruthy();
 
       expect(decoded?.title).toBe(original.title);
@@ -101,7 +117,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(minimal);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       expect(decoded).toBeTruthy();
       expect(decoded?.sprites).toEqual([]);
@@ -141,7 +157,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       const npc = (decoded?.sprites as Array<Record<string, unknown>> | undefined)?.[0] as Record<string, unknown> | undefined;
       expect(npc?.text).toBe('Initial quest text');
@@ -173,7 +189,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       const npc = (decoded?.sprites as Array<Record<string, unknown>> | undefined)?.[0] as Record<string, unknown> | undefined;
       expect(npc?.text).toBe('Hello');
@@ -205,7 +221,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       const enemy = (decoded?.enemies as Array<Record<string, unknown>> | undefined)?.[0] as Record<string, unknown> | undefined;
       expect(enemy?.defeatVariableId).toBeTruthy();
@@ -236,7 +252,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       const door = (decoded?.objects as Array<Record<string, unknown>> | undefined)?.find((obj: Record<string, unknown>) => obj.type === 'door-variable') as Record<string, unknown> | undefined;
       expect(door).toBeDefined();
@@ -267,7 +283,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       const switchObj = (decoded?.objects as Array<Record<string, unknown>> | undefined)?.find((obj: Record<string, unknown>) => obj.type === 'switch') as Record<string, unknown> | undefined;
       expect(switchObj).toBeDefined();
@@ -304,21 +320,21 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
-      const endObjects = (decoded?.objects as Array<{ type: string; endingText?: string }>)?.filter(
+      const endObjects = (decoded?.objects as Array<{ type: string; endingText?: string }>).filter(
         (obj) => obj.type === 'player-end'
       );
-      expect(endObjects?.length).toBe(2);
-      expect(endObjects?.[0]?.endingText).toBe('You won!');
-      expect(endObjects?.[1]?.endingText).toBe('Alternative ending');
+      expect(endObjects.length).toBe(2);
+      expect(endObjects[0]?.endingText).toBe('You won!');
+      expect(endObjects[1]?.endingText).toBe('Alternative ending');
     });
   });
 
   describe('Multi-room world encoding', () => {
     it('handles 3x3 world with different tiles in each room', () => {
       const size = ShareConstants.MATRIX_SIZE;
-      const createRoom = (fillValue: number) =>
+      const createRoom = (fillValue: number | null) =>
         Array.from({ length: size }, () => Array.from({ length: size }, () => fillValue));
 
       const gameData = {
@@ -335,12 +351,12 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       expect(decoded?.world).toEqual({ rows: 3, cols: 3 });
       expect(decoded?.rooms?.length).toBe(9);
 
-      const maps = (decoded?.tileset as { maps?: Array<{ ground: number[][] }> })?.maps;
+      const maps = (decoded?.tileset as { maps?: Array<{ ground: number[][] }> }).maps;
       expect(maps?.length).toBe(9);
     });
   });
@@ -369,7 +385,7 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       expect(decoded?.title).toBeTruthy();
       expect(decoded?.author).toBeTruthy();
@@ -395,15 +411,15 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
     it('rejects unsupported version codes', () => {
       const invalidCode = 'vzz.g1,2,3'; // Invalid version
 
-      const decoded = ShareDecoder.decodeShareCode(invalidCode);
+      const decoded = decodeShare(invalidCode);
 
       expect(decoded).toBeNull();
     });
 
     it('rejects null or empty codes', () => {
-      expect(ShareDecoder.decodeShareCode(null)).toBeNull();
-      expect(ShareDecoder.decodeShareCode('')).toBeNull();
-      expect(ShareDecoder.decodeShareCode(undefined)).toBeNull();
+      expect(decodeShare(null)).toBeNull();
+      expect(decodeShare('')).toBeNull();
+      expect(decodeShare(undefined)).toBeNull();
     });
   });
 
@@ -427,16 +443,16 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       };
 
       const encoded = ShareEncoder.buildShareCode(gameData);
-      const decoded = ShareDecoder.decodeShareCode(encoded);
+      const decoded = decodeShare(encoded);
 
       const objects = decoded?.objects as Array<{ type: string }>;
-      expect(objects?.some((obj) => obj.type === 'key')).toBe(true);
-      expect(objects?.some((obj) => obj.type === 'life-potion')).toBe(true);
-      expect(objects?.some((obj) => obj.type === 'xp-scroll')).toBe(true);
-      expect(objects?.some((obj) => obj.type === 'sword')).toBe(true);
-      expect(objects?.some((obj) => obj.type === 'sword-bronze')).toBe(true);
-      expect(objects?.some((obj) => obj.type === 'sword-wood')).toBe(true);
-      expect(objects?.some((obj) => obj.type === 'door')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'key')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'life-potion')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'xp-scroll')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'sword')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'sword-bronze')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'sword-wood')).toBe(true);
+      expect(objects.some((obj) => obj.type === 'door')).toBe(true);
     });
   });
 });

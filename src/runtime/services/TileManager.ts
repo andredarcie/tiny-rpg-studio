@@ -17,13 +17,19 @@ class TileManager {
     this.maxAnimationFrames = 1;
   }
 
-  generateTileId(): string {
-    const globalCrypto = typeof crypto !== 'undefined' ? crypto : globalThis.crypto ?? null;
-    if (globalCrypto?.randomUUID) {
-      return globalCrypto.randomUUID();
+    generateTileId(): string {
+        const cryptoCandidate =
+            typeof crypto !== 'undefined'
+                ? crypto
+                : (globalThis as Partial<typeof globalThis>).crypto;
+        if (cryptoCandidate) {
+            const randomUUID = (cryptoCandidate as { randomUUID?: () => string }).randomUUID;
+            if (typeof randomUUID === 'function') {
+                return randomUUID.call(cryptoCandidate);
+            }
+        }
+        return `tile-${Math.random().toString(36).slice(2, 10)}`;
     }
-    return `tile-${Math.random().toString(36).slice(2, 10)}`;
-  }
 
   buildPresetTiles(): TileDefinition[] {
     if (!Array.isArray(TILE_PRESETS_SOURCE)) {
@@ -61,17 +67,16 @@ class TileManager {
         overlay: makeLayer(null),
       }));
     } else {
-      const defaultTileId = tileset.tiles[0]?.id ?? null;
-      if (defaultTileId !== null && defaultTileId !== undefined) {
-        const isLayerEmpty = (layer?: TileMapLayer) =>
-          Array.isArray(layer) && layer.every((row) => Array.isArray(row) && row.every((cell) => cell == null));
-        const fillLayer = (fallback: TileId | null): TileMapLayer =>
-          Array.from({ length: size }, () => Array.from({ length: size }, () => fallback));
-        tileset.maps.forEach((map) => {
-          if (!map) return;
-          if (isLayerEmpty(map.ground) && isLayerEmpty(map.overlay)) {
-            map.ground = fillLayer(defaultTileId);
-            map.overlay = fillLayer(null);
+          const defaultTileId = tileset.tiles[0]?.id ?? null;
+          if (defaultTileId !== null) {
+              const isLayerEmpty = (layer?: TileMapLayer) =>
+                Array.isArray(layer) && layer.every((row) => Array.isArray(row) && row.every((cell) => cell == null));
+              const fillLayer = (fallback: TileId | null): TileMapLayer =>
+                Array.from({ length: size }, () => Array.from({ length: size }, () => fallback));
+              tileset.maps.forEach((map) => {
+                  if (isLayerEmpty(map.ground) && isLayerEmpty(map.overlay)) {
+                    map.ground = fillLayer(defaultTileId);
+                    map.overlay = fillLayer(null);
           }
         });
       }
@@ -136,11 +141,11 @@ class TileManager {
     return this.gameState.game.tileset.map;
   }
 
-  refreshAnimationMetadata(): void {
-    const tiles = this.getTiles() || [];
-    let maxFrames = 1;
-    for (const tile of tiles) {
-      const frameCount = Array.isArray(tile?.frames) && tile.frames.length ? tile.frames.length : 1;
+    refreshAnimationMetadata(): void {
+      const tiles = this.getTiles();
+      let maxFrames = 1;
+      for (const tile of tiles) {
+        const frameCount = Array.isArray(tile.frames) && tile.frames.length ? tile.frames.length : 1;
       if (frameCount > maxFrames) {
         maxFrames = frameCount;
       }
@@ -171,10 +176,11 @@ class TileManager {
     return this.animationFrameIndex;
   }
 
-  getTilePixels(tileOrTileId: TileDefinition | TileId, frameOverride: number | null = null): TileFrame | null {
-    const tile = typeof tileOrTileId === 'object' && tileOrTileId !== null
-      ? tileOrTileId
-      : this.getTile(tileOrTileId);
+    getTilePixels(tileOrTileId: TileDefinition | TileId, frameOverride: number | null = null): TileFrame | null {
+      const tile =
+        typeof tileOrTileId === 'object'
+          ? tileOrTileId
+        : this.getTile(tileOrTileId);
     if (!tile) return null;
     const frames = Array.isArray(tile.frames) && tile.frames.length
       ? tile.frames

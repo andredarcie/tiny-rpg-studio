@@ -56,11 +56,15 @@ const createKeyEvent = (key: string, target?: HTMLElement) =>
     preventDefault: vi.fn(),
   }) as unknown as KeyboardEvent;
 
-const createTouchEvent = (x: number, y: number) =>
-  ({
-    changedTouches: [{ clientX: x, clientY: y }],
+const createTouchEvent = (x: number, y: number) => {
+  const touch = { clientX: x, clientY: y };
+  const touchList = [touch];
+  (touchList as unknown as { item: (index: number) => typeof touch | null }).item = (index: number) => touchList[index] || null;
+  return {
+    changedTouches: touchList,
     preventDefault: vi.fn(),
-  }) as unknown as TouchEvent;
+  } as unknown as TouchEvent;
+};
 
 const createMouseEvent = (x: number, y: number) =>
   ({

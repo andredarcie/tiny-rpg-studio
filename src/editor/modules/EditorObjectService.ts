@@ -92,7 +92,7 @@ class EditorObjectService {
     activatePlacement(type: string | null = null) {
         const targetType = this.normalizeType(type ?? this.manager.selectedObjectType);
         if (!targetType) return;
-        this.manager.npcService?.clearSelection?.();
+        this.manager.npcService.clearSelection();
         if (this.state.placingEnemy) {
             this.manager.enemyService.deactivatePlacement();
         }

@@ -21,9 +21,7 @@ class EditorTileService {
         if (!canvas) return;
         ev.preventDefault();
         this.state.mapPainting = true;
-        if (ev.pointerId !== undefined && canvas.setPointerCapture) {
-            canvas.setPointerCapture(ev.pointerId);
-        }
+        canvas.setPointerCapture(ev.pointerId);
         this.applyPaint(ev);
     }
 
@@ -36,7 +34,11 @@ class EditorTileService {
         if (!this.state.mapPainting) return;
         this.state.mapPainting = false;
         const canvas = this.dom.editorCanvas;
-        if (ev?.pointerId !== undefined && canvas?.hasPointerCapture?.(ev.pointerId)) {
+        if (!canvas) {
+            this.state.mapPainting = false;
+            return;
+        }
+        if (canvas.hasPointerCapture(ev.pointerId)) {
             canvas.releasePointerCapture(ev.pointerId);
         }
         if (this.state.skipMapHistory) {
@@ -70,14 +72,14 @@ class EditorTileService {
             return;
         }
 
-        if (this.state.selectedTileId === null || this.state.selectedTileId === undefined) return;
+        if (this.state.selectedTileId === null) return;
         this.manager.gameEngine.setMapTile(coord.x, coord.y, this.state.selectedTileId, roomIndex);
         this.manager.renderService.renderEditor();
         this.manager.gameEngine.draw();
     }
 
     clearSelection({ render = true }: { render?: boolean } = {}) {
-        const hadSelection = this.state.selectedTileId !== null && this.state.selectedTileId !== undefined;
+        const hadSelection = this.state.selectedTileId !== null;
         if (!hadSelection) return false;
         this.state.selectedTileId = null;
         if (render) {

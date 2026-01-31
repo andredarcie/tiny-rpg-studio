@@ -49,7 +49,7 @@ export default [
 
       // Comparações e lógica
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
-      '@typescript-eslint/no-unnecessary-condition': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'error',
 
       // Funções e contexto
       '@typescript-eslint/no-invalid-this': 'error',

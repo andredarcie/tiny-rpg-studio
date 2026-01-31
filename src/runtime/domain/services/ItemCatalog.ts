@@ -34,7 +34,8 @@ class ItemCatalog {
         if (!tag) return false;
         const normalizedTag = String(tag);
         const behavior = this.getBehaviorMap().get(type);
-        return behavior?.tagSet?.has(normalizedTag) || false;
+        if (!behavior) return false;
+        return behavior.tagSet.has(normalizedTag);
     }
 
     getTypesByTag(tag: string): ItemType[] {
@@ -52,9 +53,11 @@ class ItemCatalog {
     getEditorTypeOrder(): ItemType[] {
         return [...this.items]
             .sort((a, b) => {
-                const ao = this.getBehaviorMap().get(a.type)?.order ?? 0;
-                const bo = this.getBehaviorMap().get(b.type)?.order ?? 0;
-                return ao - bo;
+                const ao = this.getBehaviorMap().get(a.type);
+                const bo = this.getBehaviorMap().get(b.type);
+                const aOrder = ao ? ao.order : 0;
+                const bOrder = bo ? bo.order : 0;
+                return aOrder - bOrder;
             })
             .map((definition) => definition.type);
     }
@@ -146,7 +149,7 @@ class ItemCatalog {
         if (!this.behaviorMap) {
             const data = new Map<ItemType, ItemBehaviorEntry>();
             this.items.forEach((definition, index) => {
-                const config: ItemBehavior = definition.behavior || {};
+                const config: ItemBehavior = definition.behavior;
                 const tags = Array.isArray(config.tags) ? config.tags.slice() : [];
                 data.set(definition.type, {
                     order: definition.getOrder(100 + index),

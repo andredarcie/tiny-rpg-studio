@@ -33,12 +33,12 @@ class TinyRPGApplication {
 
     document.addEventListener('game-tab-activated', (ev) => {
       const event = ev as CustomEvent<TabActivationDetail>;
-      if (event.detail?.initial) return;
+      if (event.detail.initial) return;
       gameEngine.resetGame();
     });
     document.addEventListener('editor-tab-activated', (ev) => {
       const event = ev as CustomEvent<TabActivationDetail>;
-      if (event.detail?.initial) return;
+      if (event.detail.initial) return;
       gameEngine.resetGame();
     });
 
@@ -59,7 +59,7 @@ class TinyRPGApplication {
       addSprite: (npc: unknown) => gameEngine.addSprite(npc),
       getSprites: () => gameEngine.getSprites(),
       resetNPCs: () => gameEngine.npcManager.resetNPCs(),
-      renderAll: () => editorManager?.renderAll?.(),
+      renderAll: () => editorManager?.renderAll(),
     };
     setTinyRpgApi(api);
 
@@ -74,18 +74,22 @@ class TinyRPGApplication {
     console.log(getTextResource('log.engineReady'));
   }
 
-  static bindResetButton(gameEngine: GameEngine): void {
+    static getLocation(): Location | null {
+      return ((globalThis as typeof globalThis & { location?: Location }).location) ?? null;
+    }
+
+    static bindResetButton(gameEngine: GameEngine): void {
     const resetButton = document.getElementById('btn-reset');
     if (!(resetButton instanceof HTMLButtonElement)) return;
 
-    const getBaseUrl = () => {
-      const { location } = globalThis;
-      if (!location) return '';
-      return `${location.origin}${location.pathname}`;
-    };
+      const getBaseUrl = () => {
+        const location = this.getLocation();
+        if (!location) return '';
+        return `${location.origin}${location.pathname}`;
+      };
 
     const openNewGameTab = (url: string) => {
-      const popup = globalThis.open?.(url, '_blank', 'noopener');
+      const popup = globalThis.open(url, '_blank', 'noopener');
       if (popup) {
         return true;
       }
@@ -161,9 +165,7 @@ class TinyRPGApplication {
           const dir = btn.dataset.direction as Direction | undefined;
           if (!dir) return;
           const delta = directionMap[dir];
-          if (delta) {
-            gameEngine.tryMove(delta[0], delta[1]);
-          }
+          gameEngine.tryMove(delta[0], delta[1]);
         },
         { passive: false },
       );
@@ -292,14 +294,13 @@ class TinyRPGApplication {
 
       if (tabName === 'editor') {
         const api = getTinyRpgApi();
-        api?.resetNPCs?.();
-        api?.draw?.();
+        if (!api) return;
+        api.resetNPCs();
+        api.draw();
         document.dispatchEvent(new CustomEvent('editor-tab-activated'));
-        api?.renderAll?.();
-        if (api?.exportGameData && api?.importGameData) {
-          const currentData = api.exportGameData();
-          api.importGameData(currentData);
-        }
+        api.renderAll();
+        const currentData = api.exportGameData();
+        api.importGameData(currentData);
       }
     };
 
@@ -335,7 +336,7 @@ class TinyRPGApplication {
   }
 
   static loadSharedGameIfAvailable(gameEngine: GameEngine): void {
-    const data = ShareUtils?.extractGameDataFromLocation?.(globalThis.location);
+    const data = ShareUtils.extractGameDataFromLocation(globalThis.location);
     if (data) {
       gameEngine.importGameData(data);
     }
@@ -364,7 +365,7 @@ class TinyRPGApplication {
 
     const scheduleResize = () => globalThis.requestAnimationFrame(resizeCanvas);
 
-    globalThis.addEventListener?.('resize', scheduleResize);
+    globalThis.addEventListener('resize', scheduleResize);
     document.addEventListener('game-tab-activated', scheduleResize);
 
     scheduleResize();

@@ -47,7 +47,7 @@ class SkillDefinitions {
 
     static SKILLS: Skill[] = SkillDefinitions.SKILL_DEFINITION_DATA.map((entry) => new Skill(entry));
 
-    static LEVEL_SKILLS: Record<number, string[]> = {
+    static LEVEL_SKILLS: Partial<Record<number, string[]>> = {
         2: ['necromancer', 'charisma'],
         4: ['stealth'],
         6: ['potion-master'],

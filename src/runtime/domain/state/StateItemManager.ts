@@ -14,7 +14,7 @@ class StateItemManager {
     }
 
     resetItems(): void {
-        if (!Array.isArray(this.game?.items)) return;
+        if (!Array.isArray(this.game.items)) return;
         this.game.items.forEach((item) => {
             item.collected = false;
         });

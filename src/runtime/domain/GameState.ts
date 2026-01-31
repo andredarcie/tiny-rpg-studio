@@ -149,7 +149,7 @@ class GameState {
         this.enemyManager = new StateEnemyManager(this.game, this.state, this.worldManager);
         this.skillManager = new StateSkillManager(this.state);
         this.playerManager = new StatePlayerManager(this.state, this.worldManager, this.skillManager);
-        this.playerManager.setSkillManager?.(this.skillManager);
+        this.playerManager.setSkillManager(this.skillManager);
         this.dialogManager = new StateDialogManager(this.state);
         this.itemManager = new StateItemManager(this.game);
         this.worldFacade = new GameStateWorldFacade(this, this.worldManager);
@@ -221,7 +221,7 @@ class GameState {
     }
 
     getMaxPlayerLevel(): number {
-        return this.playerManager?.maxLevel ?? 1;
+        return this.playerManager.maxLevel;
     }
 
     isLevelUpOverlayActive(): boolean {
@@ -314,9 +314,6 @@ class GameState {
     }
 
     getTestSettings(): TestSettings {
-        if (!this.testSettings) {
-            this.testSettings = this.createDefaultTestSettings();
-        }
         return {
             startLevel: Number.isFinite(this.testSettings.startLevel)
                 ? Math.floor(this.testSettings.startLevel)
@@ -328,15 +325,13 @@ class GameState {
 
     setTestSettings(settings: Partial<TestSettings> = {}): TestSettings {
         const current = this.getTestSettings();
-        const maxLevel = this.playerManager?.maxLevel ?? 10;
+        const maxLevel = this.playerManager.maxLevel;
         const requestedStart = settings.startLevel;
         const startLevel = typeof requestedStart === 'number' && Number.isFinite(requestedStart)
             ? Math.max(1, Math.min(maxLevel, Math.floor(requestedStart)))
             : current.startLevel;
 
-        const allSkills = (typeof SkillDefinitions !== 'undefined'
-            ? SkillDefinitions.getAll?.() || []
-            : []) as Array<{ id: string }>;
+        const allSkills = SkillDefinitions.getAll() as Array<{ id: string }>;
         const validSkillIds = new Set(
             allSkills.map((skill) => skill.id).filter((id): id is string => typeof id === 'string')
         );
@@ -355,14 +350,12 @@ class GameState {
     applyTestSettingsRuntime(): void {
         const settings = this.getTestSettings();
         const startLevel = Number.isFinite(settings.startLevel) ? settings.startLevel : 1;
-        if (this.playerManager?.setLevel) {
-            this.playerManager.setLevel(startLevel);
-        }
+        this.playerManager.setLevel(startLevel);
         if (Array.isArray(settings.skills) && settings.skills.length) {
-            settings.skills.forEach((id) => this.skillManager?.addSkill?.(id));
+            settings.skills.forEach((id) => this.skillManager.addSkill(id));
         }
-        this.playerManager?.ensurePlayerStats?.();
-        this.playerManager?.setGodMode?.(settings.godMode);
+        this.playerManager.ensurePlayerStats();
+        this.playerManager.setGodMode(settings.godMode);
     }
 
     resetGame(): void {
@@ -460,7 +453,7 @@ class GameState {
     }
 
     addBonusMaxLife(amount = 1) {
-        const bonus = this.skillManager.addBonusMaxLife?.(amount);
+        const bonus = this.skillManager.addBonusMaxLife(amount);
         this.healPlayerToFull();
         return bonus;
     }
@@ -535,7 +528,7 @@ class GameState {
         let openedMagicDoor = false;
         if (success) {
             openedMagicDoor = this.objectManager.checkOpenedMagicDoor(normalizedId, value);
-            this.objectManager.syncSwitchState?.(normalizedId, value);
+            this.objectManager.syncSwitchState(normalizedId, value);
         }
         return [success, openedMagicDoor];
     }
@@ -646,15 +639,6 @@ class GameState {
     }
 
     getPickupOverlay(): PickupOverlayState {
-        if (!this.state.pickupOverlay) {
-            this.state.pickupOverlay = {
-                active: false,
-                name: '',
-                spriteGroup: null,
-                spriteType: null,
-                effect: null
-            };
-        }
         return this.state.pickupOverlay;
     }
 
@@ -692,15 +676,6 @@ class GameState {
     }
 
     getLevelUpCelebration(): LevelUpCelebrationState {
-        if (!this.state.levelUpCelebration) {
-            this.state.levelUpCelebration = {
-                active: false,
-                level: null,
-                startTime: 0,
-                timeoutId: null,
-                durationMs: GameConfig.timing.levelUpCelebration
-            };
-        }
         return this.state.levelUpCelebration;
     }
 
@@ -747,19 +722,20 @@ class GameState {
     }
 
     getNow(): number {
-        if (typeof performance !== 'undefined' && performance.now) {
-            return performance.now();
+        const perf = (globalThis as Partial<typeof globalThis>).performance;
+        if (perf) {
+            return perf.now();
         }
         return Date.now();
     }
 
     enableGameOverInteraction(): void {
-        this.screenManager.clearGameOverCooldown?.();
+        this.screenManager.clearGameOverCooldown();
         this.screenManager.canResetAfterGameOver = true;
     }
 
     prepareNecromancerRevive(): boolean {
-        if (!this.skillManager.hasPendingManualRevive?.()) {
+        if (!this.skillManager.hasPendingManualRevive()) {
             return false;
         }
         this.reviveSnapshot = this.captureReviveSnapshot();
@@ -767,7 +743,7 @@ class GameState {
     }
 
     hasNecromancerReviveReady(): boolean {
-        return Boolean(this.skillManager.hasPendingManualRevive?.() && this.reviveSnapshot);
+        return Boolean(this.skillManager.hasPendingManualRevive() && this.reviveSnapshot);
     }
 
     reviveFromNecromancer(): boolean {
@@ -777,26 +753,24 @@ class GameState {
         if (!restored) {
             return false;
         }
-        const consumed = this.skillManager.consumeManualRevive?.();
+        const consumed = this.skillManager.consumeManualRevive();
         if (!consumed) {
             return false;
         }
-        if (this.state?.player) {
-            const maxLives = Number.isFinite(this.state.player.maxLives)
-                ? Math.max(1, Math.floor(this.state.player.maxLives))
-                : 1;
-            this.state.player.currentLives = maxLives;
-            this.state.player.lives = maxLives;
-        }
+        const maxLives = Number.isFinite(this.state.player.maxLives)
+            ? Math.max(1, Math.floor(this.state.player.maxLives))
+            : 1;
+        this.state.player.currentLives = maxLives;
+        this.state.player.lives = maxLives;
         this.lifecycle.setGameOver(false);
         this.lifecycle.resumeGame('game-over');
-        this.screenManager.clearGameOverCooldown?.();
+        this.screenManager.clearGameOverCooldown();
         return true;
     }
 
     clearNecromancerRevive(): void {
         this.reviveSnapshot = null;
-        this.skillManager.clearManualReviveFlag?.();
+        this.skillManager.clearManualReviveFlag();
     }
 
     captureReviveSnapshot(): ReviveSnapshot | null {
@@ -811,14 +785,14 @@ class GameState {
     }
 
     restoreReviveSnapshot(snapshot: ReviveSnapshot | null = null): boolean {
-        if (!snapshot?.game || !snapshot?.state) return false;
+        if (!snapshot) return false;
         try {
             this.assignData(this.game, snapshot.game);
             this.assignData(this.state, snapshot.state);
-            this.worldManager.setGame?.(this.game);
-            this.objectManager.setGame?.(this.game);
-            this.variableManager.setGame?.(this.game);
-            this.itemManager.setGame?.(this.game);
+            this.worldManager.setGame(this.game);
+            this.objectManager.setGame(this.game);
+            this.variableManager.setGame(this.game);
+            this.itemManager.setGame(this.game);
             return true;
         } catch (err) {
             console.error('Failed to restore revive snapshot', err);

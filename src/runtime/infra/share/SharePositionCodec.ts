@@ -9,9 +9,9 @@ type EnemyEntry = { type?: string; typeIndex?: number };
 
 class SharePositionCodec {
     static positionToByte(entry: PositionEntry) {
-        const room = ShareMath.clamp(Number(entry?.roomIndex), 0, ShareConstants.MAX_ROOM_INDEX, 0) & 0x0f;
-        const y = ShareMath.clamp(Number(entry?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
-        const x = ShareMath.clamp(Number(entry?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
+        const room = ShareMath.clamp(Number(entry.roomIndex), 0, ShareConstants.MAX_ROOM_INDEX, 0) & 0x0f;
+        const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
+        const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
         return ((room & 0x03) << 6) | (y << 3) | x;
     }
 
@@ -28,7 +28,7 @@ class SharePositionCodec {
         const maxRoomIndex = entries.reduce(
             (max: number, entry: PositionEntry) => Math.max(
                 max,
-                ShareMath.clamp(Number(entry?.roomIndex), 0, ShareConstants.MAX_ROOM_INDEX, 0)
+                ShareMath.clamp(Number(entry.roomIndex), 0, ShareConstants.MAX_ROOM_INDEX, 0)
             ),
             0
         );
@@ -36,9 +36,10 @@ class SharePositionCodec {
         if (useWide) {
             const bytes = new Uint8Array(entries.length * 2);
             for (let i = 0; i < entries.length; i++) {
-                const room = ShareMath.clamp(Number(entries[i]?.roomIndex), 0, ShareConstants.MAX_ROOM_INDEX, 0) & 0x0f;
-                const y = ShareMath.clamp(Number(entries[i]?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
-                const x = ShareMath.clamp(Number(entries[i]?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
+            const entry = entries[i];
+            const room = ShareMath.clamp(Number(entry.roomIndex), 0, ShareConstants.MAX_ROOM_INDEX, 0) & 0x0f;
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0) & 0x07;
                 const offset = i * 2;
                 bytes[offset] = ((room & 0x03) << 6) | (y << 3) | x;
                 bytes[offset + 1] = (room >> 2) & 0x0f;

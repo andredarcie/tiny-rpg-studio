@@ -28,11 +28,11 @@ class EditorNpcRenderer extends EditorRendererBase {
         const list = this.dom.npcsList;
         if (!list) return;
 
-        this.gameEngine.npcManager?.ensureDefaultNPCs?.();
+        this.gameEngine.npcManager.ensureDefaultNPCs();
         this.updateVariantButtons();
         const game = this.gameEngine.getGame() as { world?: { cols?: number } };
         const filter = this.manager.state.npcVariantFilter || 'human';
-        const definitions = (this.gameEngine.npcManager?.getDefinitions?.() ?? []) as NpcDefinitionView[];
+        const definitions = this.gameEngine.npcManager.getDefinitions() as NpcDefinitionView[];
         const filteredDefinitions = definitions
             .filter((def: NpcDefinitionView) => {
                 const variant = def.variant || 'human';
@@ -42,7 +42,7 @@ class EditorNpcRenderer extends EditorRendererBase {
 
         list.innerHTML = '';
         filteredDefinitions.forEach((def: NpcDefinitionView) => {
-            const npc = npcs.find((entry) => entry.type === def.type) ?? null;
+            const npc = npcs.find((entry) => entry.type === def.type);
             const card = document.createElement('div');
             card.className = 'npc-card';
             card.dataset.type = def.type;
@@ -102,6 +102,7 @@ class EditorNpcRenderer extends EditorRendererBase {
 
         const npcSprites = this.gameEngine.renderer.npcSprites;
         const sprite = npcSprites[definition.type] || npcSprites.default;
+        if (!Array.isArray(sprite)) return;
         const step = canvas.width / 8;
 
         for (let y = 0; y < sprite.length; y++) {

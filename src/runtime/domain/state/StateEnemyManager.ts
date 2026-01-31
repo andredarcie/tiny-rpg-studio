@@ -38,11 +38,11 @@ class StateEnemyManager {
             list.push({
                 id: enemy.id,
                 type: normalizedType,
-                roomIndex: this.worldManager.clampRoomIndex(enemy.roomIndex ?? 0),
-                x: this.worldManager.clampCoordinate(enemy.x ?? 0),
-                y: this.worldManager.clampCoordinate(enemy.y ?? 0),
-                lastX: this.worldManager.clampCoordinate(enemy.x ?? 0),
-                lives: enemy.lives ?? 1,
+                roomIndex: this.worldManager.clampRoomIndex(enemy.roomIndex),
+                x: this.worldManager.clampCoordinate(enemy.x),
+                y: this.worldManager.clampCoordinate(enemy.y),
+                lastX: this.worldManager.clampCoordinate(enemy.x),
+                lives: enemy.lives,
                 defeatVariableId: this.normalizeEnemyVariableId(enemy.defeatVariableId),
                 playerInVision: Boolean(enemy.playerInVision),
                 alertUntil: typeof enemy.alertUntil === 'number' ? enemy.alertUntil : null,
@@ -53,8 +53,8 @@ class StateEnemyManager {
     }
 
     resetRuntime(): EnemyDefinition[] {
-        if (!this.state) return [];
-        this.state.enemies = this.cloneEnemies(this.game?.enemies);
+        if (!this.state || !this.game) return [];
+        this.state.enemies = this.cloneEnemies(this.game.enemies);
         return this.state.enemies;
     }
 
@@ -70,14 +70,14 @@ class StateEnemyManager {
         if (!this.game || !this.state) return null;
         const normalizedType = this.normalizeEnemyType(enemy.type);
         if (this.isBossType(normalizedType)) {
-            this.game.enemies = (this.game.enemies || []).filter((entry) => this.normalizeEnemyType(entry.type) !== normalizedType);
-            this.state.enemies = (this.state.enemies || []).filter((entry) => this.normalizeEnemyType(entry.type) !== normalizedType);
+            this.game.enemies = this.game.enemies.filter((entry) => this.normalizeEnemyType(entry.type) !== normalizedType);
+            this.state.enemies = this.state.enemies.filter((entry) => this.normalizeEnemyType(entry.type) !== normalizedType);
         }
 
-        const targetRoom = this.worldManager.clampRoomIndex(enemy.roomIndex ?? 0);
+        const targetRoom = this.worldManager.clampRoomIndex(enemy.roomIndex);
         const maxEnemiesPerRoom = 6;
-        const currentRoomCount = (this.game?.enemies || []).reduce((count, entry) => {
-            const room = this.worldManager.clampRoomIndex(entry.roomIndex ?? 0);
+        const currentRoomCount = this.game.enemies.reduce((count, entry) => {
+            const room = this.worldManager.clampRoomIndex(entry.roomIndex);
             return room === targetRoom ? count + 1 : count;
         }, 0);
         if (currentRoomCount >= maxEnemiesPerRoom) {
@@ -88,9 +88,9 @@ class StateEnemyManager {
             id: enemy.id,
             type: normalizedType,
             roomIndex: targetRoom,
-            x: this.worldManager.clampCoordinate(enemy.x ?? 0),
-            y: this.worldManager.clampCoordinate(enemy.y ?? 0),
-            lastX: this.worldManager.clampCoordinate(enemy.x ?? 0),
+            x: this.worldManager.clampCoordinate(enemy.x),
+            y: this.worldManager.clampCoordinate(enemy.y),
+            lastX: this.worldManager.clampCoordinate(enemy.x),
             defeatVariableId: this.normalizeEnemyVariableId(enemy.defeatVariableId)
         };
         const runtimeEntry = {
@@ -116,29 +116,26 @@ class StateEnemyManager {
         enemy.lastX = enemy.x;
         enemy.x = this.worldManager.clampCoordinate(x);
         enemy.y = this.worldManager.clampCoordinate(y);
-        if (roomIndex !== null && roomIndex !== undefined) {
+        if (roomIndex !== null) {
             enemy.roomIndex = this.worldManager.clampRoomIndex(roomIndex);
         }
     }
 
     setEnemyVariable(enemyId: string | number, variableId: string | null = null): boolean {
+        if (!this.game || !this.state) return false;
         const normalized = this.normalizeEnemyVariableId(variableId);
         let changed = false;
 
-        if (Array.isArray(this.game?.enemies)) {
-            const entry = this.game.enemies.find((enemy) => enemy.id === enemyId);
-            if (entry && entry.defeatVariableId !== normalized) {
-                entry.defeatVariableId = normalized;
-                changed = true;
-            }
+        const entry = this.game.enemies.find((enemy) => enemy.id === enemyId);
+        if (entry && entry.defeatVariableId !== normalized) {
+            entry.defeatVariableId = normalized;
+            changed = true;
         }
 
-        if (Array.isArray(this.state?.enemies)) {
-            const runtime = this.state.enemies.find((enemy) => enemy.id === enemyId);
-            if (runtime && runtime.defeatVariableId !== normalized) {
-                runtime.defeatVariableId = normalized;
-                changed = true;
-            }
+        const runtime = this.state.enemies.find((enemy) => enemy.id === enemyId);
+        if (runtime && runtime.defeatVariableId !== normalized) {
+            runtime.defeatVariableId = normalized;
+            changed = true;
         }
         return changed;
     }
@@ -153,8 +150,8 @@ class StateEnemyManager {
     }
 
     normalizeEnemyVariableId(variableId: string | null | undefined): string | null {
-        if (typeof variableId !== 'string') return null;
-        const definitions: VariableDefinition[] = Array.isArray(this.game?.variables) ? this.game.variables : [];
+        if (typeof variableId !== 'string' || !this.game) return null;
+        const definitions: VariableDefinition[] = this.game.variables;
         return definitions.some((variable) => variable.id === variableId) ? variableId : null;
     }
 }

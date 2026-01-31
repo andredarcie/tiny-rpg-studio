@@ -60,7 +60,7 @@ class EditorRenderService {
             this.renderEditor();
             this.updateSelectedTilePreview();
         };
-        globalThis.addEventListener?.('tile-animation-frame', this.handleTileAnimationFrame);
+        globalThis.addEventListener('tile-animation-frame', this.handleTileAnimationFrame);
     }
 
     get textResources() {
@@ -69,7 +69,7 @@ class EditorRenderService {
 
     t(key: string, fallback = '') {
         const resource = this.textResources as typeof TextResources & { get?: (key: string, fallback: string) => string };
-        const value = resource?.get ? resource.get(key, fallback) : '';
+        const value = resource.get(key, fallback);
         if (value) return value;
         if (fallback) return fallback;
         return key || '';
@@ -77,12 +77,7 @@ class EditorRenderService {
 
     tf(key: string, params: Record<string, string | number> = {}, fallback = '') {
         const resource = this.textResources as typeof TextResources & { format?: (key: string, params: Record<string, string | number>, fallback: string) => string };
-        if (resource?.format) {
-            return resource.format(key, params, fallback);
-        }
-        const template = this.t(key, fallback);
-        if (!template) return '';
-        return template.replace(/\{(\w+)\}/g, (_: string, token: string) => String(params[token] ?? ''));
+        return resource.format(key, params, fallback);
     }
 
     get dom() {
@@ -98,7 +93,7 @@ class EditorRenderService {
     }
 
     get picoPalette() {
-        return PICO8_COLORS || [];
+        return PICO8_COLORS;
     }
 
     resolvePicoColor(raw: string | number | null) {
@@ -171,7 +166,7 @@ class EditorRenderService {
         const toggle = this.dom.projectVariablesToggle;
         list.innerHTML = '';
 
-        const variables = (this.gameEngine?.getVariableDefinitions?.() ?? []) as VariableEntry[];
+        const variables = (this.gameEngine.getVariableDefinitions()) as VariableEntry[];
         const usedSet = this.collectVariableUsage();
         const usedCount = variables.reduce(
             (count: number, variable: VariableEntry) => count + (usedSet.has(variable.id) ? 1 : 0),
@@ -236,7 +231,7 @@ class EditorRenderService {
         const toggle = this.dom.projectSkillsToggle;
         list.innerHTML = '';
 
-        const skills = SkillDefinitions.getAll?.() || [];
+        const skills = SkillDefinitions.getAll();
         const levelMap = this.buildSkillLevelMap();
         const grouped = this.groupSkillsByLevel(skills, levelMap);
         const collapsed = Boolean(this.state.skillPanelCollapsed);
@@ -309,12 +304,12 @@ class EditorRenderService {
 
     collectVariableUsage() {
         const used = new Set<string>();
-        const game = (this.gameEngine?.getGame?.() || {}) as {
+        const game = (this.gameEngine.getGame()) as {
             sprites?: SpriteData[];
             enemies?: EnemyData[];
             objects?: ObjectData[];
         };
-        const variables = (this.gameEngine?.getVariableDefinitions?.() ?? []) as VariableEntry[];
+        const variables = (this.gameEngine.getVariableDefinitions()) as VariableEntry[];
         const validIds = new Set(variables.map((variable: VariableEntry) => variable.id));
         const addIfValid = (id: string | null | undefined) => {
             if (typeof id !== 'string') return;
@@ -348,13 +343,14 @@ class EditorRenderService {
 
     buildSkillLevelMap(): Map<string, number> {
         const levelMap = new Map<string, number>();
-        const entries = SkillDefinitions.LEVEL_SKILLS || {};
+        const entries = SkillDefinitions.LEVEL_SKILLS;
         Object.entries(entries).forEach(([levelKey, ids]) => {
             const level = Number(levelKey);
             if (!Number.isFinite(level)) return;
             (Array.isArray(ids) ? ids : []).forEach((id: string) => {
                 if (typeof id !== 'string') return;
-                if (!levelMap.has(id) || level < levelMap.get(id)) {
+                const currentLevel = levelMap.get(id);
+                if (currentLevel === undefined || level < currentLevel) {
                     levelMap.set(id, level);
                 }
             });
@@ -370,7 +366,10 @@ class EditorRenderService {
             if (!buckets.has(key)) {
                 buckets.set(key, []);
             }
-            buckets.get(key)!.push(skill);
+            const bucket = buckets.get(key);
+            if (bucket) {
+                bucket.push(skill);
+            }
         });
         const sortedKeys = Array.from(buckets.keys()).sort((a: number | 'other', b: number | 'other') => {
             const na = typeof a === 'number' ? a : Infinity;
@@ -400,8 +399,8 @@ class EditorRenderService {
         toggle.textContent = `${title} · ${actionText}`;
         container.classList.toggle('is-collapsed', collapsed);
 
-        const settings = this.gameEngine?.getTestSettings?.() || { startLevel: 1, skills: [], godMode: false };
-        const maxLevel = this.gameEngine?.getMaxPlayerLevel?.() ?? 1;
+        const settings = this.gameEngine.getTestSettings();
+        const maxLevel = this.gameEngine.getMaxPlayerLevel();
 
         const hint = container.querySelector('.project-test__hint');
         if (hint) {
@@ -434,7 +433,7 @@ class EditorRenderService {
 
         if (skillList) {
             skillList.innerHTML = '';
-            const skills = SkillDefinitions.getAll?.() || [];
+            const skills = SkillDefinitions.getAll();
             const selected = new Set(Array.isArray(settings.skills) ? settings.skills : []);
 
             if (!skills.length) {

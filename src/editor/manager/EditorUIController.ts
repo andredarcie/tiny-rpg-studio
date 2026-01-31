@@ -48,9 +48,9 @@ class EditorUIController extends EditorManagerModule {
     }
 
     setTestStartLevel(level: number) {
-        const maxLevel = this.gameEngine.getMaxPlayerLevel?.() ?? 1;
+        const maxLevel = this.gameEngine.getMaxPlayerLevel();
         const numeric = Number.isFinite(level) ? Math.max(1, Math.min(maxLevel, Math.floor(level))) : 1;
-        this.gameEngine.updateTestSettings?.({ startLevel: numeric });
+        this.gameEngine.updateTestSettings({ startLevel: numeric });
         this.renderService.renderTestTools();
     }
 
@@ -58,12 +58,12 @@ class EditorUIController extends EditorManagerModule {
         const normalized = Array.isArray(skills)
             ? Array.from(new Set(skills.filter((id) => typeof id === 'string' && id)))
             : [];
-        this.gameEngine.updateTestSettings?.({ skills: normalized });
+        this.gameEngine.updateTestSettings({ skills: normalized });
         this.renderService.renderTestTools();
     }
 
     setGodMode(active: boolean = false) {
-        this.gameEngine.updateTestSettings?.({ godMode: Boolean(active) });
+        this.gameEngine.updateTestSettings({ godMode: Boolean(active) });
         this.renderService.renderTestTools();
     }
 
@@ -100,7 +100,6 @@ class EditorUIController extends EditorManagerModule {
             ? globalThis.matchMedia('(max-width: 920px)').matches
             : false;
         panels.forEach((section) => {
-            if (!section) return;
             if (!isMobile) {
                 section.classList.remove('is-mobile-active');
                 return;
@@ -112,23 +111,23 @@ class EditorUIController extends EditorManagerModule {
 
     handleLanguageChange() {
         void (TextResources.apply() as unknown);
-        this.gameEngine?.gameState?.variableManager?.refreshPresetNames?.();
+        this.gameEngine.gameState.variableManager.refreshPresetNames();
         this.refreshNpcLocalizedText();
         this.manager.renderAll();
         this.updateJSON();
     }
 
     refreshNpcLocalizedText() {
-        const sprites = this.gameEngine?.getSprites?.() as SpriteInstance[];
+        const sprites = this.gameEngine.getSprites() as SpriteInstance[];
         if (!Array.isArray(sprites)) return;
-        const definitions = (this.gameEngine?.npcManager?.getDefinitions?.() || []) as NpcDefinitionData[];
+        const definitions = this.gameEngine.npcManager.getDefinitions() as NpcDefinitionData[];
         const byType = new Map(definitions.map((def: NpcDefinitionData) => [def.type, def]));
         sprites.forEach((npc: SpriteInstance) => {
-            const def = npc?.type ? byType.get(npc.type) : null;
-            if (def?.nameKey && TextResources.get) {
+            const def = npc.type ? byType.get(npc.type) : null;
+            if (def && def.nameKey) {
                 npc.name = (TextResources.get(def.nameKey, def.name || npc.name || '') as string) || npc.name || '';
             }
-            if (npc?.textKey && TextResources.get) {
+            if (npc.textKey) {
                 npc.text = (TextResources.get(npc.textKey, npc.text || '') as string) || npc.text || '';
             }
         });

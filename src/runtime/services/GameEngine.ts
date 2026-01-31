@@ -120,54 +120,51 @@ export class GameEngine {
   }
 
   isPickupOverlayActive(): boolean {
-    return Boolean(this.gameState.isPickupOverlayActive?.());
+    return Boolean(this.gameState.isPickupOverlayActive());
   }
 
   dismissPickupOverlay(): void {
-    if (!this.gameState.isPickupOverlayActive?.()) return;
-    this.gameState.hidePickupOverlay?.();
+    if (!this.gameState.isPickupOverlayActive()) return;
+    this.gameState.hidePickupOverlay();
     this.renderer.draw();
   }
 
   isLevelUpCelebrationActive(): boolean {
-    return Boolean(this.gameState.isLevelUpCelebrationActive?.());
+    return Boolean(this.gameState.isLevelUpCelebrationActive());
   }
 
   dismissLevelUpCelebration(): void {
-    if (!this.gameState.isLevelUpCelebrationActive?.()) return;
-    this.gameState.hideLevelUpCelebration?.();
+    if (!this.gameState.isLevelUpCelebrationActive()) return;
+    this.gameState.hideLevelUpCelebration();
     this.renderer.draw();
   }
 
   isLevelUpOverlayActive(): boolean {
-    return Boolean(this.gameState.isLevelUpOverlayActive?.());
+    return Boolean(this.gameState.isLevelUpOverlayActive());
   }
 
   moveLevelUpCursor(delta = 0): void {
     if (!this.isLevelUpOverlayActive()) return;
-    this.gameState.moveLevelUpCursor?.(delta);
+    this.gameState.moveLevelUpCursor(delta);
     this.renderer.draw();
   }
 
-  confirmLevelUpSelection(): void {
-    if (!this.isLevelUpOverlayActive()) return;
-    const overlay = this.gameState.getLevelUpOverlay?.();
-    const selection =
-      overlay && typeof overlay.cursor === 'number' && Number.isFinite(overlay.cursor)
-        ? overlay.cursor
-        : 0;
-    this.chooseLevelUpSkill(selection);
-  }
+    confirmLevelUpSelection(): void {
+        if (!this.isLevelUpOverlayActive()) return;
+        const overlay = this.gameState.getLevelUpOverlay();
+        const selection = Number.isFinite(overlay.cursor) ? overlay.cursor : 0;
+        this.chooseLevelUpSkill(selection);
+    }
 
   chooseLevelUpSkill(index: number | null = null): void {
     if (!this.isLevelUpOverlayActive()) return;
-    const choice = this.gameState.selectLevelUpSkill?.(index);
+    const choice = this.gameState.selectLevelUpSkill(index);
     if (choice) {
       const name = this.getSkillDisplayName(choice);
       const message =
         (TextResources.format('skills.pickupMessage', { name }, '') as string) ||
         `Você aprendeu ${name}`;
-      this.dialogManager.showDialog?.(message);
+      this.dialogManager.showDialog(message);
     }
     this.renderer.draw();
   }
@@ -183,26 +180,26 @@ export class GameEngine {
   }
 
   pickLevelUpChoiceFromPointer(clientX: number, clientY: number): number | null {
-    const overlay = this.gameState.getLevelUpOverlay?.();
-    if (!overlay?.active) return null;
+        const overlay = this.gameState.getLevelUpOverlay();
+        if (!overlay.active) return null;
     const choices = Array.isArray(overlay.choices) ? overlay.choices : [];
     if (!choices.length) return null;
-    const rect = this.canvas?.getBoundingClientRect?.();
-    if (!rect || !Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+    const rect = this.canvas.getBoundingClientRect();
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY)) {
       return typeof overlay.cursor === 'number' && Number.isFinite(overlay.cursor) ? overlay.cursor : 0;
     }
     const scaleX = this.canvas.width / (rect.width || 1);
     const scaleY = this.canvas.height / (rect.height || 1);
     const canvasX = (clientX - rect.left) * scaleX;
     const canvasY = (clientY - rect.top) * scaleY;
-    const pending = Math.max(0, this.gameState.getPendingLevelUpChoices?.() || 0);
-    const layout = this.renderer?.overlayRenderer?.getLevelUpCardLayout?.({
-      width: this.canvas.width,
-      height: this.canvas.height,
-      choicesLength: choices.length,
-      hasPendingText: pending > 0,
-    });
-    const rects = Array.isArray(layout?.rects) ? layout.rects : [];
+    const pending = Math.max(0, this.gameState.getPendingLevelUpChoices() || 0);
+        const layout = this.renderer.overlayRenderer.getLevelUpCardLayout({
+            width: this.canvas.width,
+            height: this.canvas.height,
+            choicesLength: choices.length,
+            hasPendingText: pending > 0,
+        });
+        const rects = layout.rects;
     const hitIndex = rects.findIndex(
       (r: { x: number; y: number; width: number; height: number }) =>
         canvasX >= r.x &&
@@ -234,8 +231,8 @@ export class GameEngine {
 
   resetGame(): void {
     this.awaitingRestart = false;
-    this.gameState.setGameOver?.(false);
-    this.gameState.resumeGame?.('game-over');
+    this.gameState.setGameOver(false);
+    this.gameState.resumeGame('game-over');
     this.gameState.resetGame();
     this.startEnemyLoop();
     this.dialogManager.reset();
@@ -250,7 +247,7 @@ export class GameEngine {
 
   importGameData(data: unknown): void {
     this.gameState.importGameData(data);
-    this.npcManager.ensureDefaultNPCs?.();
+    this.npcManager.ensureDefaultNPCs();
     this.tileManager.ensureDefaultTiles();
     this.syncDocumentTitle();
     this.startEnemyLoop();
@@ -260,16 +257,16 @@ export class GameEngine {
   }
 
   getTestSettings(): { startLevel: number; skills: unknown[]; godMode: boolean } {
-    return this.gameState.getTestSettings?.() || { startLevel: 1, skills: [], godMode: false };
+        return this.gameState.getTestSettings();
   }
 
   updateTestSettings(settings: Record<string, unknown> = {}): void {
-    this.gameState.setTestSettings?.(settings);
+    this.gameState.setTestSettings(settings);
     this.resetGame();
   }
 
   getMaxPlayerLevel(): number {
-    return this.gameState.getMaxPlayerLevel?.() || 1;
+    return this.gameState.getMaxPlayerLevel() || 1;
   }
 
   // Compatibility accessors
@@ -304,16 +301,15 @@ export class GameEngine {
     this.canDismissIntroScreen = true;
     this.refreshIntroScreen();
     this.introVisible = true;
-    this.introStartTime =
-      typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now();
-    this.gameState.pauseGame?.('intro-screen');
+        this.introStartTime = this.gameState.getNow();
+    this.gameState.pauseGame('intro-screen');
     this.renderer.draw();
   }
 
   dismissIntroScreen(): boolean {
     if (!this.introVisible || !this.canDismissIntroScreen) return false;
     this.introVisible = false;
-    this.gameState.resumeGame?.('intro-screen');
+    this.gameState.resumeGame('intro-screen');
     this.renderer.draw();
     return true;
   }
@@ -332,7 +328,7 @@ export class GameEngine {
   }
 
   getIntroData(): IntroData {
-    return this.introData || { title: 'Tiny RPG Studio', author: '' };
+    return this.introData;
   }
 
   // Editor-facing helpers
@@ -342,7 +338,7 @@ export class GameEngine {
 
   getTileMap(roomIndex: number | null = null): unknown {
     const playerRoom = this.gameState.getPlayer()?.roomIndex ?? 0;
-    const targetRoom = roomIndex === null || roomIndex === undefined ? playerRoom : roomIndex;
+        const targetRoom = roomIndex ?? playerRoom;
     return this.tileManager.getTileMap(targetRoom);
   }
 
@@ -376,7 +372,7 @@ export class GameEngine {
 
   getObjectsForRoom(roomIndex: number | null = null): unknown {
     const playerRoom = this.gameState.getPlayer()?.roomIndex ?? 0;
-    const targetRoom = roomIndex === null || roomIndex === undefined ? playerRoom : roomIndex;
+        const targetRoom = roomIndex ?? playerRoom;
     return this.gameState.getObjectsForRoom(targetRoom);
   }
 
@@ -394,13 +390,13 @@ export class GameEngine {
   }
 
   setPlayerEndText(roomIndex: number, text: string): string {
-    const normalized = this.gameState.setPlayerEndText?.(roomIndex, text) ?? '';
+    const normalized = this.gameState.setPlayerEndText(roomIndex, text);
     this.renderer.draw();
     return normalized;
   }
 
   getPlayerEndText(roomIndex: number | null = null): string {
-    return this.gameState.getPlayerEndText?.(roomIndex) ?? '';
+    return this.gameState.getPlayerEndText(roomIndex);
   }
 
   removeObject(type: string, roomIndex: number): void {
@@ -413,7 +409,7 @@ export class GameEngine {
   }
 
   getSprites(): unknown {
-    this.npcManager.ensureDefaultNPCs?.();
+    this.npcManager.ensureDefaultNPCs();
     return this.npcManager.getNPCs();
   }
 
@@ -423,7 +419,7 @@ export class GameEngine {
 
   setMapTile(x: number, y: number, tileId: string | number, roomIndex: number | null = null): void {
     const playerRoom = this.gameState.getPlayer()?.roomIndex ?? 0;
-    const targetRoom = roomIndex === null || roomIndex === undefined ? playerRoom : roomIndex;
+    const targetRoom = roomIndex ?? playerRoom;
     this.tileManager.setMapTile(x, y, tileId, targetRoom);
   }
 
@@ -481,10 +477,10 @@ export class GameEngine {
   }
 
   handlePlayerDefeat(): void {
-    this.gameState.prepareNecromancerRevive?.();
+    this.gameState.prepareNecromancerRevive();
     this.enemyManager.stop();
-    this.gameState.pauseGame?.('game-over');
-    this.gameState.setGameOver?.(true, 'defeat');
+    this.gameState.pauseGame('game-over');
+    this.gameState.setGameOver(true, 'defeat');
     this.awaitingRestart = true;
     this.renderer.draw();
   }
@@ -492,8 +488,8 @@ export class GameEngine {
   handleGameCompletion(): void {
     if (this.isGameOver()) return;
     this.enemyManager.stop();
-    this.gameState.pauseGame?.('game-over');
-    this.gameState.setGameOver?.(true, 'victory');
+    this.gameState.pauseGame('game-over');
+    this.gameState.setGameOver(true, 'victory');
     this.awaitingRestart = true;
     this.renderer.draw();
   }
@@ -504,8 +500,8 @@ export class GameEngine {
 
   handleGameOverInteraction(): void {
     if (!this.isGameOver() || !this.gameState.canResetAfterGameOver) return;
-    if (this.gameState.hasNecromancerReviveReady?.()) {
-      const revived = this.gameState.reviveFromNecromancer?.();
+    if (this.gameState.hasNecromancerReviveReady()) {
+      const revived = this.gameState.reviveFromNecromancer();
       if (revived) {
         this.awaitingRestart = false;
         this.enemyManager.start();

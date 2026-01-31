@@ -138,11 +138,11 @@ class StateObjectManager {
         return objects
             .map((object) => {
                 const raw = object as RawObjectInput;
-                const sourceType = typeof raw?.type === 'string' ? raw.type : null;
+                const sourceType = typeof raw.type === 'string' ? raw.type : null;
                 if (!sourceType || !allowedTypes.has(sourceType as ItemType)) return null;
                 const type = sourceType as ItemType;
                 if (!this.worldManager) return null;
-                const roomIndex = this.worldManager.clampRoomIndex(raw?.roomIndex ?? 0);
+                const roomIndex = this.worldManager.clampRoomIndex(raw.roomIndex ?? 0);
                 if (type === StateObjectManager.PLAYER_START_TYPE) {
                     if (playerStartIncluded) return null;
                     playerStartIncluded = true;
@@ -151,16 +151,16 @@ class StateObjectManager {
                     if (playerEndRooms.has(roomIndex)) return null;
                     playerEndRooms.add(roomIndex);
                 }
-                const x = this.worldManager.clampCoordinate(raw?.x ?? 0);
-                const y = this.worldManager.clampCoordinate(raw?.y ?? 0);
-                const rawId = raw?.id;
+                const x = this.worldManager.clampCoordinate(raw.x ?? 0);
+                const y = this.worldManager.clampCoordinate(raw.y ?? 0);
+                const rawId = raw.id;
                 const id = typeof rawId === 'string' && rawId.trim()
                     ? rawId.trim()
                     : this.generateObjectId(type, roomIndex);
                 const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
                 const needsVariable = itemCatalog.requiresVariable(type);
                 const normalizedVariable = needsVariable
-                    ? (this.variableManager?.normalizeVariableId?.(raw?.variableId) ?? fallbackVariableId)
+                    ? (this.variableManager?.normalizeVariableId?.(raw.variableId) ?? fallbackVariableId)
                     : null;
 
                 const base: ObjectEntry = {
@@ -169,15 +169,15 @@ class StateObjectManager {
                     roomIndex,
                     x,
                     y,
-                    collected: StateObjectManager.isCollectibleType(type) ? Boolean(raw?.collected) : false,
-                    opened: type === OT.DOOR ? Boolean(raw?.opened) : false,
+                    collected: StateObjectManager.isCollectibleType(type) ? Boolean(raw.collected) : false,
+                    opened: type === OT.DOOR ? Boolean(raw.opened) : false,
                     variableId: normalizedVariable
                 };
                 if (type === StateObjectManager.SWITCH_TYPE) {
-                    base.on = Boolean(raw?.on);
+                    base.on = Boolean(raw.on);
                 }
                 if (type === StateObjectManager.PLAYER_END_TYPE) {
-                    base.endingText = this.normalizePlayerEndText(raw?.endingText);
+                    base.endingText = this.normalizePlayerEndText(raw.endingText);
                 }
                 return this.applyObjectBehavior(base);
             })
@@ -247,9 +247,9 @@ class StateObjectManager {
         const placeableTypes = StateObjectManager.getPlaceableTypeSet();
         const normalizedType = placeableTypes.has(type) ? type : null;
         if (!normalizedType) return null;
-        const targetRoom = this.worldManager.clampRoomIndex(roomIndex ?? 0);
-        const cx = this.worldManager.clampCoordinate(x ?? 0);
-        const cy = this.worldManager.clampCoordinate(y ?? 0);
+        const targetRoom = this.worldManager.clampRoomIndex(roomIndex);
+        const cx = this.worldManager.clampCoordinate(x);
+        const cy = this.worldManager.clampCoordinate(y);
         const objects = this.getObjects();
         let entry: ObjectEntry | null = null;
         if (normalizedType === StateObjectManager.PLAYER_START_TYPE) {
@@ -298,7 +298,7 @@ class StateObjectManager {
             entry.on = Boolean(entry.on);
         }
         if (normalizedType === StateObjectManager.PLAYER_END_TYPE) {
-            entry.endingText = this.normalizePlayerEndText(entry.endingText ?? '');
+            entry.endingText = this.normalizePlayerEndText(entry.endingText);
         }
         return this.applyObjectBehavior(entry);
     }
@@ -308,7 +308,7 @@ class StateObjectManager {
         const normalizedType = placeableTypes.has(type) ? type : null;
         if (!normalizedType || normalizedType === StateObjectManager.PLAYER_START_TYPE) return;
         if (!this.worldManager || !this.game) return;
-        const targetRoom = this.worldManager.clampRoomIndex(roomIndex ?? 0);
+        const targetRoom = this.worldManager.clampRoomIndex(roomIndex);
         this.game.objects = this.getObjects().filter((object) =>
             !(object.type === normalizedType && object.roomIndex === targetRoom)
         );
@@ -318,7 +318,7 @@ class StateObjectManager {
         if (!this.worldManager) return null;
         const handledByDefinition = itemCatalog.requiresVariable(type);
         if (!handledByDefinition) return null;
-        const targetRoom = this.worldManager.clampRoomIndex(roomIndex ?? 0);
+        const targetRoom = this.worldManager.clampRoomIndex(roomIndex);
         const entry = this.getObjects().find((object) =>
             object.type === type &&
             object.roomIndex === targetRoom
@@ -351,9 +351,9 @@ class StateObjectManager {
         if (!this.game || !this.worldManager) return null;
         const objects = this.getObjects();
         const start = this.game.start || { x: 1, y: 1, roomIndex: 0 };
-        const roomIndex = this.worldManager.clampRoomIndex(start?.roomIndex ?? 0);
-        const x = this.worldManager.clampCoordinate(start?.x ?? 1);
-        const y = this.worldManager.clampCoordinate(start?.y ?? 1);
+        const roomIndex = this.worldManager.clampRoomIndex(start.roomIndex);
+        const x = this.worldManager.clampCoordinate(start.x);
+        const y = this.worldManager.clampCoordinate(start.y);
         let marker = objects.find((object) => object.type === StateObjectManager.PLAYER_START_TYPE) || null;
         if (!marker) {
             marker = {
@@ -374,11 +374,11 @@ class StateObjectManager {
 
     getPlayerEndObject(roomIndex: number | null = null): ObjectEntry | null {
         const objects = this.getObjects();
-        if (roomIndex === null || roomIndex === undefined) {
+        if (roomIndex === null) {
             return objects.find((object) => object.type === StateObjectManager.PLAYER_END_TYPE) || null;
         }
         if (!this.worldManager) return null;
-        const targetRoom = this.worldManager.clampRoomIndex(roomIndex ?? 0);
+        const targetRoom = this.worldManager.clampRoomIndex(roomIndex);
         return objects.find((object) =>
             object.type === StateObjectManager.PLAYER_END_TYPE && object.roomIndex === targetRoom
         ) || null;
@@ -399,9 +399,9 @@ class StateObjectManager {
 
     syncPlayerStart(entry: ObjectEntry | null) {
         if (!entry || !this.worldManager || !this.game) return;
-        const x = this.worldManager.clampCoordinate(entry?.x ?? 0);
-        const y = this.worldManager.clampCoordinate(entry?.y ?? 0);
-        const roomIndex = this.worldManager.clampRoomIndex(entry?.roomIndex ?? 0);
+        const x = this.worldManager.clampCoordinate(entry.x);
+        const y = this.worldManager.clampCoordinate(entry.y);
+        const roomIndex = this.worldManager.clampRoomIndex(entry.roomIndex);
         this.game.start = { x, y, roomIndex };
         entry.x = x;
         entry.y = y;

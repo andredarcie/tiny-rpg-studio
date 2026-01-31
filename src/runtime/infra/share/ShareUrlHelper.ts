@@ -2,19 +2,20 @@
 import { ShareDecoder } from './ShareDecoder';
 import { ShareEncoder } from './ShareEncoder';
 class ShareUrlHelper {
+    static getLocation(): Location | null {
+        return ((globalThis as typeof globalThis & { location?: Location }).location) ?? null;
+    }
+
     static getBaseUrl() {
-        if (globalThis.location) {
-            const isLocalhost = globalThis.location.hostname === 'localhost' ||
-                                globalThis.location.hostname === '127.0.0.1' ||
-                                globalThis.location.hostname === '';
-
-            if (isLocalhost) {
-                return `${globalThis.location.origin}${globalThis.location.pathname}`;
-            }
-
-            return 'https://andredarcie.github.io/tiny-rpg-studio/';
+        const location = this.getLocation();
+        if (!location) return '';
+        const isLocalhost = location.hostname === 'localhost' ||
+            location.hostname === '127.0.0.1' ||
+            location.hostname === '';
+        if (isLocalhost) {
+            return `${location.origin}${location.pathname}`;
         }
-        return '';
+        return 'https://andredarcie.github.io/tiny-rpg-studio/';
     }
 
     static buildShareUrl(gameData: Record<string, unknown> | null | undefined) {

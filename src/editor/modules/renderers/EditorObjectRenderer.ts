@@ -139,7 +139,7 @@ class EditorObjectRenderer extends EditorRendererBase {
                 status.className = 'object-status';
                 const isOn = object.type === EditorObjectTypes.SWITCH
                     ? Boolean(object.on)
-                    : Boolean(this.gameEngine.isVariableOn?.(object.variableId || ''));
+                    : Boolean(this.gameEngine.isVariableOn(object.variableId || ''));
                 status.textContent = this.tf('objects.switch.stateLabel', {
                     state: isOn ? this.t('objects.state.on') : this.t('objects.state.off')
                 });
@@ -195,14 +195,14 @@ class EditorObjectRenderer extends EditorRendererBase {
                 const textarea = document.createElement('textarea');
                 textarea.className = 'object-config-textarea';
                 textarea.rows = 4;
-                const maxLength = typeof StateObjectManager?.PLAYER_END_TEXT_LIMIT === 'number'
+                const maxLength = typeof StateObjectManager.PLAYER_END_TEXT_LIMIT === 'number'
                     ? StateObjectManager.PLAYER_END_TEXT_LIMIT
                     : 40;
                 textarea.maxLength = maxLength;
                 textarea.placeholder = this.t('objects.end.placeholder');
                 textarea.value = object.endingText || '';
                 textarea.addEventListener('input', () => {
-                    this.manager.objectService?.updatePlayerEndText?.(object.roomIndex, textarea.value);
+                    this.manager.objectService.updatePlayerEndText(object.roomIndex, textarea.value);
                 });
 
                 label.appendChild(textarea);
@@ -253,7 +253,6 @@ class EditorObjectRenderer extends EditorRendererBase {
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         const renderer = this.gameEngine.renderer;
-        if (!renderer?.drawObjectSprite) return;
         const step = canvas.width / 8;
         renderer.drawObjectSprite(ctx, type, 0, 0, step);
     }
@@ -261,7 +260,7 @@ class EditorObjectRenderer extends EditorRendererBase {
     getObjectLabel(type: string, definitions: ObjectDefinitionView[]): string {
         const def = definitions.find((entry) => entry.type === type);
         if (def?.nameKey) {
-            return this.t(def.nameKey, def?.name || type);
+            return this.t(def.nameKey, def.name || type);
         }
         if (def?.name) return def.name;
         switch (type) {

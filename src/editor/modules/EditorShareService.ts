@@ -18,22 +18,18 @@ class EditorShareService {
     }
 
     t(key: string, fallback = ''): string {
-        const resource = this.text as typeof TextResources & { get?: (key: string, fallback: string) => string };
-        const value = resource?.get ? resource.get(key, fallback) : '';
+        const resource = this.text as typeof TextResources & { get: (key: string, fallback: string) => string };
+        const value = resource.get(key, fallback);
         if (value) return value;
         if (fallback) return fallback;
         return key || '';
     }
 
     buildShareUrl() {
-        if (!ShareUtils?.buildShareUrl) {
-            alert(this.t('alerts.share.unavailable'));
-            return null;
-        }
         const gameData = this.manager.gameEngine.exportGameData();
         const url = ShareUtils.buildShareUrl(gameData as Record<string, unknown> | null | undefined);
         try {
-            globalThis.history?.replaceState?.(null, '', url);
+            globalThis.history.replaceState(null, '', url);
         } catch {
             /* ignore */
         }
@@ -41,7 +37,7 @@ class EditorShareService {
     }
 
     updateShareUrlField(url: string | null) {
-        const input = this.manager?.dom?.shareUrlInput;
+        const input = this.manager.dom.shareUrlInput;
         if (!input) return;
         input.value = url || '';
     }
@@ -52,8 +48,14 @@ class EditorShareService {
             if (!url) return;
             this.updateShareUrlField(url);
 
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(url);
+            type NavigatorWithOptionalClipboard = Navigator & Partial<{ clipboard: Clipboard }>;
+            const navigatorApi =
+                typeof navigator !== 'undefined'
+                    ? (navigator as NavigatorWithOptionalClipboard)
+                    : null;
+            const clipboard = navigatorApi?.clipboard;
+            if (clipboard) {
+                await clipboard.writeText(url);
                 alert(this.t('alerts.share.copied'));
             } else {
                 prompt(this.t('alerts.share.copyPrompt'), url);
@@ -67,9 +69,6 @@ class EditorShareService {
     }
 
     createShareTracker(): FirebaseShareTracker | null {
-        if (FirebaseShareTracker.fromGlobal) {
-            return FirebaseShareTracker.fromGlobal();
-        }
         const config = (globalThis as Record<string, unknown>).TinyRPGFirebaseConfig ?? null;
         const collection = (globalThis as Record<string, unknown>).TinyRPGFirebaseCollection ?? null;
         if (!config) return null;
@@ -77,7 +76,7 @@ class EditorShareService {
     }
 
     async trackShareUrl(url: string) {
-        if (!this.shareTracker?.trackShareUrl) return;
+        if (!this.shareTracker) return;
         console.info('[TinyRPG] Tracking share URL...', { url });
         const ok = await this.shareTracker.trackShareUrl(url, { source: 'editor' });
         console.info('[TinyRPG] Share URL tracking result:', ok ? 'ok' : 'failed');
@@ -100,7 +99,7 @@ class EditorShareService {
 
     loadGameFile(ev: Event) {
         const target = ev.target as HTMLInputElement;
-        const file = target?.files?.[0];
+        const file = target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = () => {

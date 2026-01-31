@@ -5,6 +5,14 @@ import { EditorRendererBase } from './EditorRendererBase';
 import type { EnemyDefinitionData } from '../../../runtime/domain/entities/Enemy';
 import type { EnemyDefinition } from '../../../types/gameState';
 
+type EditorGameData = {
+    rooms: Array<{ bg?: number }>;
+    world?: {
+        rows?: number;
+        cols?: number;
+    };
+};
+
 class EditorEnemyRenderer extends EditorRendererBase {
     renderEnemies(): void {
         const list = this.dom.enemiesList;
@@ -132,17 +140,16 @@ class EditorEnemyRenderer extends EditorRendererBase {
         ctx.imageSmoothingEnabled = false;
 
         const renderer = this.gameEngine.renderer;
-        let sprite = renderer?.enemySprites?.[definition.type] ?? null;
-        if (!sprite && renderer?.enemySprite) {
+        let sprite: (string | null)[][] | null = renderer.enemySprites[definition.type] ?? null;
+        if (!sprite) {
             sprite = renderer.enemySprite;
         }
 
-        if (!sprite && Array.isArray(definition.sprite) && renderer?.spriteFactory?.mapPixels) {
-            const palette = renderer.paletteManager?.getPicoPalette?.() || RendererConstants.DEFAULT_PALETTE;
-            const mapped = renderer.spriteFactory.mapPixels(definition.sprite, palette);
-            if (mapped) {
-                sprite = mapped as (string | null)[][];
-            }
+        if (!sprite && Array.isArray(definition.sprite)) {
+            const palette = renderer.paletteManager.getPicoPalette();
+            const actualPalette = palette.length ? palette : RendererConstants.DEFAULT_PALETTE;
+            const mapped = renderer.spriteFactory.mapPixels(definition.sprite, actualPalette);
+            sprite = mapped as (string | null)[][];
         }
 
         if (!Array.isArray(sprite)) return;
@@ -216,13 +223,13 @@ class EditorEnemyRenderer extends EditorRendererBase {
     }
 
     getEnemyCountProgress(): { currentCount: number; totalCount: number; ratio: number } {
-        const enemies = (this.gameEngine?.getActiveEnemies?.() ?? []) as EnemyDefinition[];
+        const enemies = this.gameEngine.getActiveEnemies() as EnemyDefinition[];
         const currentCount = enemies.length;
 
-        const game = ((this.gameEngine && (this.gameEngine.getGame?.() || this.gameEngine.gameState?.getGame?.())) ||
-            {}) as { world?: { rows?: number; cols?: number } };
-        const rows = Number(game?.world?.rows) || 3;
-        const cols = Number(game?.world?.cols) || 3;
+        const game = this.gameEngine.getGame() as EditorGameData;
+        const world = game.world ?? {};
+        const rows = Number(world.rows) || 3;
+        const cols = Number(world.cols) || 3;
         const totalRooms = Math.max(1, rows * cols);
         const maxPerRoom = 6;
         const totalCount = totalRooms * maxPerRoom;
@@ -257,7 +264,7 @@ class EditorEnemyRenderer extends EditorRendererBase {
             wrapper.appendChild(overlay);
         }
 
-        const roomSize = this.gameEngine?.gameState?.worldManager?.roomSize || 8;
+        const roomSize = this.gameEngine.gameState.worldManager.roomSize;
         const width = canvas.offsetWidth || canvas.clientWidth || canvas.width || 1;
         const height = canvas.offsetHeight || canvas.clientHeight || canvas.height || 1;
         const tileSizeX = width / roomSize;

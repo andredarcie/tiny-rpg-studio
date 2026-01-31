@@ -67,8 +67,8 @@ class FirebaseShareTracker {
 
   initFromModule(): boolean {
     const db = tinyRpgGlobal.TinyRPGFirebaseDb ?? null;
-    const helpers = tinyRpgGlobal.TinyRPGFirebaseFirestore ?? null;
-    if (!db || !helpers?.addDoc || !helpers?.collection) return false;
+    const helpers = tinyRpgGlobal.TinyRPGFirebaseFirestore;
+    if (!db || !helpers || !helpers.addDoc || !helpers.collection) return false;
     this.db = db;
     this.firestoreHelpers = helpers;
     this.mode = 'modular';
@@ -78,25 +78,31 @@ class FirebaseShareTracker {
 
   initFromCompat(): boolean {
     const firebase = this.firebase;
-    if (!firebase?.initializeApp) {
+    if (!firebase || !firebase.initializeApp) {
       console.warn('[TinyRPG] Firebase SDK not available.');
       return false;
     }
+    let app: FirebaseCompatApp | null = null;
     try {
-      this.app = firebase.apps?.length ? firebase.app?.() ?? null : firebase.initializeApp?.(this.config) ?? null;
+      if (firebase.apps && firebase.apps.length) {
+        const appFactory = firebase.app;
+        app = appFactory ? appFactory() : null;
+      } else {
+        const initializer = firebase.initializeApp;
+        app = initializer(this.config);
+      }
     } catch (error) {
       console.warn('[TinyRPG] Firebase init failed.', error);
       return false;
     }
-    if (!firebase.firestore) {
+    this.app = app;
+    const firestoreFactory = firebase.firestore;
+    if (!firestoreFactory) {
       console.warn('[TinyRPG] Firebase Firestore not available.');
       return false;
     }
-    this.db = firebase.firestore?.() ?? null;
-    if (!this.db) {
-      console.warn('[TinyRPG] Firebase Firestore not available.');
-      return false;
-    }
+    const firestoreInstance = firestoreFactory();
+    this.db = firestoreInstance;
     this.mode = 'compat';
     console.info('[TinyRPG] Firebase tracker initialized (compat).');
     return true;

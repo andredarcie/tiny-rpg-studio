@@ -30,7 +30,8 @@ class ShareDecoder {
         const roomCount = version >= ShareConstants.VERSION_3 ? ShareConstants.WORLD_ROOM_COUNT : 1;
         const groundMaps = ShareMatrixCodec.decodeWorldGround(payload.g || '', version, roomCount);
         const overlayMaps = ShareMatrixCodec.decodeWorldOverlay(payload.o || '', version, roomCount);
-        const startPosition = SharePositionCodec.decodePositions(payload.s || '')?.[0] ?? ShareDataNormalizer.normalizeStart({});
+        const startPositions = SharePositionCodec.decodePositions(payload.s || '');
+        const startPosition = startPositions[0] ?? ShareDataNormalizer.normalizeStart({});
         const npcPositions = SharePositionCodec.decodePositions(payload.p || '');
         const npcTexts = ShareTextCodec.decodeTextArray(payload.t || '');
         const npcTypeIndexes = SharePositionCodec.decodeNpcTypeIndexes(payload.i || '');
@@ -110,7 +111,7 @@ class ShareDecoder {
         if (canUseDefinitions) {
             for (let index = 0; index < npcPositions.length; index++) {
                 const typeIndex = npcTypeIndexes[index] ?? index;
-                const def = defs[typeIndex];
+                const def = defs[typeIndex] as (typeof defs)[number] | undefined;
                 if (!def) continue;
                 const pos = npcPositions[index];
                 const conditionVariableId = ShareVariableCodec.nibbleToVariableId(npcConditionIndexes[index] ?? 0);
@@ -160,9 +161,9 @@ class ShareDecoder {
             return {
                 id: `enemy-${index + 1}`,
                 type: (() => {
-                    const idx: number | undefined = enemyTypeIndexes[index];
-                    if (Number.isFinite(idx) && idx !== undefined && idx >= 0 && idx < enemyDefinitions.length) {
-                        return ShareDataNormalizer.normalizeEnemyType(enemyDefinitions[idx]?.type);
+                    const idx = enemyTypeIndexes[index];
+                    if (Number.isFinite(idx) && idx >= 0 && idx < enemyDefinitions.length) {
+                        return ShareDataNormalizer.normalizeEnemyType(enemyDefinitions[idx].type);
                     }
                     return defaultEnemyType;
                 })(),

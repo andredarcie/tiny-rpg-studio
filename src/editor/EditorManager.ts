@@ -156,10 +156,10 @@ class EditorManager {
 
         this.syncUI();
         const game = this.gameEngine.getGame() as { start?: { roomIndex?: number }; rooms?: unknown[] };
-        const startRoomIndex = game?.start?.roomIndex ?? 0;
-        const totalRooms = game?.rooms?.length || 1;
+        const startRoomIndex = game.start?.roomIndex ?? 0;
+        const totalRooms = game.rooms?.length || 1;
         this.activeRoomIndex = Math.max(0, Math.min(totalRooms - 1, startRoomIndex));
-        this.gameEngine.npcManager?.ensureDefaultNPCs?.();
+        this.gameEngine.npcManager.ensureDefaultNPCs();
 
         this.renderAll();
         this.updateMobilePanels();
@@ -168,10 +168,10 @@ class EditorManager {
     }
 
     desselectAllAndRender() {
-        const tileCleared = Boolean(this.tileService?.clearSelection?.({ render: false }));
-        const npcCleared = Boolean(this.npcService?.clearSelection?.({ render: false }));
-        const enemyCleared = Boolean(this.enemyService?.clearSelection?.({ render: false }));
-        const objectCleared = Boolean(this.objectService?.clearSelection?.({ render: false }));
+        const tileCleared = Boolean(this.tileService.clearSelection({ render: false }));
+        const npcCleared = Boolean(this.npcService.clearSelection({ render: false }));
+        const enemyCleared = Boolean(this.enemyService.clearSelection({ render: false }));
+        const objectCleared = Boolean(this.objectService.clearSelection({ render: false }));
 
         if (tileCleared) {
             this.renderService.renderTileList();

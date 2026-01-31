@@ -4,6 +4,7 @@ import { EnemyManager } from '../../runtime/services/engine/EnemyManager';
 import { MovementManager } from '../../runtime/services/engine/MovementManager';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { GameConfig } from '../../config/GameConfig';
+import { createEnemyGameState } from '../helpers/createEnemyGameState';
 
 describe('EnemyManager', () => {
   const getSpy = vi.spyOn(TextResources, 'get');
@@ -37,23 +38,17 @@ describe('EnemyManager', () => {
     sprite: [],
   };
 
-  const baseGameState = () =>
-    ({
-      playing: true,
-      getEnemyDefinitions: vi.fn(() => []),
-      getEnemies: vi.fn(() => []),
-      addEnemy: vi.fn(() => 'enemy-1'),
-      removeEnemy: vi.fn(),
-      getGame: vi.fn(() => ({ rooms: [] })),
-      getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 0 })),
-      isPlayerOnDamageCooldown: vi.fn(() => false),
-      damagePlayer: vi.fn(() => 1),
-      consumeLastDamageReduction: vi.fn(() => 0),
-      handleEnemyDefeated: vi.fn(() => null),
-      isVariableOn: vi.fn(() => false),
-      normalizeVariableId: vi.fn((id: string | null) => id),
-      setVariableValue: vi.fn((_id: string, _value: boolean, _persist?: boolean) => [true, false] as [boolean, boolean?]),
-    }) satisfies ConstructorParameters<typeof EnemyManager>[0];
+  interface MockEnemyData {
+    id: string;
+    type: string;
+    roomIndex: number;
+    x: number;
+    y: number;
+    lastX: number;
+    playerInVision?: boolean;
+    alertUntil?: number | null;
+    alertStart?: number | null;
+  }
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -81,7 +76,7 @@ describe('EnemyManager', () => {
   });
 
   it('adds enemies and redraws', () => {
-    const gameState = baseGameState();
+    const gameState = createEnemyGameState();
     const manager = new EnemyManager(gameState, renderer, tileManager);
 
     const id = manager.addEnemy({ type: 'rat', roomIndex: 0, x: 0, y: 0 });
@@ -92,28 +87,28 @@ describe('EnemyManager', () => {
   });
 
   it('normalizes miss chance', () => {
-    const manager = new EnemyManager(baseGameState(), renderer, tileManager);
+    const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
 
     expect(manager.normalizeMissChance(2)).toBe(1);
     expect(manager.normalizeMissChance(-1)).toBe(0);
   });
 
   it('returns true when miss chance is 1', () => {
-    const manager = new EnemyManager(baseGameState(), renderer, tileManager);
+    const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
 
     expect(manager.attackMissed(1)).toBe(true);
     expect(manager.attackMissed(0)).toBe(false);
   });
 
   it('uses crypto.randomUUID when available', () => {
-    const manager = new EnemyManager(baseGameState(), renderer, tileManager);
+    const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
     const globalWithCrypto = globalThis as GlobalWithCrypto;
     const originalCrypto = globalWithCrypto.crypto;
-    const spy = originalCrypto?.randomUUID !== undefined
+    const spy = 'randomUUID' in originalCrypto
       ? vi.spyOn(originalCrypto, 'randomUUID').mockReturnValue('enemy-uuid')
       : null;
 
-    if (spy !== null) {
+    if (spy) {
       expect(manager.generateEnemyId()).toBe('enemy-uuid');
       spy.mockRestore();
       return;
@@ -124,9 +119,7 @@ describe('EnemyManager', () => {
       configurable: true,
     });
     expect(manager.generateEnemyId()).toBe('enemy-uuid');
-    if (originalCrypto) {
-      Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
-    }
+    Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
   });
 
   it('triggers defeat variables and shows message', () => {
@@ -142,7 +135,7 @@ describe('EnemyManager', () => {
         getMissChance: () => data.missChance,
       };
     });
-    const gameState = baseGameState();
+    const gameState = createEnemyGameState();
     const manager = new EnemyManager(gameState, renderer, tileManager);
 
     const result = manager.tryTriggerDefeatVariable({ id: 'enemy-1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 });
@@ -155,10 +148,13 @@ describe('EnemyManager', () => {
   it('triggers vision alert when player enters vision box', () => {
     const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const player = { roomIndex: 0, x: 2, y: 2 };
-    const enemy = { id: 'enemy-vision', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 };
-    const gameState = baseGameState();
-    gameState.getEnemies.mockReturnValue([enemy]);
-    gameState.getPlayer.mockReturnValue(player);
+    const enemy: MockEnemyData = { id: 'enemy-vision', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 };
+    const getEnemiesMock = vi.fn(() => [enemy]);
+    const getPlayerMock = vi.fn(() => player);
+    const gameState = createEnemyGameState({
+      getEnemies: getEnemiesMock,
+      getPlayer: getPlayerMock,
+    });
 
     const manager = new EnemyManager(gameState, renderer, tileManager);
     manager.evaluateVision(player);
@@ -174,7 +170,7 @@ describe('EnemyManager', () => {
   it('clears vision flag when player exits the area', () => {
     const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(2000);
     const player = { roomIndex: 0, x: 10, y: 10 };
-    const enemy = {
+    const enemy: MockEnemyData = {
       id: 'enemy-vision',
       type: 'rat',
       roomIndex: 0,
@@ -185,9 +181,12 @@ describe('EnemyManager', () => {
       alertUntil: 500,
       alertStart: 300,
     };
-    const gameState = baseGameState();
-    gameState.getEnemies.mockReturnValue([enemy]);
-    gameState.getPlayer.mockReturnValue(player);
+    const getEnemiesMock = vi.fn(() => [enemy]);
+    const getPlayerMock = vi.fn(() => player);
+    const gameState = createEnemyGameState({
+      getEnemies: getEnemiesMock,
+      getPlayer: getPlayerMock,
+    });
 
     const manager = new EnemyManager(gameState, renderer, tileManager);
     manager.evaluateVision(player);
@@ -200,11 +199,15 @@ describe('EnemyManager', () => {
 
   it('moves chasing enemy toward player per movement', () => {
     const player = { roomIndex: 0, x: 5, y: 5 };
-    const enemy = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
-    const gameState = baseGameState();
-    gameState.getEnemies.mockReturnValue([enemy]);
-    gameState.getPlayer.mockReturnValue(player);
-    gameState.getGame.mockReturnValue({ rooms: [{}] });
+    const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
+    const getEnemiesMock = vi.fn(() => [enemy]);
+    const getPlayerMock = vi.fn(() => player);
+    const getGameMock = vi.fn(() => ({ rooms: [{}] }));
+    const gameState = createEnemyGameState({
+      getEnemies: getEnemiesMock,
+      getPlayer: getPlayerMock,
+      getGame: getGameMock,
+    });
 
     const manager = new EnemyManager(gameState, renderer, tileManager);
 
@@ -215,11 +218,15 @@ describe('EnemyManager', () => {
 
   it('does not move non-chasing enemies during player movement', () => {
     const player = { roomIndex: 0, x: 3, y: 0 };
-    const enemy = { id: 'idle', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 };
-    const gameState = baseGameState();
-    gameState.getEnemies.mockReturnValue([enemy]);
-    gameState.getPlayer.mockReturnValue(player);
-    gameState.getGame.mockReturnValue({ rooms: [{}] });
+    const enemy: MockEnemyData = { id: 'idle', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 };
+    const getEnemiesMock = vi.fn(() => [enemy]);
+    const getPlayerMock = vi.fn(() => player);
+    const getGameMock = vi.fn(() => ({ rooms: [{}] }));
+    const gameState = createEnemyGameState({
+      getEnemies: getEnemiesMock,
+      getPlayer: getPlayerMock,
+      getGame: getGameMock,
+    });
 
     const manager = new EnemyManager(gameState, renderer, tileManager);
 
@@ -230,13 +237,17 @@ describe('EnemyManager', () => {
 
   it('moves chasing enemy during tick even if player stops', () => {
     const player = { roomIndex: 0, x: 3, y: 2 };
-    const enemy = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
-    const gameState = baseGameState();
-    gameState.getEnemies.mockReturnValue([enemy]);
-    gameState.getPlayer.mockReturnValue(player);
-    gameState.getGame.mockReturnValue({ rooms: [{ walls: [] }] });
+    const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
+    const getEnemiesMock = vi.fn(() => [enemy]);
+    const getPlayerMock = vi.fn(() => player);
+    const getGameMock = vi.fn(() => ({ rooms: [{ walls: [] }] }));
+    const gameState = createEnemyGameState({
+      getEnemies: getEnemiesMock,
+      getPlayer: getPlayerMock,
+      getGame: getGameMock,
+    });
 
-    const manager = new EnemyManager(gameState as never, renderer, tileManager);
+    const manager = new EnemyManager(gameState, renderer, tileManager);
 
     manager.tick();
 
@@ -244,11 +255,10 @@ describe('EnemyManager', () => {
   });
 
   it('shows a cooldown message when damage is blocked by room change safety', () => {
-    const gameState = {
-      ...baseGameState(),
+    const gameState = createEnemyGameState({
       getEnemies: vi.fn(() => [{ id: 'enemy-1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 }]),
       isPlayerOnDamageCooldown: vi.fn(() => true),
-    };
+    });
     const manager = new EnemyManager(gameState, renderer, tileManager);
 
     manager.handleEnemyCollision(0);

@@ -544,7 +544,7 @@ const TEXT_BUNDLES = {
 type TextResourcesApi = {
     defaultLocale: string;
     locale: string;
-    bundles: Record<string, Record<string, string>>;
+    bundles: Record<string, Record<string, string> | undefined>;
     getStrings(locale?: string): Record<string, string>;
     detectBrowserLocale(): string;
     setLocale(locale: string, options?: { silent?: boolean; root?: Document | HTMLElement }): boolean;
@@ -565,7 +565,11 @@ const TextResources: TextResourcesApi = {
     bundles: TEXT_BUNDLES as Record<string, Record<string, string>>,
 
     getStrings(locale: string = TextResources.locale): Record<string, string> {
-        return this.bundles[locale] || this.bundles[this.defaultLocale] || {};
+        const bundle = this.bundles[locale];
+        if (bundle) {
+            return bundle;
+        }
+        return this.bundles[this.defaultLocale] ?? {};
     },
 
     detectBrowserLocale(): string {
@@ -577,7 +581,7 @@ const TextResources: TextResourcesApi = {
             : [navigator.language || this.defaultLocale];
         for (const lang of languages) {
             const langStr = String(lang);
-            if (langStr && this.bundles[langStr]) {
+            if (this.bundles[langStr]) {
                 return langStr;
             }
             const short = String(lang || '').split('-')[0];
@@ -590,7 +594,7 @@ const TextResources: TextResourcesApi = {
     },
 
     setLocale(locale: string, { silent = false, root }: { silent?: boolean; root?: Document | HTMLElement } = {}): boolean {
-        if (!locale || !this.bundles[locale]) {
+        if (!this.bundles[locale]) {
             return false;
         }
         this.locale = locale;
@@ -607,7 +611,7 @@ const TextResources: TextResourcesApi = {
 
     extend(locale: string, strings: Record<string, string> = {}): void {
         if (!locale || typeof strings !== 'object') return;
-        const existing = this.bundles[locale] || {};
+        const existing = this.bundles[locale];
         this.bundles[locale] = { ...existing, ...strings };
         if (locale === this.locale) {
             this.apply();
@@ -633,14 +637,14 @@ const TextResources: TextResourcesApi = {
 
     format(
         key: string | null | undefined,
-        params: Record<string, string | number | boolean> = {},
+        params: Record<string, string | number | boolean | null | undefined> = {},
         fallback = ''
     ): string {
         const template = this.get(key, fallback) as string;
         if (!template) return fallback || key || '';
         const result: string = template.replace(/\{(\w+)\}/g, (_: string, token: string) => {
             if (Object.prototype.hasOwnProperty.call(params, token)) {
-                const value = params[token] as string | number | boolean | undefined;
+                const value = params[token];
                 return value === undefined || value === null ? '' : String(value);
             }
             return '';
@@ -649,13 +653,12 @@ const TextResources: TextResourcesApi = {
     },
 
     apply(root: Document | HTMLElement = document): void {
-        if (!root || typeof root.querySelectorAll !== 'function') return;
+        if (typeof root.querySelectorAll !== 'function') return;
         root.querySelectorAll('[data-text-key]').forEach((el) => {
             const key = el.getAttribute('data-text-key');
-            const text: string = this.get(key, el.textContent ?? '') as string;
-            if (text !== undefined) {
-                el.textContent = text;
-            }
+            const fallbackContent = (el.textContent as string | null | undefined) ?? '';
+            const text: string = this.get(key, fallbackContent) as string;
+            el.textContent = text;
         });
 
         root.querySelectorAll('[data-placeholder-key]').forEach((el) => {

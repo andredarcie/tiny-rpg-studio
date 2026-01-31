@@ -1,5 +1,4 @@
 import { PICO8_COLORS } from '../../domain/definitions/TileDefinitions';
-import { RendererConstants } from './RendererConstants';
 
 type GameStateApi = Record<string, unknown> | null;
 

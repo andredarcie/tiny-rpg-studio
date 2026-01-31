@@ -5,8 +5,8 @@ import { GameConfig } from '../../../config/GameConfig';
 
 class ShareConstants {
     static _supportedVersions?: Set<number>;
-    static _npcDefinitions?: unknown[];
-    static _enemyDefinitions?: unknown[];
+    static _npcDefinitions: unknown[] = [];
+    static _enemyDefinitions: unknown[] = [];
     static get VERSION_1() { return 1; }
     static get VERSION_2() { return 2; }
     static get VERSION_3() { return 3; }
@@ -199,17 +199,17 @@ class ShareConstants {
     }
 
     static get NPC_DEFINITIONS() {
-        if (!this._npcDefinitions || !this._npcDefinitions.length) {
-            this._npcDefinitions = NPCDefinitions.definitions || [];
+        if (!this._npcDefinitions.length) {
+            this._npcDefinitions = NPCDefinitions.definitions;
         }
-        return this._npcDefinitions || [];
+        return this._npcDefinitions;
     }
 
     static get ENEMY_DEFINITIONS() {
-        if (!this._enemyDefinitions || !this._enemyDefinitions.length) {
-            this._enemyDefinitions = EnemyDefinitions.definitions || [];
+        if (!this._enemyDefinitions.length) {
+            this._enemyDefinitions = EnemyDefinitions.definitions;
         }
-        return this._enemyDefinitions || [];
+        return this._enemyDefinitions;
     }
 }
 
