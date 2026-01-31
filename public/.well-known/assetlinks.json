@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "org.diguifistudios.tinyrpgstudio",
       "sha256_cert_fingerprints": [
-        "63:B9:3A:B9:02:9A:42:6C:1D:21:DF:D7:D0:F7:9C:1A:05:BF:19:63:ED:0F:EA:AF:7A:6F:11:ED:2B:9A:18:8D"
+        "63:B9:3A:B9:02:9A:42:6C:1D:21:DF:D7:D0:F7:9C:1A:05:BF:19:63:ED:0F:EA:AF:7A:6F:11:ED:2B:9A:18:8D",
+        "72:D8:9F:96:93:68:0B:F2:A3:6D:20:F4:59:A4:08:58:EA:3B:B2:AC:08:2B:E5:40:FB:FC:06:8A:B2:8C:95:59"
       ]
     }
   }
