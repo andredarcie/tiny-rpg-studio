@@ -44,9 +44,9 @@ class StateEnemyManager {
                 lastX: this.worldManager.clampCoordinate(enemy.x),
                 lives: enemy.lives,
                 defeatVariableId: this.normalizeEnemyVariableId(enemy.defeatVariableId),
-                playerInVision: Boolean(enemy.playerInVision),
-                alertUntil: typeof enemy.alertUntil === 'number' ? enemy.alertUntil : null,
-                alertStart: typeof enemy.alertStart === 'number' ? enemy.alertStart : null
+                playerInVision: false,
+                alertUntil: null,
+                alertStart: null
             });
         });
         return list;
