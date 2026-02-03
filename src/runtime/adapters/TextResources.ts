@@ -560,8 +560,8 @@ type TextResourcesApi = {
 };
 
 const TextResources: TextResourcesApi = {
-    defaultLocale: 'pt-BR',
-    locale: 'pt-BR',
+    defaultLocale: 'en-US',
+    locale: 'en-US',
     bundles: TEXT_BUNDLES as Record<string, Record<string, string>>,
 
     getStrings(locale: string = TextResources.locale): Record<string, string> {

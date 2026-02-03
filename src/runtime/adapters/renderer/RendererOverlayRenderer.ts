@@ -360,6 +360,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
             this.stopPickupAnimationLoop();
             return;
         }
+        this.stopPickupAnimationLoop();
         this.ensurePickupAnimationLoop();
 
         const width = gameplayCanvas.width;
