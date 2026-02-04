@@ -289,7 +289,7 @@ class TinyRPGApplication {
       applyLayoutMode(tabName);
 
       if (tabName === 'game') {
-        document.dispatchEvent(new CustomEvent('game-tab-activated'));
+        document.dispatchEvent(new CustomEvent('game-tab-activated', { detail: { initial: false } }));
       }
 
       if (tabName === 'editor') {
@@ -297,7 +297,7 @@ class TinyRPGApplication {
         if (!api) return;
         api.resetNPCs();
         api.draw();
-        document.dispatchEvent(new CustomEvent('editor-tab-activated'));
+        document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));
         api.renderAll();
         const currentData = api.exportGameData();
         api.importGameData(currentData);
