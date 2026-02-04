@@ -349,7 +349,8 @@ class EditorRenderService {
             if (!Number.isFinite(level)) return;
             (Array.isArray(ids) ? ids : []).forEach((id: string) => {
                 if (typeof id !== 'string') return;
-                if (!levelMap.has(id) || level < levelMap.get(id)) {
+                const currentLevel = levelMap.get(id);
+                if (currentLevel === undefined || level < currentLevel) {
                     levelMap.set(id, level);
                 }
             });

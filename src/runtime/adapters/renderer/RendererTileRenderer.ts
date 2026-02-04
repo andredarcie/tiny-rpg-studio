@@ -59,7 +59,7 @@ class RendererTileRenderer {
     drawTiles(ctx: CanvasRenderingContext2D, _canvas: { width: number; height: number }) {
         const room = this.gameState.getCurrentRoom();
         const tileSize = this.canvasHelper.getTilePixelSize();
-        const player = this.gameState.getPlayer?.() ?? { roomIndex: 0 };
+        const player = this.gameState.getPlayer();
         const tileMap = this.tileManager.getTileMap(player.roomIndex ?? 0);
         const groundMap = tileMap?.ground || [];
         const overlayMap = tileMap?.overlay || [];

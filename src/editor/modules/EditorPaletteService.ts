@@ -1,11 +1,25 @@
 import type { EditorManager } from '../EditorManager';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
+import { TextResources } from '../../runtime/adapters/TextResources';
 
 export class EditorPaletteService {
     manager: EditorManager;
 
     constructor(manager: EditorManager) {
         this.manager = manager;
+    }
+
+    private get text() {
+        return TextResources;
+    }
+
+    // Returns a translated string if available, otherwise falls back to the provided default or the key itself.
+    private t(key: string, fallback = ''): string {
+        const textResources = this.text as typeof TextResources & { get: (lookupKey: string, defaultValue: string) => string };
+        const translatedText = textResources.get(key, fallback);
+        if (translatedText) return translatedText;
+        if (fallback) return fallback;
+        return key || '';
     }
 
     initialize(): void {
@@ -160,12 +174,9 @@ export class EditorPaletteService {
         if (!toggle) return;
 
         const isCollapsed = this.manager.state.palettePanelCollapsed;
-        const textResources =
-            ((globalThis as typeof globalThis & { TextResources?: { get?: (key: string, fallback: string) => string } }).TextResources);
-
         const actionText = isCollapsed
-            ? (textResources?.get ? textResources.get('project.paletteExpand', 'Mostrar paleta de cores') : 'Mostrar paleta de cores')
-            : (textResources?.get ? textResources.get('project.paletteCollapse', 'Esconder paleta de cores') : 'Esconder paleta de cores');
+            ? this.t('project.paletteExpand', 'Show color palette')
+            : this.t('project.paletteCollapse', 'Hide color palette');
 
         toggle.textContent = `🎨 ${actionText}`;
     }

@@ -145,9 +145,10 @@ class EditorEnemyRenderer extends EditorRendererBase {
             sprite = renderer.enemySprite;
         }
 
-        if (!sprite && Array.isArray(definition.sprite) && renderer?.spriteFactory?.mapPixels) {
-            const palette = renderer.paletteManager?.getPicoPalette?.() || RendererConstants.DEFAULT_PALETTE;
-            const mapped = renderer.spriteFactory.mapPixels(definition.sprite, palette);
+        if (!sprite && Array.isArray(definition.sprite)) {
+            const palette = renderer.paletteManager.getPalette();
+            const actualPalette = palette.length ? palette : RendererConstants.DEFAULT_PALETTE;
+            const mapped = renderer.spriteFactory.mapPixels(definition.sprite, actualPalette);
             if (mapped) {
                 sprite = mapped as (string | null)[][];
             }

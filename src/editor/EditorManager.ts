@@ -166,7 +166,8 @@ class EditorManager {
         const startRoomIndex = game.start?.roomIndex ?? 0;
         const totalRooms = game.rooms?.length || 1;
         this.activeRoomIndex = Math.max(0, Math.min(totalRooms - 1, startRoomIndex));
-        this.gameEngine.npcManager?.ensureDefaultNPCs?.();
+        this.gameEngine.npcManager.ensureDefaultNPCs();
+        this.paletteService.initialize();
 
         this.renderAll();
         this.updateMobilePanels();
