@@ -8,7 +8,7 @@ type RoomState = {
 
 type RendererGameState = {
     getCurrentRoom: () => RoomState;
-    getPlayer?: () => { roomIndex?: number | null };
+    getPlayer: () => { roomIndex?: number | null };
 };
 
 type TileMapState = {

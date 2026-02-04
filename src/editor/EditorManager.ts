@@ -8,6 +8,7 @@ import { EditorEnemyService } from './modules/EditorEnemyService';
 import { EditorHistoryManager } from './modules/EditorHistoryManager';
 import { EditorNpcService } from './modules/EditorNpcService';
 import { EditorObjectService } from './modules/EditorObjectService';
+import { EditorPaletteService } from './modules/EditorPaletteService';
 import { EditorRenderService } from './modules/EditorRenderService';
 import { EditorShareService } from './modules/EditorShareService';
 import { EditorState } from './modules/EditorState';
@@ -32,6 +33,7 @@ class EditorManager {
     enemyService: EditorEnemyService;
     objectService: EditorObjectService;
     variableService: EditorVariableService;
+    paletteService: EditorPaletteService;
     worldService: EditorWorldService;
     uiController: EditorUIController;
     eventBinder: EditorEventBinder;
@@ -56,6 +58,7 @@ class EditorManager {
         this.enemyService = new EditorEnemyService(this);
         this.objectService = new EditorObjectService(this);
         this.variableService = new EditorVariableService(this);
+        this.paletteService = new EditorPaletteService(this);
         this.worldService = new EditorWorldService(this);
         this.uiController = new EditorUIController(this);
         this.eventBinder = new EditorEventBinder(this);
@@ -69,6 +72,14 @@ class EditorManager {
     }
 
     // State accessors to keep compatibility with legacy references
+    get dom() {
+        return this.domCache;
+    }
+
+    get historyManager() {
+        return this.history;
+    }
+
     get selectedTileId() {
         return this.state.selectedTileId;
     }
@@ -139,10 +150,6 @@ class EditorManager {
         this.state.mapPainting = value;
     }
 
-    get dom() {
-        return this.domCache;
-    }
-
     bindEvents() {
         this.eventBinder.bind();
     }
@@ -159,7 +166,8 @@ class EditorManager {
         const startRoomIndex = game?.start?.roomIndex ?? 0;
         const totalRooms = game?.rooms?.length || 1;
         this.activeRoomIndex = Math.max(0, Math.min(totalRooms - 1, startRoomIndex));
-        this.gameEngine.npcManager?.ensureDefaultNPCs?.();
+        this.gameEngine.npcManager.ensureDefaultNPCs();
+        this.paletteService.initialize();
 
         this.renderAll();
         this.updateMobilePanels();
@@ -386,6 +394,17 @@ class EditorManager {
         const { skipHistory = false } = options;
         this.gameEngine.importGameData(data);
         this.gameEngine.tileManager.ensureDefaultTiles();
+
+        // Apply custom palette if present
+        const customPalette = (data as { customPalette?: string[] }).customPalette;
+        if (customPalette) {
+            this.gameEngine.setCustomPalette(customPalette);
+        } else {
+            this.gameEngine.resetPaletteToDefault();
+        }
+
+        // Re-render palette grid
+        this.paletteService.renderPaletteGrid();
 
         const tiles = this.gameEngine.getTiles() as TileDefinition[];
         if (tiles.length && !tiles.find((t: TileDefinition) => t.id === this.selectedTileId)) {

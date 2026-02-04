@@ -42,9 +42,10 @@ describe('RendererSpriteFactory', () => {
   it('builds sprites using palette mapping', () => {
     enemyDefinitions = [{ type: 'rat', sprite: makeMatrix(1), aliases: ['alias-rat'] }];
 
+    const palette = Array.from({ length: 16 }, (_v, idx) => (idx === 1 ? '#111111' : `#${idx}${idx}${idx}${idx}${idx}${idx}`));
     const paletteManager = {
-      getPicoPalette: () =>
-        Array.from({ length: 16 }, (_v, idx) => (idx === 1 ? '#111111' : `#${idx}${idx}${idx}${idx}${idx}${idx}`)),
+      getPalette: () => palette,
+      getPicoPalette: () => palette,
     };
     const factory = new RendererSpriteFactory(paletteManager, {});
 
@@ -57,7 +58,10 @@ describe('RendererSpriteFactory', () => {
   });
 
   it('mirrors sprites horizontally', () => {
-    const paletteManager = { getPicoPalette: () => ['#000000'] };
+    const paletteManager = {
+      getPalette: () => ['#000000'],
+      getPicoPalette: () => ['#000000']
+    };
     const factory = new RendererSpriteFactory(paletteManager, {});
 
     const sprite = [

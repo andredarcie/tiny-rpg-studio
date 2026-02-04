@@ -63,11 +63,13 @@ type GameData = {
 
 type EnemyState = EnemyDefinition;
 
-enum EnemyMovementResult {
-  None = 'none',
-  Moved = 'moved',
-  Collided = 'collided',
-}
+const EnemyMovementResult = {
+  None: 'none',
+  Moved: 'moved',
+  Collided: 'collided',
+} as const;
+
+type EnemyMovementResult = typeof EnemyMovementResult[keyof typeof EnemyMovementResult];
 
 type EnemyInput = {
   id?: string;
@@ -162,7 +164,7 @@ class EnemyManager {
     const addedId = this.gameState.addEnemy({
       id,
       type,
-      roomIndex: enemy.roomIndex,
+      roomIndex: enemy.roomIndex ?? 0,
       x: enemy.x,
       y: enemy.y,
       lastX: enemy.lastX ?? enemy.x,

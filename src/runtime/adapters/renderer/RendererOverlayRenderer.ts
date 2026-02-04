@@ -7,7 +7,7 @@ const getOverlayText = (key: string, fallback = ''): string => {
     return value || fallback || '';
 };
 
-const formatOverlayText = (key: string, params: Record<string, unknown> = {}, fallback = ''): string => {
+const formatOverlayText = (key: string, params: Record<string, string | number | boolean> = {}, fallback = ''): string => {
     const value = TextResources.format(key, params, fallback) as string;
     return value || fallback || '';
 };
@@ -472,11 +472,11 @@ class RendererOverlayRenderer extends RendererModuleBase {
         const step = () => {
             if (!this.overlayGameState.isLevelUpCelebrationActive()) {
                 this.stopLevelUpAnimationLoop();
-                this.overlayRenderer.draw();
+                this.overlayRenderer.draw?.();
                 return;
             }
             this.levelUpAnimationHandle = this.schedulePickupFrame(step);
-            this.overlayRenderer.draw();
+            this.overlayRenderer.draw?.();
         };
         this.levelUpAnimationHandle = this.schedulePickupFrame(step);
     }
@@ -495,7 +495,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
                 return;
             }
             this.pickupAnimationHandle = this.schedulePickupFrame(step);
-            this.overlayRenderer.draw();
+            this.overlayRenderer.draw?.();
         };
         this.pickupAnimationHandle = this.schedulePickupFrame(step);
     }
@@ -722,16 +722,16 @@ type LevelUpCelebration = {
 };
 
 type OverlayGameState = {
-    getLevelUpOverlay?: () => LevelUpOverlay | null;
-    getPendingLevelUpChoices?: () => number;
-    getLevelUpCelebration?: () => LevelUpCelebration | null;
-    isLevelUpCelebrationActive?: () => boolean;
-    getPickupOverlay?: () => PickupOverlay | null;
-    isPickupOverlayActive?: () => boolean;
+    getLevelUpOverlay: () => LevelUpOverlay | null;
+    getPendingLevelUpChoices: () => number;
+    getLevelUpCelebration: () => LevelUpCelebration | null;
+    isLevelUpCelebrationActive: () => boolean;
+    getPickupOverlay: () => PickupOverlay | null;
+    isPickupOverlayActive: () => boolean;
     getGameOverReason: () => string | null;
-    getActiveEndingText?: () => string;
-    canResetAfterGameOver?: boolean;
-    hasNecromancerReviveReady?: () => boolean;
+    getActiveEndingText: () => string;
+    canResetAfterGameOver: boolean;
+    hasNecromancerReviveReady: () => boolean;
 };
 
 type LevelUpLayoutOptions = {

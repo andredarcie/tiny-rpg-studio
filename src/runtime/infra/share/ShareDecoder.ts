@@ -2,6 +2,7 @@
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { ShareConstants } from './ShareConstants';
 import { ShareDataNormalizer } from './ShareDataNormalizer';
+import { ShareBase64 } from './ShareBase64';
 import { ShareMatrixCodec } from './ShareMatrixCodec';
 import { SharePositionCodec } from './SharePositionCodec';
 import { ShareTextCodec } from './ShareTextCodec';
@@ -10,6 +11,48 @@ import { ShareVariableCodec } from './ShareVariableCodec';
 type SharePayload = Record<string, string>;
 
 class ShareDecoder {
+    private static decodeCustomPalette(segment: string): string[] | undefined {
+        if (!segment || segment.length === 0) {
+            return undefined;
+        }
+
+        if (segment.includes(',')) {
+            const colors = segment.split(',').map(c => `#${c.toUpperCase()}`);
+
+            // Validação: deve ter exatamente 16 cores
+            if (colors.length !== 16) {
+                console.warn('Invalid custom palette segment, expected 16 colors');
+                return undefined;
+            }
+
+            // Validação: todas devem ser hex válidas
+            const hexRegex = /^#[0-9A-F]{6}$/;
+            const allValid = colors.every(c => hexRegex.test(c));
+
+            if (!allValid) {
+                console.warn('Invalid hex colors in custom palette');
+                return undefined;
+            }
+
+            return colors;
+        }
+
+        const bytes = ShareBase64.fromBase64Url(segment);
+        if (bytes.length !== 16 * 3) {
+            console.warn('Invalid custom palette segment, expected 48 bytes');
+            return undefined;
+        }
+        const colors: string[] = [];
+        for (let index = 0; index < 16; index++) {
+            const base = index * 3;
+            const r = bytes[base].toString(16).padStart(2, '0');
+            const g = bytes[base + 1].toString(16).padStart(2, '0');
+            const b = bytes[base + 2].toString(16).padStart(2, '0');
+            colors.push(`#${(r + g + b).toUpperCase()}`);
+        }
+        return colors;
+    }
+
     static decodeShareCode(code?: string | null): Record<string, unknown> | null {
         const OT = ITEM_TYPES;
         if (!code) return null;
@@ -200,7 +243,10 @@ class ShareDecoder {
             ...ShareDataNormalizer.buildObjectEntries(switchPositions, OT.SWITCH, { variableNibbles: switchVariableNibbles, stateBits: switchStateNibbles })
         ];
 
-        return {
+        // Custom Palette
+        const customPalette = payload.P ? this.decodeCustomPalette(payload.P) : undefined;
+
+        const result: Record<string, unknown> = {
             title,
             author,
             start: startPosition,
@@ -218,6 +264,12 @@ class ShareDecoder {
                 map: maps[0] || { ground: ShareMatrixCodec.normalizeGround([]), overlay: ShareMatrixCodec.normalizeOverlay([]) }
             }
         };
+
+        if (customPalette) {
+            result.customPalette = customPalette;
+        }
+
+        return result;
     }
 }
 

@@ -1,6 +1,6 @@
 type MinimapGameState = {
     getGame: () => { world?: { rows?: number; cols?: number } };
-    getPlayer?: () => { roomIndex?: number | null };
+    getPlayer: () => { roomIndex?: number | null };
 };
 
 class RendererMinimapRenderer {

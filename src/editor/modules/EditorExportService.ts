@@ -56,9 +56,10 @@ class EditorExportService {
             const scripts: Record<string, string> = {};
             const skippedScripts: string[] = [];
             let bundleSource = '';
+            const cacheBust = Date.now().toString(36);
             const bundleSrc = 'export.bundle.js';
             try {
-                const bundleResp = await fetch(bundleSrc);
+                const bundleResp = await fetch(`${bundleSrc}?v=${cacheBust}`);
                 if (bundleResp.ok) {
                     bundleSource = await bundleResp.text();
                     scripts[bundleSrc] = bundleSource;
@@ -183,7 +184,7 @@ class EditorExportService {
                 if (bundleSource) break;
                 if (!src) continue;
                 try {
-                    const resp = await fetch(src as RequestInfo);
+                    const resp = await fetch(`${src}?v=${cacheBust}` as RequestInfo);
                     if (resp.ok) {
                         const text = await resp.text();
                         const hasModuleSyntax = /^(?:\s*import\s+[\w*{]|\s*export\s+)/m.test(text);

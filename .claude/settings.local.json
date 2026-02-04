@@ -11,7 +11,8 @@
       "Bash(npm run test:run:*)",
       "Bash(npm test:*)",
       "Bash(npm run lint)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(git remote:*)"
     ]
   }
 }

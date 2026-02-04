@@ -9,6 +9,7 @@ import { Renderer } from '../adapters/Renderer';
 import { TextResources } from '../adapters/TextResources';
 import { TileManager } from './TileManager';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
+import { TileDefinitions } from '../domain/definitions/TileDefinitions';
 import { GameConfig } from '../../config/GameConfig';
 
 type IntroData = { title: string; author: string };
@@ -252,6 +253,12 @@ export class GameEngine {
     this.gameState.importGameData(data);
     this.npcManager.ensureDefaultNPCs?.();
     this.tileManager.ensureDefaultTiles();
+    const game = this.gameState.getGame();
+    if (Array.isArray(game.customPalette) && game.customPalette.length === 16) {
+      this.setCustomPalette(game.customPalette);
+    } else {
+      this.resetPaletteToDefault();
+    }
     this.syncDocumentTitle();
     this.startEnemyLoop();
     this.dialogManager.reset();
@@ -279,6 +286,44 @@ export class GameEngine {
 
   getGame(): GameData {
     return this.gameState.getGame();
+  }
+
+  // Custom Palette Management
+  setCustomPalette(colors: string[] | null): void {
+    const game = this.gameState.getGame();
+    game.customPalette = colors || undefined;
+    this.renderer.paletteManager.setCustomPalette(colors);
+
+    // Regenerate tiles with new palette colors
+    if (colors) {
+      this.tileManager.regenerateTilesWithPalette(colors);
+    } else {
+      // Reset to default palette
+      this.tileManager.regenerateTilesWithPalette(TileDefinitions.PICO8_COLORS as string[]);
+    }
+
+    // Invalidate all sprite caches to regenerate with new colors
+    this.renderer.spriteFactory.invalidate();
+    this.renderer.buildPlayerSprite();
+    this.renderer.buildNpcSprites();
+    this.renderer.buildEnemySprite();
+    this.renderer.buildObjectSprites();
+
+    // Force complete re-render
+    this.draw();
+  }
+
+  getCustomPalette(): string[] | undefined {
+    const game = this.gameState.getGame();
+    return game.customPalette;
+  }
+
+  resetPaletteToDefault(): void {
+    this.setCustomPalette(null);
+  }
+
+  get rendererPalette() {
+    return this.renderer.paletteManager;
   }
 
   draw(): void {

@@ -45,6 +45,18 @@ class EditorDomCache {
     projectTestStartLevel: HTMLSelectElement | null;
     projectTestSkillList: HTMLElement | null;
     projectTestGodMode: HTMLInputElement | null;
+    projectPaletteContainer: HTMLElement | null;
+    projectPaletteToggle: HTMLButtonElement | null;
+    projectPalettePanel: HTMLElement | null;
+    paletteGrid: HTMLElement | null;
+    paletteResetButton: HTMLButtonElement | null;
+    colorPickerModal: HTMLElement | null;
+    colorPickerInput: HTMLInputElement | null;
+    colorPickerConfirm: HTMLButtonElement | null;
+    colorPickerCancel: HTMLButtonElement | null;
+    colorPreviewCurrent: HTMLElement | null;
+    colorPreviewNew: HTMLElement | null;
+    colorPickerIndex: HTMLElement | null;
     jsonArea?: HTMLTextAreaElement | null;
 
     constructor(root: Document | HTMLElement | null = typeof document !== 'undefined' ? document : null) {
@@ -94,6 +106,18 @@ class EditorDomCache {
             this.projectTestStartLevel = null;
             this.projectTestSkillList = null;
             this.projectTestGodMode = null;
+            this.projectPaletteContainer = null;
+            this.projectPaletteToggle = null;
+            this.projectPalettePanel = null;
+            this.paletteGrid = null;
+            this.paletteResetButton = null;
+            this.colorPickerModal = null;
+            this.colorPickerInput = null;
+            this.colorPickerConfirm = null;
+            this.colorPickerCancel = null;
+            this.colorPreviewCurrent = null;
+            this.colorPreviewNew = null;
+            this.colorPickerIndex = null;
             this.jsonArea = null;
             return;
         }
@@ -142,6 +166,18 @@ class EditorDomCache {
         this.projectTestStartLevel = root.querySelector('#project-test-start-level') as HTMLSelectElement | null;
         this.projectTestSkillList = root.querySelector('#project-test-skill-list') as HTMLElement | null;
         this.projectTestGodMode = root.querySelector('#project-test-god-mode') as HTMLInputElement | null;
+        this.projectPaletteContainer = root.querySelector('#project-palette-container') as HTMLElement | null;
+        this.projectPaletteToggle = root.querySelector('#project-palette-toggle') as HTMLButtonElement | null;
+        this.projectPalettePanel = root.querySelector('#project-palette-panel') as HTMLElement | null;
+        this.paletteGrid = root.querySelector('#palette-grid') as HTMLElement | null;
+        this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
+        this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;
+        this.colorPickerInput = root.querySelector('#color-picker-input') as HTMLInputElement | null;
+        this.colorPickerConfirm = root.querySelector('#color-picker-confirm') as HTMLButtonElement | null;
+        this.colorPickerCancel = root.querySelector('#color-picker-cancel') as HTMLButtonElement | null;
+        this.colorPreviewCurrent = root.querySelector('#color-preview-current .color-preview-swatch') as HTMLElement | null;
+        this.colorPreviewNew = root.querySelector('#color-preview-new .color-preview-swatch') as HTMLElement | null;
+        this.colorPickerIndex = root.querySelector('#color-picker-index') as HTMLElement | null;
         this.jsonArea = root.querySelector('#json-area') as HTMLTextAreaElement | null;
     }
 }

@@ -239,6 +239,60 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <!-- Paleta Customizada -->
+                                    <div id="project-palette-container" class="project-variables project-palette">
+                                        <button id="project-palette-toggle" class="project-variables__toggle project-palette__toggle" type="button"></button>
+                                        <div id="project-palette-panel" class="project-palette__panel" hidden>
+                                            <div class="palette-header">
+                                                <p class="palette-description" data-text-key="project.paletteDescription"></p>
+                                                <button
+                                                    id="palette-reset-button"
+                                                    class="palette-reset-btn"
+                                                    data-text-key="project.paletteReset"
+                                                    title="Reset to PICO-8 colors"
+                                                ></button>
+                                            </div>
+                                            <div id="palette-grid" class="palette-grid"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Color Picker Modal -->
+                                    <div id="color-picker-modal" class="color-picker-modal" hidden>
+                                        <div class="color-picker-content">
+                                            <div class="color-picker-header">
+                                                <h3 data-text-key="project.colorPickerTitle"></h3>
+                                                <span id="color-picker-index" class="color-index-label"></span>
+                                            </div>
+                                            <div class="color-picker-preview">
+                                                <div class="color-preview-box">
+                                                    <div id="color-preview-current" class="color-preview-item">
+                                                        <div class="color-preview-swatch"></div>
+                                                        <span data-text-key="project.colorCurrent"></span>
+                                                    </div>
+                                                    <div id="color-preview-new" class="color-preview-item">
+                                                        <div class="color-preview-swatch"></div>
+                                                        <span data-text-key="project.colorNew"></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <input
+                                                type="color"
+                                                id="color-picker-input"
+                                                class="color-picker-input"
+                                            />
+                                            <div class="color-picker-actions">
+                                                <button
+                                                    id="color-picker-cancel"
+                                                    class="btn-secondary"
+                                                    data-text-key="project.colorCancel"
+                                                ></button>
+                                                <button
+                                                    id="color-picker-confirm"
+                                                    class="btn-primary"
+                                                    data-text-key="project.colorConfirm"
+                                                ></button>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <label class="project-field">
                                         <span data-text-key="project.titleLabel"></span>
                                         <input type="text" id="game-title" data-placeholder-key="project.titlePlaceholder" maxlength="18">

@@ -9,6 +9,7 @@ export type TileDefinition = {
   pixels?: TileFrame;
   category?: string;
   animated?: boolean;
+  layouts?: (number | null)[][][];
 };
 
 export type TileMapLayer = (TileId | null)[][];

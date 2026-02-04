@@ -101,7 +101,7 @@ class RendererHudRenderer {
         keys = Math.max(0, Math.min(maxSlots, keys));
         const swordShield = Math.max(0, this.gameState.getDamageShield());
         const swordShieldMax = Math.max(0, this.gameState.getDamageShieldMax());
-        const swordType = this.gameState.getSwordType?.() || null;
+        const swordType = this.gameState.getSwordType() || null;
 
         ctx.save();
         ctx.translate(offsetX, offsetY);
@@ -320,18 +320,18 @@ type HealthOptions = {
 
 type GameStateApi = {
     isGameOver: () => boolean;
-    getMaxLives?: () => number;
-    getLives?: () => number;
+    getMaxLives: () => number;
+    getLives: () => number;
     getMaxKeys: () => number;
     getKeys: () => number;
     getDamageShield: () => number;
     getDamageShieldMax: () => number;
-    getSwordType?: () => string | null;
-    getLevel?: () => number;
-    getGame?: () => { world?: { rows?: number; cols?: number } };
-    getPlayer?: () => { roomIndex?: number };
-    getExperienceToNext?: () => number;
-    getExperience?: () => number;
+    getSwordType: () => string | null;
+    getLevel: () => number;
+    getGame: () => { world?: { rows?: number; cols?: number } };
+    getPlayer: () => { roomIndex?: number };
+    getExperienceToNext: () => number;
+    getExperience: () => number;
 };
 
 type EntityRendererApi = {
@@ -340,7 +340,7 @@ type EntityRendererApi = {
 };
 
 type CanvasHelperApi = {
-    getTilePixelSize?: () => number;
+    getTilePixelSize: () => number;
     drawSprite: (
         ctx: CanvasRenderingContext2D,
         sprite: (string | null)[][],

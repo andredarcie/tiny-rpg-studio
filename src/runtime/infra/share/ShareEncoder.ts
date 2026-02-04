@@ -1,11 +1,13 @@
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
+import { TileDefinitions } from '../../domain/definitions/TileDefinitions';
 import { ShareConstants } from './ShareConstants';
 import { ShareDataNormalizer } from './ShareDataNormalizer';
 import { ShareMatrixCodec } from './ShareMatrixCodec';
 import { SharePositionCodec } from './SharePositionCodec';
 import { ShareTextCodec } from './ShareTextCodec';
 import { ShareVariableCodec } from './ShareVariableCodec';
+import { ShareBase64 } from './ShareBase64';
 
 type ShareGameData = {
     title?: unknown;
@@ -18,6 +20,7 @@ type ShareGameData = {
     rooms?: unknown[];
     tileset?: unknown;
     world?: unknown;
+    customPalette?: string[];
 };
 
 class ShareEncoder {
@@ -220,6 +223,27 @@ class ShareEncoder {
         const author = typeof gameData?.author === 'string' ? gameData.author.trim() : '';
         if (author) {
             parts.push('y' + ShareTextCodec.encodeText(author.slice(0, 60)));
+        }
+
+        // Custom Palette
+        const customPalette = Array.isArray(gameData?.customPalette) ? gameData.customPalette : undefined;
+        if (customPalette && customPalette.length === 16) {
+            // Verifica se é igual ao padrão (não precisa serializar)
+            const isDefault = customPalette.every((color, index) =>
+                color.toUpperCase() === TileDefinitions.PICO8_COLORS[index].toUpperCase()
+            );
+
+            if (!isDefault) {
+                const bytes = new Uint8Array(16 * 3);
+                customPalette.forEach((color, index) => {
+                    const hex = color.replace('#', '').toUpperCase();
+                    const base = index * 3;
+                    bytes[base] = parseInt(hex.slice(0, 2), 16);
+                    bytes[base + 1] = parseInt(hex.slice(2, 4), 16);
+                    bytes[base + 2] = parseInt(hex.slice(4, 6), 16);
+                });
+                parts.push('P' + ShareBase64.toBase64Url(bytes));
+            }
         }
 
         return parts.join('.');

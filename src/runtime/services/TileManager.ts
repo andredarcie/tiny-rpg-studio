@@ -1,5 +1,6 @@
 import type { GameStateApi, TileDefinition, TileFrame, TileId, TileMap, TileMapLayer } from '../domain/definitions/tileTypes';
 import { TILE_PRESETS_SOURCE } from '../domain/definitions/tilePresets';
+import { TileDefinitions } from '../domain/definitions/TileDefinitions';
 
 // TileManager owns tile preset loading, tileset initialization, and tile map mutation.
 // It keeps the game state wired with tiles and room maps, provides helpers
@@ -40,7 +41,22 @@ class TileManager {
   cloneTile(tile: TileDefinition): TileDefinition {
     const frames = tile.frames?.map((frame) => frame.map((row) => row.slice()));
     const pixels = tile.pixels ? tile.pixels.map((row) => row.slice()) : undefined;
-    return { ...tile, frames, pixels };
+    const layouts = tile.layouts?.map((layout) => layout.map((row) => row.slice()));
+    return { ...tile, frames, pixels, layouts };
+  }
+
+  regenerateTilesWithPalette(palette: string[]): void {
+    const tiles = this.gameState.game.tileset.tiles;
+    if (!Array.isArray(tiles)) return;
+
+    for (const tile of tiles) {
+      if (Array.isArray(tile.layouts) && tile.layouts.length) {
+        // Regenerate frames from layouts with new palette
+        const frames = tile.layouts.map((layout) => TileDefinitions.toPixels(layout, palette));
+        tile.frames = frames;
+        tile.pixels = frames[0] ?? tile.pixels;
+      }
+    }
   }
 
   ensureDefaultTiles(): void {

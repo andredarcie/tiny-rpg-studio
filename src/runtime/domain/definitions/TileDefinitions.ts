@@ -30,18 +30,20 @@ class TileDefinitions {
         name: string,
         layouts: (number | null)[][][] | (number | null)[][],
         collision = false,
-        category = 'Diversos'
+        category = 'Diversos',
+        palette?: string[]
     ) {
         const layoutList = Array.isArray(layouts) ? layouts.filter(Boolean) : [layouts];
         const frames = (layoutList.length ? layoutList : [this.createEmptyLayout()])
-            .map((layout) => this.toPixels(layout as (number | null)[][]));
+            .map((layout) => this.toPixels(layout as (number | null)[][], palette));
         const data: TileDefinitionData = {
             id,
             name,
             pixels: frames[0] as TileFrame,
             frames: frames as TileFrame[],
             collision,
-            category
+            category,
+            layouts: layoutList as (number | null)[][][]
         };
         return new Tile(data);
     }
@@ -50,9 +52,10 @@ class TileDefinitions {
         return Array.from({ length: 8 }, () => Array(8).fill(null) as null[]);
     }
 
-    static toPixels(layout: (number | null)[][]): TileFrame {
+    static toPixels(layout: (number | null)[][], palette?: string[]): TileFrame {
+        const colors = palette || this.PICO8_COLORS;
         return layout.map((row) =>
-            row.map((value) => (value === null ? 'transparent' : (this.PICO8_COLORS[value] ?? 'transparent')))
+            row.map((value) => (value === null ? 'transparent' : (colors[value] ?? 'transparent')))
         );
     }
 

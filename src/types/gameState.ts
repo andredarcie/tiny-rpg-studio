@@ -145,6 +145,7 @@ export type GameDefinition = {
     title: string;
     author: string;
     palette: string[];
+    customPalette?: string[];
     roomSize: number;
     world: { rows: number; cols: number };
     rooms: RoomDefinition[];
