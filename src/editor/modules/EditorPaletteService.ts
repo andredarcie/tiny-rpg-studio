@@ -62,6 +62,8 @@ export class EditorPaletteService {
         const currentSwatch = this.manager.dom.colorPreviewCurrent;
         const newSwatch = this.manager.dom.colorPreviewNew;
         const indexLabel = this.manager.dom.colorPickerIndex;
+        const currentValue = document.getElementById('color-preview-current-value');
+        const newValue = document.getElementById('color-preview-new-value');
 
         if (!modal || !input || !currentSwatch || !newSwatch || !indexLabel) return;
 
@@ -73,6 +75,8 @@ export class EditorPaletteService {
         input.value = currentColor;
         currentSwatch.style.backgroundColor = currentColor;
         newSwatch.style.backgroundColor = currentColor;
+        if (currentValue) currentValue.textContent = currentColor.toUpperCase();
+        if (newValue) newValue.textContent = currentColor.toUpperCase();
         indexLabel.textContent = `#${colorIndex}`;
 
         // Show modal
@@ -81,6 +85,7 @@ export class EditorPaletteService {
         // Update preview on input change
         const updatePreview = () => {
             newSwatch.style.backgroundColor = input.value;
+            if (newValue) newValue.textContent = input.value.toUpperCase();
         };
         input.addEventListener('input', updatePreview);
     }

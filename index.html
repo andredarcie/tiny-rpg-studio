@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20250208">
+    <link rel="stylesheet" href="styles.css?v=20260204-4">
     <style>
         #game-container {
             position: relative;
@@ -258,38 +258,46 @@
                                     <!-- Color Picker Modal -->
                                     <div id="color-picker-modal" class="color-picker-modal" hidden>
                                         <div class="color-picker-content">
-                                            <div class="color-picker-header">
-                                                <h3 data-text-key="project.colorPickerTitle"></h3>
-                                                <span id="color-picker-index" class="color-index-label"></span>
-                                            </div>
-                                            <div class="color-picker-preview">
-                                                <div class="color-preview-box">
-                                                    <div id="color-preview-current" class="color-preview-item">
-                                                        <div class="color-preview-swatch"></div>
-                                                        <span data-text-key="project.colorCurrent"></span>
-                                                    </div>
-                                                    <div id="color-preview-new" class="color-preview-item">
-                                                        <div class="color-preview-swatch"></div>
-                                                        <span data-text-key="project.colorNew"></span>
+                                            <div class="color-picker-panel">
+                                                <div class="color-picker-header">
+                                                    <h3 data-text-key="project.colorPickerTitle"></h3>
+                                                    <span id="color-picker-index" class="color-index-label"></span>
+                                                </div>
+                                                <div class="color-picker-preview">
+                                                    <div class="color-preview-box">
+                                                        <div id="color-preview-current" class="color-preview-row">
+                                                            <div class="color-preview-meta">
+                                                                <span class="color-preview-label" data-text-key="project.colorCurrent"></span>
+                                                                <span id="color-preview-current-value" class="color-preview-value"></span>
+                                                            </div>
+                                                            <div class="color-preview-swatch"></div>
+                                                        </div>
+                                                        <div id="color-preview-new" class="color-preview-row">
+                                                            <div class="color-preview-meta">
+                                                                <span class="color-preview-label" data-text-key="project.colorNew"></span>
+                                                                <span id="color-preview-new-value" class="color-preview-value"></span>
+                                                            </div>
+                                                            <div class="color-preview-swatch"></div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                            <input
-                                                type="color"
-                                                id="color-picker-input"
-                                                class="color-picker-input"
-                                            />
-                                            <div class="color-picker-actions">
-                                                <button
-                                                    id="color-picker-cancel"
-                                                    class="btn-secondary"
-                                                    data-text-key="project.colorCancel"
-                                                ></button>
-                                                <button
-                                                    id="color-picker-confirm"
-                                                    class="btn-primary"
-                                                    data-text-key="project.colorConfirm"
-                                                ></button>
+                                                <input
+                                                    type="color"
+                                                    id="color-picker-input"
+                                                    class="color-picker-input"
+                                                />
+                                                <div class="color-picker-actions">
+                                                    <button
+                                                        id="color-picker-cancel"
+                                                        class="btn-secondary"
+                                                        data-text-key="project.colorCancel"
+                                                    ></button>
+                                                    <button
+                                                        id="color-picker-confirm"
+                                                        class="btn-primary"
+                                                        data-text-key="project.colorConfirm"
+                                                    ></button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
