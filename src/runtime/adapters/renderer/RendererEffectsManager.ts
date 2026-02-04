@@ -67,7 +67,7 @@ class RendererEffectsManager extends RendererModuleBase {
         element.textContent = '';
         void element.offsetWidth;
 
-        element.textContent = text ?? '';
+        element.textContent = text;
         element.classList.add('visible');
         element.setAttribute('data-visible', 'true');
 
@@ -147,8 +147,8 @@ class RendererEffectsManager extends RendererModuleBase {
             return Math.max(0, Math.min(7, Math.floor(value as number)));
         };
         const player = this.effectsGameState.getPlayer();
-        const tileX = clampIndex(state.tileX, player?.x ?? 0);
-        const tileY = clampIndex(state.tileY, player?.y ?? 0);
+        const tileX = clampIndex(state.tileX, player.x);
+        const tileY = clampIndex(state.tileY, player.y);
         ctx.save();
         ctx.fillStyle = state.color || 'rgba(255,255,255,0.35)';
         switch (state.direction) {

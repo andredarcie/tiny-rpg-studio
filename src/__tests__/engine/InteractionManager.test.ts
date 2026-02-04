@@ -3,6 +3,7 @@ import { itemCatalog } from '../../runtime/domain/services/ItemCatalog';
 import { InteractionManager } from '../../runtime/services/engine/InteractionManager';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import type { ItemType } from '../../runtime/domain/constants/itemTypes';
+import { createInteractionGameState } from '../helpers/createInteractionGameState';
 
 describe('InteractionManager', () => {
   const getDefinitionSpy = vi.spyOn(itemCatalog, 'getItemDefinition');
@@ -10,30 +11,6 @@ describe('InteractionManager', () => {
   const getSpy = vi.spyOn(TextResources, 'get');
   const formatSpy = vi.spyOn(TextResources, 'format');
   const dialogManager = { showDialog: vi.fn() };
-  const baseGameState = () =>
-    ({
-      getGame: () => ({ items: [], sprites: [], exits: [], rooms: [] }),
-      getPlayer: () => ({ roomIndex: 0, x: 0, y: 0 }),
-      getObjectsForRoom: () => [],
-      getPlayerEndText: () => 'The End',
-      setActiveEndingText: vi.fn(),
-      normalizeVariableId: (id: string | null) => id,
-      isVariableOn: vi.fn(),
-      setVariableValue: vi.fn((_id: string, _value: boolean, _persist?: boolean) => [true, false] as [boolean, boolean?]),
-      addKeys: vi.fn(),
-      getLives: vi.fn(),
-      getMaxLives: vi.fn(),
-      hasSkill: vi.fn(),
-      healPlayerToFull: vi.fn(),
-      addLife: vi.fn(),
-      getExperienceToNext: vi.fn(),
-      addExperience: vi.fn(),
-      getSwordType: vi.fn(),
-      addDamageShield: vi.fn(),
-      showPickupOverlay: vi.fn(),
-      setPlayerPosition: vi.fn(),
-      getRoomIndex: vi.fn(),
-    }) satisfies ConstructorParameters<typeof InteractionManager>[0];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,9 +24,9 @@ describe('InteractionManager', () => {
         nameKey: `objects.${type}`,
         behavior,
         sprite: [],
-        getTags: () => behavior.tags ?? [],
-        hasTag: (tag: string) => (behavior.tags ?? []).includes(tag),
-        getOrder: (fallbackOrder: number) => behavior.order ?? fallbackOrder,
+        getTags: () => behavior.tags,
+        hasTag: (tag: string) => behavior.tags.includes(tag),
+        getOrder: (fallbackOrder: number) => behavior.order || fallbackOrder,
         getSwordDurability: () => behavior.swordDurability ?? null,
       } as never;
     });
@@ -65,7 +42,7 @@ describe('InteractionManager', () => {
   });
 
   it('collects keys and triggers pickup overlay', () => {
-    const gameState = baseGameState();
+    const gameState = createInteractionGameState();
     const manager = new InteractionManager(gameState, dialogManager);
     const key: { type: string; collected: boolean; roomIndex: number; x: number; y: number } = { type: 'key', collected: false, roomIndex: 0, x: 0, y: 0 };
 
@@ -74,13 +51,14 @@ describe('InteractionManager', () => {
     expect(key.collected).toBe(true);
     expect(gameState.showPickupOverlay).toHaveBeenCalled();
 
-    const effect = (gameState.showPickupOverlay.mock.calls[0]?.[0] as { effect?: () => void })?.effect;
+    const mockFn = gameState.showPickupOverlay as ReturnType<typeof vi.fn>;
+    const effect = (mockFn.mock.calls[0][0] as { effect?: () => void }).effect;
     effect?.();
     expect(gameState.addKeys).toHaveBeenCalledWith(1);
   });
 
   it('toggles switches and shows dialog', () => {
-    const gameState = baseGameState();
+    const gameState = createInteractionGameState();
     const manager = new InteractionManager(gameState, dialogManager);
     const object: { type: string; on: boolean; variableId: string; roomIndex: number; x: number; y: number } = { type: 'switch', on: false, variableId: 'var-1', roomIndex: 0, x: 0, y: 0 };
 
@@ -93,8 +71,8 @@ describe('InteractionManager', () => {
   });
 
   it('uses conditional NPC dialog when variable is active', () => {
-    const gameState = baseGameState();
-    gameState.isVariableOn.mockReturnValue(true);
+    const gameState = createInteractionGameState();
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(true);
     const manager = new InteractionManager(gameState, dialogManager);
 
     const text = manager.getNpcDialogText({
@@ -110,8 +88,8 @@ describe('InteractionManager', () => {
   });
 
   it('moves player through room exits', () => {
-    const gameState = baseGameState();
-    gameState.getRoomIndex.mockReturnValue(0);
+    const gameState = createInteractionGameState();
+    (gameState.getRoomIndex as ReturnType<typeof vi.fn>).mockReturnValue(0);
     const manager = new InteractionManager(gameState, dialogManager);
     const player = { roomIndex: 0, x: 1, y: 1 };
     const exits = [{ roomIndex: 0, x: 1, y: 1, targetRoomIndex: 0, targetX: 2, targetY: 3 }];

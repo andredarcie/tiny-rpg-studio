@@ -32,7 +32,6 @@ describe('GameState - Critical Path Tests', () => {
       // Add the variable
       state.game.variables = [{
         id: 'var-1',
-        name: 'Door Switch',
         value: false,
       }];
 
@@ -47,7 +46,6 @@ describe('GameState - Critical Path Tests', () => {
 
       state.game.variables = [{
         id: 'var-1',
-        name: 'Generic Switch',
         value: false,
       }];
 
@@ -62,7 +60,6 @@ describe('GameState - Critical Path Tests', () => {
 
       state.game.variables = [{
         id: 'var-1',
-        name: 'Persistent',
         value: false,
       }];
 
@@ -83,10 +80,6 @@ describe('GameState - Critical Path Tests', () => {
         leveledUp: true,
         levelsGained: 1,
         level: 2,
-        experience: 0,
-        experienceToNext: 15,
-        currentLives: 4,
-        maxLives: 4,
       });
 
       expect(result?.leveledUp).toBe(true);
@@ -102,10 +95,6 @@ describe('GameState - Critical Path Tests', () => {
         leveledUp: true,
         levelsGained: 3,
         level: 4,
-        experience: 0,
-        experienceToNext: 30,
-        currentLives: 6,
-        maxLives: 6,
       });
 
       // Only even levels (2, 4) get skill choices, so 2 choices for levels 2, 3, 4
@@ -120,10 +109,6 @@ describe('GameState - Critical Path Tests', () => {
         leveledUp: true,
         levelsGained: 1,
         level: 2,
-        experience: 0,
-        experienceToNext: 15,
-        currentLives: 1,
-        maxLives: 4,
       });
 
       // Wait for celebration to end

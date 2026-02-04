@@ -66,7 +66,7 @@ class EditorWorldRenderer extends EditorRendererBase {
         const cols = Math.max(1, Number(game.world?.cols) || 1);
         const totalRooms = Math.max(1, game.rooms?.length || rows * cols);
         const maxIndex = totalRooms - 1;
-        const activeIndex = Math.max(0, Math.min(maxIndex, this.state.activeRoomIndex ?? 0));
+        const activeIndex = Math.max(0, Math.min(maxIndex, this.state.activeRoomIndex));
         const currentRow = Math.floor(activeIndex / cols);
         const currentCol = activeIndex % cols;
 

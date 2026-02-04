@@ -22,14 +22,18 @@ class EditorExportService {
     async exportProjectAsHtml() {
         try {
             const api = getTinyRpgApi();
-            const gameData = api?.exportGameData ? api.exportGameData() : null;
+            if (!api) {
+                alert('Unable to export: engine API is not available.');
+                return;
+            }
+            const gameData = api.exportGameData();
 
             if (!gameData) {
                 alert('Unable to read current project data.');
                 return;
             }
 
-            const code = ShareUtils?.encode ? ShareUtils.encode(gameData as Record<string, unknown>) : '';
+            const code = ShareUtils.encode(gameData as Record<string, unknown>);
             const downloadError = 'Unable to download project assets. Please run Tiny RPG Studio from an HTTP/HTTPS server (not file://) to export HTML.';
 
             let cssText = '';
@@ -67,7 +71,7 @@ class EditorExportService {
             } catch {
                 // fallback handled below
             }
-            const locale = (TextResources?.getLocale ? TextResources.getLocale() as string : 'en-US') || 'en-US';
+            const locale = (TextResources.getLocale() as string) || 'en-US';
             const legacyIndexPath = 'legacy/index.html';
             const fallbackScriptSrcs = [
                 'js/runtime/adapters/TextResources.js',
@@ -263,14 +267,14 @@ class EditorExportService {
             </html>`;
 
             const exportData = gameData as GameExportData;
-            const rawTitle = typeof exportData?.title === 'string' ? exportData.title : '';
+            const rawTitle = typeof exportData.title === 'string' ? exportData.title : '';
             const safeTitle = rawTitle
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
                 .replace(/[^a-zA-Z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '')
                 .toLowerCase();
-            const versionValue = ShareConstants?.VERSION ?? 1;
+            const versionValue = ShareConstants.VERSION;
             const filename = `${safeTitle || 'tiny-rpg'}-v${versionValue}.html`;
             const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
             const url = URL.createObjectURL(blob);

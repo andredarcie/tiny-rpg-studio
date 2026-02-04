@@ -16,7 +16,7 @@ class StateWorldManager {
     }
 
     get roomSize() {
-        return this.game?.roomSize ?? this.defaultRoomSize;
+        return this.game.roomSize;
     }
 
     static createEmptyRoom(size: number, index = 0, cols = 1): RoomDefinition {
@@ -67,17 +67,17 @@ class StateWorldManager {
         rooms.forEach((room, index) => {
             if (index >= filled.length) return;
             const target = filled[index];
-            target.bg = typeof room?.bg === "number" ? room.bg : target.bg;
-            target.tiles = Array.isArray(room?.tiles)
+            target.bg = typeof room.bg === "number" ? room.bg : target.bg;
+            target.tiles = Array.isArray(room.tiles)
                 ? room.tiles.map((row, y) =>
                     Array.from({ length: size }, (_, x) => {
-                        const value = row?.[x];
+                        const value = row[x];
                         return Number.isFinite(value) ? value : target.tiles[y][x];
                     }))
                 : target.tiles;
-            target.walls = Array.isArray(room?.walls)
+            target.walls = Array.isArray(room.walls)
                 ? room.walls.map((row, _y) =>
-                    Array.from({ length: size }, (_, x) => Boolean(row?.[x])))
+                    Array.from({ length: size }, (_, x) => Boolean(row[x])))
                 : target.walls;
         });
 
@@ -91,17 +91,17 @@ class StateWorldManager {
 
         const assignMap = (target: TileMap, map: Partial<TileMap>) => {
             target.ground = Array.from({ length: size }, (_, y) =>
-                Array.from({ length: size }, (_, x) => map?.ground?.[y]?.[x] ?? null)
+                Array.from({ length: size }, (_, x) => map.ground?.[y]?.[x] ?? null)
             );
             target.overlay = Array.from({ length: size }, (_, y) =>
-                Array.from({ length: size }, (_, x) => map?.overlay?.[y]?.[x] ?? null)
+                Array.from({ length: size }, (_, x) => map.overlay?.[y]?.[x] ?? null)
             );
         };
 
         if (Array.isArray(source)) {
             source.forEach((map: Partial<TileMap>, index: number) => {
                 if (index >= emptyMaps.length) return;
-                if (map?.ground || map?.overlay) {
+                if (map.ground || map.overlay) {
                     assignMap(emptyMaps[index], map);
                 }
             });
@@ -109,14 +109,14 @@ class StateWorldManager {
         }
 
         const singleMap = source as Partial<TileMap>;
-        if (singleMap?.ground || singleMap?.overlay) {
+        if (singleMap.ground || singleMap.overlay) {
             assignMap(emptyMaps[0], singleMap);
         }
         return emptyMaps;
     }
 
     clampRoomIndex(value: number | string | null | undefined): number {
-        const rooms = this.game?.rooms ?? [];
+        const rooms = this.game.rooms;
         const max = Math.max(0, rooms.length - 1);
         const numeric = Number(value);
         if (!Number.isFinite(numeric)) return 0;
@@ -131,11 +131,11 @@ class StateWorldManager {
     }
 
     getWorldRows(): number {
-        return this.game?.world?.rows || 1;
+        return this.game.world.rows || 1;
     }
 
     getWorldCols(): number {
-        return this.game?.world?.cols || 1;
+        return this.game.world.cols || 1;
     }
 
     getRoomCoords(index: number): { row: number; col: number } {

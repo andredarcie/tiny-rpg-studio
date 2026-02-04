@@ -88,7 +88,8 @@ class StateDataManager {
         const worldCols = 3;
         const totalRooms = worldRows * worldCols;
 
-        const tilesetTiles = Array.isArray(data.tileset?.tiles) ? data.tileset.tiles : (this.game.tileset?.tiles ?? []);
+        const existingTiles = Array.isArray(this.game.tileset.tiles) ? this.game.tileset.tiles : [];
+        const tilesetTiles = Array.isArray(data.tileset?.tiles) ? data.tileset.tiles : existingTiles;
         const normalizedRooms = this.worldManager.normalizeRooms(data.rooms, totalRooms, worldCols);
         const normalizedMaps = this.worldManager.normalizeTileMaps(
             data.tileset?.maps ?? data.tileset?.map ?? null,

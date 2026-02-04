@@ -13,7 +13,7 @@ class ShareVariableCodec {
         const ids = ShareConstants.VARIABLE_IDS;
         const idToState = new Map<string, boolean>();
         variables.forEach((entry) => {
-            if (typeof entry?.id === 'string') {
+            if (typeof entry.id === 'string') {
                 idToState.set(entry.id, Boolean(entry.value));
             }
         });
@@ -95,7 +95,8 @@ class ShareVariableCodec {
         const bytes = new Uint8Array(byteLength);
         for (let i = 0; i < values.length; i += 2) {
             const high = values[i] & 0x0f;
-            const low = values[i + 1] !== undefined ? (values[i + 1] & 0x0f) : 0;
+            const lowValue = typeof values[i + 1] === 'number' ? values[i + 1] : 0;
+            const low = lowValue & 0x0f;
             const index = i >> 1;
             bytes[index] = (high << 4) | low;
         }
@@ -112,7 +113,8 @@ class ShareVariableCodec {
     }
 
     static getFirstVariableId() {
-        return ShareConstants.VARIABLE_IDS?.[0] ?? null;
+        const ids = ShareConstants.VARIABLE_IDS;
+        return ids.length ? ids[0] : null;
     }
 }
 

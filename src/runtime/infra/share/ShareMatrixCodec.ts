@@ -204,7 +204,7 @@ class ShareMatrixCodec {
             for (let x = 0; x < size; x++) {
                 const value = normalized[y][x];
                 const currentIndex = bitIndex++;
-                if (value === null || value === undefined) {
+                if (value === null) {
                     continue;
                 }
                 hasData = true;

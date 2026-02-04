@@ -6,7 +6,7 @@ import { GameConfig } from '../../../config/GameConfig';
 
 type GameStateApi = {
   playing: boolean;
-  isEditorModeActive?: () => boolean;
+  isEditorModeActive: () => boolean;
   getEnemyDefinitions: () => unknown;
   getEnemies: () => EnemyState[];
   addEnemy: (enemy: EnemyState) => string | null;
@@ -16,16 +16,16 @@ type GameStateApi = {
   isPlayerOnDamageCooldown: () => boolean;
   damagePlayer: (amount: number) => number;
   consumeLastDamageReduction: () => number;
-  consumeRecentReviveFlag?: () => boolean;
+  consumeRecentReviveFlag: () => boolean;
   handleEnemyDefeated: (xp: number) => { leveledUp?: boolean } | null;
-  getPendingLevelUpChoices?: () => number;
-  startLevelUpSelectionIfNeeded?: () => void;
+  getPendingLevelUpChoices: () => number;
+  startLevelUpSelectionIfNeeded: () => void;
   prepareNecromancerRevive?: () => void;
   isVariableOn: (id: string) => boolean;
   normalizeVariableId: (id: string | null) => string | null;
   setVariableValue: (id: string, value: boolean, persist?: boolean) => Array<boolean | undefined>;
-  getObjectAt?: (roomIndex: number, x: number, y: number) => GameObjectState | null;
-  hasSkill?: (skillId: string) => boolean;
+  getObjectAt: (roomIndex: number, x: number, y: number) => GameObjectState | null;
+  hasSkill: (skillId: string) => boolean;
 };
 
 type RendererApi = {
@@ -183,9 +183,15 @@ class EnemyManager {
   }
 
   generateEnemyId(): string {
-    const cryptoObj = typeof crypto !== 'undefined' ? crypto : globalThis.crypto;
-    if (cryptoObj && cryptoObj.randomUUID) {
-      return cryptoObj.randomUUID();
+    const cryptoCandidate =
+      typeof crypto !== 'undefined'
+        ? crypto
+        : (globalThis as Partial<typeof globalThis>).crypto;
+    if (cryptoCandidate) {
+      const randomUUID = (cryptoCandidate as { randomUUID?: () => string }).randomUUID;
+      if (typeof randomUUID === 'function') {
+        return randomUUID.call(cryptoCandidate);
+      }
     }
     return `enemy-${Math.random().toString(36).slice(2, 10)}`;
   }
@@ -206,7 +212,7 @@ class EnemyManager {
 
   tick(): void {
     if (!this.gameState.playing) return;
-    if (this.gameState.isEditorModeActive?.()) return;
+    if (this.gameState.isEditorModeActive()) return;
 
     const enemies = this.gameState.getEnemies();
     if (!this.hasMovableEnemies(enemies)) return;
@@ -242,8 +248,8 @@ class EnemyManager {
     }
 
     const enemies = this.gameState.getEnemies();
+    if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
     const enemy = enemies[enemyIndex];
-    if (!enemy) return;
     enemy.type = this.normalizeEnemyType(enemy.type);
     if (this.canAssassinate(enemy)) {
       this.assassinateEnemy(enemyIndex);
@@ -260,7 +266,7 @@ class EnemyManager {
       const damage = this.getEnemyDamage(enemy.type);
       const lives = this.gameState.damagePlayer(damage);
       const reduction = this.gameState.consumeLastDamageReduction();
-      const revived = this.gameState.consumeRecentReviveFlag?.() || false;
+      const revived = this.gameState.consumeRecentReviveFlag() || false;
       if (revived) {
         this.renderer.showCombatIndicator(getEnemyLocaleText('skills.necromancer.revive', ''), { duration: 900 });
       }
@@ -280,7 +286,7 @@ class EnemyManager {
     const experienceReward = this.getExperienceReward(enemy.type);
     const defeatResult = this.gameState.handleEnemyDefeated(experienceReward);
     if (defeatResult?.leveledUp && this.shouldStartLevelOverlay()) {
-      this.gameState.startLevelUpSelectionIfNeeded?.();
+      this.gameState.startLevelUpSelectionIfNeeded();
     }
 
     this.tryTriggerDefeatVariable(enemy);
@@ -329,8 +335,10 @@ class EnemyManager {
   }
 
   tryMoveEnemy(enemies: EnemyState[], index: number, game: GameData): EnemyMovementResult {
+    if (index < 0 || index >= enemies.length) {
+      return EnemyMovementResult.None;
+    }
     const enemy = enemies[index];
-    if (!enemy) return EnemyMovementResult.None;
     enemy.type = this.normalizeEnemyType(enemy.type);
     if (enemy.playerInVision) return EnemyMovementResult.None;
 
@@ -466,9 +474,10 @@ class EnemyManager {
   }
 
   canEnterTile(roomIndex: number, x: number, y: number, game: GameData, enemies: EnemyState[], movingIndex: number): boolean {
+    if (roomIndex < 0 || roomIndex >= game.rooms.length) return false;
     const room = game.rooms[roomIndex];
-    if (!room) return false;
-    if (room.walls?.[y]?.[x]) return false;
+    const walls = room.walls;
+    if (walls && Array.isArray(walls[y]) && walls[y][x]) return false;
     if (this.isTileBlocked(roomIndex, x, y)) return false;
     if (this.hasBlockingObject(roomIndex, x, y)) return false;
     return !this.isOccupied(enemies, movingIndex, roomIndex, x, y);
@@ -476,17 +485,20 @@ class EnemyManager {
 
   isTileBlocked(roomIndex: number, x: number, y: number): boolean {
     const tileMap = this.tileManager.getTileMap(roomIndex);
-    const groundId = tileMap?.ground?.[y]?.[x] ?? null;
-    const overlayId = tileMap?.overlay?.[y]?.[x] ?? null;
+    if (!tileMap) return false;
+    const groundRow = Array.isArray(tileMap.ground) ? tileMap.ground[y] : undefined;
+    const overlayRow = Array.isArray(tileMap.overlay) ? tileMap.overlay[y] : undefined;
+    const groundId = groundRow ? groundRow[x] : null;
+    const overlayId = overlayRow ? overlayRow[x] : null;
     const candidateId = overlayId ?? groundId;
-    if (candidateId === null || candidateId === undefined) return false;
+    if (candidateId === null) return false;
     const tile = this.tileManager.getTile(candidateId);
-    return Boolean(tile?.collision);
+    return Boolean(tile && tile.collision);
   }
 
   hasBlockingObject(roomIndex: number, x: number, y: number): boolean {
     const OT = ITEM_TYPES;
-    const blockingObject = this.gameState.getObjectAt?.(roomIndex, x, y) ?? null;
+    const blockingObject = this.gameState.getObjectAt(roomIndex, x, y);
     if (!blockingObject) return false;
     if (blockingObject.type === OT.DOOR && !blockingObject.opened) return true;
     if (blockingObject.type === OT.DOOR_VARIABLE) {
@@ -529,7 +541,6 @@ class EnemyManager {
   }
 
   enemyHasEyes(enemy: EnemyState): boolean {
-    if (!enemy) return true;
     const definition = this.getEnemyDefinition(enemy.type);
     if (!definition) return true;
     if (definition.hasEyes === false) return false;
@@ -537,15 +548,18 @@ class EnemyManager {
   }
 
   canAssassinate(enemy: EnemyState): boolean {
-    const stealth = this.gameState.hasSkill?.('stealth');
-    if (!stealth || !enemy) return false;
+    const stealth = this.gameState.hasSkill('stealth');
+    if (!stealth) return false;
     const damage = this.getEnemyDamage(enemy.type);
     return damage <= 2;
   }
 
   tryStealthAssassination(enemyIndex: number): boolean {
     const enemies = this.gameState.getEnemies();
-    const enemy = enemies?.[enemyIndex];
+    if (enemyIndex < 0 || enemyIndex >= enemies.length) {
+      return false;
+    }
+    const enemy = enemies[enemyIndex];
     if (!this.canAssassinate(enemy)) {
       return false;
     }
@@ -560,15 +574,15 @@ class EnemyManager {
 
   assassinateEnemy(enemyIndex: number): void {
     const enemies = this.gameState.getEnemies();
-    const enemy = enemies?.[enemyIndex];
-    if (!enemy) return;
+    if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
+    const enemy = enemies[enemyIndex];
     const type = this.normalizeEnemyType(enemy.type);
     enemies.splice(enemyIndex, 1);
 
     const experienceReward = this.getExperienceReward(type);
     const defeatResult = this.gameState.handleEnemyDefeated(experienceReward);
     if (defeatResult?.leveledUp && this.shouldStartLevelOverlay()) {
-      this.gameState.startLevelUpSelectionIfNeeded?.();
+      this.gameState.startLevelUpSelectionIfNeeded();
     }
     this.tryTriggerDefeatVariable({ ...enemy, type });
     this.showStealthKillFeedback();
@@ -580,17 +594,17 @@ class EnemyManager {
   showStealthKillFeedback(): void {
     const text = getEnemyLocaleText('combat.stealthKill', '');
     if (!text) return;
-    this.renderer.showCombatIndicator?.(text, { duration: 800 });
+    this.renderer.showCombatIndicator(text, { duration: 800 });
   }
 
   showStealthMissFeedback(): void {
     const text = getEnemyLocaleText('combat.stealthMiss', '');
     if (!text) return;
-    this.renderer.showCombatIndicator?.(text, { duration: 800 });
+    this.renderer.showCombatIndicator(text, { duration: 800 });
   }
 
   shouldStartLevelOverlay(): boolean {
-    const pendingChoices = this.gameState.getPendingLevelUpChoices?.() ?? 0;
+    const pendingChoices = this.gameState.getPendingLevelUpChoices();
     return pendingChoices > 0;
   }
 
@@ -608,18 +622,20 @@ class EnemyManager {
 
   getEnemyMissChance(type: string): number {
     const explicit = EnemyDefinitions.getMissChance(type);
-    if (explicit !== null && explicit !== undefined) {
+    if (explicit !== null) {
       return this.normalizeMissChance(explicit);
     }
     return this.fallbackMissChance;
   }
 
   checkAllEnemiesCleared(): void {
-    const remaining = this.gameState.getEnemies()?.length ?? 0;
+    const remaining = this.gameState.getEnemies().length;
     if (remaining <= 0) {
       const text = getEnemyLocaleText('game.clearAllEnemies', '');
       if (text) {
-        this.dialogManager?.showDialog?.(text);
+        if (this.dialogManager && this.dialogManager.showDialog) {
+          this.dialogManager.showDialog(text);
+        }
       }
     }
   }
@@ -645,8 +661,7 @@ class EnemyManager {
     return Math.random() < normalized;
   }
 
-  getDefeatVariableConfig(enemy: EnemyState): { variableId: string; persist: boolean; message: string | null } | null {
-    if (!enemy) return null;
+    getDefeatVariableConfig(enemy: EnemyState): { variableId: string; persist: boolean; message: string | null } | null {
     const definition = this.getEnemyDefinition(enemy.type);
     const baseConfig =
       definition?.activateVariableOnDefeat && typeof definition.activateVariableOnDefeat === 'object'
@@ -696,8 +711,9 @@ class EnemyManager {
   }
 
   getNow() {
-    if (typeof performance !== 'undefined' && performance.now) {
-      return performance.now();
+    const perf = (globalThis as Partial<typeof globalThis>).performance;
+    if (perf) {
+      return perf.now();
     }
     return Date.now();
   }

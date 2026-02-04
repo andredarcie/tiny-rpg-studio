@@ -345,7 +345,6 @@ class MovementManager {
     if (currentPlayer) {
       this.enemyManager.checkCollisionAt(currentPlayer.x, currentPlayer.y);
       this.enemyManager.evaluateVision?.(currentPlayer);
-      this.enemyManager.moveChasingEnemies?.(currentPlayer);
     }
 
     if (supportsTransition && fromFrame) {

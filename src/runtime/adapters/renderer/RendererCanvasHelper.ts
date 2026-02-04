@@ -23,7 +23,6 @@ class RendererCanvasHelper {
     }
 
     drawSprite(ctx: CanvasRenderingContext2D, sprite: (string | null)[][], px: number, py: number, step: number) {
-        if (!sprite) return;
         for (let y = 0; y < sprite.length; y++) {
             const row = sprite[y];
             for (let x = 0; x < row.length; x++) {

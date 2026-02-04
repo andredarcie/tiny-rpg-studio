@@ -82,7 +82,7 @@ class StateVariableManager {
 
     cloneVariables(list: StateVariableEntry[] | VariableDefinition[] | null | undefined): StateVariableEntry[] {
         const normalized = Array.isArray(list) &&
-            list.every((entry) => Boolean((entry as StateVariableEntry)?.order) && Boolean((entry as StateVariableEntry)?.name))
+            list.every((entry) => Boolean((entry as StateVariableEntry).order) && Boolean((entry as StateVariableEntry).name))
             ? (list as StateVariableEntry[])
             : this.normalizeVariables(list);
         return normalized.map((entry) => ({
@@ -99,7 +99,7 @@ class StateVariableManager {
         const byId = new Map<string | undefined, VariableSource>();
         for (const entry of incoming) {
             const variable = entry as VariableSource;
-            byId.set(variable?.id, variable);
+            byId.set(variable.id, variable);
         }
         return this.presets.map((preset) => {
             const current = byId.get(preset.id) || {};
@@ -162,7 +162,11 @@ class StateVariableManager {
     }
 
     getFirstVariableId(): string | null {
-        return this.getVariableDefinitions()?.[0]?.id ?? this.presets?.[0]?.id ?? null;
+        const definitions = this.getVariableDefinitions();
+        if (definitions.length) {
+            return definitions[0].id;
+        }
+        return this.presets[0]?.id ?? null;
     }
 
     getPresetDefaultName(preset?: VariablePreset | null): string {
@@ -183,8 +187,8 @@ class StateVariableManager {
             }
         };
         maybeAdd(preset.fallbackName);
-        const bundles = TextResources?.bundles;
-        if (preset.nameKey && bundles) {
+        const bundles = TextResources.bundles;
+        if (preset.nameKey) {
             Object.values(bundles).forEach((bundle) => {
                 if (!bundle) return;
                 const translation = bundle[preset.nameKey];

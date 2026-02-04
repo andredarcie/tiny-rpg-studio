@@ -62,7 +62,7 @@ class StatePlayerManager {
         this.player.lastX = this.player.x;
         this.player.x = this.worldManager.clampCoordinate(x);
         this.player.y = this.worldManager.clampCoordinate(y);
-        if (roomIndex !== null && roomIndex !== undefined) {
+        if (roomIndex !== null) {
             this.player.roomIndex = this.worldManager.clampRoomIndex(roomIndex);
         }
         this.ensurePlayerStats();
@@ -175,7 +175,9 @@ class StatePlayerManager {
     addDamageShield(amount = 1, swordType: string | null = null) {
         if (!this.player) return 0;
         const numeric = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
-        if (numeric <= 0) return this.player.damageShield ?? 0;
+        if (numeric <= 0) {
+            return Number.isFinite(this.player.damageShield) ? Math.max(0, Math.floor(this.player.damageShield)) : 0;
+        }
         this.ensurePlayerStats();
         const shield = Math.max(0, Number(this.player.damageShield) || 0) + numeric;
         this.player.damageShield = shield;
@@ -244,7 +246,8 @@ class StatePlayerManager {
 
     ensurePlayerStats() {
         if (!this.player) return;
-        const level = this.clampLevel(this.player.level ?? 1);
+        const sourceLevel = typeof this.player.level === 'number' ? this.player.level : 1;
+        const level = this.clampLevel(sourceLevel);
         this.player.level = level;
         const expectedMax = this.calculateMaxLives(level);
         this.player.maxLives = expectedMax;
@@ -324,8 +327,10 @@ class StatePlayerManager {
         }
         this.ensurePlayerStats();
         let gain = Number.isFinite(amount) ? Math.max(0, Math.floor(amount)) : 0;
-        if (this.skillManager?.hasSkill?.('xp-boost')) {
-            const boost = this.skillManager?.getXpBoost?.() ?? 0;
+        const skillManager = this.skillManager;
+        if (skillManager?.hasSkill?.('xp-boost')) {
+            const getXpBoost = skillManager.getXpBoost;
+            const boost = getXpBoost ? getXpBoost() : 0;
             if (boost > 0) {
                 gain = Math.floor(gain * (1 + boost));
             }

@@ -20,13 +20,13 @@ class EditorCanvasRenderer extends EditorRendererBase {
         const tileSize = Math.floor(canvas.width / 8);
         const roomIndex = this.state.activeRoomIndex;
         const tileMap = (this.gameEngine.getTileMap(roomIndex) || {}) as TileMapWithLayers;
-        const ground = tileMap?.ground || [];
-        const overlay = tileMap?.overlay || [];
+        const ground = tileMap.ground || [];
+        const overlay = tileMap.overlay || [];
 
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
                 const groundId = ground[y]?.[x];
-                if (groundId !== null && groundId !== undefined) {
+                if (groundId !== null) {
                     this.drawTile(ctx, groundId, x * tileSize, y * tileSize, tileSize);
                 } else {
                     ctx.fillStyle = '#141414';
@@ -34,7 +34,7 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 }
 
                 const overlayId = overlay[y]?.[x];
-                if (overlayId !== null && overlayId !== undefined) {
+                if (overlayId !== null) {
                     this.drawTile(ctx, overlayId, x * tileSize, y * tileSize, tileSize);
                 }
             }
@@ -79,8 +79,10 @@ class EditorCanvasRenderer extends EditorRendererBase {
             (npc: CanvasNpc) => npc.roomIndex === roomIndex && npc.placed,
         );
         for (const npc of npcs) {
-            const sprite = this.gameEngine.renderer.npcSprites[npc.type] ||
+            const sprite =
+                this.gameEngine.renderer.npcSprites[npc.type] ||
                 this.gameEngine.renderer.npcSprites.default;
+            if (!Array.isArray(sprite)) continue;
             this.gameEngine.renderer.drawSprite(
                 ctx,
                 sprite,
@@ -94,10 +96,10 @@ class EditorCanvasRenderer extends EditorRendererBase {
             (enemy: CanvasEnemy) => enemy.roomIndex === roomIndex,
         );
         const renderer = this.gameEngine.renderer;
-        const enemySprites = renderer.enemySprites || {};
+        const enemySprites = renderer.enemySprites;
         for (const enemy of enemies) {
             const sprite = enemySprites[enemy.type] || renderer.enemySprite;
-            if (!sprite) continue;
+            if (!Array.isArray(sprite)) continue;
             renderer.drawSprite(
                 ctx,
                 sprite,

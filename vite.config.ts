@@ -17,10 +17,10 @@ export default defineConfig({
         theme_color: '#1D2B53',
         background_color: '#05060e',
         display: 'standalone',
-        start_url: '/',
+        start_url: '.',
         icons: [
           {
-            src: '/icons/icon-128.png',
+            src: './icons/icon-128.png',
             sizes: '128x128',
             type: 'image/png'
           }

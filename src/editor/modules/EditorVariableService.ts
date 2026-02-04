@@ -19,8 +19,8 @@ class EditorVariableService {
     }
 
     toggle(variableId: string, nextValue: boolean | null = null) {
-        if (!variableId || !this.gameEngine.setVariableDefault) return;
-        const current = ((this.gameEngine.getVariableDefinitions?.() ?? []) as VariableEntry[]).find((entry: VariableEntry) => entry.id === variableId);
+        if (!variableId) return;
+        const current = (this.gameEngine.getVariableDefinitions() as VariableEntry[]).find((entry: VariableEntry) => entry.id === variableId);
         const targetValue = nextValue !== null ? Boolean(nextValue) : !Boolean(current?.value);
         const changed = this.gameEngine.setVariableDefault(variableId, targetValue);
         if (!changed) return;

@@ -7,7 +7,7 @@ import type { GameState } from '../domain/GameState';
 /**
  * NPCManager creates and mutates the fixed NPC roster.
  */
-const NPC_MANAGER_DEFINITIONS = NPCDefinitions.definitions ?? [];
+const NPC_MANAGER_DEFINITIONS = NPCDefinitions.definitions;
 const getNpcDefinition = (type: string | null | undefined): Npc | null =>
     NPCDefinitions.getNpcDefinition(type);
 const NPC_ID_PREFIX = 'npc-';
@@ -95,8 +95,11 @@ const normalizeNpcText = (npc: NPCInput, def: Npc | null): NormalizedNPCText => 
     const defaultTextKey = def && def.defaultTextKey ? def.defaultTextKey : null;
 
     const hasCustomText = Object.prototype.hasOwnProperty.call(npc, 'text');
+    const normalizeCustomTextValue = (value: unknown) => (value == null ? '' : String(value));
     const customText = hasCustomText
-        ? (typeof npc.text === 'string' ? npc.text : String(npc.text || ''))
+        ? typeof npc.text === 'string'
+            ? npc.text
+            : normalizeCustomTextValue(npc.text)
         : '';
 
     const storedTextKey = typeof npc.textKey === 'string' && npc.textKey.trim()
@@ -167,7 +170,7 @@ class NPCManager {
     }
 
     private get sprites(): NPCInstance[] {
-        return (this.gameState.game.sprites ?? []) as NPCInstance[];
+        return this.gameState.game.sprites as NPCInstance[];
     }
 
     private set sprites(value: NPCInstance[]) {
@@ -267,7 +270,7 @@ class NPCManager {
     }
 
     createFromDefinition(def: Npc): NPCInstance {
-        const textKey = def?.defaultTextKey || null;
+        const textKey = def.defaultTextKey || null;
         return {
             id: sequentialIdForType(def.type) || this.generateId(),
             type: def.type,
@@ -290,18 +293,14 @@ class NPCManager {
 
     resetNPCs() {
         for (const npc of this.sprites) {
-            if (npc.initialX !== undefined) {
-                npc.x = npc.initialX;
-            }
-            if (npc.initialY !== undefined) {
-                npc.y = npc.initialY;
-            }
-            if (npc.initialRoomIndex !== undefined) npc.roomIndex = npc.initialRoomIndex;
+            npc.x = npc.initialX;
+            npc.y = npc.initialY;
+            npc.roomIndex = npc.initialRoomIndex;
         }
     }
 
     addNPC(data: NPCInput) {
-        const def = data?.type ? getNpcDefinition(data.type) : null;
+        const def = data.type ? getNpcDefinition(data.type) : null;
         if (!def) {
             return null;
         }
@@ -316,12 +315,12 @@ class NPCManager {
             id: def.id,
             type: def.type,
             name: resolveDefinitionName(def),
-            text: data?.text ?? resolveDefinitionText(def),
-            textKey: data?.text ? null : (def.defaultTextKey || null),
-            x: data?.x ?? 1,
-            y: data?.y ?? 1,
-            roomIndex: data?.roomIndex ?? 0,
-            placed: Boolean(data?.placed)
+            text: data.text ?? resolveDefinitionText(def),
+            textKey: data.text ? null : (def.defaultTextKey || null),
+            x: data.x ?? 1,
+            y: data.y ?? 1,
+            roomIndex: data.roomIndex ?? 0,
+            placed: Boolean(data.placed)
         });
 
         this.sprites.push(npc);
@@ -353,7 +352,7 @@ class NPCManager {
         npc.y = clamp(Number(y), 0, 7, npc.y);
         npc.initialX = npc.x;
         npc.initialY = npc.y;
-        if (roomIndex !== null && roomIndex !== undefined) {
+        if (roomIndex !== null) {
             const maxRoomIndex = Math.max(0, this.gameState.game.rooms.length - 1);
             npc.roomIndex = clamp(Number(roomIndex), 0, maxRoomIndex, npc.roomIndex);
             npc.initialRoomIndex = npc.roomIndex;
@@ -363,7 +362,7 @@ class NPCManager {
     }
 
     updateNPCDialog(npcId: string, text: NPCInput | string) {
-        if (typeof text === 'object' && text !== null) {
+        if (typeof text === 'object') {
             this.updateNPC(npcId, text);
             return;
         }

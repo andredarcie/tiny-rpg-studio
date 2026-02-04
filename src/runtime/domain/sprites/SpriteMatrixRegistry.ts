@@ -7,7 +7,7 @@ type SpriteMatrix = (number | null)[][];
 
 class SpriteMatrixRegistry {
     static get(group: string, type = 'default'): SpriteMatrix {
-        const registries: Record<string, Record<string, SpriteMatrix>> = {
+        const registries: Record<string, Record<string, SpriteMatrix | undefined> | undefined> = {
             player: PlayerSpriteMatrices,
             npc: NpcSpriteMatrices,
             enemy: EnemySpriteMatrices,
@@ -18,7 +18,7 @@ class SpriteMatrixRegistry {
         if (!registry) {
             throw new Error(`SpriteMatrixRegistry: registry not found for "${group}"`);
         }
-        const key = type ?? 'default';
+        const key = type;
         const matrix = registry[key];
         if (!matrix) {
             throw new Error(`SpriteMatrixRegistry: sprite "${key}" not found for group "${normalizedGroup}"`);

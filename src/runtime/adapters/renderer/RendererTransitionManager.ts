@@ -169,7 +169,7 @@ class RendererTransitionManager extends RendererModuleBase {
                 break;
         }
         ctx.save();
-        ctx.fillStyle = this.transitionPalette.getColor(this.transitionGameState.getCurrentRoom()?.bg ?? 0);
+        ctx.fillStyle = this.transitionPalette.getColor(this.transitionGameState.getCurrentRoom().bg ?? 0);
         ctx.fillRect(0, 0, width, height);
         if (transition.fromFrame) {
             ctx.drawImage(transition.fromFrame, Math.round(fromX), Math.round(fromY));
@@ -185,26 +185,27 @@ class RendererTransitionManager extends RendererModuleBase {
     }
 
     removePlayerFromFrame(frameCanvas: HTMLCanvasElement, coords: TileCoords | null | undefined) {
-        if (!frameCanvas || !coords) return;
+        if (!coords) return;
         const ctx = frameCanvas.getContext('2d');
         if (!ctx) return;
         const tileSize = Math.max(1, Math.floor(frameCanvas.width / 8));
-        const tileX = Math.max(0, Math.min(7, Math.floor(coords.x ?? 0)));
-        const tileY = Math.max(0, Math.min(7, Math.floor(coords.y ?? 0)));
+        const tileX = Math.max(0, Math.min(7, Math.floor(coords.x)));
+        const tileY = Math.max(0, Math.min(7, Math.floor(coords.y)));
         const roomIndex = Math.max(
             0,
             Math.floor(
                 Number(
                     Number.isFinite(coords.roomIndex)
                         ? coords.roomIndex
-                        : (this.transitionGameState.getPlayer()?.roomIndex ?? 0)
+                        : this.transitionGameState.getPlayer().roomIndex
                 )
             )
         );
-        const game = this.transitionGameState.getGame() as { rooms?: Array<{ bg?: number }> };
-        const rooms = Array.isArray(game.rooms) ? game.rooms : [];
+        const game = this.transitionGameState.getGame() as { rooms?: Array<{ bg?: number } | undefined> };
+        const rooms = Array.isArray(game.rooms) ? (game.rooms as Array<{ bg?: number } | undefined>) : [];
         const room = rooms[roomIndex];
-        const bg = typeof room?.bg === 'number' ? room.bg : 0;
+        const roomBg = room?.bg;
+        const bg = typeof roomBg === 'number' ? roomBg : 0;
         ctx.fillStyle = this.transitionPalette.getColor(bg);
         ctx.fillRect(tileX * tileSize, tileY * tileSize, tileSize, tileSize);
         this.drawTileStackOnContext(ctx, roomIndex, tileX, tileY, tileSize);
@@ -213,7 +214,7 @@ class RendererTransitionManager extends RendererModuleBase {
     drawTransitionPlayer(ctx: CanvasRenderingContext2D, gameplayCanvas: { width: number; height: number }, progress: number) {
         const transition = this.transition;
         const path = transition.playerPath;
-        if (!path?.from || !path?.to) return;
+        if (!path) return;
         const tileSize = Math.max(1, Math.floor(gameplayCanvas.width / 8));
         const step = tileSize / 8;
         const x = path.from.x + (path.to.x - path.from.x) * progress;
@@ -234,11 +235,11 @@ class RendererTransitionManager extends RendererModuleBase {
         if (!tileMap) return;
         const px = tileX * tileSize;
         const py = tileY * tileSize;
-        const groundId = tileMap.ground?.[tileY]?.[tileX] ?? null;
+        const groundId = tileMap.ground?.[tileY]?.[tileX];
         if (groundId !== null && groundId !== undefined) {
             this.drawTilePixelsOnContext(ctx, groundId, px, py, tileSize);
         }
-        const overlayId = tileMap.overlay?.[tileY]?.[tileX] ?? null;
+        const overlayId = tileMap.overlay?.[tileY]?.[tileX];
         if (overlayId !== null && overlayId !== undefined) {
             this.drawTilePixelsOnContext(ctx, overlayId, px, py, tileSize);
         }

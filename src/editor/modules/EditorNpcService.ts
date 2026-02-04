@@ -29,7 +29,7 @@ class EditorNpcService {
 
     t(key: string, fallback = '') {
         const resource = this.text as typeof TextResources & { get?: (key: string, fallback: string) => string };
-        const value = resource?.get ? resource.get(key, fallback) : '';
+        const value = resource.get(key, fallback);
         if (value) return value;
         if (fallback) return fallback;
         return key || '';
@@ -48,15 +48,15 @@ class EditorNpcService {
     }
 
     addNpc() {
-        this.gameEngine.npcManager?.ensureDefaultNPCs?.();
+        this.gameEngine.npcManager.ensureDefaultNPCs();
         const sprites = this.gameEngine.getSprites() as SpriteInstance[];
-        const definitions = this.gameEngine.npcManager?.getDefinitions?.() ?? [];
+        const definitions = this.gameEngine.npcManager.getDefinitions();
         const available = definitions
             .map((def: NpcDefinitionData) => ({
                 def,
                 npc: sprites.find((entry: SpriteInstance) => entry.type === def.type) || null
             }))
-            .find((entry: { def: NpcDefinitionData; npc: SpriteInstance | null }) => !entry.npc?.placed);
+            .find((entry: { def: NpcDefinitionData; npc: SpriteInstance | null }) => !entry.npc || !entry.npc.placed);
 
         if (!available) {
             alert(this.t('alerts.npc.full'));
@@ -66,7 +66,7 @@ class EditorNpcService {
         const npc = available.npc;
         if (!npc) {
             const manager = this.gameEngine.npcManager as { createNPC?: (type: string) => SpriteInstance | null };
-            const created = manager?.createNPC?.(available.def.type);
+            const created = manager.createNPC ? manager.createNPC(available.def.type) : null;
             if (!created) {
                 alert(this.t('alerts.npc.createError'));
                 return;
@@ -94,9 +94,9 @@ class EditorNpcService {
         }
         if (this.state.placingNpc) return;
 
-        this.manager.enemyService?.deactivatePlacement();
+        this.manager.enemyService.deactivatePlacement();
         if (this.state.placingObjectType) {
-            this.manager.objectService?.togglePlacement?.(this.state.placingObjectType, true);
+            this.manager.objectService.togglePlacement(this.state.placingObjectType, true);
         }
 
         this.state.placingNpc = true;
@@ -134,7 +134,7 @@ class EditorNpcService {
 
     removeSelectedNpc() {
         if (!this.state.selectedNpcId) return;
-        const removed = this.gameEngine.npcManager?.removeNPC?.(this.state.selectedNpcId);
+        const removed = this.gameEngine.npcManager.removeNPC(this.state.selectedNpcId);
         if (!removed) return;
 
         this.clearSelection({ render: false });
@@ -172,7 +172,7 @@ class EditorNpcService {
             return;
         }
         const roomIndex = this.state.activeRoomIndex;
-        const updated = this.gameEngine.npcManager?.setNPCPosition?.(
+        const updated = this.gameEngine.npcManager.setNPCPosition(
             this.state.selectedNpcId,
             coord.x,
             coord.y,

@@ -19,7 +19,7 @@ class RendererMinimapRenderer {
     drawMinimap() {
         if (!this.minimapElement) return;
         const game = this.gameState.getGame();
-        const player = this.gameState.getPlayer() ?? { roomIndex: 0 };
+        const player = this.gameState.getPlayer?.() ?? { roomIndex: 0 };
         const rows = game.world?.rows || 1;
         const cols = game.world?.cols || 1;
         const total = rows * cols;
@@ -36,7 +36,6 @@ class RendererMinimapRenderer {
             }
         }
 
-        if (!this.minimapCells || !this.minimapCells.length) return;
         const clampedRoom = Math.max(0, Math.min(this.minimapCells.length - 1, player.roomIndex ?? 0));
         for (let i = 0; i < this.minimapCells.length; i++) {
             this.minimapCells[i].classList.toggle('active', i === clampedRoom);

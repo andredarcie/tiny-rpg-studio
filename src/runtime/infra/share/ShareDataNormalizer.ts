@@ -137,20 +137,20 @@ class ShareDataNormalizer {
             if (!type || seen.has(type)) continue;
             const def = defs.find((entry) => entry.type === type);
             if (!def) continue;
-            const placed = npc?.placed !== false;
+            const placed = npc.placed !== false;
             if (!placed) continue;
-            const x = ShareMath.clamp(Number(npc?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
-            const y = ShareMath.clamp(Number(npc?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const x = ShareMath.clamp(Number(npc.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(npc.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
             if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-            const conditionId = typeof npc?.conditionVariableId === 'string'
+            const conditionId = typeof npc.conditionVariableId === 'string'
                 ? npc.conditionVariableId
-                : (typeof npc?.conditionalVariableId === 'string' ? npc.conditionalVariableId : null);
-            const rewardId = typeof npc?.rewardVariableId === 'string'
+                : (typeof npc.conditionalVariableId === 'string' ? npc.conditionalVariableId : null);
+            const rewardId = typeof npc.rewardVariableId === 'string'
                 ? npc.rewardVariableId
-                : (typeof npc?.activateVariableId === 'string' ? npc.activateVariableId : null);
-            const conditionalRewardId = typeof npc?.conditionalRewardVariableId === 'string'
+                : (typeof npc.activateVariableId === 'string' ? npc.activateVariableId : null);
+            const conditionalRewardId = typeof npc.conditionalRewardVariableId === 'string'
                 ? npc.conditionalRewardVariableId
-                : (typeof npc?.alternativeRewardVariableId === 'string' ? npc.alternativeRewardVariableId : null);
+                : (typeof npc.alternativeRewardVariableId === 'string' ? npc.alternativeRewardVariableId : null);
             const hasConditionId = typeof conditionId === 'string' && ShareConstants.VARIABLE_IDS.includes(conditionId);
             const hasRewardId = typeof rewardId === 'string' && ShareConstants.VARIABLE_IDS.includes(rewardId);
             const hasConditionalRewardId =
@@ -161,15 +161,15 @@ class ShareDataNormalizer {
                 name: def.name,
                 x,
                 y,
-                roomIndex: ShareMath.clampRoomIndex(npc?.roomIndex),
-                text: typeof npc?.text === 'string' ? npc.text : (def.defaultText || ''),
-                textKey: typeof npc?.textKey === 'string' && npc.textKey.length
+                roomIndex: ShareMath.clampRoomIndex(npc.roomIndex),
+                text: typeof npc.text === 'string' ? npc.text : (def.defaultText || ''),
+                textKey: typeof npc.textKey === 'string' && npc.textKey.length
                     ? npc.textKey
                     : (def.defaultTextKey || null),
                 conditionVariableId: hasConditionId ? conditionId : null,
-                conditionText: typeof npc?.conditionText === 'string'
+                conditionText: typeof npc.conditionText === 'string'
                     ? npc.conditionText
-                    : (typeof npc?.conditionalText === 'string' ? npc.conditionalText : ''),
+                    : (typeof npc.conditionalText === 'string' ? npc.conditionalText : ''),
                 rewardVariableId: hasRewardId ? rewardId : null,
                 conditionalRewardVariableId: hasConditionalRewardId ? conditionalRewardId : null
             });
@@ -186,17 +186,17 @@ class ShareDataNormalizer {
         return list
             .map((raw, index) => {
                 const enemy = raw as ShareEnemyInput;
-                const type = ShareDataNormalizer.normalizeEnemyType(enemy?.type);
+                const type = ShareDataNormalizer.normalizeEnemyType(enemy.type);
                 const typeIndex = Array.isArray(defs) && defs.length
                     ? defs.findIndex((def) => def.type === type)
                     : -1;
-                const defeatVariableId = ShareDataNormalizer.normalizeEnemyVariable(enemy?.defeatVariableId);
+                const defeatVariableId = ShareDataNormalizer.normalizeEnemyVariable(enemy.defeatVariableId);
                 return {
-                    x: ShareMath.clamp(Number(enemy?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0),
-                    y: ShareMath.clamp(Number(enemy?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0),
-                    roomIndex: ShareMath.clampRoomIndex(enemy?.roomIndex),
+                    x: ShareMath.clamp(Number(enemy.x), 0, ShareConstants.MATRIX_SIZE - 1, 0),
+                    y: ShareMath.clamp(Number(enemy.y), 0, ShareConstants.MATRIX_SIZE - 1, 0),
+                    roomIndex: ShareMath.clampRoomIndex(enemy.roomIndex),
                     type,
-                    id: enemy?.id || `enemy-${index + 1}`,
+                    id: enemy.id || `enemy-${index + 1}`,
                     typeIndex,
                     defeatVariableId,
                     variableNibble: ShareVariableCodec.variableIdToNibble(defeatVariableId)
@@ -217,11 +217,11 @@ class ShareDataNormalizer {
         const result: PositionEntry[] = [];
         for (const raw of list) {
             const entry = raw as ShareObjectInput;
-            if (entry?.type !== type) continue;
-            const x = ShareMath.clamp(Number(entry?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
-            const y = ShareMath.clamp(Number(entry?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (entry.type !== type) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
             if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-            const roomIndex = ShareMath.clampRoomIndex(entry?.roomIndex);
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
             if (seenRooms.has(roomIndex)) continue;
             seenRooms.add(roomIndex);
             result.push({ x, y, roomIndex });
@@ -240,15 +240,15 @@ class ShareDataNormalizer {
         const result: Array<PositionEntry & { variableNibble: number }> = [];
         for (const raw of list) {
             const entry = raw as ShareObjectInput;
-            if (entry?.type !== ShareDataNormalizer.Types.DOOR_VARIABLE) continue;
-            const x = ShareMath.clamp(Number(entry?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
-            const y = ShareMath.clamp(Number(entry?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (entry.type !== ShareDataNormalizer.Types.DOOR_VARIABLE) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
             if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-            const roomIndex = ShareMath.clampRoomIndex(entry?.roomIndex);
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
             if (seenRooms.has(roomIndex)) continue;
             seenRooms.add(roomIndex);
             const variableNibble =
-                ShareVariableCodec.variableIdToNibble(typeof entry?.variableId === 'string' ? entry.variableId : null) ||
+                ShareVariableCodec.variableIdToNibble(typeof entry.variableId === 'string' ? entry.variableId : null) ||
                 fallbackNibble;
             result.push({ x, y, roomIndex, variableNibble });
         }
@@ -266,17 +266,17 @@ class ShareDataNormalizer {
         const result: Array<PositionEntry & { variableNibble: number; stateNibble: number }> = [];
         for (const raw of list) {
             const entry = raw as ShareObjectInput;
-            if (entry?.type !== ShareDataNormalizer.Types.SWITCH) continue;
-            const x = ShareMath.clamp(Number(entry?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
-            const y = ShareMath.clamp(Number(entry?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (entry.type !== ShareDataNormalizer.Types.SWITCH) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
             if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-            const roomIndex = ShareMath.clampRoomIndex(entry?.roomIndex);
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
             if (seenRooms.has(roomIndex)) continue;
             seenRooms.add(roomIndex);
             const variableNibble =
-                ShareVariableCodec.variableIdToNibble(typeof entry?.variableId === 'string' ? entry.variableId : null) ||
+                ShareVariableCodec.variableIdToNibble(typeof entry.variableId === 'string' ? entry.variableId : null) ||
                 fallbackNibble;
-            const stateNibble = entry?.on ? 1 : 0;
+            const stateNibble = entry.on ? 1 : 0;
             result.push({ x, y, roomIndex, variableNibble, stateNibble });
         }
         return result.sort((a, b) => {
@@ -297,9 +297,9 @@ class ShareDataNormalizer {
         const fallbackVariableId = ShareVariableCodec.getFirstVariableId();
         return positions.map((raw, index) => {
             const pos = raw as ShareObjectInput;
-            const roomIndex = ShareMath.clampRoomIndex(pos?.roomIndex);
-            const x = ShareMath.clamp(Number(pos?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
-            const y = ShareMath.clamp(Number(pos?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const roomIndex = ShareMath.clampRoomIndex(pos.roomIndex);
+            const x = ShareMath.clamp(Number(pos.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(pos.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
             const entry: Record<string, unknown> = {
                 id: `${type}-${roomIndex}`,
                 type,
@@ -368,18 +368,18 @@ class ShareDataNormalizer {
         const seenRooms = new Set<number>();
         for (const raw of objects) {
             const object = raw as ShareObjectInput;
-            if (object?.type !== ShareDataNormalizer.Types.PLAYER_END) continue;
-            const roomIndex = ShareMath.clampRoomIndex(object?.roomIndex);
+            if (object.type !== ShareDataNormalizer.Types.PLAYER_END) continue;
+            const roomIndex = ShareMath.clampRoomIndex(object.roomIndex);
             if (seenRooms.has(roomIndex)) continue;
             seenRooms.add(roomIndex);
-            const x = ShareMath.clamp(Number(object?.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
-            const y = ShareMath.clamp(Number(object?.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const x = ShareMath.clamp(Number(object.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(object.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
             if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
             entries.push({
                 roomIndex,
                 x,
                 y,
-                text: ShareDataNormalizer.normalizeEndingTextValue(object?.endingText ?? '')
+                text: ShareDataNormalizer.normalizeEndingTextValue(object.endingText)
             });
         }
         entries.sort((a, b) => {

@@ -30,8 +30,11 @@ class ShareEncoder {
         const data = gameData as Parameters<typeof ShareMatrixCodec.collectGroundMatrices>[0];
         const groundMatrices = ShareMatrixCodec.collectGroundMatrices(data, roomCount);
         const overlayMatrices = ShareMatrixCodec.collectOverlayMatrices(data, roomCount);
-        const start = ShareDataNormalizer.normalizeStart(gameData?.start ?? {});
+        const startInput = gameData && gameData.start ? gameData.start : {};
+        const start = ShareDataNormalizer.normalizeStart(startInput);
         const sprites = ShareDataNormalizer.normalizeSprites(gameData?.sprites);
+        const toNibble = (value: number | null | undefined): number =>
+            typeof value === 'number' && Number.isFinite(value) ? value : 0;
         const enemies = ShareDataNormalizer.normalizeEnemies(gameData?.enemies);
         const objects = Array.isArray(gameData?.objects) ? gameData.objects : [];
         const doorPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.DOOR);
@@ -50,7 +53,7 @@ class ShareEncoder {
             y: entry.y,
             roomIndex: entry.roomIndex
         }));
-        const magicDoorVariableNibbles = magicDoorEntries.map((entry) => entry.variableNibble ?? 0);
+        const magicDoorVariableNibbles = magicDoorEntries.map((entry) => toNibble(entry.variableNibble));
         const variables = Array.isArray(gameData?.variables) ? gameData.variables : [];
         const variableCode = ShareVariableCodec.encodeVariables(variables as Parameters<typeof ShareVariableCodec.encodeVariables>[0]);
 
@@ -111,7 +114,7 @@ class ShareEncoder {
         if (enemies.length) {
             const enemyPositions = SharePositionCodec.encodePositions(enemies);
             const enemyTypeIndexes = SharePositionCodec.encodeEnemyTypeIndexes(enemies);
-            const enemyVariableNibbles = enemies.map((enemy) => enemy.variableNibble ?? 0);
+            const enemyVariableNibbles = enemies.map((enemy) => toNibble(enemy.variableNibble));
             const enemyVariableCode = ShareVariableCodec.encodeVariableNibbleArray(enemyVariableNibbles);
             if (enemyPositions) {
                 parts.push('e' + enemyPositions);
@@ -201,8 +204,8 @@ class ShareEncoder {
             const switchPositionCode = SharePositionCodec.encodePositions(switchPositions);
             if (switchPositionCode) {
                 parts.push('J' + switchPositionCode);
-                const switchVariableCode = ShareVariableCodec.encodeVariableNibbleArray(switchEntries.map((entry) => entry.variableNibble ?? 0));
-                const switchStateCode = ShareVariableCodec.encodeVariableNibbleArray(switchEntries.map((entry) => entry.stateNibble ?? 0));
+                const switchVariableCode = ShareVariableCodec.encodeVariableNibbleArray(switchEntries.map((entry) => toNibble(entry.variableNibble)));
+                const switchStateCode = ShareVariableCodec.encodeVariableNibbleArray(switchEntries.map((entry) => toNibble(entry.stateNibble)));
                 if (switchVariableCode) {
                     parts.push('K' + switchVariableCode);
                 }

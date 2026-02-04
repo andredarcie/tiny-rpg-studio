@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'public/**', 'legacy/**', 'coverage/**', 'docs/**', 'src/__tests__/**'],
+    ignores: ['dist/**', 'node_modules/**', 'public/**', 'legacy/**', 'coverage/**'],
   },
   {
     files: ['src/**/*.{ts,tsx}'],
@@ -49,7 +49,7 @@ export default [
 
       // Comparações e lógica
       'eqeqeq': ['error', 'always', { null: 'ignore' }],
-      '@typescript-eslint/no-unnecessary-condition': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'error',
 
       // Funções e contexto
       '@typescript-eslint/no-invalid-this': 'error',

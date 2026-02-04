@@ -187,4 +187,8 @@ export class StubGameState {
   getMaxPlayerLevel() {
     return this.maxPlayerLevel
   }
+
+  getNow() {
+    return performance.now()
+  }
 }

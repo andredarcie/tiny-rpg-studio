@@ -58,7 +58,7 @@ class InputManager {
     if (typeof document === 'undefined') {
       return false;
     }
-    return document.body?.classList?.contains('game-mode') ?? false;
+    return document.body.classList.contains('game-mode');
   }
 
   setupEventListeners(): void {
@@ -112,7 +112,7 @@ class InputManager {
 
     // Player movement via arrows and WASD (game tab only, avoid typing fields)
     const target = ev.target as HTMLElement | null;
-    const targetTag = target?.tagName?.toLowerCase?.() || '';
+    const targetTag = target?.tagName.toLowerCase() || '';
     const isTypingTarget =
       targetTag === 'input' ||
       targetTag === 'textarea' ||
@@ -123,8 +123,8 @@ class InputManager {
       return;
     }
 
-    const movementKey = ev.key?.toLowerCase() || '';
-    const movementMap: Record<string, [number, number]> = {
+    const movementKey = ev.key.toLowerCase();
+    const movementMap: Record<string, [number, number] | undefined> = {
       arrowleft: [-1, 0],
       a: [-1, 0],
       arrowright: [1, 0],
@@ -147,20 +147,20 @@ class InputManager {
       return;
     }
     if (this.gameEngine.isGameOver?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.gameEngine.handleGameOverInteraction?.();
       this.touchStart = null;
       return;
     }
     if (this.gameEngine.isIntroVisible?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.gameEngine.dismissIntroScreen?.();
       this.touchStart = null;
       return;
     }
     if (this.gameEngine.isLevelUpOverlayActive?.()) {
-      ev.preventDefault?.();
-      const touch = ev.changedTouches?.[0];
+      ev.preventDefault();
+      const touch = ev.changedTouches.item(0);
       if (touch) {
         this.chooseLevelUpByPointer(touch.clientX, touch.clientY);
       }
@@ -168,12 +168,12 @@ class InputManager {
       return;
     }
     if (this.gameEngine.isPickupOverlayActive?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.gameEngine.dismissPickupOverlay?.();
       this.touchStart = null;
       return;
     }
-    const touch = ev.changedTouches?.[0];
+    const touch = ev.changedTouches.item(0);
     if (!touch) return;
     this.touchStart = {
       x: touch.clientX,
@@ -190,7 +190,7 @@ class InputManager {
     }
     const start = this.touchStart;
     if (!start) return;
-    const touch = ev.changedTouches?.[0];
+    const touch = ev.changedTouches.item(0);
     if (!touch) return;
 
     const dx = touch.clientX - start.x;
@@ -212,20 +212,20 @@ class InputManager {
       return;
     }
     if (this.gameEngine.isGameOver?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.gameEngine.handleGameOverInteraction?.();
       this.touchStart = null;
       return;
     }
     if (this.gameEngine.isIntroVisible?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.gameEngine.dismissIntroScreen?.();
       this.touchStart = null;
       return;
     }
     if (this.gameEngine.isLevelUpOverlayActive?.()) {
-      ev.preventDefault?.();
-      const touch = ev.changedTouches?.[0];
+      ev.preventDefault();
+      const touch = ev.changedTouches.item(0);
       if (touch) {
         this.chooseLevelUpByPointer(touch.clientX, touch.clientY);
       }
@@ -233,7 +233,7 @@ class InputManager {
       return;
     }
     if (this.gameEngine.isPickupOverlayActive?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.gameEngine.dismissPickupOverlay?.();
       this.touchStart = null;
       return;
@@ -241,7 +241,7 @@ class InputManager {
     const start = this.touchStart;
     if (!start) return;
 
-    const touch = ev.changedTouches?.[0];
+    const touch = ev.changedTouches.item(0);
     if (!touch) {
       this.touchStart = null;
       return;
@@ -282,13 +282,13 @@ class InputManager {
   handleClick(ev: MouseEvent): void {
     if (!this.isGameModeActive()) return;
     if (this.gameEngine.isLevelUpOverlayActive?.()) {
-      ev.preventDefault?.();
+      ev.preventDefault();
       this.chooseLevelUpByPointer(ev.clientX, ev.clientY);
     }
   }
 
   handleLevelUpKey(ev: KeyboardEvent): void {
-    const key = ev.key?.toLowerCase?.() || '';
+    const key = ev.key.toLowerCase();
     if (key === '1') {
       this.gameEngine.chooseLevelUpSkill?.(0);
       return;

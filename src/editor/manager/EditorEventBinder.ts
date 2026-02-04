@@ -74,7 +74,7 @@ class EditorEventBinder extends EditorManagerModule {
         shareUrlInput?.addEventListener('click', () => shareUrlInput.select());
         projectTestSkillList?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLElement;
-            if (!target || target.tagName !== 'INPUT') return;
+            if (target.tagName !== 'INPUT') return;
             const skills = Array.from(projectTestSkillList.querySelectorAll('input[type="checkbox"][data-skill-id]'))
                 .filter((input) => (input as HTMLInputElement).checked)
                 .map((input) => (input as HTMLInputElement).dataset.skillId)
@@ -171,7 +171,7 @@ class EditorEventBinder extends EditorManagerModule {
 
         enemiesList?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLSelectElement;
-            if (!target || target.tagName !== 'SELECT') return;
+            if (target.tagName !== 'SELECT') return;
             const enemyId = target.dataset.enemyVariable;
             if (!enemyId) return;
             const value = target.value || '';
@@ -211,10 +211,8 @@ class EditorEventBinder extends EditorManagerModule {
             });
         }
 
-        globalThis.addEventListener?.('pointerup', (ev: PointerEvent) => tileService.finishPaint(ev));
-
         document.addEventListener('keydown', (ev: KeyboardEvent) => manager.handleKey(ev));
-        globalThis.addEventListener?.('resize', () => {
+        globalThis.addEventListener('resize', () => {
             manager.handleCanvasResize();
             manager.updateMobilePanels();
         });
@@ -225,7 +223,7 @@ class EditorEventBinder extends EditorManagerModule {
             })
         );
 
-        globalThis.addEventListener?.('pointerup', (ev) => tileService.finishPaint(ev));
+        globalThis.addEventListener('pointerup', (ev) => tileService.finishPaint(ev));
     }
 }
 

@@ -4,7 +4,7 @@ import { RendererConstants, type EnemyDefinition, type NpcDefinition, type Objec
 
 type Sprite = (string | null)[][];
 type SpriteOrNull = Sprite | null;
-type SpriteMap = Record<string, SpriteOrNull>;
+type SpriteMap = Record<string, SpriteOrNull | undefined>;
 
 type GameStateApi = Record<string, unknown> | null;
 
@@ -56,7 +56,7 @@ class RendererSpriteFactory {
                 return sprites[normalized];
             }
         }
-        if (!this.enemySprite && sprites) {
+        if (!this.enemySprite) {
             this.enemySprite = sprites.default || this.buildEnemySprite();
         }
         return this.enemySprite;
@@ -141,7 +141,7 @@ class RendererSpriteFactory {
     buildEnemySprite(): SpriteOrNull {
         const sprites = this.buildEnemySprites();
         this.enemySprites = sprites;
-        this.enemySprite = sprites.default;
+        this.enemySprite = sprites.default ?? null;
         return this.enemySprite;
     }
 
@@ -163,7 +163,7 @@ class RendererSpriteFactory {
         }
         return pixels.map((row) =>
             row.map((value) => {
-                if (value === null || value === undefined) return null;
+                if (value === null) return null;
                 return palette[value] ?? null;
             })
         );

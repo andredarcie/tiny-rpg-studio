@@ -1,6 +1,6 @@
 
 import { SkillDefinitions } from '../definitions/SkillDefinitions';
-import type { RuntimeState } from '../../../types/gameState';
+import type { LevelUpChoice, LevelUpOverlayState, RuntimeState } from '../../../types/gameState';
 
 type PlayerLevelState = { level?: number };
 
@@ -82,14 +82,16 @@ class StateSkillManager {
         if (!this.state) {
             return { active: false, choices: [], cursor: 0 };
         }
-        if (!this.state.levelUpOverlay) {
-            this.state.levelUpOverlay = {
+        const runtimeState = this.state as RuntimeState & { levelUpOverlay?: LevelUpOverlayState };
+        let overlay = runtimeState.levelUpOverlay as LevelUpOverlayState | undefined;
+        if (!overlay) {
+            overlay = {
                 active: false,
                 choices: [],
                 cursor: 0
             };
+            runtimeState.levelUpOverlay = overlay;
         }
-        const overlay = this.state.levelUpOverlay;
         overlay.active = Boolean(overlay.active);
         overlay.choices = Array.isArray(overlay.choices) ? overlay.choices : [];
         overlay.cursor = Number.isFinite(overlay.cursor) ? Math.max(0, Math.floor(overlay.cursor)) : 0;
@@ -295,7 +297,7 @@ class StateSkillManager {
         const effectiveIndex = typeof index === 'number' && Number.isFinite(index)
             ? Math.max(0, Math.min(overlay.choices.length - 1, Math.floor(index)))
             : overlay.cursor;
-        const choice = overlay.choices[effectiveIndex] || null;
+        const choice = (overlay.choices as (LevelUpChoice | null | undefined)[])[effectiveIndex] ?? null;
 
         overlay.active = false;
         overlay.choices = [];
@@ -305,7 +307,7 @@ class StateSkillManager {
             this.addSkill(choice.id);
         }
         const runtime = this.ensureRuntime();
-        const chosenId = choice?.id || null;
+        const chosenId = choice ? choice.id : null;
         const pool = Array.isArray(runtime.currentChoicePool) ? runtime.currentChoicePool : [];
         runtime.carryoverSkills = pool.filter((id: string) => id && id !== chosenId && !runtime.owned.includes(id));
         runtime.currentChoicePool = [];

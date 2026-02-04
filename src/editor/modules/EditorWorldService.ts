@@ -50,7 +50,7 @@ class EditorWorldService {
         const totalRooms = Math.max(1, game.rooms?.length || rows * cols);
         if (!rows || !cols || !totalRooms) return;
 
-        const currentIndex = Math.max(0, Math.min(totalRooms - 1, this.state.activeRoomIndex ?? 0));
+        const currentIndex = Math.max(0, Math.min(totalRooms - 1, this.state.activeRoomIndex));
         const currentRow = Math.floor(currentIndex / cols);
         const currentCol = currentIndex % cols;
         let targetRow = currentRow;

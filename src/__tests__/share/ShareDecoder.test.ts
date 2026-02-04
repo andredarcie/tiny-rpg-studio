@@ -34,7 +34,7 @@ describe('ShareDecoder', () => {
     const decoded = ShareDecoder.decodeShareCode(code);
 
     expect(decoded?.title).toBe('Decoded');
-    expect((decoded?.start as { x: number })?.x).toBe(3);
+    expect((decoded?.start as { x: number }).x).toBe(3);
   });
 
   it('returns null for unsupported versions', () => {

@@ -31,7 +31,7 @@ class DialogManager {
   }
 
   showDialog(text: string, options: DialogMeta = {}): void {
-    const hasOptions = options && Object.keys(options).length > 0;
+    const hasOptions = Object.keys(options).length > 0;
     const meta = hasOptions ? { ...options } : null;
 
     const reason = meta?.pauseReason || 'dialog';

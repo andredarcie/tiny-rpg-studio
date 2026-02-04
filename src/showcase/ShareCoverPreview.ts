@@ -56,8 +56,12 @@ class ShareCoverPreview {
         }
         if (text.includes('://')) {
             try {
-                const parsed = new URL(text, globalThis.location?.origin || undefined);
-                return parsed.hash?.replace(/^#/, '') || '';
+                const baseOrigin =
+                    typeof globalThis.location !== 'undefined'
+                        ? globalThis.location.origin
+                        : undefined;
+                const parsed = new URL(text, baseOrigin);
+                return parsed.hash.replace(/^#/, '');
             } catch {
                 // ignore and fall through
             }
@@ -79,13 +83,14 @@ class ShareCoverPreview {
 
     static ensureTileCache(): void {
         if (this.tileCache instanceof Map) return;
-        const tiles = TILE_PRESETS || [];
+        const tiles = TILE_PRESETS;
         this.tileCache = new Map();
+        const cache = this.tileCache;
         tiles.forEach((tile) => {
-            if (!tile || typeof tile.id !== 'number') return;
+            if (typeof tile.id !== 'number') return;
             const pixels = Array.isArray(tile.pixels) ? (tile.pixels as TilePixels) : null;
             if (pixels) {
-                this.tileCache!.set(tile.id, pixels);
+                cache.set(tile.id, pixels);
             }
         });
     }
@@ -93,7 +98,9 @@ class ShareCoverPreview {
     static getTilePixels(tileId: number | null | undefined): TilePixels | null {
         if (!Number.isFinite(tileId) || tileId === null || tileId === undefined || tileId < 0) return null;
         this.ensureTileCache();
-        return this.tileCache?.get(Number(tileId)) || null;
+        const cache = this.tileCache;
+        if (!cache) return null;
+        return cache.get(Number(tileId)) || null;
     }
 
     renderFromUrl(shareUrl: string): HTMLCanvasElement {
@@ -125,7 +132,7 @@ class ShareCoverPreview {
         ctx.fillRect(0, 0, this.width, this.height);
     }
 
-    drawMapPreview(map: ShareMapData | undefined = {}): void {
+    drawMapPreview(map?: ShareMapData): void {
         const ctx = this.ctx;
         if (!ctx) return;
         const ground = Array.isArray(map?.ground) ? map.ground : [];
@@ -175,7 +182,7 @@ class ShareCoverPreview {
         const ctx = this.ctx;
         if (!pixels || !ctx) return;
         const rows = pixels.length || 8;
-        const cols = pixels[0]?.length || 8;
+        const cols = pixels[0] ? pixels[0].length : 8;
         const cellWidth = width / cols;
         const cellHeight = height / rows;
         for (let y = 0; y < rows; y++) {
