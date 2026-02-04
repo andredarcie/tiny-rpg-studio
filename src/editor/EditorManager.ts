@@ -441,6 +441,7 @@ class EditorManager {
 
     handleLanguageChange() {
         this.uiController.handleLanguageChange();
+        this.paletteService.syncPaletteState();
     }
 
     refreshNpcLocalizedText() {
