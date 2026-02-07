@@ -44,8 +44,8 @@ describe('RendererSpriteFactory', () => {
 
     const palette = Array.from({ length: 16 }, (_v, idx) => (idx === 1 ? '#111111' : `#${idx}${idx}${idx}${idx}${idx}${idx}`));
     const paletteManager = {
-      getPalette: () => palette,
-      getPicoPalette: () => palette,
+      getActivePalette: () => palette,
+      getDefaultPalette: () => palette,
     };
     const factory = new RendererSpriteFactory(paletteManager, {});
 
@@ -59,8 +59,8 @@ describe('RendererSpriteFactory', () => {
 
   it('mirrors sprites horizontally', () => {
     const paletteManager = {
-      getPalette: () => ['#000000'],
-      getPicoPalette: () => ['#000000']
+      getActivePalette: () => ['#000000'],
+      getDefaultPalette: () => ['#000000']
     };
     const factory = new RendererSpriteFactory(paletteManager, {});
 

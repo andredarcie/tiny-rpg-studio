@@ -2383,6 +2383,29 @@ body.game-mode .tab-button.active {
     background: #333;
 }
 
+.palette-preset-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.palette-preset-field label {
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.palette-preset-field select {
+    padding: 5px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    font-size: 12px;
+    max-width: 220px;
+}
+
 /* Grid de Cores */
 .palette-grid {
     display: grid;

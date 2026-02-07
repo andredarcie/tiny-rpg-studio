@@ -34,21 +34,31 @@ jobs:
       - name: Run unit tests
         run: npm run test:run
 
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run typecheck
+        run: npx tsc --noEmit
+
       - name: Build
         run: npm run build
 
       - name: Add .nojekyll file
+        if: github.ref == 'refs/heads/main'
         run: touch docs/.nojekyll
 
       - name: Setup Pages
+        if: github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v4
 
       - name: Upload artifact
+        if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: './docs'
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

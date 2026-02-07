@@ -49,6 +49,7 @@ class EditorDomCache {
     projectPaletteToggle: HTMLButtonElement | null;
     projectPalettePanel: HTMLElement | null;
     paletteGrid: HTMLElement | null;
+    palettePresetSelect: HTMLSelectElement | null;
     paletteResetButton: HTMLButtonElement | null;
     colorPickerModal: HTMLElement | null;
     colorPickerInput: HTMLInputElement | null;
@@ -110,6 +111,7 @@ class EditorDomCache {
             this.projectPaletteToggle = null;
             this.projectPalettePanel = null;
             this.paletteGrid = null;
+            this.palettePresetSelect = null;
             this.paletteResetButton = null;
             this.colorPickerModal = null;
             this.colorPickerInput = null;
@@ -170,6 +172,7 @@ class EditorDomCache {
         this.projectPaletteToggle = root.querySelector('#project-palette-toggle') as HTMLButtonElement | null;
         this.projectPalettePanel = root.querySelector('#project-palette-panel') as HTMLElement | null;
         this.paletteGrid = root.querySelector('#palette-grid') as HTMLElement | null;
+        this.palettePresetSelect = root.querySelector('#palette-preset-select') as HTMLSelectElement | null;
         this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
         this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;
         this.colorPickerInput = root.querySelector('#color-picker-input') as HTMLInputElement | null;

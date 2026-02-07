@@ -5,7 +5,7 @@ import { RendererPalette } from '../../runtime/adapters/renderer/RendererPalette
 describe('RendererPalette', () => {
   it('uses the PICO8 palette from TileDefinitions', () => {
     const palette = new RendererPalette({});
-    expect(palette.getPalette()).toEqual(PICO8_COLORS);
+    expect(palette.getActivePalette()).toEqual(PICO8_COLORS);
   });
 
   it('falls back to default palette entries', () => {

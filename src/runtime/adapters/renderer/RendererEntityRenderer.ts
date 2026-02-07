@@ -192,7 +192,7 @@ class RendererEntityRenderer {
         if (!this.gameState.hasSkill?.('stealth')) return false;
         const enemies = this.gameState.getEnemies?.() ?? [];
         const playerRoom = this.gameState.getPlayer().roomIndex;
-        return enemies.some((enemy) => enemy.roomIndex === playerRoom && this.getEnemyDamage(enemy.type) <= 3);
+        return enemies.some((enemy) => enemy.roomIndex === playerRoom && this.getEnemyDamage(enemy.type) <= 2);
     }
 
     drawEnemyDamageMarkers(ctx: CanvasRenderingContext2D, px: number, py: number, tileSize: number, damage: number) {

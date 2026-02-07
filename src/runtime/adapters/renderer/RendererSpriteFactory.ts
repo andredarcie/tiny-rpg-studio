@@ -9,7 +9,7 @@ type SpriteMap = Record<string, SpriteOrNull | undefined>;
 type GameStateApi = Record<string, unknown> | null;
 
 class RendererSpriteFactory {
-    paletteManager: { getPalette: () => string[] };
+    paletteManager: { getActivePalette: () => string[] };
     gameState: GameStateApi;
     playerSprite: SpriteOrNull;
     enemySprite: SpriteOrNull;
@@ -17,7 +17,7 @@ class RendererSpriteFactory {
     npcSprites: SpriteMap | null;
     objectSprites: SpriteMap | null;
 
-    constructor(paletteManager: { getPalette: () => string[] }, gameState: GameStateApi = null) {
+    constructor(paletteManager: { getActivePalette: () => string[] }, gameState: GameStateApi = null) {
         this.paletteManager = paletteManager;
         this.gameState = gameState;
         this.playerSprite = null;
@@ -84,44 +84,44 @@ class RendererSpriteFactory {
     }
 
     buildPlayerSprite(): SpriteOrNull {
-        const picoPalette = this.paletteManager.getPalette();
+        const activePalette = this.paletteManager.getActivePalette();
         const pixels = SpriteMatrixRegistry.get('player');
-        return this.mapPixels(pixels, picoPalette);
+        return this.mapPixels(pixels, activePalette);
     }
 
     buildNpcSprites(): SpriteMap {
-        const picoPalette = this.paletteManager.getPalette();
+        const activePalette = this.paletteManager.getActivePalette();
         const sprites: SpriteMap = {};
         for (const def of RendererConstants.NPC_DEFINITIONS as NpcDefinition[]) {
             const matrix = def.sprite;
-            sprites[def.type] = this.mapPixels(matrix, picoPalette, () => this.buildDefaultNpcSprite(picoPalette));
+            sprites[def.type] = this.mapPixels(matrix, activePalette, () => this.buildDefaultNpcSprite(activePalette));
         }
-        sprites.default = this.buildDefaultNpcSprite(picoPalette);
+        sprites.default = this.buildDefaultNpcSprite(activePalette);
         return sprites;
     }
 
     buildObjectSprites(): SpriteMap {
-        const picoPalette = this.paletteManager.getPalette();
+        const activePalette = this.paletteManager.getActivePalette();
         const sprites: SpriteMap = {};
         for (const def of RendererConstants.OBJECT_DEFINITIONS as ObjectDefinition[]) {
             if (!Array.isArray(def.sprite)) continue;
-            sprites[def.type] = this.mapPixels(def.sprite, picoPalette);
+            sprites[def.type] = this.mapPixels(def.sprite, activePalette);
             if (Array.isArray(def.spriteOn)) {
-                sprites[`${def.type}--on`] = this.mapPixels(def.spriteOn, picoPalette);
+                sprites[`${def.type}--on`] = this.mapPixels(def.spriteOn, activePalette);
             }
         }
         return sprites;
     }
 
     buildEnemySprites(): SpriteMap {
-        const picoPalette = this.paletteManager.getPalette();
-        const defaultSprite = this.buildDefaultEnemySprite(picoPalette);
+        const activePalette = this.paletteManager.getActivePalette();
+        const defaultSprite = this.buildDefaultEnemySprite(activePalette);
         const sprites: SpriteMap = { default: defaultSprite };
         const definitions = RendererConstants.ENEMY_DEFINITIONS as EnemyDefinition[];
         if (Array.isArray(definitions)) {
             for (const def of definitions) {
                 if (!Array.isArray(def.sprite)) continue;
-                const sprite = this.mapPixels(def.sprite, picoPalette, () => defaultSprite);
+                const sprite = this.mapPixels(def.sprite, activePalette, () => defaultSprite);
                 sprites[def.type] = sprite;
                 if (Array.isArray(def.aliases)) {
                     for (const alias of def.aliases) {
@@ -133,9 +133,9 @@ class RendererSpriteFactory {
         return sprites;
     }
 
-    buildDefaultNpcSprite(picoPalette: string[]): SpriteOrNull {
+    buildDefaultNpcSprite(activePalette: string[]): SpriteOrNull {
         const pixels = SpriteMatrixRegistry.get('npc');
-        return this.mapPixels(pixels, picoPalette);
+        return this.mapPixels(pixels, activePalette);
     }
 
     buildEnemySprite(): SpriteOrNull {
@@ -146,9 +146,9 @@ class RendererSpriteFactory {
     }
 
     buildDefaultEnemySprite(palette?: string[]): SpriteOrNull {
-        const picoPalette = palette || this.paletteManager.getPalette();
+        const activePalette = palette || this.paletteManager.getActivePalette();
         const pixels = SpriteMatrixRegistry.get('enemy');
-        return this.mapPixels(pixels, picoPalette);
+        return this.mapPixels(pixels, activePalette);
     }
 
     mapPixels(

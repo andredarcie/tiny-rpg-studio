@@ -289,24 +289,15 @@ export class GameEngine {
   setCustomPalette(colors: string[] | null): void {
     const game = this.gameState.getGame();
     game.customPalette = colors || undefined;
-    this.renderer.paletteManager.setCustomPalette(colors);
 
     // Regenerate tiles with new palette colors
-    if (colors) {
-      this.tileManager.regenerateTilesWithPalette(colors);
-    } else {
-      // Reset to default palette
-      this.tileManager.regenerateTilesWithPalette(TileDefinitions.PICO8_COLORS as string[]);
-    }
+    const activePalette = colors || (TileDefinitions.PICO8_COLORS as string[]);
+    this.tileManager.regenerateTilesWithPalette(activePalette);
 
-    // Invalidate all sprite caches to regenerate with new colors
+    // Invalidate sprite caches - they will be lazily rebuilt on next access via getters
     this.renderer.spriteFactory.invalidate();
-    this.renderer.buildPlayerSprite();
-    this.renderer.buildNpcSprites();
-    this.renderer.buildEnemySprite();
-    this.renderer.buildObjectSprites();
 
-    // Force complete re-render
+    // Force complete re-render (triggers lazy rebuilding of sprites via getters)
     this.draw();
   }
 

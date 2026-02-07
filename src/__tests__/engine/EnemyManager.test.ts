@@ -407,6 +407,167 @@ describe('EnemyManager', () => {
     });
   });
 
+  describe('Boss defeat variable + necromancer death', () => {
+    it('should trigger defeatVariable even when player dies in the collision', () => {
+      const bossDefinition = {
+        ...baseEnemyDefinition,
+        type: 'boss',
+        damage: 5,
+        activateVariableOnDefeat: { variableId: 'boss-door', message: 'Door opened!' },
+      };
+      getDefinitionSpy.mockImplementation(() => ({
+        ...bossDefinition,
+        matchesType: (type: string) => type === 'boss',
+        getExperienceReward: () => 10,
+        getMissChance: () => 0,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      const boss = {
+        id: 'boss-1',
+        type: 'boss',
+        roomIndex: 0,
+        x: 3,
+        y: 3,
+        lastX: 3,
+        defeatVariableId: 'boss-door',
+      };
+      const enemies = [boss];
+      const onPlayerDefeated = vi.fn();
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        damagePlayer: vi.fn(() => 0),                   // player dies
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+        setVariableValue: vi.fn(() => [true, false] as [boolean, boolean]),
+        isVariableOn: vi.fn(() => true),
+        normalizeVariableId: vi.fn((id: string | null) => id),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager, {
+        onPlayerDefeated,
+      });
+
+      manager.handleEnemyCollision(0);
+
+      // Player died - onPlayerDefeated should be called
+      expect(onPlayerDefeated).toHaveBeenCalled();
+
+      // Bug: the variable is NEVER set because return happens before tryTriggerDefeatVariable
+      expect(gameState.setVariableValue).toHaveBeenCalledWith('boss-door', true, true);
+    });
+  });
+
+  describe('Stealth skill consistency', () => {
+    it('should deal damage when enemy walks into player and stealth misses', () => {
+      const weakEnemy = {
+        id: 'rat-1', type: 'giant-rat', roomIndex: 0,
+        x: 3, y: 3, lastX: 2, playerInVision: true,
+      };
+      const enemies = [weakEnemy];
+      const player = { roomIndex: 0, x: 3, y: 3 };
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...baseEnemyDefinition, type: 'giant-rat', damage: 1, missChance: 0,
+        matchesType: (t: string) => t === 'giant-rat',
+        getExperienceReward: () => 3,
+        getMissChance: () => 0,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        getPlayer: vi.fn(() => player),
+        hasSkill: vi.fn(() => true),
+        damagePlayer: vi.fn(() => 2),
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      // Force stealth miss
+      vi.spyOn(Math, 'random').mockReturnValue(0);  // 0 < 0.25 = miss
+
+      manager.resolvePostMove(0, 3, 3, 0);
+
+      // Player should take damage because stealth missed and enemy reached them
+      expect(gameState.damagePlayer).toHaveBeenCalled();
+      vi.spyOn(Math, 'random').mockRestore();
+    });
+
+    it('should prevent weak enemies from detecting stealthy player', () => {
+      const player = { roomIndex: 0, x: 2, y: 2 };
+      const weakEnemy: MockEnemyData = {
+        id: 'rat-1', type: 'giant-rat', roomIndex: 0,
+        x: 3, y: 2, lastX: 3, playerInVision: false,
+        alertUntil: null, alertStart: null,
+      };
+      const strongEnemy: MockEnemyData = {
+        id: 'knight-1', type: 'dark-knight', roomIndex: 0,
+        x: 1, y: 2, lastX: 1, playerInVision: false,
+        alertUntil: null, alertStart: null,
+      };
+
+      getDefinitionSpy.mockImplementation((...args: unknown[]) => {
+        const type = args[0] as string;
+        const dmg = type === 'giant-rat' ? 1 : 4;
+        return {
+          ...baseEnemyDefinition, type, damage: dmg, missChance: 0,
+          matchesType: (t: string) => t === type,
+          getExperienceReward: () => 3,
+          getMissChance: () => 0,
+        };
+      });
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => [weakEnemy, strongEnemy]),
+        getPlayer: vi.fn(() => player),
+        hasSkill: vi.fn(() => true),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+      manager.evaluateVision(player);
+
+      expect(weakEnemy.playerInVision).toBe(false);
+      expect(strongEnemy.playerInVision).toBe(true);
+    });
+
+    it('should NOT deal damage when player walks into weak enemy (guaranteed kill)', () => {
+      const weakEnemy = {
+        id: 'rat-1', type: 'giant-rat', roomIndex: 0,
+        x: 4, y: 4, lastX: 4,
+      };
+      const enemies = [weakEnemy];
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...baseEnemyDefinition, type: 'giant-rat', damage: 1, missChance: 0,
+        matchesType: (t: string) => t === 'giant-rat',
+        getExperienceReward: () => 3,
+        getMissChance: () => 0,
+      }));
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 4, y: 4 })),
+        hasSkill: vi.fn(() => true),
+        damagePlayer: vi.fn(() => 2),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      manager.checkCollisionAt(4, 4);
+
+      // Player should NOT take damage - guaranteed stealth kill
+      expect(gameState.damagePlayer).not.toHaveBeenCalled();
+      expect(enemies.length).toBe(0);
+    });
+  });
+
   describe('Independent Enemy Movement (TDD)', () => {
     it('should NOT move chasing enemies when player moves via MovementManager', () => {
       const player = { roomIndex: 0, x: 2, y: 3, lastX: 2, lastRoomChangeTime: null };

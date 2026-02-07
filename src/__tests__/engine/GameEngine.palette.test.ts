@@ -53,7 +53,7 @@ describe('GameEngine - Custom Palette', () => {
         engine.setCustomPalette(customPalette);
 
         expect(engine.rendererPalette.isUsingCustomPalette()).toBe(true);
-        expect(engine.rendererPalette.getPalette()).toEqual(customPalette);
+        expect(engine.rendererPalette.getActivePalette()).toEqual(customPalette);
     });
 
     it('should handle null palette (reset via setCustomPalette)', () => {

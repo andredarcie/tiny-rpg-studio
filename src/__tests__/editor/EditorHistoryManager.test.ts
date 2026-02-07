@@ -65,4 +65,25 @@ describe('EditorHistoryManager', () => {
     history.redo();
     expect(restore).toHaveBeenCalledWith({ level: 2 }, { skipHistory: true });
   });
+
+  it('should handle corrupted snapshots without crashing', () => {
+    const history = new EditorHistoryManager(editorManager);
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    history.pushSnapshot(snapshotA);
+    history.pushSnapshot('NOT VALID JSON {{{');
+
+    history.restoreCurrent();
+
+    expect(restore).not.toHaveBeenCalled();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Failed to restore snapshot at index',
+      1,
+      expect.any(SyntaxError),
+    );
+    expect(history.stack).toEqual([snapshotA]);
+    expect(history.index).toBe(0);
+
+    consoleSpy.mockRestore();
+  });
 });

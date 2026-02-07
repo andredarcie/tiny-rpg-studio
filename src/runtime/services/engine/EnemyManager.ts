@@ -241,7 +241,7 @@ class EnemyManager {
     }
   }
 
-  handleEnemyCollision(enemyIndex: number): void {
+  handleEnemyCollision(enemyIndex: number, options: { skipAssassinate?: boolean } = {}): void {
     if (this.gameState.isPlayerOnDamageCooldown()) {
       this.renderer.showCombatIndicator(getEnemyLocaleText('combat.cooldown', ''), { duration: 700 });
       return;
@@ -251,7 +251,7 @@ class EnemyManager {
     if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
     const enemy = enemies[enemyIndex];
     enemy.type = this.normalizeEnemyType(enemy.type);
-    if (this.canAssassinate(enemy)) {
+    if (!options.skipAssassinate && this.canAssassinate(enemy)) {
       this.assassinateEnemy(enemyIndex);
       return;
     }
@@ -259,6 +259,7 @@ class EnemyManager {
     const attackMissed = this.attackMissed(missChance);
 
     enemies.splice(enemyIndex, 1);
+    this.tryTriggerDefeatVariable(enemy);
 
     if (attackMissed) {
       this.showMissFeedback();
@@ -289,7 +290,6 @@ class EnemyManager {
       this.gameState.startLevelUpSelectionIfNeeded();
     }
 
-    this.tryTriggerDefeatVariable(enemy);
     this.renderer.flashScreen({ intensity: 0.8, duration: 160 });
 
     this.checkAllEnemiesCleared();
@@ -430,6 +430,12 @@ class EnemyManager {
         enemy.alertUntil = null;
         continue;
       }
+      if (this.canAssassinate(enemy)) {
+        enemy.playerInVision = false;
+        enemy.alertStart = null;
+        enemy.alertUntil = null;
+        continue;
+      }
       const dx = Math.abs(player.x - enemy.x);
       const dy = Math.abs(player.y - enemy.y);
       const inVision = dx <= visionRange && dy <= visionRange;
@@ -518,7 +524,7 @@ class EnemyManager {
       if (this.tryStealthAssassination(enemyIndex)) {
         return true;
       }
-      this.handleEnemyCollision(enemyIndex);
+      this.handleEnemyCollision(enemyIndex, { skipAssassinate: true });
       return true;
     }
     return false;

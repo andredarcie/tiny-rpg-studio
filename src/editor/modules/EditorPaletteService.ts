@@ -1,5 +1,6 @@
 import type { EditorManager } from '../EditorManager';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
+import { PALETTE_PRESETS } from '../../runtime/domain/definitions/PalettePresets';
 import { TextResources } from '../../runtime/adapters/TextResources';
 
 export class EditorPaletteService {
@@ -23,6 +24,7 @@ export class EditorPaletteService {
     }
 
     initialize(): void {
+        this.populatePresetSelect();
         this.renderPaletteGrid();
         this.bindEvents();
         this.syncPaletteState();
@@ -107,10 +109,19 @@ export class EditorPaletteService {
             return;
         }
 
-        const newColor = input.value.toUpperCase();
+        const newColor = input.value.trim().toUpperCase();
+
+        // Validate hex color format
+        if (!this.isValidHexColor(newColor)) {
+            console.warn(`Invalid hex color format: "${newColor}". Expected format: #RRGGBB`);
+            this.closeColorPicker();
+            return;
+        }
+
         this.setColorAtIndex(colorIndex, newColor);
         this.closeColorPicker();
         this.renderPaletteGrid();
+        this.syncPresetSelect();
 
         // Força re-render completo do editor e do jogo
         this.manager.renderAll();
@@ -120,7 +131,24 @@ export class EditorPaletteService {
         this.manager.historyManager.pushCurrentState();
     }
 
+    private isValidHexColor(color: string): boolean {
+        // Validate hex color format: #RRGGBB (6 hex digits)
+        return /^#[0-9A-Fa-f]{6}$/.test(color);
+    }
+
     private setColorAtIndex(index: number, color: string): void {
+        // Validate index bounds
+        if (index < 0 || index >= 16) {
+            console.error(`Invalid palette index: ${index}. Must be between 0 and 15.`);
+            return;
+        }
+
+        // Validate color format
+        if (!this.isValidHexColor(color)) {
+            console.error(`Invalid hex color format: "${color}". Expected format: #RRGGBB`);
+            return;
+        }
+
         let customPalette = this.manager.gameEngine.getCustomPalette();
 
         if (!customPalette) {
@@ -136,6 +164,7 @@ export class EditorPaletteService {
     resetToDefault(): void {
         this.manager.gameEngine.resetPaletteToDefault();
         this.renderPaletteGrid();
+        this.syncPresetSelect();
 
         // Força re-render completo do editor e do jogo
         this.manager.renderAll();
@@ -186,10 +215,85 @@ export class EditorPaletteService {
         toggle.textContent = `🎨 ${actionText}`;
     }
 
+    private populatePresetSelect(): void {
+        const select = this.manager.dom.palettePresetSelect;
+        if (!select) return;
+
+        select.innerHTML = '';
+
+        // "Custom" option
+        const customOption = document.createElement('option');
+        customOption.value = 'custom';
+        customOption.textContent = this.t('project.palettePresetCustom', 'Custom');
+        select.appendChild(customOption);
+
+        // Preset options
+        PALETTE_PRESETS.forEach((preset, index) => {
+            const option = document.createElement('option');
+            option.value = String(index);
+            option.textContent = preset.name;
+            select.appendChild(option);
+        });
+
+        this.syncPresetSelect();
+    }
+
+    private syncPresetSelect(): void {
+        const select = this.manager.dom.palettePresetSelect;
+        if (!select) return;
+
+        const currentPalette = this.getCurrentPalette().map(c => c.toUpperCase());
+
+        const matchIndex = PALETTE_PRESETS.findIndex(preset => {
+            const hexColors = this.buildPaletteFromPreset(preset);
+            return hexColors.length === currentPalette.length &&
+                hexColors.every((c, i) => c.toUpperCase() === currentPalette[i]);
+        });
+
+        select.value = matchIndex >= 0 ? String(matchIndex) : 'custom';
+    }
+
+    private onPresetChange(): void {
+        const select = this.manager.dom.palettePresetSelect;
+        if (!select) return;
+
+        const value = select.value;
+        if (value === 'custom') return;
+
+        const index = parseInt(value, 10);
+        const preset = PALETTE_PRESETS[index];
+
+        this.manager.gameEngine.setCustomPalette(this.buildPaletteFromPreset(preset));
+        this.renderPaletteGrid();
+
+        this.manager.renderAll();
+        this.manager.gameEngine.draw();
+
+        this.manager.historyManager.pushCurrentState();
+    }
+
+    private buildPaletteFromPreset(preset: typeof PALETTE_PRESETS[number]): string[] {
+        const palette = [...TileDefinitions.PICO8_COLORS];
+
+        preset.colors.forEach((color) => {
+            const idx = color.pico8Index;
+            if (typeof idx !== 'number' || !Number.isFinite(idx)) return;
+            if (idx < 0 || idx >= palette.length) return;
+            palette[idx] = color.hex;
+        });
+
+        return palette;
+    }
+
     private bindEvents(): void {
         // Toggle panel
         this.manager.dom.projectPaletteToggle?.addEventListener('click', () => {
             this.togglePanel();
+        });
+
+        // Preset select
+        this.manager.dom.palettePresetSelect?.addEventListener('change', () => {
+            this.onPresetChange();
         });
 
         // Reset button

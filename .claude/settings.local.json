@@ -12,7 +12,12 @@
       "Bash(npm test:*)",
       "Bash(npm run lint)",
       "Bash(npm run lint:*)",
-      "Bash(git remote:*)"
+      "Bash(git remote:*)",
+      "Bash(findstr:*)",
+      "Bash(del:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx vitest run:*)",
+      "Bash(git checkout:*)"
     ]
   }
 }

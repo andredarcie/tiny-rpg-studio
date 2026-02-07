@@ -58,11 +58,6 @@ class Renderer {
     effectsManager!: RendererEffectsManager;
     transitionManager!: RendererTransitionManager;
     overlayRenderer!: RendererOverlayRenderer;
-    playerSprite: SpriteMatrix | null;
-    npcSprites: SpriteMap;
-    enemySprites: SpriteMap;
-    enemySprite: SpriteMatrix | null;
-    objectSprites: SpriteMap;
     drawIconIdNextFrame: string;
     timeIconOverPlayer: number;
     tileAnimationInterval: number;
@@ -122,12 +117,6 @@ class Renderer {
         this.transitionManager = new RendererTransitionManager(this as never);
         this.overlayRenderer = new RendererOverlayRenderer(this as never);
 
-        // Compatibilidade com código existente que acessa sprites diretamente.
-        this.playerSprite = this.spriteFactory.getPlayerSprite();
-        this.npcSprites = this.spriteFactory.getNpcSprites() as SpriteMap;
-        this.enemySprites = this.spriteFactory.getEnemySprites() as SpriteMap;
-        this.enemySprite = this.spriteFactory.getEnemySprite();
-        this.objectSprites = this.spriteFactory.getObjectSprites() as SpriteMap;
         this.drawIconIdNextFrame = '';
         this.timeIconOverPlayer = GameConfig.animation.iconOverPlayerDuration;
         this.tileAnimationInterval = GameConfig.animation.tileInterval;
@@ -360,26 +349,42 @@ class Renderer {
         this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
     }
 
+    // Getters para compatibilidade com código existente que acessa sprites diretamente.
+    get playerSprite(): SpriteMatrix | null {
+        return this.spriteFactory.getPlayerSprite();
+    }
+
+    get npcSprites(): SpriteMap {
+        return this.spriteFactory.getNpcSprites() as SpriteMap;
+    }
+
+    get enemySprites(): SpriteMap {
+        return this.spriteFactory.getEnemySprites() as SpriteMap;
+    }
+
+    get enemySprite(): SpriteMatrix | null {
+        return this.spriteFactory.getEnemySprite();
+    }
+
+    get objectSprites(): SpriteMap {
+        return this.spriteFactory.getObjectSprites() as SpriteMap;
+    }
+
     // Métodos preservados para compatibilidade.
     buildPlayerSprite() {
-        this.playerSprite = this.spriteFactory.getPlayerSprite();
-        return this.playerSprite;
+        return this.spriteFactory.getPlayerSprite();
     }
 
     buildNpcSprites() {
-        this.npcSprites = this.spriteFactory.getNpcSprites() as SpriteMap;
-        return this.npcSprites;
+        return this.spriteFactory.getNpcSprites() as SpriteMap;
     }
 
     buildEnemySprite() {
-        this.enemySprites = this.spriteFactory.getEnemySprites() as SpriteMap;
-        this.enemySprite = this.spriteFactory.getEnemySprite();
-        return this.enemySprite;
+        return this.spriteFactory.getEnemySprite();
     }
 
     buildObjectSprites() {
-        this.objectSprites = this.spriteFactory.getObjectSprites() as SpriteMap;
-        return this.objectSprites;
+        return this.spriteFactory.getObjectSprites() as SpriteMap;
     }
 }
 

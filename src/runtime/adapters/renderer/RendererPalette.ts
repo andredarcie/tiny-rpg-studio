@@ -1,38 +1,46 @@
 import { PICO8_COLORS } from '../../domain/definitions/TileDefinitions';
 
-type GameStateApi = Record<string, unknown> | null;
+// Type-safe interface for GameState with palette support
+interface GameStateWithPalette {
+    game?: {
+        customPalette?: string[];
+    };
+}
+
+type GameStateApi = GameStateWithPalette | Record<string, unknown> | null;
 
 class RendererPalette {
     gameState: GameStateApi;
-    private customPalette: string[] | null = null;
 
     constructor(gameState: GameStateApi) {
         this.gameState = gameState;
     }
 
-    setCustomPalette(colors: string[] | null): void {
-        this.customPalette = colors;
+    getActivePalette(): string[] {
+        const palette = this.extractCustomPalette();
+        return palette || this.getDefaultPalette();
     }
 
-    getPalette(): string[] {
-        return this.customPalette || this.getPicoPalette();
-    }
-
-    getPicoPalette(): string[] {
+    getDefaultPalette(): string[] {
         return PICO8_COLORS as string[];
     }
 
     getColor(index: number): string {
-        const palette = this.getPalette();
+        const palette = this.getActivePalette();
         return palette[index] || "#f4f4f8";
     }
 
     isUsingCustomPalette(): boolean {
-        return this.customPalette !== null;
+        const palette = this.extractCustomPalette();
+        return Array.isArray(palette);
     }
 
-    resetToDefault(): void {
-        this.customPalette = null;
+    private extractCustomPalette(): string[] | undefined {
+        if (!this.gameState) return undefined;
+
+        // Type-safe extraction
+        const state = this.gameState as GameStateWithPalette;
+        return state.game?.customPalette;
     }
 }
 

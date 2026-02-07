@@ -10,8 +10,6 @@ class RendererHudRenderer {
     backgroundColor: string;
     viewportOffsetY: number;
     canvasHelper: CanvasHelperApi;
-    healthIconDefinitions: Record<string, (string | null)[][]>;
-    objectSprites: Record<string, (string | null)[][] | undefined>;
 
     constructor(gameState: GameStateApi, entityRenderer: EntityRendererApi, paletteManager: PaletteManagerApi) {
         this.gameState = gameState;
@@ -22,9 +20,39 @@ class RendererHudRenderer {
         this.backgroundColor = GameConfig.hud.backgroundColor;
         this.viewportOffsetY = 0;
         this.canvasHelper = entityRenderer.canvasHelper;
-        this.healthIconDefinitions = {};
-        this.objectSprites = this.entityRenderer.spriteFactory?.getObjectSprites?.() || {};
-        this.setupHealthIcons();
+    }
+
+    // Getter to always get fresh sprites with current palette
+    get objectSprites(): Record<string, (string | null)[][] | undefined> {
+        return this.entityRenderer.spriteFactory?.getObjectSprites?.() || {};
+    }
+
+    // Getter to always generate health icons with current palette
+    get healthIconDefinitions(): Record<string, (string | null)[][]> {
+        const white = this.paletteManager.getColor(7);
+        const red = this.paletteManager.getColor(8);
+        return {
+            full: [
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null,red,red, null,red,red, null ],
+                [ null,red,red,red,red,red,white,red ],
+                [ null,red,red,red,red,red,red,red ],
+                [ null, null,red,red,red,red,red, null ],
+                [ null, null, null,red,red,red, null, null ],
+                [ null, null, null, null,red, null, null, null ]
+            ],
+            empty: [
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null,red,red, null,red,red, null ],
+                [ null,red,null,null,red,null,null,red ],
+                [ null,red,null,null,null,null,null,red ],
+                [ null, null,red,null,null,null,red, null ],
+                [ null, null, null,red,null,red, null, null ],
+                [ null, null, null, null,red, null, null, null ]
+            ]
+        };
     }
 
     drawHUD(ctx: CanvasRenderingContext2D, area: HudArea = {}) {
@@ -266,32 +294,6 @@ class RendererHudRenderer {
         ctx.stroke();
     }
 
-    setupHealthIcons() {
-        const white = this.paletteManager.getColor(7);
-        const red = this.paletteManager.getColor(8);
-        this.healthIconDefinitions = {
-            full: [
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null,red,red, null,red,red, null ],
-                [ null,red,red,red,red,red,white,red ],
-                [ null,red,red,red,red,red,red,red ],
-                [ null, null,red,red,red,red,red, null ],
-                [ null, null, null,red,red,red, null, null ],
-                [ null, null, null, null,red, null, null, null ]
-            ],
-            empty: [
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null,red,red, null,red,red, null ],
-                [ null,red,null,null,red,null,null,red ],
-                [ null,red,null,null,null,null,null,red ],
-                [ null, null,red,null,null,null,red, null ],
-                [ null, null, null,red,null,red, null, null ],
-                [ null, null, null, null,red, null, null, null ]
-            ]
-        }
-    }
 }
 
 type HudArea = {

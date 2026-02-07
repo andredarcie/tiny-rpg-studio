@@ -146,7 +146,7 @@ class EditorEnemyRenderer extends EditorRendererBase {
         }
 
         if (!sprite && Array.isArray(definition.sprite)) {
-            const palette = renderer.paletteManager.getPalette();
+            const palette = renderer.paletteManager.getActivePalette();
             const actualPalette = palette.length ? palette : RendererConstants.DEFAULT_PALETTE;
             const mapped = renderer.spriteFactory.mapPixels(definition.sprite, actualPalette);
             if (mapped) {
