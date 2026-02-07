@@ -234,7 +234,7 @@ class RendererHudRenderer {
         const cols = 3;
         const bgColor = 'rgba(255,255,255,0.08)';
         const borderColor = 'rgba(255,255,255,0.25)';
-        const activeColor = '#64b5f6';
+        const activeColor = this.paletteManager.getColor(12);
 
         ctx.save();
         ctx.translate(x, y);
