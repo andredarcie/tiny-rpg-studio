@@ -17,7 +17,9 @@
       "Bash(del:*)",
       "Bash(npm run dev:*)",
       "Bash(npx vitest run:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(ls:*)",
+      "Bash(pkill:*)"
     ]
   }
 }

@@ -670,6 +670,11 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
+.editor-mobile-nav-button .nav-icon {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
 .editor-mobile-nav-button.active {
     border-color: rgba(96, 165, 250, 0.9);
     background: rgba(96, 165, 250, 0.25);
@@ -1280,13 +1285,16 @@ textarea {
     color: var(--muted);
 }
 
-.project-field input {
+.project-field input,
+.project-field select {
+    width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: var(--panel);
     color: var(--text);
     font-size: 0.95rem;
+    box-sizing: border-box;
 }
 
 .project-field--share-url input {
@@ -1300,6 +1308,43 @@ textarea {
 
 .project-actions button {
     flex-basis: 100%;
+}
+
+.project-group {
+    flex: 1 1 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.project-group .project-field {
+    flex: 0 0 auto;
+    min-width: 0;
+    width: 100%;
+}
+
+.project-group__title {
+    margin: 0;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-left: 3px solid var(--accent);
+    background: rgba(91, 250, 142, 0.05);
+}
+
+.project-separator {
+    flex: 1 1 100%;
+    height: 1px;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--border) 20%,
+        var(--border) 80%,
+        transparent 100%
+    );
+    margin: 8px 0;
 }
 
 .project-share-hint {

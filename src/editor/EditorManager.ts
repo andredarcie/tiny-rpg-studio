@@ -6,6 +6,7 @@ import { EditorConstants } from './modules/EditorConstants';
 import { EditorDomCache } from './modules/EditorDomCache';
 import { EditorEnemyService } from './modules/EditorEnemyService';
 import { EditorHistoryManager } from './modules/EditorHistoryManager';
+import { EditorNavIcons } from './modules/EditorNavIcons';
 import { EditorNpcService } from './modules/EditorNpcService';
 import { EditorObjectService } from './modules/EditorObjectService';
 import { EditorPaletteService } from './modules/EditorPaletteService';
@@ -168,6 +169,10 @@ class EditorManager {
         this.activeRoomIndex = Math.max(0, Math.min(totalRooms - 1, startRoomIndex));
         this.gameEngine.npcManager.ensureDefaultNPCs();
         this.paletteService.initialize();
+
+        // Render navigation icons with engine tiles
+        const navIcons = new EditorNavIcons(this.gameEngine);
+        navIcons.renderAll();
 
         this.renderAll();
         this.updateMobilePanels();

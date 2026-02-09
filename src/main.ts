@@ -1,3 +1,4 @@
+import './styles.css';
 import { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
 import { GameEngine } from './runtime/services/GameEngine';
