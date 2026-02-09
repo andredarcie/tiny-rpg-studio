@@ -60,7 +60,7 @@ export class EditorNavIcons {
         // Tree tile - ID 8
         const tiles = this.gameEngine.getTiles() as TileDefinition[];
         const treeTile = tiles.find(t => t.id === 8);
-        if (treeTile && ctx.canvas) {
+        if (treeTile) {
             this.gameEngine.renderer.drawTileOnCanvas(ctx.canvas, treeTile);
         }
     }
@@ -69,7 +69,7 @@ export class EditorNavIcons {
         // Water tile - ID 5
         const tiles = this.gameEngine.getTiles() as TileDefinition[];
         const waterTile = tiles.find(t => t.id === 5);
-        if (waterTile && ctx.canvas) {
+        if (waterTile) {
             this.gameEngine.renderer.drawTileOnCanvas(ctx.canvas, waterTile);
         }
     }
