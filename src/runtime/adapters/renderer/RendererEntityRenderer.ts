@@ -25,6 +25,7 @@ class RendererEntityRenderer {
     canvasHelper: CanvasHelperApi;
     paletteManager: PaletteManagerApi;
     viewportOffsetY?: number;
+    attackTelegraph?: { applyWindupOffset: (enemyId: string, x: number, y: number) => { x: number; y: number } };
     private flashStates: Map<string, FlashState>;
     private flyingLifeSquares: FlyingLifeSquare[];
 
@@ -187,12 +188,22 @@ class RendererEntityRenderer {
             const baseSprite = this.spriteFactory.getEnemySprite(enemy.type);
             if (!baseSprite) return;
             const sprite = this.adjustSpriteHorizontally(enemy.x, enemy.lastX ?? enemy.x, baseSprite);
-            const px = enemy.x * tileSize;
-            const py = enemy.y * tileSize;
+
+            // Apply wind-up animation offset (enemy pulls back before attacking)
+            let px = enemy.x * tileSize;
+            let py = enemy.y * tileSize;
+            const enemyId = enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`;
+
+            if (this.attackTelegraph) {
+                const windupPos = this.attackTelegraph.applyWindupOffset(enemyId, px, py);
+                px = windupPos.x;
+                py = windupPos.y;
+            }
+
             this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
 
             // Apply hit flash effect
-            const flashColor = this.getFlashColor(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`);
+            const flashColor = this.getFlashColor(enemyId);
             if (flashColor) {
                 this.applyFlashOverlay(ctx, flashColor, px, py, tileSize);
             }
@@ -213,8 +224,18 @@ class RendererEntityRenderer {
 
         enemies.forEach((enemy) => {
             if (enemy.roomIndex !== player.roomIndex) return;
-            const px = enemy.x * tileSize;
-            const py = enemy.y * tileSize;
+
+            // Apply wind-up animation offset to life markers
+            let px = enemy.x * tileSize;
+            let py = enemy.y * tileSize;
+            const enemyId = enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`;
+
+            if (this.attackTelegraph) {
+                const windupPos = this.attackTelegraph.applyWindupOffset(enemyId, px, py);
+                px = windupPos.x;
+                py = windupPos.y;
+            }
+
             const currentLives = enemy.lives ?? 1;
             this.drawEnemyLivesMarkers(ctx, px, py, tileSize, currentLives);
         });

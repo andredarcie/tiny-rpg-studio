@@ -61,6 +61,12 @@ describe('GameConfigSchema', () => {
         lifetime: 500,
         gravity: 0.1,
       },
+      telegraph: {
+        enabled: true,
+        color: '#FF004D',
+        pulseSpeed: 0.006,
+        triggerDistance: 1,
+      },
     },
     enemy: {
       movementInterval: 600,

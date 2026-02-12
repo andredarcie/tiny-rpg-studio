@@ -219,6 +219,9 @@ class EnemyManager {
       return;
     }
 
+    // Clear attack telegraph warning
+    this.renderer.attackTelegraph?.deactivateTelegraph(enemyId);
+
     // Remove enemy from array
     enemies.splice(enemyIndex, 1);
 
@@ -288,6 +291,10 @@ class EnemyManager {
 
     // Don't move into player's tile - trigger collision combat
     if (player && player.roomIndex === roomIndex && player.x === target.x && player.y === target.y) {
+      // Trigger wind-up animation before attack
+      if (enemy.id) {
+        this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+      }
       // Trigger collision without moving - enemy initiated
       this.handleEnemyCollision(index, { initiator: 'enemy' });
       return EnemyMovementResultConst.Collided;
@@ -333,6 +340,10 @@ class EnemyManager {
 
       // Don't move into player's tile - trigger collision combat
       if (player.roomIndex === roomIndex && player.x === target.x && player.y === target.y) {
+        // Trigger wind-up animation before attack
+        if (enemy.id) {
+          this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+        }
         // Trigger collision without moving - enemy initiated
         this.handleEnemyCollision(index, { initiator: 'enemy' });
         return EnemyMovementResultConst.Collided;
@@ -664,6 +675,26 @@ class EnemyManager {
 
   showMissFeedback(): void {
     this.combatManager.showMissFeedback();
+  }
+
+  /**
+   * Trigger wind-up animation for enemy attack (one-time, not continuous)
+   * Called right before enemy executes attack
+   */
+  triggerEnemyWindup(enemyId: string, enemyPos: { x: number; y: number }, playerPos: { x: number; y: number }): void {
+    const telegraphConfig = GameConfig.combat?.telegraph;
+    if (!telegraphConfig || !telegraphConfig.enabled) return;
+
+    const attackTelegraph = this.renderer.attackTelegraph;
+    if (!attackTelegraph) return;
+
+    // Calculate direction from enemy to player
+    const directionToPlayer = {
+      x: playerPos.x - enemyPos.x,
+      y: playerPos.y - enemyPos.y
+    };
+
+    attackTelegraph.activateTelegraph(enemyId, directionToPlayer);
   }
 
   getNow() {

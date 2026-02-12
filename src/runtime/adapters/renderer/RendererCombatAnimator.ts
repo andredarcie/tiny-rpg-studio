@@ -151,35 +151,61 @@ class RendererCombatAnimator extends RendererModuleBase {
         const tileSize = 16; // Standard tile size
 
         if (this.animation.type === 'lunge') {
-            // Lunge: move forward 50%, then return 50%
-            // Player moves only 50% of the distance (doesn't enter enemy tile)
-            const lungeProgress = progress < 0.5
-                ? progress * 2  // First half: 0 -> 1
-                : 1 - ((progress - 0.5) * 2);  // Second half: 1 -> 0
-
+            // Lunge with wind-up: pull back → lunge forward → return
+            // 0-15%: Wind-up (pull back slightly)
+            // 15-60%: Lunge forward
+            // 60-100%: Return to start
             const fromX = this.animation.from.x * tileSize;
             const fromY = this.animation.from.y * tileSize;
             const toX = this.animation.to.x * tileSize;
             const toY = this.animation.to.y * tileSize;
 
-            // Only move 50% of the distance to avoid entering enemy tile
-            const lungeDistance = 0.5;
+            let lungeProgress: number;
+            const windupPhase = 0.15;    // 15% of animation
+            const lungePhase = 0.60;     // Until 60%
+            const windupDistance = -0.15; // Pull back 15% in opposite direction
+
+            if (progress < windupPhase) {
+                // Wind-up: move backward
+                lungeProgress = (progress / windupPhase) * windupDistance;
+            } else if (progress < lungePhase) {
+                // Lunge forward
+                const lungeLocalProgress = (progress - windupPhase) / (lungePhase - windupPhase);
+                lungeProgress = lungeLocalProgress * 0.5; // Move 50% forward
+            } else {
+                // Return
+                const returnLocalProgress = (progress - lungePhase) / (1 - lungePhase);
+                lungeProgress = (1 - returnLocalProgress) * 0.5;
+            }
 
             return {
-                x: fromX + (toX - fromX) * lungeProgress * lungeDistance,
-                y: fromY + (toY - fromY) * lungeProgress * lungeDistance
+                x: Math.round(fromX + (toX - fromX) * lungeProgress),
+                y: Math.round(fromY + (toY - fromY) * lungeProgress)
             };
         } else if (this.animation.type === 'knockback') {
-            // Knockback: smooth ease-out movement
-            const eased = this.easeOutQuad(progress);
+            // Knockback with slight wind-up: brief pause → push back
+            // 0-10%: Wind-up (lean toward enemy slightly)
+            // 10-100%: Knockback with ease-out
             const fromX = this.animation.from.x * tileSize;
             const fromY = this.animation.from.y * tileSize;
             const toX = this.animation.to.x * tileSize;
             const toY = this.animation.to.y * tileSize;
 
+            const windupPhase = 0.1; // 10% wind-up
+            let effectiveProgress: number;
+
+            if (progress < windupPhase) {
+                // Wind-up: move slightly toward enemy (opposite of knockback)
+                effectiveProgress = -(progress / windupPhase) * 0.1; // Move 10% opposite
+            } else {
+                // Knockback
+                const knockbackProgress = (progress - windupPhase) / (1 - windupPhase);
+                effectiveProgress = this.easeOutQuad(knockbackProgress);
+            }
+
             return {
-                x: fromX + (toX - fromX) * eased,
-                y: fromY + (toY - fromY) * eased
+                x: Math.round(fromX + (toX - fromX) * effectiveProgress),
+                y: Math.round(fromY + (toY - fromY) * effectiveProgress)
             };
         }
 

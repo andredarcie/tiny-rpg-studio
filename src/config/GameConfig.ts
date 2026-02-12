@@ -119,6 +119,17 @@ export const GameConfig = new GameConfigSchema({
       /** Font size for damage numbers (pixels) */
       fontSize: 8,
     },
+    /** Attack telegraph (warning) configuration */
+    telegraph: {
+      /** Enable attack warning indicators */
+      enabled: true,
+      /** Warning color (hex) */
+      color: '#FF004D',
+      /** Pulse speed (radians per millisecond) - faster = more noticeable */
+      pulseSpeed: 0.02,
+      /** Show warning when enemy is N tiles away */
+      triggerDistance: 1,
+    },
     /** Particle effects configuration */
     particles: {
       /** Enable particle effects */

@@ -12,6 +12,7 @@ import { RendererCombatAnimator } from './renderer/RendererCombatAnimator';
 import { RendererCameraShake } from './renderer/RendererCameraShake';
 import { RendererFloatingText } from './renderer/RendererFloatingText';
 import { RendererParticleSystem } from './renderer/RendererParticleSystem';
+import { RendererAttackTelegraph } from './renderer/RendererAttackTelegraph';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
 
@@ -66,6 +67,7 @@ class Renderer {
     cameraShake!: RendererCameraShake;
     floatingText!: RendererFloatingText;
     particleSystem!: RendererParticleSystem;
+    attackTelegraph!: RendererAttackTelegraph;
     drawIconIdNextFrame: string;
     timeIconOverPlayer: number;
     tileAnimationInterval: number;
@@ -128,6 +130,10 @@ class Renderer {
         this.cameraShake = new RendererCameraShake(this as never);
         this.floatingText = new RendererFloatingText(this as never);
         this.particleSystem = new RendererParticleSystem(this as never);
+        this.attackTelegraph = new RendererAttackTelegraph(this as never);
+
+        // Connect attack telegraph to entity renderer for wind-up animations
+        this.entityRenderer.attackTelegraph = this.attackTelegraph;
 
         this.drawIconIdNextFrame = '';
         this.timeIconOverPlayer = GameConfig.animation.iconOverPlayerDuration;

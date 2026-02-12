@@ -54,6 +54,7 @@ export type EnemyDefinition = {
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
+    attackWarning?: boolean;
 };
 
 export type VariableDefinition = {

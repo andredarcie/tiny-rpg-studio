@@ -47,6 +47,7 @@ export type RendererApi = {
   floatingText?: FloatingTextApi;
   particleSystem?: ParticleSystemApi;
   entityRenderer?: EntityRendererApi;
+  attackTelegraph?: AttackTelegraphApi;
 };
 
 export type CombatAnimatorApi = {
@@ -71,6 +72,14 @@ export type ParticleSystemApi = {
 
 export type EntityRendererApi = {
   flashEntity: (entityId: string, color: string, duration?: number) => void;
+};
+
+export type AttackTelegraphApi = {
+  activateTelegraph: (enemyId: string, direction: { x: number; y: number }) => void;
+  deactivateTelegraph: (enemyId: string) => void;
+  clearAll: () => void;
+  isActive: (enemyId: string) => boolean;
+  applyWindupOffset: (enemyId: string, baseX: number, baseY: number) => { x: number; y: number };
 };
 
 export type CombatStunManagerApi = {

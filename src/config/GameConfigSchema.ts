@@ -60,6 +60,13 @@ export interface GameCombatParticlesConfig {
   readonly gravity: number;
 }
 
+export interface GameCombatTelegraphConfig {
+  readonly enabled: boolean;
+  readonly color: string;
+  readonly pulseSpeed: number;
+  readonly triggerDistance: number;
+}
+
 export interface GameCombatConfig {
   readonly attackCooldown: number;
   readonly hitStunDuration: number;
@@ -72,6 +79,7 @@ export interface GameCombatConfig {
   readonly hitstopMinDamage: number;
   readonly floatingNumbers: GameCombatFloatingNumbersConfig;
   readonly particles: GameCombatParticlesConfig;
+  readonly telegraph: GameCombatTelegraphConfig;
 }
 
 export interface GameEnemyVisionConfig {
@@ -230,6 +238,7 @@ export class GameConfigSchema {
       hitstopMinDamage: this._combat.hitstopMinDamage,
       floatingNumbers: { ...this._combat.floatingNumbers },
       particles: { ...this._combat.particles },
+      telegraph: { ...this._combat.telegraph },
     };
   }
 
@@ -357,6 +366,16 @@ export class GameConfigSchema {
     this.assertPositiveInteger(combat.particles.lifetime, 'particles lifetime');
     this.assertPositiveNumber(combat.particles.gravity, 'particles gravity');
 
+    // Validate telegraph
+    if (typeof combat.telegraph.enabled !== 'boolean') {
+      throw new Error('Telegraph enabled must be a boolean');
+    }
+    if (typeof combat.telegraph.color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(combat.telegraph.color)) {
+      throw new Error('Telegraph color must be a valid hex color (#RRGGBB)');
+    }
+    this.assertPositiveNumber(combat.telegraph.pulseSpeed, 'telegraph pulse speed');
+    this.assertPositiveInteger(combat.telegraph.triggerDistance, 'telegraph trigger distance');
+
     return Object.freeze({
       attackCooldown: combat.attackCooldown,
       hitStunDuration: combat.hitStunDuration,
@@ -369,6 +388,7 @@ export class GameConfigSchema {
       hitstopMinDamage: combat.hitstopMinDamage,
       floatingNumbers: Object.freeze({ ...combat.floatingNumbers }),
       particles: Object.freeze({ ...combat.particles }),
+      telegraph: Object.freeze({ ...combat.telegraph }),
     });
   }
 
