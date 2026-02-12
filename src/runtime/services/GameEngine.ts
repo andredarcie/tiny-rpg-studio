@@ -2,6 +2,7 @@ import { DialogManager } from './engine/DialogManager';
 import { EnemyManager } from './engine/EnemyManager';
 import { InteractionManager } from './engine/InteractionManager';
 import { MovementManager } from './engine/MovementManager';
+import { CombatStunManager } from './engine/CombatStunManager';
 import { GameState } from '../domain/GameState';
 import { InputManager } from '../adapters/InputManager';
 import { NPCManager } from './NPCManager';
@@ -48,6 +49,7 @@ export class GameEngine {
   enemyManager: EnemyManager;
   movementManager: MovementManager;
   inputManager: InputManager;
+  combatStunManager: CombatStunManager;
   awaitingRestart: boolean;
   introVisible: boolean;
   introStartTime: number;
@@ -68,9 +70,12 @@ export class GameEngine {
     this.interactionManager = new InteractionManager(this.gameState as never, this.dialogManager, {
       onPlayerVictory: () => this.handleGameCompletion(),
     });
+    this.combatStunManager = new CombatStunManager(this.gameState.state);
     this.enemyManager = new EnemyManager(this.gameState as never, this.renderer, this.tileManager, {
       onPlayerDefeated: () => this.handlePlayerDefeat(),
       dialogManager: this.dialogManager,
+      combatStunManager: this.combatStunManager,
+      playerManager: this.gameState.playerManager,
     });
     this.movementManager = new MovementManager({
       gameState: this.gameState as never,
@@ -79,6 +84,7 @@ export class GameEngine {
       dialogManager: this.dialogManager,
       interactionManager: this.interactionManager,
       enemyManager: this.enemyManager,
+      combatStunManager: this.combatStunManager,
     });
     this.inputManager = new InputManager(this);
     this.awaitingRestart = false;

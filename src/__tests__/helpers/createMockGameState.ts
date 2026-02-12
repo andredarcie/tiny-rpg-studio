@@ -95,7 +95,7 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
 
   return {
     // Core state
-    playing: true,
+    playing: overrides.playing !== undefined ? overrides.playing : true,
 
     // Mode checks
     isEditorModeActive: vi.fn(() => false),
@@ -161,6 +161,10 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
 
     // Pickup overlay
     showPickupOverlay: vi.fn(),
+
+    // Optional methods
+    pauseGame: vi.fn(),
+    resumeGame: vi.fn(),
 
     // Apply overrides
     ...overrides,

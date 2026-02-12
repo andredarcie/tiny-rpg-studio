@@ -45,10 +45,10 @@ class EditorEnemyRenderer extends EditorRendererBase {
 
             const label = document.createElement('span');
             const displayName = this.getEnemyDisplayName(definition, enemy.type);
-            const damageInfo = Number.isFinite(definition?.damage)
-                ? this.tf('enemies.damageInfo', { value: definition?.damage ?? 0 })
+            const livesInfo = Number.isFinite(definition?.lives)
+                ? ` - Vida: ${definition?.lives ?? 1}`
                 : '';
-            label.textContent = `${displayName} @ (${enemy.x}, ${enemy.y})${damageInfo}`;
+            label.textContent = `${displayName} @ (${enemy.x}, ${enemy.y})${livesInfo}`;
 
             const variableWrapper = document.createElement('label');
             variableWrapper.className = 'enemy-variable-wrapper';
@@ -103,8 +103,8 @@ class EditorEnemyRenderer extends EditorRendererBase {
 
             const preview = document.createElement('canvas');
             preview.className = 'enemy-preview';
-            preview.width = 48;
-            preview.height = 48;
+            preview.width = 56;
+            preview.height = 56;
             this.drawEnemyPreview(preview, definition);
 
             const meta = document.createElement('div');
@@ -114,10 +114,25 @@ class EditorEnemyRenderer extends EditorRendererBase {
             name.className = 'enemy-name';
             name.textContent = this.getEnemyDisplayName(definition, definition.type);
 
-            const damage = document.createElement('div');
-            damage.className = 'enemy-damage';
+            const stats = document.createElement('div');
+            stats.className = 'enemy-stats';
+
+            const livesValue = Number.isFinite(definition.lives) ? definition.lives : '?';
             const damageValue = Number.isFinite(definition.damage) ? definition.damage : '?';
-            damage.textContent = `Dano: ${damageValue}`;
+
+            const livesSpan = document.createElement('span');
+            livesSpan.className = 'enemy-stat-lives';
+            livesSpan.textContent = `${livesValue}`;
+
+            const separator = document.createElement('span');
+            separator.className = 'enemy-stat-separator';
+            separator.textContent = '⚔';
+
+            const damageSpan = document.createElement('span');
+            damageSpan.className = 'enemy-stat-damage';
+            damageSpan.textContent = `${damageValue}`;
+
+            stats.append(livesSpan, separator, damageSpan);
 
             if (definition.boss) {
                 const badge = document.createElement('span');
@@ -126,7 +141,7 @@ class EditorEnemyRenderer extends EditorRendererBase {
                 meta.appendChild(badge);
             }
 
-            meta.append(name, damage);
+            meta.append(name, stats);
             card.append(preview, meta);
             container.appendChild(card);
         });

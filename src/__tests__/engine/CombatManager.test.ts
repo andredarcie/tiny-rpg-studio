@@ -1,0 +1,606 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CombatManager } from '../../runtime/services/engine/CombatManager';
+import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
+import { TextResources } from '../../runtime/adapters/TextResources';
+import { GameConfig } from '../../config/GameConfig';
+import { createCombatGameState } from '../helpers/createCombatGameState';
+import type { EnemyState } from '../../types/managerTypes';
+
+describe('CombatManager', () => {
+  const getSpy = vi.spyOn(TextResources, 'get');
+  const formatSpy = vi.spyOn(TextResources, 'format');
+  const getDefinitionSpy = vi.spyOn(EnemyDefinitions, 'getEnemyDefinition');
+  const getMissChanceSpy = vi.spyOn(EnemyDefinitions, 'getMissChance');
+
+  const createRenderer = () => ({
+    draw: vi.fn(),
+    flashScreen: vi.fn(),
+    showCombatIndicator: vi.fn(),
+    spawnEnemyLifeLoss: vi.fn(),
+    applyGrayscaleFilter: vi.fn(),
+    removeGrayscaleFilter: vi.fn(),
+    combatAnimator: {
+      startLungeAttack: vi.fn((attacker, target, onComplete) => onComplete?.()),
+      startKnockback: vi.fn((entity, direction, onComplete) => onComplete?.()),
+      freezeFrame: vi.fn(),
+    },
+    cameraShake: {
+      triggerFromDamage: vi.fn(),
+    },
+    floatingText: {
+      spawnDamageNumber: vi.fn(),
+    },
+    particleSystem: {
+      spawnImpactAtTile: vi.fn(),
+      spawnCriticalImpact: vi.fn(),
+      spawnDeath: vi.fn(),
+    },
+    entityRenderer: {
+      flashEntity: vi.fn(),
+    },
+  });
+
+  const baseEnemyDefinition = {
+    type: 'test-enemy',
+    id: 'enemy-test',
+    name: 'Test Enemy',
+    nameKey: 'enemies.names.test',
+    description: 'test',
+    damage: 1,
+    lives: 3,
+    missChance: 0,
+    experience: 1,
+    hasEyes: true,
+    sprite: [],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+
+    getSpy.mockImplementation((key: string, fallback?: string) => {
+      if (key === 'combat.tooSoon') return 'Too soon!';
+      if (key === 'combat.cooldown') return 'Cooldown!';
+      if (key === 'combat.stealthKill') return 'Stealth Kill!';
+      if (key === 'combat.stealthMiss') return 'Stealth Miss!';
+      if (key === 'combat.block.full') return 'Blocked!';
+      return fallback || 'text';
+    });
+
+    formatSpy.mockImplementation((key: string, params: Record<string, unknown>, fallback?: string) => {
+      if (key === 'combat.killedBy') return `Killed by ${params.enemy}`;
+      if (key === 'combat.block.partial') return `Blocked ${params.value}`;
+      return fallback || 'text';
+    });
+
+    getDefinitionSpy.mockImplementation(() => baseEnemyDefinition as never);
+    getMissChanceSpy.mockImplementation(() => null);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('Basic Stats and Calculations', () => {
+    it('normalizes miss chance to 0-1 range', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      expect(manager.normalizeMissChance(2)).toBe(1);
+      expect(manager.normalizeMissChance(-1)).toBe(0);
+      expect(manager.normalizeMissChance(0.5)).toBe(0.5);
+      expect(manager.normalizeMissChance(NaN)).toBe(0.25);
+    });
+
+    it('returns true when miss chance is 1', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      expect(manager.attackMissed(1)).toBe(true);
+      expect(manager.attackMissed(0)).toBe(false);
+    });
+
+    it('gets enemy damage from definition', () => {
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 3 } as never));
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      expect(manager.getEnemyDamage('dragon')).toBe(3);
+    });
+
+    it('returns minimum 1 damage if definition is invalid', () => {
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: -5 } as never));
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      expect(manager.getEnemyDamage('invalid')).toBe(1);
+    });
+
+    it('gets enemy miss chance from definition', () => {
+      getMissChanceSpy.mockImplementation(() => 0.3);
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      expect(manager.getEnemyMissChance('rat')).toBe(0.3);
+    });
+
+    it('uses fallback miss chance when definition has none', () => {
+      getMissChanceSpy.mockImplementation(() => null);
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, { fallbackMissChance: 0.25 });
+
+      expect(manager.getEnemyMissChance('rat')).toBe(0.25);
+    });
+
+    it('ensures enemy has lives initialized', () => {
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, lives: 5 } as never));
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      const enemy: EnemyState = { id: 'e1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 };
+      manager.ensureEnemyLives(enemy);
+
+      expect(enemy.lives).toBe(5);
+    });
+
+    it('does not reset lives if already set', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      const enemy: EnemyState = { id: 'e1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 2 };
+      manager.ensureEnemyLives(enemy);
+
+      expect(enemy.lives).toBe(2); // Preserved
+    });
+  });
+
+  describe('Combat Cooldowns', () => {
+    it('shows cooldown message when attack cooldown is active', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+      });
+      const renderer = createRenderer();
+      const playerManager = {
+        isOnAttackCooldown: vi.fn(() => true),
+        player: { lastAttackTime: 0 },
+      };
+      const manager = new CombatManager(gameState, renderer, { playerManager });
+
+      manager.handleEnemyCollision(0);
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Too soon!', { duration: 500 });
+    });
+
+    it('shows cooldown message when damage cooldown is active', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        isPlayerOnDamageCooldown: vi.fn(() => true),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Cooldown!', { duration: 700 });
+    });
+  });
+
+  describe('Stealth Assassination', () => {
+    it('can assassinate weak enemies with stealth skill', () => {
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 2 } as never));
+      const gameState = createCombatGameState({
+        hasSkill: vi.fn((skillId: string) => skillId === 'stealth'),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      const enemy: EnemyState = { id: 'e1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 1 };
+      expect(manager.canAssassinate(enemy)).toBe(true);
+    });
+
+    it('cannot assassinate strong enemies even with stealth', () => {
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 3 } as never));
+      const gameState = createCombatGameState({
+        hasSkill: vi.fn((skillId: string) => skillId === 'stealth'),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      const enemy: EnemyState = { id: 'e1', type: 'dragon', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 5 };
+      expect(manager.canAssassinate(enemy)).toBe(false);
+    });
+
+    it('cannot assassinate without stealth skill', () => {
+      const gameState = createCombatGameState({
+        hasSkill: vi.fn(() => false),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      const enemy: EnemyState = { id: 'e1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 1 };
+      expect(manager.canAssassinate(enemy)).toBe(false);
+    });
+
+    it('assassinates enemy successfully', () => {
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      manager.assassinateEnemy(0);
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Stealth Kill!', { duration: 800 });
+      expect(renderer.flashScreen).toHaveBeenCalledWith({ intensity: 0.4, duration: 120 });
+      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
+    });
+
+    it('does not assassinate if enemy has no ID', () => {
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      manager.assassinateEnemy(0);
+
+      expect(consoleSpy).toHaveBeenCalledWith('Enemy missing ID, cannot assassinate safely');
+      expect(onEnemyDefeated).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('Legacy Combat', () => {
+    it('damages player when enemy attack hits', () => {
+      getMissChanceSpy.mockImplementation(() => 0); // 0% miss - guaranteed hit
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        damagePlayer: vi.fn(() => 2), // Player survives with 2 lives
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined }; // Force legacy mode
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(gameState.damagePlayer).toHaveBeenCalledWith(1);
+      expect(renderer.spawnEnemyLifeLoss).toHaveBeenCalledWith(1, 1, 2); // Enemy loses 1 life
+    });
+
+    it('shows miss feedback when enemy attack misses', () => {
+      getMissChanceSpy.mockImplementation(() => 1); // 100% miss
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined }; // Force legacy mode
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Miss', { duration: 500 });
+      expect(gameState.damagePlayer).not.toHaveBeenCalled();
+    });
+
+    it('triggers death sequence when player dies in legacy combat', () => {
+      getMissChanceSpy.mockImplementation(() => 0); // 0% miss - guaranteed hit
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, nameKey: 'enemies.names.rat' } as never));
+      const setLastKillerEnemy = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        damagePlayer: vi.fn(() => 0), // Player dies
+        getLives: vi.fn(() => 1),
+        setLastKillerEnemy,
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined }; // Force legacy mode
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(renderer.applyGrayscaleFilter).toHaveBeenCalled();
+      expect(gameState.pauseGame).toHaveBeenCalledWith('player-death');
+      expect(setLastKillerEnemy).toHaveBeenCalledWith('e1');
+    });
+
+    it('removes enemy when defeated in legacy combat', () => {
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        damagePlayer: vi.fn(() => 2),
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined };
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      manager.handleEnemyCollision(0);
+
+      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
+      expect(renderer.flashScreen).toHaveBeenCalledWith({ intensity: 0.8, duration: 160 });
+    });
+  });
+
+  describe('Animated Combat - Player Initiated', () => {
+    it('player attacks and defeats enemy', () => {
+      getMissChanceSpy.mockImplementation(() => 0); // 0% miss - guaranteed hit
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Advance timers to complete death animation (6 flashes * 50ms = 300ms)
+      vi.advanceTimersByTime(300);
+
+      expect(renderer.combatAnimator.startLungeAttack).toHaveBeenCalled();
+      expect(renderer.entityRenderer.flashEntity).toHaveBeenCalled();
+      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
+    });
+
+    it('player attacks but enemy survives and counter-attacks', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        damagePlayer: vi.fn(() => 2),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      expect(renderer.combatAnimator.startKnockback).toHaveBeenCalled();
+      expect(gameState.damagePlayer).toHaveBeenCalledWith(1);
+    });
+
+    it('enemy misses counter-attack in animated combat', () => {
+      getMissChanceSpy.mockImplementation(() => 1); // 100% miss
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Miss', { duration: 500 });
+      expect(gameState.damagePlayer).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Animated Combat - Enemy Initiated', () => {
+    it('enemy attacks and player counter-attacks', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        damagePlayer: vi.fn(() => 2),
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      expect(renderer.combatAnimator.startKnockback).toHaveBeenCalled();
+      expect(gameState.damagePlayer).toHaveBeenCalledWith(1);
+      expect(renderer.combatAnimator.startLungeAttack).toHaveBeenCalled();
+    });
+
+    it('enemy misses initial attack in animated combat', () => {
+      getMissChanceSpy.mockImplementation(() => 1); // 100% miss
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Miss', { duration: 500 });
+      expect(gameState.damagePlayer).not.toHaveBeenCalled();
+      expect(renderer.combatAnimator.startLungeAttack).toHaveBeenCalled(); // Player still counter-attacks
+    });
+
+    it('player dies to enemy attack', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        damagePlayer: vi.fn(() => 0), // Player dies
+        getLives: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      expect(renderer.applyGrayscaleFilter).toHaveBeenCalled();
+      expect(gameState.pauseGame).toHaveBeenCalledWith('player-death');
+      expect(renderer.combatAnimator.startLungeAttack).not.toHaveBeenCalled(); // No counter-attack
+    });
+  });
+
+  describe('Death Sequence', () => {
+    it('cancels death sequence timer', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.cancelDeathSequence();
+
+      expect(renderer.removeGrayscaleFilter).toHaveBeenCalled();
+      expect(gameState.resumeGame).toHaveBeenCalledWith('player-death');
+    });
+
+    it('triggers game over after death sequence completes', () => {
+      const onPlayerDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        damagePlayer: vi.fn(() => 0),
+        getLives: vi.fn(() => 1),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined };
+      const manager = new CombatManager(gameState, renderer, { onPlayerDefeated });
+
+      manager.handleEnemyCollision(0);
+
+      // Fast-forward timers
+      vi.advanceTimersByTime(2500);
+
+      expect(onPlayerDefeated).toHaveBeenCalled();
+      expect(renderer.removeGrayscaleFilter).toHaveBeenCalled();
+      expect(gameState.resumeGame).toHaveBeenCalledWith('player-death');
+    });
+
+    it('cleans up animation timers on death sequence cancel', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      // Simulate animation timers being created
+      const timer1 = setTimeout(() => {}, 1000);
+      const timer2 = setTimeout(() => {}, 2000);
+      manager['animationTimers'].add(timer1);
+      manager['animationTimers'].add(timer2);
+
+      manager.cancelDeathSequence();
+
+      expect(manager['animationTimers'].size).toBe(0);
+    });
+  });
+
+  describe('Bug Fixes Validation', () => {
+    it('Bug #1: player does not die when enemy misses attack', () => {
+      getMissChanceSpy.mockImplementation(() => 1); // 100% miss
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getLives: vi.fn(() => 1), // Player has 1 life
+        damagePlayer: vi.fn(),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined };
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      // Player should NOT die despite having 1 life, because attack missed
+      expect(renderer.applyGrayscaleFilter).not.toHaveBeenCalled();
+      expect(gameState.damagePlayer).not.toHaveBeenCalled();
+    });
+
+    it('Bug #2: uses enemy ID instead of index for safe removal', () => {
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined };
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      manager.handleEnemyCollision(0);
+
+      // Should pass enemy ID, not index
+      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
+    });
+
+    it('Bug #2: does not process combat if enemy has no ID', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      manager.handleEnemyCollision(0);
+
+      expect(consoleSpy).toHaveBeenCalledWith('Enemy missing ID, cannot process combat safely');
+      expect(renderer.combatAnimator.startLungeAttack).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('Bug #5: attackMissed does not mutate fallbackMissChance', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, { fallbackMissChance: 0.25 });
+
+      const originalFallback = manager['fallbackMissChance'];
+      manager.attackMissed(); // Call without parameter
+
+      expect(manager['fallbackMissChance']).toBe(originalFallback); // Should not mutate
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('handles invalid enemy index gracefully', () => {
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => []),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      expect(() => manager.handleEnemyCollision(-1)).not.toThrow();
+      expect(() => manager.handleEnemyCollision(999)).not.toThrow();
+    });
+
+    it('handles enemy without entityRenderer in death animation', () => {
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+      });
+      const renderer = { ...createRenderer(), entityRenderer: undefined };
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      manager['playEnemyDeathAnimation']({ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1 }, onEnemyDefeated);
+
+      // Should call onComplete immediately without animation
+      expect(onEnemyDefeated).toHaveBeenCalled();
+    });
+
+    it('handles damage reduction from shield', () => {
+      getMissChanceSpy.mockImplementation(() => 0); // 0% miss - guaranteed hit
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 2 } as never));
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        damagePlayer: vi.fn(() => 2),
+        consumeLastDamageReduction: vi.fn(() => 1), // Shield blocked 1 damage (less than total)
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Blocked 1', { duration: 700 });
+    });
+
+    it('handles full damage block from shield', () => {
+      getMissChanceSpy.mockImplementation(() => 0); // 0% miss - guaranteed hit
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 1 } as never));
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        damagePlayer: vi.fn(() => 2),
+        consumeLastDamageReduction: vi.fn(() => 1), // Shield blocked all damage (1 >= 1)
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Blocked!', { duration: 700 });
+    });
+  });
+});

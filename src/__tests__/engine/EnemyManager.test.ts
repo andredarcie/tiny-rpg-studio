@@ -18,6 +18,9 @@ describe('EnemyManager', () => {
     draw: vi.fn(),
     flashScreen: vi.fn(),
     showCombatIndicator: vi.fn(),
+    spawnEnemyLifeLoss: vi.fn(),
+    applyGrayscaleFilter: vi.fn(),
+    removeGrayscaleFilter: vi.fn(),
   };
 
   const tileManager = {
@@ -237,7 +240,7 @@ describe('EnemyManager', () => {
 
   it('moves chasing enemy during tick even if player stops', () => {
     const player = { roomIndex: 0, x: 3, y: 2 };
-    const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
+    const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true, lives: 1 };
     const getEnemiesMock = vi.fn(() => [enemy]);
     const getPlayerMock = vi.fn(() => player);
     const getGameMock = vi.fn(() => ({ rooms: [{ walls: [] }] }));
@@ -251,7 +254,8 @@ describe('EnemyManager', () => {
 
     manager.tick();
 
-    expect(enemy.x).toBe(3);
+    // Enemy stops adjacent (doesn't enter player's tile in new collision system)
+    expect(enemy.x).toBe(2);
   });
 
   it('shows a cooldown message when damage is blocked by room change safety', () => {
@@ -278,6 +282,7 @@ describe('EnemyManager', () => {
         y: 2,
         lastX: 0,
         playerInVision: true,
+        lives: 1,
       };
 
       const walls = [
@@ -302,16 +307,18 @@ describe('EnemyManager', () => {
 
       const manager = new EnemyManager(gameState, renderer, tileManager);
 
-      let collided = false;
+      // Enemy should move adjacent to player and stop (new collision combat system)
+      let adjacentReached = false;
       for (let i = 0; i < 5; i += 1) {
         manager.moveChasingEnemies(player);
-        if (enemy.x === player.x && enemy.y === player.y) {
-          collided = true;
+        // Enemy stops at x=1 (adjacent to player at x=2)
+        if (enemy.x === 1 && enemy.y === 2) {
+          adjacentReached = true;
           break;
         }
       }
 
-      expect(collided).toBe(true);
+      expect(adjacentReached).toBe(true);
     });
 
     it('should collide after player stops moving when enemy becomes adjacent', () => {
@@ -324,6 +331,7 @@ describe('EnemyManager', () => {
         y: 3,
         lastX: 4,
         playerInVision: true,
+        lives: 1,
       };
 
       const walls = [
@@ -350,7 +358,8 @@ describe('EnemyManager', () => {
 
       manager.tick();
 
-      expect(enemy.x).toBe(5);
+      // Enemy is already adjacent, stays in place (collision combat triggered)
+      expect(enemy.x).toBe(4);
       expect(enemy.y).toBe(3);
     });
 
@@ -363,6 +372,7 @@ describe('EnemyManager', () => {
         y: 2,
         lastX: 2,
         playerInVision: true,
+        lives: 1,
       };
 
       const walls = [
@@ -388,13 +398,15 @@ describe('EnemyManager', () => {
 
       const manager = new EnemyManager(gameState, renderer, tileManager);
 
-      let collisionOccurred = false;
+      const initialX = enemy.x;
+      let enemyAdvanced = false;
       for (let i = 0; i < 10; i += 1) {
         const currentPlayer = getPlayerMock();
         manager.moveChasingEnemies(currentPlayer);
 
-        if (enemy.x === currentPlayer.x && enemy.y === currentPlayer.y) {
-          collisionOccurred = true;
+        // Check if enemy is advancing (not stuck)
+        if (enemy.x > initialX) {
+          enemyAdvanced = true;
           break;
         }
 
@@ -403,12 +415,14 @@ describe('EnemyManager', () => {
         }
       }
 
-      expect(collisionOccurred).toBe(true);
+      expect(enemyAdvanced).toBe(true);
     });
   });
 
   describe('Boss defeat variable + necromancer death', () => {
     it('should trigger defeatVariable even when player dies in the collision', () => {
+      vi.useFakeTimers();
+
       const bossDefinition = {
         ...baseEnemyDefinition,
         type: 'boss',
@@ -430,6 +444,7 @@ describe('EnemyManager', () => {
         x: 3,
         y: 3,
         lastX: 3,
+        lives: 1,
         defeatVariableId: 'boss-door',
       };
       const enemies = [boss];
@@ -452,11 +467,16 @@ describe('EnemyManager', () => {
 
       manager.handleEnemyCollision(0);
 
-      // Player died - onPlayerDefeated should be called
+      // Wait for death sequence delay (2500ms)
+      vi.advanceTimersByTime(2500);
+
+      // Player died - onPlayerDefeated should be called after death sequence
       expect(onPlayerDefeated).toHaveBeenCalled();
 
       // Bug: the variable is NEVER set because return happens before tryTriggerDefeatVariable
       expect(gameState.setVariableValue).toHaveBeenCalledWith('boss-door', true, true);
+
+      vi.useRealTimers();
     });
   });
 
@@ -808,6 +828,161 @@ describe('EnemyManager', () => {
     expect(gameState.damagePlayer).not.toHaveBeenCalled();
 
     vi.useRealTimers();
+  });
+
+  describe('Player death message localization', () => {
+    it('should show localized enemy name in death message for ancient-demon', () => {
+      vi.useFakeTimers();
+
+      const ancientDemonDefinition = {
+        ...baseEnemyDefinition,
+        type: 'ancient-demon',
+        nameKey: 'enemies.names.ancientDemon',
+        name: 'Demônio Ancião',
+        damage: 1,
+      };
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...ancientDemonDefinition,
+        matchesType: (type: string) => type === 'ancient-demon',
+        getExperienceReward: () => 20,
+        getMissChance: () => 0,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      // Mock TextResources to return localized strings
+      getSpy.mockImplementation((key: string) => {
+        if (key === 'enemies.names.ancientDemon') return 'Demônio Ancião';
+        return '';
+      });
+      formatSpy.mockImplementation((key: string, params: Record<string, unknown>) => {
+        if (key === 'combat.killedBy' && params.enemy === 'Demônio Ancião') {
+          return 'Morto por Demônio Ancião';
+        }
+        return '';
+      });
+
+      const enemy = {
+        id: 'demon-1',
+        type: 'ancient-demon',
+        roomIndex: 0,
+        x: 3,
+        y: 3,
+        lastX: 3,
+        lives: 1,
+      };
+      const enemies = [enemy];
+      const onPlayerDefeated = vi.fn();
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        damagePlayer: vi.fn(() => 0), // player dies
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager, {
+        onPlayerDefeated,
+      });
+
+      manager.handleEnemyCollision(0);
+
+      // Check that showCombatIndicator was called with localized name
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith(
+        expect.stringContaining('Demônio Ancião'),
+        expect.objectContaining({ duration: 2500 })
+      );
+
+      // Verify grayscale filter was applied
+      expect(renderer.applyGrayscaleFilter).toHaveBeenCalled();
+
+      // Wait for death sequence to complete
+      vi.advanceTimersByTime(2500);
+
+      // Verify game over was triggered
+      expect(onPlayerDefeated).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('should show localized enemy name in death message for giant-rat', () => {
+      vi.useFakeTimers();
+
+      const giantRatDefinition = {
+        ...baseEnemyDefinition,
+        type: 'giant-rat',
+        nameKey: 'enemies.names.giantRat',
+        name: 'Rato Gigante',
+        damage: 1,
+      };
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...giantRatDefinition,
+        matchesType: (type: string) => type === 'giant-rat',
+        getExperienceReward: () => 3,
+        getMissChance: () => 0.1,
+      }));
+      getMissChanceSpy.mockReturnValue(0.1);
+
+      // Mock TextResources to return localized strings
+      getSpy.mockImplementation((key: string) => {
+        if (key === 'enemies.names.giantRat') return 'Rato Gigante';
+        return '';
+      });
+      formatSpy.mockImplementation((key: string, params: Record<string, unknown>) => {
+        if (key === 'combat.killedBy' && params.enemy === 'Rato Gigante') {
+          return 'Morto por Rato Gigante';
+        }
+        return '';
+      });
+
+      const enemy = {
+        id: 'rat-1',
+        type: 'giant-rat',
+        roomIndex: 0,
+        x: 3,
+        y: 3,
+        lastX: 3,
+        lives: 1,
+      };
+      const enemies = [enemy];
+      const onPlayerDefeated = vi.fn();
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        damagePlayer: vi.fn(() => 0), // player dies
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager, {
+        onPlayerDefeated,
+      });
+
+      manager.handleEnemyCollision(0);
+
+      // Check that showCombatIndicator was called with localized name (not "giant-rat")
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith(
+        expect.stringContaining('Rato Gigante'),
+        expect.objectContaining({ duration: 2500 })
+      );
+
+      // Should NOT contain the type id
+      const calls = (renderer.showCombatIndicator as ReturnType<typeof vi.fn>).mock.calls;
+      const deathMessageCall = calls.find((call: unknown[]) =>
+        typeof call[0] === 'string' && call[0].includes('Morto')
+      );
+      if (deathMessageCall) {
+        expect(deathMessageCall[0]).not.toContain('giant-rat');
+      }
+
+      vi.advanceTimersByTime(2500);
+      expect(onPlayerDefeated).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 });
 

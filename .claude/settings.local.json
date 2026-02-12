@@ -19,7 +19,11 @@
       "Bash(npx vitest run:*)",
       "Bash(git checkout:*)",
       "Bash(ls:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(dir:*)",
+      "Bash(curl:*)",
+      "Bash(bash:*)",
+      "Bash(chmod:*)"
     ]
   }
 }

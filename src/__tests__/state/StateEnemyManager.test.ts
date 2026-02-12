@@ -192,4 +192,160 @@ describe('StateEnemyManager', () => {
       });
     });
   });
+
+  describe('Necromancer Revive - Enemy Removal Behavior', () => {
+    it('removeEnemy should remove from both game.enemies (permanent) and state.enemies (runtime)', () => {
+      const game = {
+        enemies: [
+          { id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1 },
+          { id: 'enemy-2', type: 'giant-rat', roomIndex: 0, x: 2, y: 2, lastX: 2 },
+        ] as EnemyDefinition[],
+        variables: [],
+      };
+      const state = {
+        enemies: [
+          { id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 6 },
+          { id: 'enemy-2', type: 'giant-rat', roomIndex: 0, x: 2, y: 2, lastX: 2, lives: 1 },
+        ] as EnemyDefinition[],
+      };
+      const manager = new StateEnemyManager(game as never, state as never, createWorldManager() as never);
+
+      // Remove enemy-1 permanently (editor behavior)
+      manager.removeEnemy('enemy-1');
+
+      // Verify removed from both permanent and runtime
+      expect(game.enemies.length).toBe(1);
+      expect(game.enemies[0].id).toBe('enemy-2');
+      expect(state.enemies.length).toBe(1);
+      expect(state.enemies[0].id).toBe('enemy-2');
+
+      // Reset should NOT restore enemy-1 (it was permanently removed)
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(1);
+      expect(state.enemies[0].id).toBe('enemy-2');
+    });
+
+    it('removeEnemyFromRuntime should only remove from state.enemies (runtime), preserving game.enemies (permanent)', () => {
+      const game = {
+        enemies: [
+          { id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1 },
+          { id: 'enemy-2', type: 'ancient-demon', roomIndex: 0, x: 2, y: 2, lastX: 2 },
+        ] as EnemyDefinition[],
+        variables: [],
+      };
+      const state = {
+        enemies: [
+          { id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 6 },
+          { id: 'enemy-2', type: 'ancient-demon', roomIndex: 0, x: 2, y: 2, lastX: 2, lives: 8 },
+        ] as EnemyDefinition[],
+      };
+      const manager = new StateEnemyManager(game as never, state as never, createWorldManager() as never);
+
+      // Remove enemy-1 temporarily (necromancer revive behavior)
+      manager.removeEnemyFromRuntime('enemy-1');
+
+      // Verify removed only from runtime
+      expect(game.enemies.length).toBe(2); // ✅ Permanent definitions intact
+      expect(state.enemies.length).toBe(1); // ✅ Runtime enemy removed
+      expect(state.enemies[0].id).toBe('enemy-2');
+
+      // Reset SHOULD restore enemy-1 (it's still in permanent definitions)
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(2); // ✅ Both enemies restored
+      expect(state.enemies.find(e => e.id === 'enemy-1')).toBeDefined();
+      expect(state.enemies.find(e => e.id === 'enemy-2')).toBeDefined();
+    });
+
+    it('removeEnemyFromRuntime should handle removing multiple enemies and restore all on reset', () => {
+      const game = {
+        enemies: [
+          { id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1 },
+          { id: 'enemy-2', type: 'necromancer', roomIndex: 0, x: 2, y: 2, lastX: 2 },
+          { id: 'enemy-3', type: 'dark-knight', roomIndex: 0, x: 3, y: 3, lastX: 3 },
+        ] as EnemyDefinition[],
+        variables: [],
+      };
+      const state = { enemies: [] as EnemyDefinition[] };
+      const manager = new StateEnemyManager(game as never, state as never, createWorldManager() as never);
+
+      // Initialize runtime
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(3);
+
+      // Player dies and revives - all enemies in room removed temporarily
+      manager.removeEnemyFromRuntime('enemy-1');
+      manager.removeEnemyFromRuntime('enemy-2');
+      manager.removeEnemyFromRuntime('enemy-3');
+
+      expect(state.enemies.length).toBe(0); // All removed from runtime
+      expect(game.enemies.length).toBe(3); // Permanent definitions intact
+
+      // Player resets game - enemies should come back
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(3); // ✅ All enemies restored
+      expect(state.enemies.map(e => e.id).sort()).toEqual(['enemy-1', 'enemy-2', 'enemy-3']);
+    });
+
+    it('should correctly restore enemy lives and state on reset after removeEnemyFromRuntime', () => {
+      const game = {
+        enemies: [
+          { id: 'boss-1', type: 'ancient-demon', roomIndex: 0, x: 4, y: 4, lastX: 4, lives: 8 },
+        ] as EnemyDefinition[],
+        variables: [],
+      };
+      const state = { enemies: [] as EnemyDefinition[] };
+      const manager = new StateEnemyManager(game as never, state as never, createWorldManager() as never);
+
+      // Initialize runtime
+      manager.resetRuntime();
+      expect(state.enemies[0].lives).toBe(8);
+
+      // Simulate combat - enemy takes damage
+      state.enemies[0].lives = 3; // Enemy damaged in combat
+
+      // Player dies - enemy killed temporarily via necromancer revive
+      manager.removeEnemyFromRuntime('boss-1');
+      expect(state.enemies.length).toBe(0);
+
+      // Player resets game - enemy should come back with FULL lives
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(1);
+      expect(state.enemies[0].lives).toBe(8); // ✅ Full lives restored
+      expect(state.enemies[0].playerInVision).toBe(false); // ✅ Vision reset
+      expect(state.enemies[0].alertUntil).toBe(null); // ✅ Alert reset
+    });
+
+    it('mixed usage of removeEnemy and removeEnemyFromRuntime should work correctly', () => {
+      const game = {
+        enemies: [
+          { id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1 },
+          { id: 'enemy-2', type: 'giant-rat', roomIndex: 0, x: 2, y: 2, lastX: 2 },
+          { id: 'enemy-3', type: 'skeleton', roomIndex: 1, x: 3, y: 3, lastX: 3 },
+        ] as EnemyDefinition[],
+        variables: [],
+      };
+      const state = { enemies: [] as EnemyDefinition[] };
+      const manager = new StateEnemyManager(game as never, state as never, createWorldManager() as never);
+
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(3);
+
+      // Remove enemy-1 permanently (editor action)
+      manager.removeEnemy('enemy-1');
+      expect(game.enemies.length).toBe(2);
+      expect(state.enemies.length).toBe(2);
+
+      // Remove enemy-2 temporarily (necromancer revive)
+      manager.removeEnemyFromRuntime('enemy-2');
+      expect(game.enemies.length).toBe(2); // Still 2 in permanent
+      expect(state.enemies.length).toBe(1); // Only enemy-3 in runtime
+
+      // Reset should restore enemy-2 but NOT enemy-1
+      manager.resetRuntime();
+      expect(state.enemies.length).toBe(2);
+      expect(state.enemies.find(e => e.id === 'enemy-1')).toBeUndefined(); // ❌ Permanently removed
+      expect(state.enemies.find(e => e.id === 'enemy-2')).toBeDefined(); // ✅ Restored
+      expect(state.enemies.find(e => e.id === 'enemy-3')).toBeDefined(); // ✅ Always there
+    });
+  });
 });

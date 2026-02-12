@@ -30,6 +30,8 @@ export type PlayerRuntimeState = {
     swordType: string | null;
     lastDamageReduction: number;
     godMode: boolean;
+    lastAttackTime: number;
+    stunUntil: number;
 };
 
 export type DialogState = {

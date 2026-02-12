@@ -376,4 +376,214 @@ describe('GameState - Critical Path Tests', () => {
       }).not.toThrow();
     });
   });
+
+  describe('Necromancer Revive - Enemy Restoration on Reset', () => {
+    it('should remove only the killer enemy when player revives from necromancer', () => {
+      const state = new GameState();
+
+      // Add necromancer skill and charge
+      state.skillManager.addSkill('necromancer');
+      state.skillManager.ensureRuntime().necromancerCharges = 1;
+
+      // Add enemies to room 0 (where player starts)
+      state.addEnemy({ id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1 });
+      state.addEnemy({ id: 'enemy-2', type: 'ancient-demon', roomIndex: 0, x: 2, y: 2 });
+      state.addEnemy({ id: 'enemy-3', type: 'giant-rat', roomIndex: 1, x: 3, y: 3 });
+
+      expect(state.getEnemies().length).toBe(3);
+
+      // Simulate player death and revive preparation
+      const player = state.getPlayer();
+      if (player) {
+        player.currentLives = 0;
+        state.skillManager.attemptRevive(player);
+      }
+      state.prepareNecromancerRevive();
+
+      // Set enemy-2 as the killer
+      state.setLastKillerEnemy('enemy-2');
+
+      // Trigger revive
+      const revived = state.reviveFromNecromancer();
+      expect(revived).toBe(true);
+
+      // Only enemy-2 (killer) should be removed, others should remain
+      const remainingEnemies = state.getEnemies();
+      expect(remainingEnemies.length).toBe(2);
+      expect(remainingEnemies.find(e => e.id === 'enemy-1')).toBeDefined(); // Not killed
+      expect(remainingEnemies.find(e => e.id === 'enemy-2')).toBeUndefined(); // Killed
+      expect(remainingEnemies.find(e => e.id === 'enemy-3')).toBeDefined(); // Not killed
+    });
+
+    it('should restore killer enemy when game is reset after necromancer revive', () => {
+      const state = new GameState();
+
+      // Add necromancer skill and charge
+      state.skillManager.addSkill('necromancer');
+      state.skillManager.ensureRuntime().necromancerCharges = 1;
+
+      // Add enemies
+      state.addEnemy({ id: 'boss-1', type: 'dragon', roomIndex: 0, x: 4, y: 4 });
+      state.addEnemy({ id: 'boss-2', type: 'ancient-demon', roomIndex: 0, x: 5, y: 5 });
+
+      expect(state.getEnemies().length).toBe(2);
+
+      // Player dies and revives
+      const player = state.getPlayer();
+      if (player) {
+        player.currentLives = 0;
+        state.skillManager.attemptRevive(player);
+      }
+      state.prepareNecromancerRevive();
+
+      // Set boss-1 as killer
+      state.setLastKillerEnemy('boss-1');
+      state.reviveFromNecromancer();
+
+      // After revive, only boss-1 (killer) should be gone
+      expect(state.getEnemies().length).toBe(1);
+      expect(state.getEnemies()[0].id).toBe('boss-2');
+
+      // Reset game - killer enemy should be restored
+      state.resetGame();
+
+      // All enemies should be back
+      const restoredEnemies = state.getEnemies();
+      expect(restoredEnemies.length).toBe(2);
+      expect(restoredEnemies.find(e => e.id === 'boss-1')).toBeDefined();
+      expect(restoredEnemies.find(e => e.id === 'boss-2')).toBeDefined();
+    });
+
+    it('should restore killer enemy with full lives after reset', () => {
+      const state = new GameState();
+
+      // Add necromancer skill
+      state.skillManager.addSkill('necromancer');
+      state.skillManager.ensureRuntime().necromancerCharges = 1;
+
+      // Add boss enemy
+      state.addEnemy({ id: 'boss-1', type: 'ancient-demon', roomIndex: 0, x: 3, y: 3 });
+
+      const enemy = state.getEnemies()[0];
+      const initialLives = enemy.lives;
+
+      // Simulate combat - enemy takes damage
+      enemy.lives = 2; // Damaged
+
+      // Player dies and revives
+      const player = state.getPlayer();
+      if (player) {
+        player.currentLives = 0;
+        state.skillManager.attemptRevive(player);
+      }
+      state.prepareNecromancerRevive();
+
+      // Set boss-1 as killer
+      state.setLastKillerEnemy('boss-1');
+      state.reviveFromNecromancer();
+
+      // Killer enemy removed from runtime
+      expect(state.getEnemies().length).toBe(0);
+
+      // Reset game
+      state.resetGame();
+
+      // Killer enemy should be restored with full lives
+      const restoredEnemy = state.getEnemies()[0];
+      expect(restoredEnemy.lives).toBe(initialLives); // Full lives restored
+      expect(restoredEnemy.playerInVision).toBe(false); // Vision reset
+      expect(restoredEnemy.alertUntil).toBe(null); // Alert reset
+    });
+
+    it('should only remove the killer enemy, not enemies in other rooms', () => {
+      const state = new GameState();
+
+      // Add necromancer skill
+      state.skillManager.addSkill('necromancer');
+      state.skillManager.ensureRuntime().necromancerCharges = 1;
+
+      // Player starts in room 0
+      expect(state.getPlayer().roomIndex).toBe(0);
+
+      // Add enemies to multiple rooms
+      state.addEnemy({ id: 'enemy-room-0-1', type: 'dragon', roomIndex: 0, x: 1, y: 1 });
+      state.addEnemy({ id: 'enemy-room-0-2', type: 'necromancer', roomIndex: 0, x: 2, y: 2 });
+      state.addEnemy({ id: 'enemy-room-1-1', type: 'dark-knight', roomIndex: 1, x: 3, y: 3 });
+      state.addEnemy({ id: 'enemy-room-2-1', type: 'skeleton', roomIndex: 2, x: 4, y: 4 });
+
+      expect(state.getEnemies().length).toBe(4);
+
+      // Player dies in room 0 and revives
+      const player = state.getPlayer();
+      if (player) {
+        player.currentLives = 0;
+        state.skillManager.attemptRevive(player);
+      }
+      state.prepareNecromancerRevive();
+
+      // Set enemy-room-0-1 as killer
+      state.setLastKillerEnemy('enemy-room-0-1');
+      state.reviveFromNecromancer();
+
+      // Only the killer enemy should be removed
+      const remainingEnemies = state.getEnemies();
+      expect(remainingEnemies.length).toBe(3);
+      expect(remainingEnemies.find(e => e.id === 'enemy-room-0-1')).toBeUndefined(); // Killer removed
+      expect(remainingEnemies.find(e => e.id === 'enemy-room-0-2')).toBeDefined(); // Not removed
+      expect(remainingEnemies.find(e => e.id === 'enemy-room-1-1')).toBeDefined(); // Not removed
+      expect(remainingEnemies.find(e => e.id === 'enemy-room-2-1')).toBeDefined(); // Not removed
+
+      // Reset should restore all enemies including killer
+      state.resetGame();
+      expect(state.getEnemies().length).toBe(4);
+    });
+
+    it('multiple revive cycles should not break enemy restoration', () => {
+      const state = new GameState();
+
+      // Add necromancer skill with 2 charges
+      state.skillManager.addSkill('necromancer');
+      state.skillManager.ensureRuntime().necromancerCharges = 2;
+
+      // Add enemies
+      state.addEnemy({ id: 'boss-1', type: 'fallen-king', roomIndex: 0, x: 3, y: 3 });
+      state.addEnemy({ id: 'boss-2', type: 'dragon', roomIndex: 0, x: 4, y: 4 });
+
+      expect(state.getEnemies().length).toBe(2);
+
+      // First death and revive
+      let player = state.getPlayer();
+      if (player) {
+        player.currentLives = 0;
+        state.skillManager.attemptRevive(player);
+      }
+      state.prepareNecromancerRevive();
+      state.setLastKillerEnemy('boss-1');
+      state.reviveFromNecromancer();
+
+      // Only boss-1 (killer) removed
+      expect(state.getEnemies().length).toBe(1);
+      expect(state.getEnemies()[0].id).toBe('boss-2');
+
+      // Second death and revive
+      player = state.getPlayer();
+      if (player) {
+        player.currentLives = 0;
+        state.skillManager.attemptRevive(player);
+      }
+      state.prepareNecromancerRevive();
+      state.setLastKillerEnemy('boss-2');
+      state.reviveFromNecromancer();
+
+      // Now both killed
+      expect(state.getEnemies().length).toBe(0);
+
+      // Reset should restore ALL enemies
+      state.resetGame();
+      const restoredEnemies = state.getEnemies();
+      expect(restoredEnemies.length).toBe(2);
+      expect(restoredEnemies.find(e => e.id === 'boss-1')).toBeDefined();
+      expect(restoredEnemies.find(e => e.id === 'boss-2')).toBeDefined();
+    });
+  });
 });

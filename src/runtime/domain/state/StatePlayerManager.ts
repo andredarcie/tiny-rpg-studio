@@ -24,6 +24,7 @@ class StatePlayerManager {
     experienceGrowth: number;
     maxKeys: number;
     roomChangeDamageCooldown: number;
+    attackCooldown: number;
 
     constructor(state: RuntimeState | null, worldManager: WorldManagerApi, skillManager: SkillManagerApi | null = null) {
         this.state = state;
@@ -35,6 +36,7 @@ class StatePlayerManager {
         this.experienceGrowth = GameConfig.player.experienceGrowth;
         this.maxKeys = GameConfig.player.maxKeys;
         this.roomChangeDamageCooldown = GameConfig.player.roomChangeDamageCooldown;
+        this.attackCooldown = GameConfig.combat.attackCooldown;
     }
 
     setState(state: RuntimeState | null) {
@@ -83,6 +85,8 @@ class StatePlayerManager {
         this.player.swordType = null;
         this.player.lastDamageReduction = 0;
         this.player.godMode = false;
+        this.player.lastAttackTime = 0;
+        this.player.stunUntil = 0;
     }
 
     setLevel(level = 1) {
@@ -170,6 +174,12 @@ class StatePlayerManager {
         const now = Date.now();
         const lastChange = this.player?.lastRoomChangeTime;
         return typeof lastChange === 'number' && now - lastChange < this.roomChangeDamageCooldown;
+    }
+
+    isOnAttackCooldown() {
+        const now = performance.now();
+        const lastAttack = this.player?.lastAttackTime ?? 0;
+        return now - lastAttack < this.attackCooldown;
     }
 
     addDamageShield(amount = 1, swordType: string | null = null) {

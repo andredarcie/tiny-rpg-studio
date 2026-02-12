@@ -6,6 +6,7 @@ type EnemyDefinitionData = {
     name: string;
     nameKey: string;
     description: string;
+    lives: number;
     damage: number;
     missChance: number;
     experience: number;
@@ -15,6 +16,11 @@ type EnemyDefinitionData = {
     boss?: boolean;
     defeatActivationMessage?: string;
     defeatActivationMessageKey?: string;
+    activateVariableOnDefeat?: {
+        variableId: string;
+        message?: string;
+        persist?: boolean;
+    };
 };
 
 class Enemy {
@@ -23,6 +29,7 @@ class Enemy {
     name: string;
     nameKey: string;
     description: string;
+    lives: number;
     damage: number;
     missChance: number;
     experience: number;
@@ -32,6 +39,11 @@ class Enemy {
     boss?: boolean;
     defeatActivationMessage?: string;
     defeatActivationMessageKey?: string;
+    activateVariableOnDefeat?: {
+        variableId: string;
+        message?: string;
+        persist?: boolean;
+    };
 
     constructor(data: EnemyDefinitionData) {
         this.type = data.type;
@@ -39,6 +51,7 @@ class Enemy {
         this.name = data.name;
         this.nameKey = data.nameKey;
         this.description = data.description;
+        this.lives = data.lives;
         this.damage = data.damage;
         this.missChance = data.missChance;
         this.experience = data.experience;
@@ -48,6 +61,7 @@ class Enemy {
         this.boss = data.boss;
         this.defeatActivationMessage = data.defeatActivationMessage;
         this.defeatActivationMessageKey = data.defeatActivationMessageKey;
+        this.activateVariableOnDefeat = data.activateVariableOnDefeat;
     }
 
     matchesType(type: string): boolean {

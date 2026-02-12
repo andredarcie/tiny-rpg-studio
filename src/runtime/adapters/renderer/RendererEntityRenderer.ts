@@ -2,6 +2,22 @@ import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
 
+type FlashState = {
+    color: string;
+    startTime: number;
+    duration: number;
+};
+
+type FlyingLifeSquare = {
+    x: number;
+    y: number;
+    size: number;
+    velocityY: number;
+    opacity: number;
+    startTime: number;
+    duration: number;
+};
+
 class RendererEntityRenderer {
     gameState: GameStateApi;
     tileManager: TileManagerApi;
@@ -9,6 +25,8 @@ class RendererEntityRenderer {
     canvasHelper: CanvasHelperApi;
     paletteManager: PaletteManagerApi;
     viewportOffsetY?: number;
+    private flashStates: Map<string, FlashState>;
+    private flyingLifeSquares: FlyingLifeSquare[];
 
     constructor(
         gameState: GameStateApi,
@@ -22,10 +40,64 @@ class RendererEntityRenderer {
         this.spriteFactory = spriteFactory;
         this.canvasHelper = canvasHelper;
         this.paletteManager = paletteManager;
+        this.flashStates = new Map();
+        this.flyingLifeSquares = [];
     }
 
     setViewportOffset(offsetY = 0) {
         this.viewportOffsetY = Number.isFinite(offsetY) ? Math.max(0, offsetY) : 0;
+    }
+
+    /**
+     * Flash an entity with a color overlay
+     * @param entityId Entity identifier ('player' or enemy ID)
+     * @param color Flash color (e.g., '#FF004D' for red)
+     * @param duration Flash duration in milliseconds (optional, uses config default)
+     */
+    flashEntity(entityId: string, color: string, duration?: number): void {
+        const flashDuration = duration ?? GameConfig.combat.hitFlashDuration;
+        this.flashStates.set(entityId, {
+            color,
+            startTime: this.getNow(),
+            duration: flashDuration
+        });
+    }
+
+    /**
+     * Check if an entity should flash and get the flash color
+     * @param entityId Entity identifier
+     * @returns Flash color if active, null otherwise
+     */
+    private getFlashColor(entityId: string): string | null {
+        const flash = this.flashStates.get(entityId);
+        if (!flash) return null;
+
+        const now = this.getNow();
+        const elapsed = now - flash.startTime;
+
+        if (elapsed >= flash.duration) {
+            this.flashStates.delete(entityId);
+            return null;
+        }
+
+        return flash.color;
+    }
+
+    /**
+     * Apply flash overlay to currently drawn sprite
+     * @param ctx Canvas rendering context
+     * @param color Flash color
+     * @param x X position
+     * @param y Y position
+     * @param size Tile size
+     */
+    private applyFlashOverlay(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, size: number): void {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighten';
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.6;
+        ctx.fillRect(x, y, size, size);
+        ctx.restore();
     }
 
     drawObjects(ctx: CanvasRenderingContext2D) {
@@ -105,7 +177,7 @@ class RendererEntityRenderer {
     }
 
     drawEnemies(ctx: CanvasRenderingContext2D) {
-        const enemies = this.gameState.getEnemies?.() as EnemyState[] | undefined;
+        const enemies = this.gameState.getEnemies?.() as EnemyStateWithId[] | undefined;
         if (!enemies?.length) return;
         const player = this.gameState.getPlayer();
         const tileSize = this.canvasHelper.getTilePixelSize();
@@ -118,10 +190,33 @@ class RendererEntityRenderer {
             const px = enemy.x * tileSize;
             const py = enemy.y * tileSize;
             this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
-            this.drawEnemyAlert(ctx, enemy, px, py, tileSize);
 
-            const damage = this.getEnemyDamage(enemy.type);
-            this.drawEnemyDamageMarkers(ctx, px, py, tileSize, damage);
+            // Apply hit flash effect
+            const flashColor = this.getFlashColor(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`);
+            if (flashColor) {
+                this.applyFlashOverlay(ctx, flashColor, px, py, tileSize);
+            }
+
+            this.drawEnemyAlert(ctx, enemy, px, py, tileSize);
+        });
+    }
+
+    /**
+     * Draw life markers for all enemies in current room
+     * Should be called AFTER drawing player to ensure markers are always visible
+     */
+    drawAllEnemyLivesMarkers(ctx: CanvasRenderingContext2D) {
+        const enemies = this.gameState.getEnemies?.() as EnemyStateWithId[] | undefined;
+        if (!enemies?.length) return;
+        const player = this.gameState.getPlayer();
+        const tileSize = this.canvasHelper.getTilePixelSize();
+
+        enemies.forEach((enemy) => {
+            if (enemy.roomIndex !== player.roomIndex) return;
+            const px = enemy.x * tileSize;
+            const py = enemy.y * tileSize;
+            const currentLives = enemy.lives ?? 1;
+            this.drawEnemyLivesMarkers(ctx, px, py, tileSize, currentLives);
         });
     }
 
@@ -139,6 +234,14 @@ class RendererEntityRenderer {
         if (fadeStealth) ctx.globalAlpha = 0.45;
         this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
         if (fadeStealth) ctx.restore();
+
+        // Apply hit flash effect
+        const flashColor = this.getFlashColor('player');
+        if (flashColor) {
+            this.applyFlashOverlay(ctx, flashColor, px, py, tileSize);
+        }
+
+        // Player lives are shown in HUD - no need for squares above head
     }
 
     drawTileIconOnPlayer(ctx: CanvasRenderingContext2D, tileId: string) {
@@ -195,22 +298,101 @@ class RendererEntityRenderer {
         return enemies.some((enemy) => enemy.roomIndex === playerRoom && this.getEnemyDamage(enemy.type) <= 2);
     }
 
-    drawEnemyDamageMarkers(ctx: CanvasRenderingContext2D, px: number, py: number, tileSize: number, damage: number) {
-        const markers = Math.max(1, Math.floor(damage));
-        const size = Math.max(2, Math.floor(tileSize / 8));
-        const gap = Math.max(1, Math.floor(size / 2));
+    drawEnemyLivesMarkers(ctx: CanvasRenderingContext2D, px: number, py: number, tileSize: number, lives: number) {
+        if (lives <= 0) return; // Don't draw if enemy is dead
+
+        const markers = Math.max(1, Math.floor(lives));
+        // Larger size for better visibility (was tileSize/8, now tileSize/5)
+        const size = Math.max(3, Math.floor(tileSize / 5));
+        const gap = Math.max(2, Math.floor(size * 0.4));
         const totalWidth = markers * size + (markers - 1) * gap;
         const startX = Math.round(px + tileSize / 2 - totalWidth / 2);
-        const startY = Math.round(py - size - gap);
-        const fill = '#000000';
-        const stroke = this.paletteManager.getColor(6) || '#5F574F';
+        // Position much higher above the enemy sprite to avoid overlap
+        const startY = Math.round(py - size - gap * 4);
+
+        // Better contrast: light gray fill with black border
+        const fill = this.paletteManager.getColor(6) || '#C2C3C7'; // Light gray
+        const stroke = '#000000'; // Black border
+
         ctx.fillStyle = fill;
         ctx.strokeStyle = stroke;
         ctx.lineWidth = 1;
+
         for (let i = 0; i < markers; i++) {
             const mx = startX + i * (size + gap);
             ctx.fillRect(mx, startY, size, size);
             ctx.strokeRect(mx + 0.5, startY + 0.5, size - 1, size - 1);
+        }
+    }
+
+    /**
+     * Spawn a flying life square animation when enemy loses a life
+     * @param px Enemy pixel X position
+     * @param py Enemy pixel Y position
+     * @param tileSize Tile size in pixels
+     * @param lostLifeIndex Index of the life that was lost (0 = first square)
+     */
+    spawnFlyingLifeSquare(px: number, py: number, tileSize: number, lostLifeIndex: number): void {
+        const size = Math.max(3, Math.floor(tileSize / 5));
+        const gap = Math.max(2, Math.floor(size * 0.4));
+
+        // Calculate position of the lost square
+        const startX = Math.round(px + tileSize / 2);
+        const squareX = startX + lostLifeIndex * (size + gap) - (lostLifeIndex * size) / 2;
+        const startY = Math.round(py - size - gap * 4);
+
+        this.flyingLifeSquares.push({
+            x: squareX,
+            y: startY,
+            size: size,
+            velocityY: -0.8, // Float upward
+            opacity: 1.0,
+            startTime: this.getNow(),
+            duration: 600, // 600ms animation
+        });
+    }
+
+    /**
+     * Update and draw all flying life squares
+     */
+    drawFlyingLifeSquares(ctx: CanvasRenderingContext2D): void {
+        const now = this.getNow();
+
+        // Update and draw each flying square
+        for (let i = this.flyingLifeSquares.length - 1; i >= 0; i--) {
+            const square = this.flyingLifeSquares[i];
+            const elapsed = now - square.startTime;
+
+            // Remove if animation complete
+            if (elapsed >= square.duration) {
+                this.flyingLifeSquares.splice(i, 1);
+                continue;
+            }
+
+            // Calculate progress (0 to 1)
+            const progress = elapsed / square.duration;
+
+            // Update position (float upward)
+            square.y += square.velocityY;
+
+            // Fade out (opacity from 1 to 0)
+            square.opacity = 1 - progress;
+
+            // Draw the flying square
+            ctx.save();
+            ctx.globalAlpha = square.opacity;
+
+            const fill = this.paletteManager.getColor(6) || '#C2C3C7';
+            const stroke = '#000000';
+
+            ctx.fillStyle = fill;
+            ctx.strokeStyle = stroke;
+            ctx.lineWidth = 1;
+
+            ctx.fillRect(square.x, square.y, square.size, square.size);
+            ctx.strokeRect(square.x + 0.5, square.y + 0.5, square.size - 1, square.size - 1);
+
+            ctx.restore();
         }
     }
 
@@ -293,9 +475,14 @@ type EnemyState = {
     y: number;
     lastX?: number;
     type: string;
+    lives?: number;
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
+};
+
+type EnemyStateWithId = EnemyState & {
+    id?: string;
 };
 
 type GameData = {

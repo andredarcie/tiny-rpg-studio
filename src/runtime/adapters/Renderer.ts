@@ -8,6 +8,10 @@ import { RendererHudRenderer } from './renderer/RendererHudRenderer';
 import { RendererEffectsManager } from './renderer/RendererEffectsManager';
 import { RendererTransitionManager } from './renderer/RendererTransitionManager';
 import { RendererOverlayRenderer } from './renderer/RendererOverlayRenderer';
+import { RendererCombatAnimator } from './renderer/RendererCombatAnimator';
+import { RendererCameraShake } from './renderer/RendererCameraShake';
+import { RendererFloatingText } from './renderer/RendererFloatingText';
+import { RendererParticleSystem } from './renderer/RendererParticleSystem';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
 
@@ -58,6 +62,10 @@ class Renderer {
     effectsManager!: RendererEffectsManager;
     transitionManager!: RendererTransitionManager;
     overlayRenderer!: RendererOverlayRenderer;
+    combatAnimator!: RendererCombatAnimator;
+    cameraShake!: RendererCameraShake;
+    floatingText!: RendererFloatingText;
+    particleSystem!: RendererParticleSystem;
     drawIconIdNextFrame: string;
     timeIconOverPlayer: number;
     tileAnimationInterval: number;
@@ -116,6 +124,10 @@ class Renderer {
         this.effectsManager = new RendererEffectsManager(this as never);
         this.transitionManager = new RendererTransitionManager(this as never);
         this.overlayRenderer = new RendererOverlayRenderer(this as never);
+        this.combatAnimator = new RendererCombatAnimator(this as never);
+        this.cameraShake = new RendererCameraShake(this as never);
+        this.floatingText = new RendererFloatingText(this as never);
+        this.particleSystem = new RendererParticleSystem(this as never);
 
         this.drawIconIdNextFrame = '';
         this.timeIconOverPlayer = GameConfig.animation.iconOverPlayerDuration;
@@ -135,7 +147,9 @@ class Renderer {
         const levelUpCelebrationActive = this.gameState.isLevelUpCelebrationActive?.();
         const levelUpOverlayActive = this.gameState.isLevelUpOverlayActive?.();
         ctx.save();
-        ctx.translate(0, this.gameplayOffsetY);
+        // Apply camera shake offset
+        const shakeOffset = this.cameraShake.getCurrentOffset();
+        ctx.translate(shakeOffset.x, this.gameplayOffsetY + shakeOffset.y);
 
         if (this.transitionManager.isActive()) {
             this.transitionManager.drawFrame(ctx, gameplayCanvas);
@@ -152,6 +166,12 @@ class Renderer {
                 this.entityRenderer.drawNPCs(ctx);
                 this.entityRenderer.drawEnemies(ctx);
                 this.entityRenderer.drawPlayer(ctx);
+                // Draw enemy life markers AFTER player to ensure they're always visible on top
+                this.entityRenderer.drawAllEnemyLivesMarkers(ctx);
+                // Draw combat effects after entities
+                this.particleSystem.draw(ctx);
+                this.entityRenderer.drawFlyingLifeSquares(ctx);
+                this.floatingText.draw(ctx);
                 if (this.drawIconIdNextFrame) {
                     this.drawTileIconOnPlayer(ctx, this.drawIconIdNextFrame);
                 }
@@ -333,6 +353,33 @@ class Renderer {
 
     flashScreen(options: Record<string, unknown> = {}) {
         this.effectsManager.flashScreen(options);
+    }
+
+    /**
+     * Spawn a flying life square animation when enemy loses a life
+     * @param enemyX Enemy X position in tiles
+     * @param enemyY Enemy Y position in tiles
+     * @param lostLifeIndex Index of the life that was lost (rightmost square)
+     */
+    spawnEnemyLifeLoss(enemyX: number, enemyY: number, lostLifeIndex: number): void {
+        const tileSize = this.canvasHelper.getTilePixelSize();
+        const px = enemyX * tileSize;
+        const py = enemyY * tileSize;
+        this.entityRenderer.spawnFlyingLifeSquare(px, py, tileSize, lostLifeIndex);
+    }
+
+    /**
+     * Apply grayscale filter to canvas for death effect
+     */
+    applyGrayscaleFilter(): void {
+        this.canvas.style.filter = 'grayscale(100%)';
+    }
+
+    /**
+     * Remove grayscale filter from canvas
+     */
+    removeGrayscaleFilter(): void {
+        this.canvas.style.filter = '';
     }
 
     drawObjectSprite(

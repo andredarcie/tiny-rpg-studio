@@ -36,6 +36,44 @@ export interface GamePlayerConfig {
   readonly roomChangeDamageCooldown: number;
 }
 
+export interface GameCombatScreenShakeConfig {
+  readonly enabled: boolean;
+  readonly minIntensity: number;
+  readonly maxIntensity: number;
+  readonly baseDuration: number;
+  readonly intensityPerDamage: number;
+}
+
+export interface GameCombatFloatingNumbersConfig {
+  readonly enabled: boolean;
+  readonly duration: number;
+  readonly riseSpeed: number;
+  readonly fontSize: number;
+}
+
+export interface GameCombatParticlesConfig {
+  readonly enabled: boolean;
+  readonly impactCount: number;
+  readonly criticalImpactCount: number;
+  readonly deathCount: number;
+  readonly lifetime: number;
+  readonly gravity: number;
+}
+
+export interface GameCombatConfig {
+  readonly attackCooldown: number;
+  readonly hitStunDuration: number;
+  readonly lungeAnimationDuration: number;
+  readonly knockbackDuration: number;
+  readonly deathAnimationDuration: number;
+  readonly screenShake: GameCombatScreenShakeConfig;
+  readonly hitFlashDuration: number;
+  readonly hitstopDuration: number;
+  readonly hitstopMinDamage: number;
+  readonly floatingNumbers: GameCombatFloatingNumbersConfig;
+  readonly particles: GameCombatParticlesConfig;
+}
+
 export interface GameEnemyVisionConfig {
   readonly range: number;
   readonly alertDuration: number;
@@ -106,6 +144,7 @@ export type GameConfigShape = {
   canvas: GameCanvasConfig;
   world: GameWorldConfig;
   player: GamePlayerConfig;
+  combat: GameCombatConfig;
   enemy: GameEnemyConfig;
   animation: GameAnimationConfig;
   effects: GameEffectsConfig;
@@ -124,6 +163,7 @@ export class GameConfigSchema {
   private _canvas: GameCanvasConfig;
   private _world: GameWorldConfig;
   private _player: GamePlayerConfig;
+  private _combat: GameCombatConfig;
   private _enemy: GameEnemyConfig;
   private _animation: GameAnimationConfig;
   private _effects: GameEffectsConfig;
@@ -138,6 +178,7 @@ export class GameConfigSchema {
     canvas: GameCanvasConfig;
     world: GameWorldConfig;
     player: GamePlayerConfig;
+    combat: GameCombatConfig;
     enemy: GameEnemyConfig;
     animation: GameAnimationConfig;
     effects: GameEffectsConfig;
@@ -151,6 +192,7 @@ export class GameConfigSchema {
     this._canvas = this.validateCanvas(config.canvas);
     this._world = this.validateWorld(config.world);
     this._player = this.validatePlayer(config.player);
+    this._combat = this.validateCombat(config.combat);
     this._enemy = this.validateEnemy(config.enemy);
     this._animation = this.validateAnimation(config.animation);
     this._effects = this.validateEffects(config.effects);
@@ -173,6 +215,22 @@ export class GameConfigSchema {
 
   get player(): GamePlayerConfig {
     return { ...this._player };
+  }
+
+  get combat(): GameCombatConfig {
+    return {
+      attackCooldown: this._combat.attackCooldown,
+      hitStunDuration: this._combat.hitStunDuration,
+      lungeAnimationDuration: this._combat.lungeAnimationDuration,
+      knockbackDuration: this._combat.knockbackDuration,
+      deathAnimationDuration: this._combat.deathAnimationDuration,
+      screenShake: { ...this._combat.screenShake },
+      hitFlashDuration: this._combat.hitFlashDuration,
+      hitstopDuration: this._combat.hitstopDuration,
+      hitstopMinDamage: this._combat.hitstopMinDamage,
+      floatingNumbers: { ...this._combat.floatingNumbers },
+      particles: { ...this._combat.particles },
+    };
   }
 
     get enemy(): GameEnemyConfig {
@@ -257,6 +315,61 @@ export class GameConfigSchema {
     }
 
     return Object.freeze({ ...player });
+  }
+
+  private validateCombat(combat: GameCombatConfig): GameCombatConfig {
+    this.assertNonNegativeInteger(combat.attackCooldown, 'attack cooldown');
+    this.assertNonNegativeInteger(combat.hitStunDuration, 'hit stun duration');
+    this.assertPositiveInteger(combat.lungeAnimationDuration, 'lunge animation duration');
+    this.assertPositiveInteger(combat.knockbackDuration, 'knockback duration');
+    this.assertPositiveInteger(combat.deathAnimationDuration, 'death animation duration');
+    this.assertPositiveInteger(combat.hitFlashDuration, 'hit flash duration');
+    this.assertNonNegativeInteger(combat.hitstopDuration, 'hitstop duration');
+    this.assertNonNegativeInteger(combat.hitstopMinDamage, 'hitstop min damage');
+
+    // Validate screen shake
+    if (typeof combat.screenShake.enabled !== 'boolean') {
+      throw new Error('Screen shake enabled must be a boolean');
+    }
+    this.assertProbability(combat.screenShake.minIntensity, 'screen shake min intensity');
+    this.assertProbability(combat.screenShake.maxIntensity, 'screen shake max intensity');
+    this.assertPositiveInteger(combat.screenShake.baseDuration, 'screen shake base duration');
+    this.assertPositiveNumber(combat.screenShake.intensityPerDamage, 'screen shake intensity per damage');
+    if (combat.screenShake.minIntensity > combat.screenShake.maxIntensity) {
+      throw new Error(`Screen shake min intensity (${combat.screenShake.minIntensity}) cannot exceed max intensity (${combat.screenShake.maxIntensity})`);
+    }
+
+    // Validate floating numbers
+    if (typeof combat.floatingNumbers.enabled !== 'boolean') {
+      throw new Error('Floating numbers enabled must be a boolean');
+    }
+    this.assertPositiveInteger(combat.floatingNumbers.duration, 'floating numbers duration');
+    this.assertPositiveNumber(combat.floatingNumbers.riseSpeed, 'floating numbers rise speed');
+    this.assertPositiveInteger(combat.floatingNumbers.fontSize, 'floating numbers font size');
+
+    // Validate particles
+    if (typeof combat.particles.enabled !== 'boolean') {
+      throw new Error('Particles enabled must be a boolean');
+    }
+    this.assertNonNegativeInteger(combat.particles.impactCount, 'particles impact count');
+    this.assertNonNegativeInteger(combat.particles.criticalImpactCount, 'particles critical impact count');
+    this.assertNonNegativeInteger(combat.particles.deathCount, 'particles death count');
+    this.assertPositiveInteger(combat.particles.lifetime, 'particles lifetime');
+    this.assertPositiveNumber(combat.particles.gravity, 'particles gravity');
+
+    return Object.freeze({
+      attackCooldown: combat.attackCooldown,
+      hitStunDuration: combat.hitStunDuration,
+      lungeAnimationDuration: combat.lungeAnimationDuration,
+      knockbackDuration: combat.knockbackDuration,
+      deathAnimationDuration: combat.deathAnimationDuration,
+      screenShake: Object.freeze({ ...combat.screenShake }),
+      hitFlashDuration: combat.hitFlashDuration,
+      hitstopDuration: combat.hitstopDuration,
+      hitstopMinDamage: combat.hitstopMinDamage,
+      floatingNumbers: Object.freeze({ ...combat.floatingNumbers }),
+      particles: Object.freeze({ ...combat.particles }),
+    });
   }
 
   private validateEnemy(enemy: GameEnemyConfig): GameEnemyConfig {
@@ -393,6 +506,7 @@ export class GameConfigSchema {
       canvas: this.canvas,
       world: this.world,
       player: this.player,
+      combat: this.combat,
       enemy: this.enemy,
       animation: this.animation,
       effects: this.effects,

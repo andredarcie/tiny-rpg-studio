@@ -10,6 +10,7 @@ type PlayerState = {
 };
 
 type GameStateApi = {
+  playing: boolean;
   game: { roomSize: number };
   isGameOver: () => boolean;
   isLevelUpCelebrationActive?: () => boolean;
@@ -57,6 +58,10 @@ type EnemyManagerApi = {
   checkCollisionAt: (x: number, y: number) => void;
   evaluateVision?: (player: PlayerState | null) => void;
   moveChasingEnemies?: (player: PlayerState | null) => void;
+};
+
+type CombatStunManagerApi = {
+  isStunned: () => boolean;
 };
 
 type NpcState = {
@@ -110,6 +115,7 @@ class MovementManager {
   dialogManager: DialogManagerApi;
   interactionManager: InteractionManagerApi;
   enemyManager: EnemyManagerApi;
+  combatStunManager: CombatStunManagerApi | null;
   transitioning: boolean;
 
   constructor({
@@ -119,6 +125,7 @@ class MovementManager {
     dialogManager,
     interactionManager,
     enemyManager,
+    combatStunManager,
   }: {
     gameState: GameStateApi;
     tileManager: TileManagerApi;
@@ -126,6 +133,7 @@ class MovementManager {
     dialogManager: DialogManagerApi;
     interactionManager: InteractionManagerApi;
     enemyManager: EnemyManagerApi;
+    combatStunManager?: CombatStunManagerApi | null;
   }) {
     this.gameState = gameState;
     this.tileManager = tileManager;
@@ -133,10 +141,15 @@ class MovementManager {
     this.dialogManager = dialogManager;
     this.interactionManager = interactionManager;
     this.enemyManager = enemyManager;
+    this.combatStunManager = combatStunManager ?? null;
     this.transitioning = false;
   }
 
   tryMove(dx: number, dy: number): void {
+    // Check if game is paused (e.g., during player death sequence)
+    if (!this.gameState.playing) {
+      return;
+    }
     if (this.transitioning) {
       return;
     }
@@ -150,6 +163,12 @@ class MovementManager {
       return;
     }
     if (this.gameState.isPickupOverlayActive?.()) {
+      return;
+    }
+    // Check if player is stunned from combat
+    if (this.combatStunManager?.isStunned()) {
+      // Show stunned indicator (optional - can be silent)
+      // Player cannot move while stunned
       return;
     }
     const dialog = this.gameState.getDialog() as {
