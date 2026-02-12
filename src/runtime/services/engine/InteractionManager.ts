@@ -197,10 +197,9 @@ class InteractionManager {
         if (!this.shouldPickupSword(object.type)) {
           return false;
         }
-        const durability = this.getSwordDurability(object.type);
         object.collected = true;
         this.showPickupOverlay(object.type, () => {
-          this.gameState.addDamageShield?.(durability, object.type);
+          this.gameState.setSwordType?.(object.type);
         });
         return true;
       }

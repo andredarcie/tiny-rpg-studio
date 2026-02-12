@@ -49,6 +49,7 @@ export interface MockGameState {
 
   // Equipment
   getSwordType: () => string | null;
+  getPlayerDamage: () => number;
   hasSkill: (skillId: string) => boolean;
 
   // Game world
@@ -137,6 +138,7 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
 
     // Equipment
     getSwordType: vi.fn(() => null),
+    getPlayerDamage: vi.fn(() => 1), // Base damage without sword
     hasSkill: vi.fn(() => false),
 
     // Game world

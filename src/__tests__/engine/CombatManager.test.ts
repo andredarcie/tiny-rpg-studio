@@ -355,6 +355,7 @@ describe('CombatManager', () => {
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
         getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 1),
         damagePlayer: vi.fn(() => 2),
       });
       const renderer = createRenderer();
@@ -387,6 +388,7 @@ describe('CombatManager', () => {
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
         getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 1),
         damagePlayer: vi.fn(() => 2),
         getLives: vi.fn(() => 3),
       });
@@ -421,6 +423,7 @@ describe('CombatManager', () => {
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
         getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 1),
         damagePlayer: vi.fn(() => 0), // Player dies
         getLives: vi.fn(() => 1),
       });
@@ -451,6 +454,7 @@ describe('CombatManager', () => {
       const onPlayerDefeated = vi.fn();
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        getPlayerDamage: vi.fn(() => 1),
         damagePlayer: vi.fn(() => 0),
         getLives: vi.fn(() => 1),
       });
@@ -601,6 +605,102 @@ describe('CombatManager', () => {
       manager.handleEnemyCollision(0, { initiator: 'enemy' });
 
       expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Blocked!', { duration: 700 });
+    });
+  });
+
+  describe('Player Damage System', () => {
+    it('deals base damage (1) when player has no sword', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 1), // No sword = base damage
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(enemy.lives).toBe(2); // 3 - 1 = 2
+    });
+
+    it('deals 2 damage when player has wooden sword', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 5 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 2), // Wooden sword = 2 damage
+        getSwordType: vi.fn(() => 'sword-wood'),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(enemy.lives).toBe(3); // 5 - 2 = 3
+    });
+
+    it('deals 3 damage when player has bronze sword', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 5 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 3), // Bronze sword = 3 damage
+        getSwordType: vi.fn(() => 'sword-bronze'),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(enemy.lives).toBe(2); // 5 - 3 = 2
+    });
+
+    it('deals 4 damage when player has steel sword', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 5 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 4), // Steel sword = 4 damage
+        getSwordType: vi.fn(() => 'sword'),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(enemy.lives).toBe(1); // 5 - 4 = 1
+    });
+
+    it('one-shots enemy with 2 lives using steel sword', () => {
+      const onEnemyDefeated = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 2 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 4), // Steel sword = 4 damage
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
+
+      manager.handleEnemyCollision(0);
+      vi.advanceTimersByTime(300); // Complete death animation
+
+      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.objectContaining({ lives: -2 }));
+    });
+
+    it('applies sword damage in legacy combat mode', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 5 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 3), // Bronze sword
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined }; // Force legacy mode
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0);
+
+      expect(enemy.lives).toBe(2); // 5 - 3 = 2
     });
   });
 });

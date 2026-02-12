@@ -159,7 +159,6 @@ class StatePlayerManager {
         this.player.damageShield = Math.max(0, shield - reduction);
         if (this.player.damageShield === 0) {
             this.player.damageShieldMax = 0;
-            this.player.swordType = null;
         }
         this.player.lastDamageReduction = reduction;
         this.player.currentLives = Math.max(0, this.player.currentLives - effective);
@@ -208,6 +207,11 @@ class StatePlayerManager {
 
     getSwordType() {
         return typeof this.player?.swordType === 'string' ? this.player.swordType : null;
+    }
+
+    setSwordType(swordType: string | null) {
+        if (!this.player) return;
+        this.player.swordType = swordType;
     }
 
     consumeLastDamageReduction() {
@@ -286,9 +290,6 @@ class StatePlayerManager {
             this.player.damageShieldMax = Math.max(this.player.damageShield, Math.floor(this.player.damageShieldMax));
         }
         if (typeof this.player.swordType !== 'string') {
-            this.player.swordType = null;
-        }
-        if (this.player.damageShield <= 0) {
             this.player.swordType = null;
         }
         if (!Number.isFinite(this.player.lastDamageReduction)) {

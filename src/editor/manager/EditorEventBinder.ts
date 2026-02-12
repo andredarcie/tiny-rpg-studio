@@ -20,6 +20,7 @@ class EditorEventBinder extends EditorManagerModule {
             fileInput,
             editorCanvas,
             npcVariantButtons,
+            objectCategoryButtons,
             enemyTypes,
             enemiesList,
             objectTypes,
@@ -92,6 +93,16 @@ class EditorEventBinder extends EditorManagerModule {
                     const variant = button.dataset.npcVariantFilter;
                     if (!variant) return;
                     npcService.setVariantFilter(variant);
+                });
+            });
+        }
+
+        if (Array.isArray(objectCategoryButtons)) {
+            objectCategoryButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const category = button.dataset.objectCategoryFilter;
+                    if (!category) return;
+                    objectService.setCategoryFilter(category);
                 });
             });
         }

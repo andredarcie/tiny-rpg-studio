@@ -18,6 +18,7 @@ class EditorDomCache {
     btnToggleNpcConditional: HTMLElement | null;
     npcConditionalSection: HTMLElement | null;
     npcVariantButtons: HTMLElement[];
+    objectCategoryButtons: HTMLElement[];
     worldGrid: HTMLElement | null;
     titleInput: HTMLInputElement | null;
     authorInput: HTMLInputElement | null;
@@ -80,6 +81,7 @@ class EditorDomCache {
             this.btnToggleNpcConditional = null;
             this.npcConditionalSection = null;
             this.npcVariantButtons = [];
+            this.objectCategoryButtons = [];
             this.worldGrid = null;
             this.titleInput = null;
             this.authorInput = null;
@@ -141,6 +143,7 @@ class EditorDomCache {
         this.btnToggleNpcConditional = root.querySelector('#btn-toggle-npc-conditional') as HTMLElement | null;
         this.npcConditionalSection = root.querySelector('#npc-conditional-section') as HTMLElement | null;
         this.npcVariantButtons = Array.from(root.querySelectorAll('[data-npc-variant-filter]'));
+        this.objectCategoryButtons = Array.from(root.querySelectorAll('[data-object-category-filter]'));
         this.worldGrid = root.querySelector('#world-grid') as HTMLElement | null;
         this.titleInput = root.querySelector('#game-title') as HTMLInputElement | null;
         this.authorInput = root.querySelector('#game-author') as HTMLInputElement | null;

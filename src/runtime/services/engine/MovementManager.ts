@@ -40,6 +40,7 @@ type RendererApi = {
   captureGameplayFrame: () => unknown;
   startRoomTransition: (payload: Record<string, unknown>) => boolean;
   flashEdge: (direction: string, payload: Record<string, unknown>) => void;
+  showCombatIndicator?: (text: string, options?: { duration?: number }) => void;
 };
 
 type DialogManagerApi = {
@@ -58,6 +59,7 @@ type EnemyManagerApi = {
   checkCollisionAt: (x: number, y: number) => void;
   evaluateVision?: (player: PlayerState | null) => void;
   moveChasingEnemies?: (player: PlayerState | null) => void;
+  hasEnemyNear?: (roomIndex: number, x: number, y: number) => boolean;
 };
 
 type CombatStunManagerApi = {
@@ -344,6 +346,9 @@ class MovementManager {
       }
     }
 
+    // Check if fleeing from enemy (had enemy nearby before moving, won't have after)
+    const hadEnemyNear = this.enemyManager.hasEnemyNear?.(roomIndex, player.x, player.y) || false;
+
     const supportsTransition = enteringNewRoom;
     const fromFrame = supportsTransition ? this.renderer.captureGameplayFrame() : null;
 
@@ -364,6 +369,15 @@ class MovementManager {
     if (currentPlayer) {
       this.enemyManager.checkCollisionAt(currentPlayer.x, currentPlayer.y);
       this.enemyManager.evaluateVision?.(currentPlayer);
+
+      // Show "Fled!" message if player moved away from enemy
+      const hasEnemyNear = this.enemyManager.hasEnemyNear?.(currentPlayer.roomIndex, currentPlayer.x, currentPlayer.y) || false;
+      if (hadEnemyNear && !hasEnemyNear) {
+        const fleeText = getMovementText('combat.fled', 'Fled!');
+        if (fleeText && this.renderer.showCombatIndicator) {
+          this.renderer.showCombatIndicator(fleeText, { duration: 500 });
+        }
+      }
     }
 
     if (supportsTransition && fromFrame) {

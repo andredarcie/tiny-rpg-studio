@@ -1087,6 +1087,54 @@ textarea {
     color: var(--muted);
 }
 
+.object-type-stats {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95rem;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.object-stat-damage,
+.object-stat-durability {
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 14px;
+    border-radius: 5px;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    font-size: 1.35rem;
+}
+
+.object-stat-damage {
+    background: rgba(255, 167, 38, 0.15);
+    color: #ffa726;
+    border: 1px solid rgba(255, 167, 38, 0.3);
+}
+
+.object-stat-damage::before {
+    content: '⚔ ';
+    margin-right: 3px;
+}
+
+.object-stat-durability {
+    background: rgba(66, 165, 245, 0.15);
+    color: #42a5f5;
+    border: 1px solid rgba(66, 165, 245, 0.3);
+}
+
+.object-stat-durability::before {
+    content: '🛡 ';
+    margin-right: 3px;
+}
+
+.object-stat-separator {
+    color: var(--border);
+    font-size: 0.85rem;
+    opacity: 0.6;
+}
+
 .objects-list {
     display: grid;
     gap: 8px;
@@ -2173,6 +2221,42 @@ body.game-mode .tab-button.active {
 }
 
 .npc-variant-button.active {
+    border-color: var(--accent);
+    background: rgba(100, 181, 246, 0.12);
+    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.18);
+}
+
+.object-category-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: flex-start;
+    margin-bottom: 8px;
+}
+
+.object-category-buttons {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.object-category-button {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+
+.object-category-button:hover,
+.object-category-button:focus-visible {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+    outline: none;
+}
+
+.object-category-button.active {
     border-color: var(--accent);
     background: rgba(100, 181, 246, 0.12);
     box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.18);

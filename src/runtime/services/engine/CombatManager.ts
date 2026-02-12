@@ -124,6 +124,7 @@ class CombatManager {
     const missChance = this.getEnemyMissChance(enemy.type);
     const attackMissed = this.attackMissed(missChance);
     const damage = this.getEnemyDamage(enemy.type);
+    const playerDamage = this.gameState.getPlayerDamage();
     const player = this.gameState.getPlayer();
     const enemyPos = { x: enemy.x, y: enemy.y };
 
@@ -138,12 +139,12 @@ class CombatManager {
 
     if (!hasCombatSystems) {
       // Fallback to old synchronous combat
-      this.handleCombatLegacy(enemyIndex, enemy, missChance, attackMissed, damage);
+      this.handleCombatLegacy(enemyIndex, enemy, missChance, attackMissed, damage, playerDamage);
       return;
     }
 
     // New animated combat flow
-    this.handleAnimatedCombat(enemyIndex, enemy, damage, player, enemyPos, initiator, attackMissed);
+    this.handleAnimatedCombat(enemyIndex, enemy, damage, playerDamage, player, enemyPos, initiator, attackMissed);
   }
 
   /**
@@ -153,6 +154,7 @@ class CombatManager {
     enemyIndex: number,
     enemy: EnemyState,
     damage: number,
+    playerDamage: number,
     player: PlayerState,
     enemyPos: { x: number; y: number },
     initiator: 'player' | 'enemy',
@@ -168,9 +170,9 @@ class CombatManager {
     }
 
     if (initiator === 'player') {
-      this.handlePlayerInitiatedCombat(enemyIndex, enemy, damage, player, enemyPos, combatAnimator, entityRenderer, cameraShake, attackMissed);
+      this.handlePlayerInitiatedCombat(enemyIndex, enemy, damage, playerDamage, player, enemyPos, combatAnimator, entityRenderer, cameraShake, attackMissed);
     } else {
-      this.handleEnemyInitiatedCombat(enemyIndex, enemy, damage, player, enemyPos, combatAnimator, entityRenderer, cameraShake, attackMissed);
+      this.handleEnemyInitiatedCombat(enemyIndex, enemy, damage, playerDamage, player, enemyPos, combatAnimator, entityRenderer, cameraShake, attackMissed);
     }
   }
 
@@ -181,6 +183,7 @@ class CombatManager {
     enemyIndex: number,
     enemy: EnemyState,
     damage: number,
+    playerDamage: number,
     player: PlayerState,
     enemyPos: { x: number; y: number },
     combatAnimator: CombatAnimatorApi,
@@ -194,11 +197,10 @@ class CombatManager {
 
       // Enemy loses life
       const previousLives = enemy.lives || 1;
-      enemy.lives = previousLives - 1;
+      enemy.lives = previousLives - playerDamage;
 
-      if (enemy.lives >= 0) {
-        this.renderer.spawnEnemyLifeLoss(enemy.x, enemy.y, enemy.lives);
-      }
+      // Spawn multiple life loss squares (one per damage point)
+      this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
 
       const enemyDefeated = enemy.lives <= 0;
 
@@ -233,6 +235,7 @@ class CombatManager {
     enemyIndex: number,
     enemy: EnemyState,
     damage: number,
+    playerDamage: number,
     player: PlayerState,
     enemyPos: { x: number; y: number },
     combatAnimator: CombatAnimatorApi,
@@ -265,11 +268,10 @@ class CombatManager {
         entityRenderer.flashEntity(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`, '#FFFFFF', 120);
 
         const previousLives = enemy.lives || 1;
-        enemy.lives = previousLives - 1;
+        enemy.lives = previousLives - playerDamage;
 
-        if (enemy.lives >= 0) {
-          this.renderer.spawnEnemyLifeLoss(enemy.x, enemy.y, enemy.lives);
-        }
+        // Spawn multiple life loss squares (one per damage point)
+        this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
 
         const enemyDefeated = enemy.lives <= 0;
 
@@ -330,7 +332,8 @@ class CombatManager {
     enemy: EnemyState,
     missChance: number,
     attackMissed: boolean,
-    damage: number
+    damage: number,
+    playerDamage: number
   ): void {
     const enemies = this.gameState.getEnemies();
     let playerLives = this.gameState.getLives(); // Initialize with current lives
@@ -349,14 +352,12 @@ class CombatManager {
       }
     }
 
-    // Reduce enemy lives by 1
+    // Player attacks enemy with sword damage
     const previousLives = enemy.lives || 1;
-    enemy.lives = previousLives - 1;
+    enemy.lives = previousLives - playerDamage;
 
-    // Spawn flying square animation for the lost life
-    if (enemy.lives >= 0) {
-      this.renderer.spawnEnemyLifeLoss(enemy.x, enemy.y, enemy.lives);
-    }
+    // Spawn multiple life loss squares (one per damage point)
+    this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
 
     const enemyDefeated = enemy.lives <= 0;
 
@@ -568,6 +569,25 @@ class CombatManager {
     this.onEnemyDefeated(enemy.id, enemy);
     this.onCheckAllEnemiesCleared();
     this.renderer.draw();
+  }
+
+  /**
+   * Spawns multiple life loss squares based on damage dealt
+   */
+  private spawnMultipleLifeLoss(enemy: EnemyState, previousLives: number, damageDealt: number): void {
+    // Validate inputs
+    if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') return;
+    if (!Number.isFinite(previousLives) || !Number.isFinite(damageDealt)) return;
+    if (damageDealt <= 0) return;
+
+    // Spawn one square for each point of damage
+    const clampedDamage = Math.min(damageDealt, previousLives);
+    for (let i = 0; i < clampedDamage; i++) {
+      const lostLifeIndex = previousLives - 1 - i;
+      if (lostLifeIndex >= 0) {
+        this.renderer.spawnEnemyLifeLoss(enemy.x, enemy.y, lostLifeIndex);
+      }
+    }
   }
 
   showStealthKillFeedback(): void {

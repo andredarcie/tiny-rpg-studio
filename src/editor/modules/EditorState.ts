@@ -16,6 +16,7 @@ class EditorState {
     conditionalDialogueExpanded: boolean;
     activeMobilePanel: string;
     npcVariantFilter: string;
+    objectCategoryFilter: string;
     playerEndTextUpdateTimer: number | null;
     variablePanelCollapsed: boolean;
     skillPanelCollapsed: boolean;
@@ -40,6 +41,7 @@ class EditorState {
         this.conditionalDialogueExpanded = false;
         this.activeMobilePanel = 'tiles';
         this.npcVariantFilter = 'human';
+        this.objectCategoryFilter = 'all';
         this.playerEndTextUpdateTimer = null;
         this.variablePanelCollapsed = true;
         this.skillPanelCollapsed = true;

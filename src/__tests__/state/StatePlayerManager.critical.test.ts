@@ -112,7 +112,6 @@ describe('StatePlayerManager - Critical Path Tests', () => {
 
       expect(state.player.damageShield).toBe(0);
       expect(state.player.damageShieldMax).toBe(0);
-      expect(state.player.swordType).toBeNull();
       expect(state.player.currentLives).toBe(0); // 3 - 3 = 0 (2 absorbed by shield)
       expect(state.player.lastDamageReduction).toBe(2);
     });
@@ -128,15 +127,16 @@ describe('StatePlayerManager - Critical Path Tests', () => {
       expect(state.player.damageShield).toBe(3);
     });
 
-    it('clears sword type when shield depletes', () => {
+    it('sword type persists independently of shield', () => {
       const state = createRuntimeStateMock();
       const manager = new StatePlayerManager(state, createWorldManager());
 
-      manager.addDamageShield(2, 'wood');
+      manager.setSwordType('wood');
+      manager.addDamageShield(2, null);
       manager.damage(2);
 
       expect(state.player.damageShield).toBe(0);
-      expect(state.player.swordType).toBeNull();
+      expect(state.player.swordType).toBe('wood'); // Sword persists after shield depletes
     });
   });
 

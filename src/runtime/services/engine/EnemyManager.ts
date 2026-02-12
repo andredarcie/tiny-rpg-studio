@@ -673,6 +673,33 @@ class EnemyManager {
     }
     return Date.now();
   }
+
+  /**
+   * Check if there's an enemy adjacent (within 1 tile) to the given position
+   */
+  hasEnemyNear(roomIndex: number, x: number, y: number): boolean {
+    const enemies = this.gameState.getEnemies();
+    if (!Array.isArray(enemies) || enemies.length === 0) {
+      return false;
+    }
+
+    // Check all 8 adjacent positions (including diagonals)
+    const adjacentOffsets = [
+      [-1, -1], [0, -1], [1, -1],
+      [-1,  0],          [1,  0],
+      [-1,  1], [0,  1], [1,  1]
+    ];
+
+    return enemies.some(enemy => {
+      if (enemy.roomIndex !== roomIndex) return false;
+      if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') return false;
+
+      // Check if enemy is at player's position or adjacent
+      const dx = Math.abs(enemy.x - x);
+      const dy = Math.abs(enemy.y - y);
+      return dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0);
+    });
+  }
 }
 
 export { EnemyManager };

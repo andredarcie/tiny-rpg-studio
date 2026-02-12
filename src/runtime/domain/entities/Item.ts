@@ -6,6 +6,7 @@ type ItemBehavior = {
     order?: number;
     tags?: string[];
     swordDurability?: number;
+    swordDamage?: number;
 };
 
 type ItemDefinitionData = {
@@ -56,6 +57,12 @@ class Item {
         const value = this.behavior.swordDurability;
         if (!Number.isFinite(value)) return null;
         return Math.max(0, value as number);
+    }
+
+    getSwordDamage(): number | null {
+        const value = this.behavior.swordDamage;
+        if (!Number.isFinite(value)) return null;
+        return Math.max(1, value as number);
     }
 }
 

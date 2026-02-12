@@ -125,8 +125,6 @@ class RendererHudRenderer {
         const maxSlots = Math.min(9, this.gameState.getMaxKeys());
         let keys = this.gameState.getKeys();
         keys = Math.max(0, Math.min(maxSlots, keys));
-        const swordShield = Math.max(0, this.gameState.getDamageShield());
-        const swordShieldMax = Math.max(0, this.gameState.getDamageShieldMax());
         const swordType = this.gameState.getSwordType() || null;
 
         ctx.save();
@@ -167,17 +165,13 @@ class RendererHudRenderer {
         }
 
         const swordSprite = this.getSwordHudSprite(swordType);
-        if (swordShield > 0 && swordSprite) {
+        if (swordType && swordSprite) {
             const tileSize = this.canvasHelper.getTilePixelSize();
             const swordSize = tileSize;
             const swordX = width - padding - swordSize;
             const swordY = padding + Math.max(0, Math.round((height - padding * 2 - swordSize) / 2));
             const step = swordSize / 8;
-            const alpha = swordShieldMax > 0 ? Math.max(0.25, Math.min(1, swordShield / swordShieldMax)) : 1;
-            ctx.save();
-            ctx.globalAlpha = alpha;
             this.canvasHelper.drawSprite(ctx, swordSprite, swordX, swordY, step);
-            ctx.restore();
         }
 
         ctx.restore();
