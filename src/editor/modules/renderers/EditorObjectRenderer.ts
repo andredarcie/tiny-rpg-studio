@@ -1,6 +1,6 @@
 
 import { StateObjectManager } from '../../../runtime/domain/state/StateObjectManager';
-import { ITEM_TYPES } from '../../../runtime/domain/constants/itemTypes';
+import { ITEM_TYPES, type ItemType } from '../../../runtime/domain/constants/itemTypes';
 import { ItemDefinitions } from '../../../runtime/domain/definitions/ItemDefinitions';
 import { EditorConstants } from '../EditorConstants';
 import { EditorRendererBase } from './EditorRendererBase';
@@ -43,7 +43,7 @@ class EditorObjectRenderer extends EditorRendererBase {
         const filteredDefinitions = definitions.filter((def) => {
             if (categoryFilter === 'all') return true;
             if (categoryFilter === 'swords') {
-                const itemDef = ItemDefinitions.getItemDefinition(def.type);
+                const itemDef = ItemDefinitions.getItemDefinition(def.type as ItemType);
                 return itemDef && itemDef.hasTag('sword');
             }
             return true;
@@ -86,7 +86,7 @@ class EditorObjectRenderer extends EditorRendererBase {
             meta.append(name, info);
 
             // Add sword stats (durability and damage) if it's a sword
-            const itemDef = ItemDefinitions.getItemDefinition(definition.type);
+            const itemDef = ItemDefinitions.getItemDefinition(definition.type as ItemType);
             if (itemDef && itemDef.hasTag('sword')) {
                 const durability = itemDef.getSwordDurability();
                 const damage = itemDef.getSwordDamage();

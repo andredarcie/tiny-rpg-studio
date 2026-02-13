@@ -60,7 +60,7 @@ class RendererCombatAnimator extends RendererModuleBase {
      * @param onComplete Callback when animation finishes
      */
     startLungeAttack(
-        attacker: 'player',
+        _attacker: 'player',
         target: Position,
         onComplete?: () => void
     ): void {

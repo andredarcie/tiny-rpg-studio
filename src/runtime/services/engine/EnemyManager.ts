@@ -75,7 +75,7 @@ class EnemyManager {
   }
 
   getEnemyDefinitions(): unknown {
-    return this.gameState.getEnemyDefinitions();
+    return this.gameState.getEnemyDefinitions?.();
   }
 
   getActiveEnemies(): EnemyState[] {
@@ -86,7 +86,7 @@ class EnemyManager {
     const id = enemy.id || this.generateEnemyId();
     const type = this.normalizeEnemyType(enemy.type);
     const maxLives = this.getEnemyMaxLives(type);
-    const addedId = this.gameState.addEnemy({
+    const addedId = this.gameState.addEnemy?.({
       id,
       type,
       roomIndex: enemy.roomIndex ?? 0,
@@ -104,7 +104,7 @@ class EnemyManager {
   }
 
   removeEnemy(enemyId: string): void {
-    this.gameState.removeEnemy(enemyId);
+    this.gameState.removeEnemy?.(enemyId);
     this.renderer.draw();
   }
 
@@ -149,7 +149,9 @@ class EnemyManager {
     const enemies = this.gameState.getEnemies();
     if (!this.hasMovableEnemies(enemies)) return;
 
-    const game = this.gameState.getGame();
+    const game = this.gameState.getGame?.();
+    if (!game) return;
+
     const player = this.gameState.getPlayer();
     this.evaluateVision(player);
     let moved = false;
@@ -343,7 +345,9 @@ class EnemyManager {
   moveChasingEnemies(player: PlayerState | null): void {
     if (!player) return;
     const enemies = this.getActiveEnemies();
-    const game = this.gameState.getGame();
+    const game = this.gameState.getGame?.();
+    if (!game) return;
+
     let moved = false;
     for (let index = 0; index < enemies.length; index += 1) {
       const enemy = enemies[index];
@@ -448,11 +452,11 @@ class EnemyManager {
 
   hasBlockingObject(roomIndex: number, x: number, y: number): boolean {
     const OT = ITEM_TYPES;
-    const blockingObject = this.gameState.getObjectAt(roomIndex, x, y);
+    const blockingObject = this.gameState.getObjectAt?.(roomIndex, x, y);
     if (!blockingObject) return false;
     if (blockingObject.type === OT.DOOR && !blockingObject.opened) return true;
     if (blockingObject.type === OT.DOOR_VARIABLE) {
-      const isOpen = blockingObject.variableId ? this.gameState.isVariableOn(blockingObject.variableId) : false;
+      const isOpen = blockingObject.variableId ? this.gameState.isVariableOn?.(blockingObject.variableId) : false;
       return !isOpen;
     }
     return false;
@@ -532,8 +536,8 @@ class EnemyManager {
    * Giant Rat (vida 1) = 1 square, Ancient Demon (vida 8) = 8 squares
    */
   getEnemyMaxLives(type: string): number {
-    const definition = this.getEnemyDefinition(type);
-    if (definition && typeof definition.lives === 'number' && Number.isFinite(definition.lives)) {
+    const definition = this.getEnemyDefinition(type) as EnemyDefinitionData & { lives?: number };
+    if (typeof definition.lives === 'number' && Number.isFinite(definition.lives)) {
       const livesValue = Number(definition.lives);
       return Math.max(1, livesValue);
     }
@@ -617,7 +621,7 @@ class EnemyManager {
       const fallbackId = typeof baseConfig?.variableId === 'string' ? baseConfig.variableId : null;
       variableId = fallbackId;
     }
-    variableId = this.gameState.normalizeVariableId(variableId);
+    variableId = this.gameState.normalizeVariableId?.(variableId) ?? null;
     if (!variableId) return null;
     const persist = baseConfig?.persist !== undefined ? Boolean(baseConfig.persist) : true;
     let message = null;
@@ -639,8 +643,9 @@ class EnemyManager {
   tryTriggerDefeatVariable(enemy: EnemyState): boolean {
     const config = this.getDefeatVariableConfig(enemy);
     if (!config) return false;
-    const [updated] = this.gameState.setVariableValue(config.variableId, true, config.persist);
-    const isActive = this.gameState.isVariableOn(config.variableId);
+    const result = this.gameState.setVariableValue?.(config.variableId, true, config.persist);
+    const [updated] = result ?? [false];
+    const isActive = this.gameState.isVariableOn?.(config.variableId);
     if (!updated && !isActive) {
       return false;
     }

@@ -184,7 +184,7 @@ class CombatManager {
    * Player attacks first, enemy counter-attacks
    */
   private handlePlayerInitiatedCombat(
-    enemyIndex: number,
+    _enemyIndex: number,
     enemy: EnemyState,
     damage: number,
     playerDamage: number,
@@ -238,7 +238,7 @@ class CombatManager {
    * Enemy attacks first, player counter-attacks
    */
   private handleEnemyInitiatedCombat(
-    enemyIndex: number,
+    _enemyIndex: number,
     enemy: EnemyState,
     damage: number,
     playerDamage: number,
@@ -336,9 +336,9 @@ class CombatManager {
    * Legacy synchronous combat (backward compatibility)
    */
   private handleCombatLegacy(
-    enemyIndex: number,
+    _enemyIndex: number,
     enemy: EnemyState,
-    missChance: number,
+    _missChance: number,
     attackMissed: boolean,
     damage: number,
     playerDamage: number

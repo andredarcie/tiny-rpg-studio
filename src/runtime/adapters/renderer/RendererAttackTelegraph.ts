@@ -14,13 +14,11 @@ type TelegraphState = {
  */
 class RendererAttackTelegraph extends RendererModuleBase {
     private telegraphs: Map<string, TelegraphState>;
-    private pulseSpeed: number;
     private windupDistance: number; // Max pixels to pull back
 
     constructor(renderer: ConstructorParameters<typeof RendererModuleBase>[0]) {
         super(renderer);
         this.telegraphs = new Map();
-        this.pulseSpeed = 0.02; // Much faster!
         this.windupDistance = 4; // Pull back 4 pixels max for more visibility
     }
 

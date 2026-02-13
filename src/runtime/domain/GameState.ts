@@ -1,6 +1,7 @@
 
 import { SkillDefinitions } from './definitions/SkillDefinitions';
 import { ItemDefinitions } from './definitions/ItemDefinitions';
+import type { ItemType } from './constants/itemTypes';
 import { GameStateLifecycle } from './state/GameStateLifecycle';
 import { GameStateScreenManager } from './state/GameStateScreenManager';
 import { GameStateDataFacade } from './state/GameStateDataFacade';
@@ -488,7 +489,7 @@ class GameState {
         const swordType = this.playerManager.getSwordType();
         if (!swordType) return 1; // Base damage without sword
 
-        const itemDef = ItemDefinitions.getItemDefinition(swordType);
+        const itemDef = ItemDefinitions.getItemDefinition(swordType as ItemType);
         if (!itemDef) return 1;
 
         const damage = itemDef.getSwordDamage();
