@@ -52,6 +52,8 @@ class EditorDomCache {
     paletteGrid: HTMLElement | null;
     palettePresetSelect: HTMLSelectElement | null;
     paletteResetButton: HTMLButtonElement | null;
+    paletteImportButton: HTMLButtonElement | null;
+    paletteExportButton: HTMLButtonElement | null;
     colorPickerModal: HTMLElement | null;
     colorPickerInput: HTMLInputElement | null;
     colorPickerConfirm: HTMLButtonElement | null;
@@ -115,6 +117,8 @@ class EditorDomCache {
             this.paletteGrid = null;
             this.palettePresetSelect = null;
             this.paletteResetButton = null;
+            this.paletteImportButton = null;
+            this.paletteExportButton = null;
             this.colorPickerModal = null;
             this.colorPickerInput = null;
             this.colorPickerConfirm = null;
@@ -177,6 +181,8 @@ class EditorDomCache {
         this.paletteGrid = root.querySelector('#palette-grid') as HTMLElement | null;
         this.palettePresetSelect = root.querySelector('#palette-preset-select') as HTMLSelectElement | null;
         this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
+        this.paletteImportButton = root.querySelector('#palette-import-button') as HTMLButtonElement | null;
+        this.paletteExportButton = root.querySelector('#palette-export-button') as HTMLButtonElement | null;
         this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;
         this.colorPickerInput = root.querySelector('#color-picker-input') as HTMLInputElement | null;
         this.colorPickerConfirm = root.querySelector('#color-picker-confirm') as HTMLButtonElement | null;

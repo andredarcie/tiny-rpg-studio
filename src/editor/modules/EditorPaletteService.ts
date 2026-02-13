@@ -2,6 +2,7 @@ import type { EditorManager } from '../EditorManager';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 import { PALETTE_PRESETS } from '../../runtime/domain/definitions/PalettePresets';
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { PaletteGimpIO } from './PaletteGimpIO';
 
 export class EditorPaletteService {
     manager: EditorManager;
@@ -299,6 +300,62 @@ export class EditorPaletteService {
         // Reset button
         this.manager.dom.paletteResetButton?.addEventListener('click', () => {
             this.resetToDefault();
+        });
+
+        // Import button (GIMP .gpl)
+        this.manager.dom.paletteImportButton?.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.gpl';
+            input.addEventListener('change', () => {
+                const file = input.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const text = String(reader.result || '');
+                    const colors = PaletteGimpIO.parseGpl(text);
+                    if (!Array.isArray(colors) || colors.length === 0) {
+                        console.warn('[PaletteImport] Invalid or empty .gpl palette');
+                        return;
+                    }
+
+                    // Merge imported colors with current palette.
+                    // If imported has fewer than 16 colors, keep existing for remaining slots.
+                    // If imported has more, take the first 16 and ignore the rest.
+                    const current = this.getCurrentPalette();
+                    const merged = [...current];
+                    const limit = Math.min(16, colors.length);
+                    for (let i = 0; i < limit; i++) {
+                        const c = colors[i];
+                        if (typeof c === 'string' && c) merged[i] = c.toUpperCase();
+                    }
+                    merged.length = 16;
+
+                    this.manager.gameEngine.setCustomPalette(merged);
+                    this.renderPaletteGrid();
+                    this.manager.renderAll();
+                    this.manager.gameEngine.draw();
+                    this.manager.historyManager.pushCurrentState();
+                };
+                reader.readAsText(file);
+            });
+            input.click();
+        });
+
+        // Export button (GIMP .gpl)
+        this.manager.dom.paletteExportButton?.addEventListener('click', () => {
+            const palette = this.getCurrentPalette();
+            if (!Array.isArray(palette) || palette.length !== 16) return;
+            const content = PaletteGimpIO.exportGpl(palette);
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'palette.gpl';
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
         });
 
         // Color picker confirm
