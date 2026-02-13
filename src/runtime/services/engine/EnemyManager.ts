@@ -11,15 +11,10 @@ import type {
   TileManagerApi,
   EnemyManagerOptions,
   PlayerState,
-  RoomState,
   GameData,
   EnemyState,
   EnemyMovementResult,
   EnemyInput,
-  GameObjectState,
-  TileMapState,
-  TileDefinition,
-  DefeatVariableConfig,
   EnemyDefinitionData,
 } from '../../../types/managerTypes';
 import { EnemyMovementResult as EnemyMovementResultConst } from '../../../types/managerTypes';
@@ -27,23 +22,6 @@ import { EnemyMovementResult as EnemyMovementResultConst } from '../../../types/
 const getEnemyLocaleText = (key: string, fallback = ''): string => {
   const value = TextResources.get(key, fallback) as string;
   return value || fallback || '';
-};
-
-const formatEnemyLocaleText = (
-  key: string,
-  params: Record<string, string | number | boolean> = {},
-  fallback = '',
-): string => {
-  const value = TextResources.format(key, params, fallback) as string;
-  return value || fallback || '';
-};
-
-const getEnemyLocalizedName = (enemyType: string): string => {
-  const definition = EnemyDefinitions.getEnemyDefinition(enemyType);
-  if (definition && definition.nameKey) {
-    return getEnemyLocaleText(definition.nameKey, definition.name || enemyType);
-  }
-  return enemyType;
 };
 
 class EnemyManager {
@@ -682,8 +660,8 @@ class EnemyManager {
    * Called right before enemy executes attack
    */
   triggerEnemyWindup(enemyId: string, enemyPos: { x: number; y: number }, playerPos: { x: number; y: number }): void {
-    const telegraphConfig = GameConfig.combat?.telegraph;
-    if (!telegraphConfig || !telegraphConfig.enabled) return;
+    const telegraphConfig = GameConfig.combat.telegraph;
+    if (!telegraphConfig.enabled) return;
 
     const attackTelegraph = this.renderer.attackTelegraph;
     if (!attackTelegraph) return;
@@ -715,12 +693,6 @@ class EnemyManager {
     }
 
     // Check all 8 adjacent positions (including diagonals)
-    const adjacentOffsets = [
-      [-1, -1], [0, -1], [1, -1],
-      [-1,  0],          [1,  0],
-      [-1,  1], [0,  1], [1,  1]
-    ];
-
     return enemies.some(enemy => {
       if (enemy.roomIndex !== roomIndex) return false;
       if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') return false;

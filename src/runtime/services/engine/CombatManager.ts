@@ -6,8 +6,6 @@ import type {
   RendererApi,
   CombatAnimatorApi,
   CameraShakeApi,
-  FloatingTextApi,
-  ParticleSystemApi,
   EntityRendererApi,
   CombatStunManagerApi,
   StatePlayerManagerApi,
@@ -124,7 +122,11 @@ class CombatManager {
     const missChance = this.getEnemyMissChance(enemy.type);
     const attackMissed = this.attackMissed(missChance);
     const damage = this.getEnemyDamage(enemy.type);
-    const playerDamage = this.gameState.getPlayerDamage();
+
+    // Type-safe player damage retrieval
+    const gameStateWithDamage = this.gameState as GameStateApi & { getPlayerDamage?: () => number };
+    const playerDamage = gameStateWithDamage.getPlayerDamage ? gameStateWithDamage.getPlayerDamage() : 1;
+
     const player = this.gameState.getPlayer();
     const enemyPos = { x: enemy.x, y: enemy.y };
 
@@ -160,9 +162,11 @@ class CombatManager {
     initiator: 'player' | 'enemy',
     attackMissed: boolean
   ): void {
-    const combatAnimator = this.renderer.combatAnimator!;
-    const entityRenderer = this.renderer.entityRenderer!;
-    const cameraShake = this.renderer.cameraShake!;
+    const combatAnimator = this.renderer.combatAnimator;
+    const entityRenderer = this.renderer.entityRenderer;
+    const cameraShake = this.renderer.cameraShake;
+
+    if (!combatAnimator || !entityRenderer || !cameraShake) return;
 
     // Update last attack time
     if (this.playerManager?.player) {
@@ -207,7 +211,9 @@ class CombatManager {
       if (enemyDefeated) {
         // Enemy dies - no counter-attack
         this.playEnemyDeathAnimation(enemy, () => {
-          this.onEnemyDefeated(enemy.id!, enemy);
+          if (enemy.id) {
+            this.onEnemyDefeated(enemy.id, enemy);
+          }
           this.onCheckAllEnemiesCleared();
           this.renderer.draw();
         });
@@ -277,7 +283,9 @@ class CombatManager {
 
         if (enemyDefeated) {
           this.playEnemyDeathAnimation(enemy, () => {
-            this.onEnemyDefeated(enemy.id!, enemy);
+            if (enemy.id) {
+              this.onEnemyDefeated(enemy.id, enemy);
+            }
             this.onCheckAllEnemiesCleared();
             this.renderer.draw();
           });
@@ -335,7 +343,6 @@ class CombatManager {
     damage: number,
     playerDamage: number
   ): void {
-    const enemies = this.gameState.getEnemies();
     let playerLives = this.gameState.getLives(); // Initialize with current lives
 
     if (attackMissed) {
@@ -361,8 +368,8 @@ class CombatManager {
 
     const enemyDefeated = enemy.lives <= 0;
 
-    if (enemyDefeated) {
-      this.onEnemyDefeated(enemy.id!, enemy);
+    if (enemyDefeated && enemy.id) {
+      this.onEnemyDefeated(enemy.id, enemy);
       this.onCheckAllEnemiesCleared();
       this.renderer.flashScreen({ intensity: 0.8, duration: 160 });
     }
@@ -576,7 +583,7 @@ class CombatManager {
    */
   private spawnMultipleLifeLoss(enemy: EnemyState, previousLives: number, damageDealt: number): void {
     // Validate inputs
-    if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number') return;
+    if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') return;
     if (!Number.isFinite(previousLives) || !Number.isFinite(damageDealt)) return;
     if (damageDealt <= 0) return;
 

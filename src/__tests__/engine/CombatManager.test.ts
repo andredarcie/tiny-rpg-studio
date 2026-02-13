@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CombatManager } from '../../runtime/services/engine/CombatManager';
 import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
 import { TextResources } from '../../runtime/adapters/TextResources';
-import { GameConfig } from '../../config/GameConfig';
 import { createCombatGameState } from '../helpers/createCombatGameState';
 import type { EnemyState } from '../../types/managerTypes';
 
@@ -14,12 +13,12 @@ describe('CombatManager', () => {
 
   const createRenderer = () => {
     const startLungeAttackMock = vi.fn();
-    startLungeAttackMock.mockImplementation((attacker, target, onComplete) => {
+    startLungeAttackMock.mockImplementation((_attacker: unknown, _target: unknown, onComplete?: () => void) => {
       if (onComplete) onComplete();
     });
 
     const startKnockbackMock = vi.fn();
-    startKnockbackMock.mockImplementation((entity, direction, onComplete) => {
+    startKnockbackMock.mockImplementation((_entity: unknown, _direction: unknown, onComplete?: () => void) => {
       if (onComplete) onComplete();
     });
 

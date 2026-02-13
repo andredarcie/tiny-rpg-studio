@@ -1,22 +1,9 @@
 import { RendererModuleBase } from './RendererModuleBase';
-import { GameConfig } from '../../../config/GameConfig';
 
 type TelegraphState = {
     entityId: string;
     startTime: number;
     direction: { x: number; y: number }; // Direction TO player (we'll move opposite)
-};
-
-type GameStateApi = {
-    state?: {
-        enemies?: Array<{
-            id?: string;
-            x: number;
-            y: number;
-            roomIndex: number;
-            attackWarning?: boolean;
-        }>;
-    };
 };
 
 /**
@@ -33,7 +20,7 @@ class RendererAttackTelegraph extends RendererModuleBase {
     constructor(renderer: ConstructorParameters<typeof RendererModuleBase>[0]) {
         super(renderer);
         this.telegraphs = new Map();
-        this.pulseSpeed = GameConfig.combat?.telegraph?.pulseSpeed || 0.02; // Much faster!
+        this.pulseSpeed = 0.02; // Much faster!
         this.windupDistance = 4; // Pull back 4 pixels max for more visibility
     }
 
@@ -143,7 +130,7 @@ class RendererAttackTelegraph extends RendererModuleBase {
      * Render is now a no-op - the offset is applied directly in entity rendering
      * Keeping this method for API compatibility
      */
-    render(ctx: CanvasRenderingContext2D, tileSize: number): void {
+    render(_ctx: CanvasRenderingContext2D, _tileSize: number): void {
         // No longer rendering overlays - animation is applied directly to enemy position
         return;
     }

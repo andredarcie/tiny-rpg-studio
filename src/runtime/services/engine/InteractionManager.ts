@@ -198,8 +198,12 @@ class InteractionManager {
           return false;
         }
         object.collected = true;
+        const swordType = object.type;
+        const gameStateWithSword = this.gameState as typeof this.gameState & { setSwordType?: (type: ItemType) => void };
         this.showPickupOverlay(object.type, () => {
-          this.gameState.setSwordType?.(object.type);
+          if (gameStateWithSword.setSwordType) {
+            gameStateWithSword.setSwordType(swordType);
+          }
         });
         return true;
       }
