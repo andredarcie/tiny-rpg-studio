@@ -371,7 +371,8 @@ describe('CombatManager', () => {
         damagePlayer: vi.fn(() => 2),
       });
       const renderer = createRenderer();
-      const manager = new CombatManager(gameState, renderer);
+      // Set fallbackMissChance to 0 so attacks always hit
+      const manager = new CombatManager(gameState, renderer, { fallbackMissChance: 0 });
 
       manager.handleEnemyCollision(0, { initiator: 'player' });
 
@@ -405,7 +406,8 @@ describe('CombatManager', () => {
         getLives: vi.fn(() => 3),
       });
       const renderer = createRenderer();
-      const manager = new CombatManager(gameState, renderer);
+      // Set fallbackMissChance to 0 so attacks always hit
+      const manager = new CombatManager(gameState, renderer, { fallbackMissChance: 0 });
 
       manager.handleEnemyCollision(0, { initiator: 'enemy' });
 
