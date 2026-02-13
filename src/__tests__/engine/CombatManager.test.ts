@@ -12,33 +12,45 @@ describe('CombatManager', () => {
   const getDefinitionSpy = vi.spyOn(EnemyDefinitions, 'getEnemyDefinition');
   const getMissChanceSpy = vi.spyOn(EnemyDefinitions, 'getMissChance');
 
-  const createRenderer = () => ({
-    draw: vi.fn(),
-    flashScreen: vi.fn(),
-    showCombatIndicator: vi.fn(),
-    spawnEnemyLifeLoss: vi.fn(),
-    applyGrayscaleFilter: vi.fn(),
-    removeGrayscaleFilter: vi.fn(),
-    combatAnimator: {
-      startLungeAttack: vi.fn((attacker, target, onComplete) => onComplete?.()),
-      startKnockback: vi.fn((entity, direction, onComplete) => onComplete?.()),
-      freezeFrame: vi.fn(),
-    },
-    cameraShake: {
-      triggerFromDamage: vi.fn(),
-    },
-    floatingText: {
-      spawnDamageNumber: vi.fn(),
-    },
-    particleSystem: {
-      spawnImpactAtTile: vi.fn(),
-      spawnCriticalImpact: vi.fn(),
-      spawnDeath: vi.fn(),
-    },
-    entityRenderer: {
-      flashEntity: vi.fn(),
-    },
-  });
+  const createRenderer = () => {
+    const startLungeAttackMock = vi.fn();
+    startLungeAttackMock.mockImplementation((attacker, target, onComplete) => {
+      if (onComplete) onComplete();
+    });
+
+    const startKnockbackMock = vi.fn();
+    startKnockbackMock.mockImplementation((entity, direction, onComplete) => {
+      if (onComplete) onComplete();
+    });
+
+    return {
+      draw: vi.fn(),
+      flashScreen: vi.fn(),
+      showCombatIndicator: vi.fn(),
+      spawnEnemyLifeLoss: vi.fn(),
+      applyGrayscaleFilter: vi.fn(),
+      removeGrayscaleFilter: vi.fn(),
+      combatAnimator: {
+        startLungeAttack: startLungeAttackMock,
+        startKnockback: startKnockbackMock,
+        freezeFrame: vi.fn(),
+      },
+      cameraShake: {
+        triggerFromDamage: vi.fn(),
+      },
+      floatingText: {
+        spawnDamageNumber: vi.fn(),
+      },
+      particleSystem: {
+        spawnImpactAtTile: vi.fn(),
+        spawnCriticalImpact: vi.fn(),
+        spawnDeath: vi.fn(),
+      },
+      entityRenderer: {
+        flashEntity: vi.fn(),
+      },
+    };
+  };
 
   const baseEnemyDefinition = {
     type: 'test-enemy',
@@ -428,7 +440,8 @@ describe('CombatManager', () => {
         getLives: vi.fn(() => 1),
       });
       const renderer = createRenderer();
-      const manager = new CombatManager(gameState, renderer);
+      // Set fallbackMissChance to 0 so attacks always hit
+      const manager = new CombatManager(gameState, renderer, { fallbackMissChance: 0 });
 
       manager.handleEnemyCollision(0, { initiator: 'enemy' });
 
@@ -459,7 +472,8 @@ describe('CombatManager', () => {
         getLives: vi.fn(() => 1),
       });
       const renderer = { ...createRenderer(), combatAnimator: undefined };
-      const manager = new CombatManager(gameState, renderer, { onPlayerDefeated });
+      // Set fallbackMissChance to 0 so attacks always hit
+      const manager = new CombatManager(gameState, renderer, { onPlayerDefeated, fallbackMissChance: 0 });
 
       manager.handleEnemyCollision(0);
 

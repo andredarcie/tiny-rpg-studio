@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { RendererAttackTelegraph } from '../../runtime/adapters/renderer/RendererAttackTelegraph';
 
 describe('RendererAttackTelegraph', () => {
@@ -19,6 +19,9 @@ describe('RendererAttackTelegraph', () => {
     };
 
     beforeEach(() => {
+        vi.useFakeTimers();
+        // Mock performance.now() to work with fake timers
+        vi.spyOn(performance, 'now').mockImplementation(() => Date.now());
         mockRenderer = {
             gameState: {
                 state: {
@@ -28,6 +31,11 @@ describe('RendererAttackTelegraph', () => {
             viewportOffsetY: 0
         };
         telegraph = new RendererAttackTelegraph(mockRenderer as never);
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.useRealTimers();
     });
 
     it('should activate telegraph for enemy', () => {
@@ -87,6 +95,10 @@ describe('RendererAttackTelegraph', () => {
 
         const baseX = 32; // 2 * 16
         const baseY = 48; // 3 * 16
+
+        // Advance time to middle of windup animation (150ms out of 300ms)
+        // This is when the offset should be at its peak
+        vi.advanceTimersByTime(150);
 
         const result = telegraph.applyWindupOffset('enemy-1', baseX, baseY);
 
