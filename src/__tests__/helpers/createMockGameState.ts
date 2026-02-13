@@ -80,6 +80,7 @@ export interface MockGameState {
   pauseGame?: (reason: string) => void;
   resumeGame?: (reason: string) => void;
   setDialog?: (active: boolean, text?: string, meta?: unknown) => void;
+  setLastKillerEnemy?: (enemyId: string) => void;
 }
 
 /**

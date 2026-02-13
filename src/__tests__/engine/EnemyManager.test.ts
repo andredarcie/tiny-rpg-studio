@@ -34,6 +34,7 @@ describe('EnemyManager', () => {
     name: 'Test Enemy',
     nameKey: 'enemies.names.test',
     description: 'test',
+    lives: 1,
     damage: 1,
     missChance: 0,
     experience: 1,
@@ -48,6 +49,7 @@ describe('EnemyManager', () => {
     x: number;
     y: number;
     lastX: number;
+    lives?: number;
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
@@ -56,7 +58,7 @@ describe('EnemyManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSpy.mockImplementation((...args: unknown[]) => {
-      const key = args[0] as string;
+      const key = args[0] as string | null | undefined;
       const fallback = args[1] as string | undefined;
       return key === 'combat.cooldown' ? 'Safe' : fallback || 'text';
     });
@@ -72,6 +74,7 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => data.type === type,
         getExperienceReward: () => data.experience,
         getMissChance: () => data.missChance,
+        lives: data.lives,
       };
     });
     getExperienceSpy.mockImplementation(() => 2);
@@ -136,6 +139,7 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => data.type === type,
         getExperienceReward: () => data.experience,
         getMissChance: () => data.missChance,
+        lives: data.lives,
       };
     });
     const gameState = createEnemyGameState();
@@ -434,6 +438,7 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => type === 'boss',
         getExperienceReward: () => 10,
         getMissChance: () => 0,
+        lives: bossDefinition.lives,
       }));
       getMissChanceSpy.mockReturnValue(0);
 
@@ -484,7 +489,7 @@ describe('EnemyManager', () => {
     it('should deal damage when enemy walks into player and stealth misses', () => {
       const weakEnemy = {
         id: 'rat-1', type: 'giant-rat', roomIndex: 0,
-        x: 3, y: 3, lastX: 2, playerInVision: true,
+        x: 3, y: 3, lastX: 2, playerInVision: true, lives: 1,
       };
       const enemies = [weakEnemy];
       const player = { roomIndex: 0, x: 3, y: 3 };
@@ -494,6 +499,7 @@ describe('EnemyManager', () => {
         matchesType: (t: string) => t === 'giant-rat',
         getExperienceReward: () => 3,
         getMissChance: () => 0,
+        lives: 1,
       }));
       getMissChanceSpy.mockReturnValue(0);
 
@@ -524,19 +530,20 @@ describe('EnemyManager', () => {
       const weakEnemy: MockEnemyData = {
         id: 'rat-1', type: 'giant-rat', roomIndex: 0,
         x: 3, y: 2, lastX: 3, playerInVision: false,
-        alertUntil: null, alertStart: null,
+        alertUntil: null, alertStart: null, lives: 1,
       };
       const strongEnemy: MockEnemyData = {
         id: 'knight-1', type: 'dark-knight', roomIndex: 0,
         x: 1, y: 2, lastX: 1, playerInVision: false,
-        alertUntil: null, alertStart: null,
+        alertUntil: null, alertStart: null, lives: 4,
       };
 
       getDefinitionSpy.mockImplementation((...args: unknown[]) => {
         const type = args[0] as string;
         const dmg = type === 'giant-rat' ? 1 : 4;
+        const lvs = type === 'giant-rat' ? 1 : 4;
         return {
-          ...baseEnemyDefinition, type, damage: dmg, missChance: 0,
+          ...baseEnemyDefinition, type, damage: dmg, missChance: 0, lives: lvs,
           matchesType: (t: string) => t === type,
           getExperienceReward: () => 3,
           getMissChance: () => 0,
@@ -559,7 +566,7 @@ describe('EnemyManager', () => {
     it('should NOT deal damage when player walks into weak enemy (guaranteed kill)', () => {
       const weakEnemy = {
         id: 'rat-1', type: 'giant-rat', roomIndex: 0,
-        x: 4, y: 4, lastX: 4,
+        x: 4, y: 4, lastX: 4, lives: 1,
       };
       const enemies = [weakEnemy];
 
@@ -568,6 +575,7 @@ describe('EnemyManager', () => {
         matchesType: (t: string) => t === 'giant-rat',
         getExperienceReward: () => 3,
         getMissChance: () => 0,
+        lives: 1,
       }));
 
       const gameState = createEnemyGameState({
@@ -847,16 +855,17 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => type === 'ancient-demon',
         getExperienceReward: () => 20,
         getMissChance: () => 0,
+        lives: ancientDemonDefinition.lives,
       }));
       getMissChanceSpy.mockReturnValue(0);
 
       // Mock TextResources to return localized strings
-      getSpy.mockImplementation((key: string) => {
+      getSpy.mockImplementation((key: string | null | undefined) => {
         if (key === 'enemies.names.ancientDemon') return 'Demônio Ancião';
         return '';
       });
-      formatSpy.mockImplementation((key: string, params: Record<string, unknown>) => {
-        if (key === 'combat.killedBy' && params.enemy === 'Demônio Ancião') {
+      formatSpy.mockImplementation((key: string | null | undefined, params?: Record<string, string | number | boolean>) => {
+        if (key === 'combat.killedBy' && params && params.enemy === 'Demônio Ancião') {
           return 'Morto por Demônio Ancião';
         }
         return '';
@@ -922,16 +931,17 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => type === 'giant-rat',
         getExperienceReward: () => 3,
         getMissChance: () => 0.1,
+        lives: giantRatDefinition.lives,
       }));
       getMissChanceSpy.mockReturnValue(0.1);
 
       // Mock TextResources to return localized strings
-      getSpy.mockImplementation((key: string) => {
+      getSpy.mockImplementation((key: string | null | undefined) => {
         if (key === 'enemies.names.giantRat') return 'Rato Gigante';
         return '';
       });
-      formatSpy.mockImplementation((key: string, params: Record<string, unknown>) => {
-        if (key === 'combat.killedBy' && params.enemy === 'Rato Gigante') {
+      formatSpy.mockImplementation((key: string | null | undefined, params?: Record<string, string | number | boolean>) => {
+        if (key === 'combat.killedBy' && params && params.enemy === 'Rato Gigante') {
           return 'Morto por Rato Gigante';
         }
         return '';

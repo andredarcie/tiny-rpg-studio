@@ -386,9 +386,9 @@ describe('GameState - Critical Path Tests', () => {
       state.skillManager.ensureRuntime().necromancerCharges = 1;
 
       // Add enemies to room 0 (where player starts)
-      state.addEnemy({ id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1 });
-      state.addEnemy({ id: 'enemy-2', type: 'ancient-demon', roomIndex: 0, x: 2, y: 2 });
-      state.addEnemy({ id: 'enemy-3', type: 'giant-rat', roomIndex: 1, x: 3, y: 3 });
+      state.addEnemy({ id: 'enemy-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1 });
+      state.addEnemy({ id: 'enemy-2', type: 'ancient-demon', roomIndex: 0, x: 2, y: 2, lastX: 2 });
+      state.addEnemy({ id: 'enemy-3', type: 'giant-rat', roomIndex: 1, x: 3, y: 3, lastX: 3 });
 
       expect(state.getEnemies().length).toBe(3);
 
@@ -423,8 +423,8 @@ describe('GameState - Critical Path Tests', () => {
       state.skillManager.ensureRuntime().necromancerCharges = 1;
 
       // Add enemies
-      state.addEnemy({ id: 'boss-1', type: 'dragon', roomIndex: 0, x: 4, y: 4 });
-      state.addEnemy({ id: 'boss-2', type: 'ancient-demon', roomIndex: 0, x: 5, y: 5 });
+      state.addEnemy({ id: 'boss-1', type: 'dragon', roomIndex: 0, x: 4, y: 4, lastX: 4 });
+      state.addEnemy({ id: 'boss-2', type: 'ancient-demon', roomIndex: 0, x: 5, y: 5, lastX: 5 });
 
       expect(state.getEnemies().length).toBe(2);
 
@@ -462,7 +462,7 @@ describe('GameState - Critical Path Tests', () => {
       state.skillManager.ensureRuntime().necromancerCharges = 1;
 
       // Add boss enemy
-      state.addEnemy({ id: 'boss-1', type: 'ancient-demon', roomIndex: 0, x: 3, y: 3 });
+      state.addEnemy({ id: 'boss-1', type: 'ancient-demon', roomIndex: 0, x: 3, y: 3, lastX: 3 });
 
       const enemy = state.getEnemies()[0];
       const initialLives = enemy.lives;
@@ -503,13 +503,13 @@ describe('GameState - Critical Path Tests', () => {
       state.skillManager.ensureRuntime().necromancerCharges = 1;
 
       // Player starts in room 0
-      expect(state.getPlayer().roomIndex).toBe(0);
+      expect(state.getPlayer()?.roomIndex).toBe(0);
 
       // Add enemies to multiple rooms
-      state.addEnemy({ id: 'enemy-room-0-1', type: 'dragon', roomIndex: 0, x: 1, y: 1 });
-      state.addEnemy({ id: 'enemy-room-0-2', type: 'necromancer', roomIndex: 0, x: 2, y: 2 });
-      state.addEnemy({ id: 'enemy-room-1-1', type: 'dark-knight', roomIndex: 1, x: 3, y: 3 });
-      state.addEnemy({ id: 'enemy-room-2-1', type: 'skeleton', roomIndex: 2, x: 4, y: 4 });
+      state.addEnemy({ id: 'enemy-room-0-1', type: 'dragon', roomIndex: 0, x: 1, y: 1, lastX: 1 });
+      state.addEnemy({ id: 'enemy-room-0-2', type: 'necromancer', roomIndex: 0, x: 2, y: 2, lastX: 2 });
+      state.addEnemy({ id: 'enemy-room-1-1', type: 'dark-knight', roomIndex: 1, x: 3, y: 3, lastX: 3 });
+      state.addEnemy({ id: 'enemy-room-2-1', type: 'skeleton', roomIndex: 2, x: 4, y: 4, lastX: 4 });
 
       expect(state.getEnemies().length).toBe(4);
 
@@ -546,8 +546,8 @@ describe('GameState - Critical Path Tests', () => {
       state.skillManager.ensureRuntime().necromancerCharges = 2;
 
       // Add enemies
-      state.addEnemy({ id: 'boss-1', type: 'fallen-king', roomIndex: 0, x: 3, y: 3 });
-      state.addEnemy({ id: 'boss-2', type: 'dragon', roomIndex: 0, x: 4, y: 4 });
+      state.addEnemy({ id: 'boss-1', type: 'fallen-king', roomIndex: 0, x: 3, y: 3, lastX: 3 });
+      state.addEnemy({ id: 'boss-2', type: 'dragon', roomIndex: 0, x: 4, y: 4, lastX: 4 });
 
       expect(state.getEnemies().length).toBe(2);
 

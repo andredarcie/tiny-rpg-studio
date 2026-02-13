@@ -69,7 +69,7 @@ describe('CombatManager', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
 
-    getSpy.mockImplementation((key: string, fallback?: string) => {
+    getSpy.mockImplementation((key: string | null | undefined, fallback?: string) => {
       if (key === 'combat.tooSoon') return 'Too soon!';
       if (key === 'combat.cooldown') return 'Cooldown!';
       if (key === 'combat.stealthKill') return 'Stealth Kill!';
@@ -78,9 +78,9 @@ describe('CombatManager', () => {
       return fallback || 'text';
     });
 
-    formatSpy.mockImplementation((key: string, params: Record<string, unknown>, fallback?: string) => {
-      if (key === 'combat.killedBy') return `Killed by ${params.enemy}`;
-      if (key === 'combat.block.partial') return `Blocked ${params.value}`;
+    formatSpy.mockImplementation((key: string | null | undefined, params?: Record<string, string | number | boolean>, fallback?: string) => {
+      if (key === 'combat.killedBy' && params) return `Killed by ${params.enemy}`;
+      if (key === 'combat.block.partial' && params) return `Blocked ${params.value}`;
       return fallback || 'text';
     });
 

@@ -16,7 +16,9 @@ const baseRuntimeState: RuntimeState = {
         damageShieldMax: 0,
         swordType: null,
         lastDamageReduction: 0,
-        godMode: false
+        godMode: false,
+        lastAttackTime: 0,
+        stunUntil: 0
     },
     dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
     enemies: [],
