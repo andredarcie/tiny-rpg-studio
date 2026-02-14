@@ -178,6 +178,7 @@ class EditorObjectRenderer extends EditorRendererBase {
                     this.gameEngine.setObjectVariable(object.type, object.roomIndex, select.value);
                     this.renderObjects();
                     this.service.worldRenderer.renderWorldGrid();
+                    this.service.renderEditor();
                     this.manager.updateJSON();
                     this.manager.history.pushCurrentState();
                 });

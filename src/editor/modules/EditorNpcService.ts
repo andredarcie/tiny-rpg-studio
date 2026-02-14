@@ -259,6 +259,7 @@ class EditorNpcService {
         npc.conditionVariableId = variableId || null;
         this.manager.renderService.renderNpcs();
         this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
         this.manager.updateJSON();
         this.manager.history.pushCurrentState();
     }
@@ -271,6 +272,7 @@ class EditorNpcService {
         npc.rewardVariableId = variableId || null;
         this.manager.renderService.renderNpcs();
         this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
         this.manager.updateJSON();
         this.manager.history.pushCurrentState();
     }
@@ -283,6 +285,7 @@ class EditorNpcService {
         npc.conditionalRewardVariableId = variableId || null;
         this.manager.renderService.renderNpcs();
         this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
         this.manager.updateJSON();
         this.manager.history.pushCurrentState();
     }
