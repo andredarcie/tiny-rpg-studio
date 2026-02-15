@@ -363,6 +363,66 @@ describe('CombatManager', () => {
       expect(enemy.lives).toBe(2);
       expect(renderer.showCombatIndicator).not.toHaveBeenCalledWith('Backstab!', expect.any(Object));
     });
+
+    it('deals +1 damage when attacking enemy from behind (enemy moved DOWN)', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 4, lastX: 5, lastY: 3, lives: 3 };
+      const player = { x: 5, y: 3, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Enemy should have lost 2 lives (1 base damage + 1 backstab)
+      expect(enemy.lives).toBe(1);
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Backstab!', expect.any(Object));
+    });
+
+    it('deals +1 damage when attacking enemy from behind (enemy moved UP)', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 5, lastY: 4, lives: 3 };
+      const player = { x: 5, y: 5, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Enemy should have lost 2 lives (1 base damage + 1 backstab)
+      expect(enemy.lives).toBe(1);
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Backstab!', expect.any(Object));
+    });
+
+    it('prioritizes vertical backstab when enemy moved UP but has stale lastX', () => {
+      // Scenario: Enemy moved up (y: 4 -> 3) but lastX is different from x
+      // This can happen if lastX wasn't properly updated
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 4, lastY: 4, lives: 3 };
+      const player = { x: 5, y: 5, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // This test will FAIL with current implementation because horizontal check happens first
+      // Enemy should have lost 2 lives (1 base damage + 1 backstab for attacking from behind vertically)
+      expect(enemy.lives).toBe(1);
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Backstab!', expect.any(Object));
+    });
   });
 
   describe('Legacy Combat', () => {

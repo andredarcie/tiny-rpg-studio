@@ -540,22 +540,45 @@ class CombatManager {
    * Enemy is considered to be facing the direction they last moved
    */
   private isBackstab(player: PlayerState, enemy: EnemyState): boolean {
-    // If enemy has no lastX or hasn't moved, no backstab
-    if (typeof enemy.lastX !== 'number' || enemy.lastX === enemy.x) {
+    // Check if enemy has moved horizontally or vertically
+    const movedHorizontally = typeof enemy.lastX === 'number' && enemy.lastX !== enemy.x;
+    const movedVertically = typeof enemy.lastY === 'number' && enemy.lastY !== enemy.y;
+
+    // If enemy hasn't moved at all, no backstab
+    if (!movedHorizontally && !movedVertically) {
       return false;
     }
 
-    // Determine which direction the enemy is facing (based on last movement)
-    const enemyFacingRight = enemy.x > enemy.lastX;
+    // If enemy moved both horizontally and vertically, prioritize the larger movement
+    if (movedHorizontally && movedVertically) {
+      const horizontalDelta = Math.abs(enemy.x - (enemy.lastX || enemy.x));
+      const verticalDelta = Math.abs(enemy.y - (enemy.lastY || enemy.y));
 
-    // Player is behind if they're on the opposite side of where enemy is facing
-    if (enemyFacingRight) {
-      // Enemy facing right, player should be on the left (x < enemy.x)
-      return player.x < enemy.x;
-    } else {
-      // Enemy facing left, player should be on the right (x > enemy.x)
-      return player.x > enemy.x;
+      // Prioritize the direction with larger movement (vertical wins ties)
+      if (verticalDelta >= horizontalDelta) {
+        // Vertical movement is larger or equal - check vertical backstab
+        const enemyFacingDown = enemy.y > (enemy.lastY || enemy.y);
+        return enemyFacingDown ? player.y < enemy.y : player.y > enemy.y;
+      } else {
+        // Horizontal movement is larger - check horizontal backstab
+        const enemyFacingRight = enemy.x > (enemy.lastX || enemy.x);
+        return enemyFacingRight ? player.x < enemy.x : player.x > enemy.x;
+      }
     }
+
+    // Only moved horizontally
+    if (movedHorizontally) {
+      const enemyFacingRight = enemy.x > enemy.lastX;
+      return enemyFacingRight ? player.x < enemy.x : player.x > enemy.x;
+    }
+
+    // Only moved vertically
+    if (movedVertically) {
+      const enemyFacingDown = enemy.y > enemy.lastY;
+      return enemyFacingDown ? player.y < enemy.y : player.y > enemy.y;
+    }
+
+    return false;
   }
 
   // ========== Damage & Stats ==========
