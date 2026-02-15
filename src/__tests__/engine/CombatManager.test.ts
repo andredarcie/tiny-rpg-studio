@@ -204,71 +204,85 @@ describe('CombatManager', () => {
     });
   });
 
-  describe('Stealth Assassination', () => {
-    it('can assassinate weak enemies with stealth skill', () => {
-      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 2 } as never));
+  describe('Assassin Skill - Combat Initiative', () => {
+    it('player attacks first with stealth against enemy with 1 life', () => {
       const gameState = createCombatGameState({
         hasSkill: vi.fn((skillId: string) => skillId === 'stealth'),
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        getPlayer: vi.fn(() => ({ x: 1, y: 1, roomIndex: 0, lives: 3, level: 1 })),
       });
       const renderer = createRenderer();
       const manager = new CombatManager(gameState, renderer);
 
-      const enemy: EnemyState = { id: 'e1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 1 };
-      expect(manager.canAssassinate(enemy)).toBe(true);
+      // Enemy initiates, but stealth skill forces player to attack first
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      // Player's lunge attack should be called (player attacks first)
+      expect(renderer.combatAnimator.startLungeAttack).toHaveBeenCalledWith(
+        'player',
+        expect.any(Object),
+        expect.any(Function)
+      );
     });
 
-    it('cannot assassinate strong enemies even with stealth', () => {
-      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 3 } as never));
+    it('player attacks first with stealth against enemy with 3 lives', () => {
       const gameState = createCombatGameState({
         hasSkill: vi.fn((skillId: string) => skillId === 'stealth'),
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'skeleton', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        getPlayer: vi.fn(() => ({ x: 1, y: 1, roomIndex: 0, lives: 3, level: 1 })),
       });
       const renderer = createRenderer();
       const manager = new CombatManager(gameState, renderer);
 
-      const enemy: EnemyState = { id: 'e1', type: 'dragon', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 5 };
-      expect(manager.canAssassinate(enemy)).toBe(false);
+      // Enemy initiates, but stealth skill forces player to attack first
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      // Player's lunge attack should be called (player attacks first)
+      expect(renderer.combatAnimator.startLungeAttack).toHaveBeenCalledWith(
+        'player',
+        expect.any(Object),
+        expect.any(Function)
+      );
     });
 
-    it('cannot assassinate without stealth skill', () => {
+    it('enemy can attack first against enemy with 4+ lives even with stealth', () => {
+      const gameState = createCombatGameState({
+        hasSkill: vi.fn((skillId: string) => skillId === 'stealth'),
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'dark-knight', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 4 }]),
+        getPlayer: vi.fn(() => ({ x: 1, y: 1, roomIndex: 0, lives: 3, level: 1 })),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      // Enemy initiates combat
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+
+      // Player's knockback should be called first (enemy attacks first)
+      expect(renderer.combatAnimator.startKnockback).toHaveBeenCalledWith(
+        'player',
+        expect.any(Object),
+        expect.any(Function)
+      );
+    });
+
+    it('player does not get first strike without stealth skill', () => {
       const gameState = createCombatGameState({
         hasSkill: vi.fn(() => false),
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        getPlayer: vi.fn(() => ({ x: 1, y: 1, roomIndex: 0, lives: 3, level: 1 })),
       });
       const renderer = createRenderer();
       const manager = new CombatManager(gameState, renderer);
 
-      const enemy: EnemyState = { id: 'e1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 1 };
-      expect(manager.canAssassinate(enemy)).toBe(false);
-    });
+      // Enemy initiates combat
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
 
-    it('assassinates enemy successfully', () => {
-      const onEnemyDefeated = vi.fn();
-      const gameState = createCombatGameState({
-        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
-      });
-      const renderer = createRenderer();
-      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
-
-      manager.assassinateEnemy(0);
-
-      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Stealth Kill!', { duration: 800 });
-      expect(renderer.flashScreen).toHaveBeenCalledWith({ intensity: 0.4, duration: 120 });
-      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
-    });
-
-    it('does not assassinate if enemy has no ID', () => {
-      const onEnemyDefeated = vi.fn();
-      const gameState = createCombatGameState({
-        getEnemies: vi.fn(() => [{ type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
-      });
-      const renderer = createRenderer();
-      const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
-
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      manager.assassinateEnemy(0);
-
-      expect(consoleSpy).toHaveBeenCalledWith('Enemy missing ID, cannot assassinate safely');
-      expect(onEnemyDefeated).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      // Player's knockback should be called first (enemy attacks first)
+      expect(renderer.combatAnimator.startKnockback).toHaveBeenCalledWith(
+        'player',
+        expect.any(Object),
+        expect.any(Function)
+      );
     });
   });
 

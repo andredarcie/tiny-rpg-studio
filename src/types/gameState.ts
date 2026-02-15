@@ -28,6 +28,7 @@ export type PlayerRuntimeState = {
     damageShield: number;
     damageShieldMax: number;
     swordType: string | null;
+    swordDurability: number;
     lastDamageReduction: number;
     godMode: boolean;
     lastAttackTime: number;

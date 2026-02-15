@@ -115,6 +115,7 @@ class GameState {
                 damageShield: 0,
                 damageShieldMax: 0,
                 swordType: null,
+                swordDurability: 0,
                 lastDamageReduction: 0,
                 godMode: false,
                 lastAttackTime: 0,
@@ -483,6 +484,18 @@ class GameState {
 
     setSwordType(swordType: string | null) {
         this.playerManager.setSwordType(swordType);
+    }
+
+    getSwordDurability() {
+        return this.playerManager.getSwordDurability();
+    }
+
+    setSwordDurability(durability: number) {
+        this.playerManager.setSwordDurability(durability);
+    }
+
+    consumeSwordDurability(): boolean {
+        return this.playerManager.consumeSwordDurability();
     }
 
     getPlayerDamage(): number {

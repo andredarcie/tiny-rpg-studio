@@ -86,7 +86,7 @@ class CombatManager {
     enemyIndex: number,
     options: { skipAssassinate?: boolean; initiator?: 'player' | 'enemy' } = {}
   ): void {
-    const initiator = options.initiator || 'player';
+    let initiator = options.initiator || 'player';
 
     // Check attack cooldown first
     if (this.playerManager?.isOnAttackCooldown()) {
@@ -113,10 +113,10 @@ class CombatManager {
     // Ensure enemy has lives initialized
     this.ensureEnemyLives(enemy);
 
-    // Check for stealth assassination (skip animations)
-    if (!options.skipAssassinate && this.canAssassinate(enemy)) {
-      this.assassinateEnemy(enemyIndex);
-      return;
+    // Assassin skill: always attack first against weak enemies (3 lives or less)
+    const hasStealth = this.gameState.hasSkill('stealth');
+    if (hasStealth && typeof enemy.lives === 'number' && enemy.lives <= 3) {
+      initiator = 'player';
     }
 
     const missChance = this.getEnemyMissChance(enemy.type);
@@ -203,6 +203,12 @@ class CombatManager {
       const previousLives = enemy.lives || 1;
       enemy.lives = previousLives - playerDamage;
 
+      // Consume sword durability
+      const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
+      if (gameStateWithDurability.consumeSwordDurability) {
+        gameStateWithDurability.consumeSwordDurability();
+      }
+
       // Spawn multiple life loss squares (one per damage point)
       this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
 
@@ -275,6 +281,12 @@ class CombatManager {
 
         const previousLives = enemy.lives || 1;
         enemy.lives = previousLives - playerDamage;
+
+        // Consume sword durability
+        const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
+        if (gameStateWithDurability.consumeSwordDurability) {
+          gameStateWithDurability.consumeSwordDurability();
+        }
 
         // Spawn multiple life loss squares (one per damage point)
         this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
@@ -362,6 +374,12 @@ class CombatManager {
     // Player attacks enemy with sword damage
     const previousLives = enemy.lives || 1;
     enemy.lives = previousLives - playerDamage;
+
+    // Consume sword durability
+    const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
+    if (gameStateWithDurability.consumeSwordDurability) {
+      gameStateWithDurability.consumeSwordDurability();
+    }
 
     // Spawn multiple life loss squares (one per damage point)
     this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
@@ -534,50 +552,6 @@ class CombatManager {
     }
   }
 
-  // ========== Stealth/Assassination ==========
-
-  canAssassinate(enemy: EnemyState): boolean {
-    const stealth = this.gameState.hasSkill('stealth');
-    if (!stealth) return false;
-    const damage = this.getEnemyDamage(enemy.type);
-    return damage <= 2;
-  }
-
-  tryStealthAssassination(enemyIndex: number): boolean {
-    const enemies = this.gameState.getEnemies();
-    if (enemyIndex < 0 || enemyIndex >= enemies.length) {
-      return false;
-    }
-    const enemy = enemies[enemyIndex];
-    if (!this.canAssassinate(enemy)) {
-      return false;
-    }
-    const missed = Math.random() < GameConfig.enemy.stealthMissChance;
-    if (missed) {
-      this.showStealthMissFeedback();
-      return false;
-    }
-    this.assassinateEnemy(enemyIndex);
-    return true;
-  }
-
-  assassinateEnemy(enemyIndex: number): void {
-    const enemies = this.gameState.getEnemies();
-    if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
-    const enemy = enemies[enemyIndex];
-
-    if (!enemy.id) {
-      console.error('Enemy missing ID, cannot assassinate safely');
-      return;
-    }
-
-    this.showStealthKillFeedback();
-    this.renderer.flashScreen({ intensity: 0.4, duration: 120 });
-    this.onEnemyDefeated(enemy.id, enemy);
-    this.onCheckAllEnemiesCleared();
-    this.renderer.draw();
-  }
-
   /**
    * Spawns multiple life loss squares based on damage dealt
    */
@@ -595,18 +569,6 @@ class CombatManager {
         this.renderer.spawnEnemyLifeLoss(enemy.x, enemy.y, lostLifeIndex);
       }
     }
-  }
-
-  showStealthKillFeedback(): void {
-    const text = getEnemyLocaleText('combat.stealthKill', '');
-    if (!text) return;
-    this.renderer.showCombatIndicator(text, { duration: 800 });
-  }
-
-  showStealthMissFeedback(): void {
-    const text = getEnemyLocaleText('combat.stealthMiss', '');
-    if (!text) return;
-    this.renderer.showCombatIndicator(text, { duration: 800 });
   }
 
   showMissFeedback(): void {

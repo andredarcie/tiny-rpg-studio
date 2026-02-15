@@ -132,7 +132,8 @@ class EditorCanvasRenderer extends EditorRendererBase {
         const variables = this.gameEngine.getVariableDefinitions() as VariableDefinition[];
         const variable = variables.find((v) => v.id === variableId);
         if (!variable?.color) return null;
-        return this.service.resolvePicoColor(variable.color);
+        const color = this.service.resolvePicoColor(variable.color);
+        return typeof color === 'string' ? color : String(color);
     }
 
     drawVariableOutline(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, variableIds: string[]): void {

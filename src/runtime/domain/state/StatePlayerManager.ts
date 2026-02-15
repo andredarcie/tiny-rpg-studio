@@ -83,6 +83,7 @@ class StatePlayerManager {
         this.player.damageShield = 0;
         this.player.damageShieldMax = 0;
         this.player.swordType = null;
+        this.player.swordDurability = 0;
         this.player.lastDamageReduction = 0;
         this.player.godMode = false;
         this.player.lastAttackTime = 0;
@@ -212,6 +213,34 @@ class StatePlayerManager {
     setSwordType(swordType: string | null) {
         if (!this.player) return;
         this.player.swordType = swordType;
+    }
+
+    getSwordDurability() {
+        return Math.max(0, Number(this.player?.swordDurability) || 0);
+    }
+
+    setSwordDurability(durability: number) {
+        if (!this.player) return;
+        this.player.swordDurability = Math.max(0, Math.floor(Number(durability) || 0));
+    }
+
+    consumeSwordDurability(): boolean {
+        if (!this.player) return false;
+        const current = this.getSwordDurability();
+        if (current <= 0) {
+            // Sword already broken
+            this.player.swordType = null;
+            this.player.swordDurability = 0;
+            return true;
+        }
+        this.player.swordDurability = current - 1;
+        if (this.player.swordDurability <= 0) {
+            // Sword broke
+            this.player.swordType = null;
+            this.player.swordDurability = 0;
+            return true;
+        }
+        return false;
     }
 
     consumeLastDamageReduction() {

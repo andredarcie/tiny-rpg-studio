@@ -15,6 +15,7 @@ const baseRuntimeState: RuntimeState = {
         damageShield: 0,
         damageShieldMax: 0,
         swordType: null,
+        swordDurability: 0,
         lastDamageReduction: 0,
         godMode: false,
         lastAttackTime: 0,

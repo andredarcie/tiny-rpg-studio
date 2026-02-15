@@ -226,11 +226,6 @@ class EnemyManager {
       (enemy) => enemy.roomIndex === playerRoom && enemy.x === x && enemy.y === y,
     );
     if (index !== -1) {
-      const enemy = enemies[index];
-      if (this.canAssassinate(enemy)) {
-        this.assassinateEnemy(index);
-        return;
-      }
       this.handleEnemyCollision(index);
     }
   }
@@ -378,12 +373,6 @@ class EnemyManager {
         enemy.alertUntil = null;
         continue;
       }
-      if (this.canAssassinate(enemy)) {
-        enemy.playerInVision = false;
-        enemy.alertStart = null;
-        enemy.alertUntil = null;
-        continue;
-      }
       const dx = Math.abs(player.x - enemy.x);
       const dy = Math.abs(player.y - enemy.y);
       const inVision = dx <= visionRange && dy <= visionRange;
@@ -469,10 +458,7 @@ class EnemyManager {
   resolvePostMove(roomIndex: number, x: number, y: number, enemyIndex: number): boolean {
     const player = this.gameState.getPlayer();
     if (player.roomIndex === roomIndex && player.x === x && player.y === y) {
-      if (this.tryStealthAssassination(enemyIndex)) {
-        return true;
-      }
-      this.handleEnemyCollision(enemyIndex, { skipAssassinate: true, initiator: 'enemy' });
+      this.handleEnemyCollision(enemyIndex, { initiator: 'enemy' });
       return true;
     }
     return false;
@@ -501,25 +487,6 @@ class EnemyManager {
     return true;
   }
 
-  canAssassinate(enemy: EnemyState): boolean {
-    return this.combatManager.canAssassinate(enemy);
-  }
-
-  tryStealthAssassination(enemyIndex: number): boolean {
-    return this.combatManager.tryStealthAssassination(enemyIndex);
-  }
-
-  assassinateEnemy(enemyIndex: number): void {
-    this.combatManager.assassinateEnemy(enemyIndex);
-  }
-
-  showStealthKillFeedback(): void {
-    this.combatManager.showStealthKillFeedback();
-  }
-
-  showStealthMissFeedback(): void {
-    this.combatManager.showStealthMissFeedback();
-  }
 
   shouldStartLevelOverlay(): boolean {
     const pendingChoices = this.gameState.getPendingLevelUpChoices();
