@@ -74,6 +74,7 @@ describe('CombatManager', () => {
       if (key === 'combat.cooldown') return 'Cooldown!';
       if (key === 'combat.stealthKill') return 'Stealth Kill!';
       if (key === 'combat.stealthMiss') return 'Stealth Miss!';
+      if (key === 'combat.backstab') return 'Backstab!';
       if (key === 'combat.block.full') return 'Blocked!';
       return fallback || 'text';
     });
@@ -283,6 +284,84 @@ describe('CombatManager', () => {
         expect.any(Object),
         expect.any(Function)
       );
+    });
+  });
+
+  describe('Backstab/Flanking Mechanic', () => {
+    it('deals +1 damage when attacking enemy from behind (enemy moved right)', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 4, lives: 3 };
+      const player = { x: 4, y: 3, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Enemy should have lost 2 lives (1 base damage + 1 backstab)
+      expect(enemy.lives).toBe(1);
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Backstab!', expect.any(Object));
+    });
+
+    it('deals +1 damage when attacking enemy from behind (enemy moved left)', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 3, y: 3, lastX: 4, lives: 3 };
+      const player = { x: 5, y: 3, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Enemy should have lost 2 lives (1 base damage + 1 backstab)
+      expect(enemy.lives).toBe(1);
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Backstab!', expect.any(Object));
+    });
+
+    it('does NOT deal backstab damage when attacking from front', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 4, lives: 3 };
+      const player = { x: 6, y: 3, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Enemy should have lost only 1 life (no backstab)
+      expect(enemy.lives).toBe(2);
+      expect(renderer.showCombatIndicator).not.toHaveBeenCalledWith('Backstab!', expect.any(Object));
+    });
+
+    it('does NOT deal backstab damage when enemy has not moved', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 5, lives: 3 };
+      const player = { x: 4, y: 3, roomIndex: 0, lives: 3, level: 1 };
+
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => player),
+        getPlayerDamage: vi.fn(() => 1),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      // Enemy should have lost only 1 life (no backstab, enemy didn't move)
+      expect(enemy.lives).toBe(2);
+      expect(renderer.showCombatIndicator).not.toHaveBeenCalledWith('Backstab!', expect.any(Object));
     });
   });
 

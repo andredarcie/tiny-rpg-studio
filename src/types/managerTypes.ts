@@ -164,6 +164,7 @@ export type EnemyInput = {
   x: number;
   y: number;
   lastX?: number;
+  lastY?: number;
   defeatVariableId?: string | null;
 };
 

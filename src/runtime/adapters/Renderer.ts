@@ -15,6 +15,7 @@ import { RendererParticleSystem } from './renderer/RendererParticleSystem';
 import { RendererAttackTelegraph } from './renderer/RendererAttackTelegraph';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
+import { DebugFlags } from '../debug/DebugFlags';
 
 type SpriteMatrix = (string | null)[][];
 type SpriteMap = Record<string, SpriteMatrix | undefined>;
@@ -23,6 +24,8 @@ type RendererGameState = {
     isPickupOverlayActive?: () => boolean;
     isLevelUpCelebrationActive?: () => boolean;
     isLevelUpOverlayActive?: () => boolean;
+    getPlayer?: () => { roomIndex: number; x: number; y: number };
+    getEnemies?: () => { id?: string; roomIndex: number; x: number; y: number; lastX: number; lastY?: number }[];
     isGameOver: () => boolean;
     isEditorModeActive?: () => boolean;
 };
@@ -142,6 +145,87 @@ class Renderer {
         this.startTileAnimationLoop();
     }
 
+    /**
+     * Debug visualization: Draw enemy vision range overlay
+     */
+    private drawEnemyVisionDebug(ctx: CanvasRenderingContext2D): void {
+        if (!DebugFlags.showEnemyVision) return;
+
+        const player = this.gameState.getPlayer?.();
+        const enemies = this.gameState.getEnemies?.();
+        if (!player || !enemies) return;
+
+        const visionRange = GameConfig.enemy.vision.range;
+        const roomSize = GameConfig.world.roomSize;
+        const tileSize = this.canvasHelper.getTilePixelSize();
+
+        enemies.forEach(enemy => {
+            if (enemy.roomIndex !== player.roomIndex) return;
+
+            // Calculate vision tiles based on directional vision
+            for (let dx = -visionRange; dx <= visionRange; dx++) {
+                for (let dy = -visionRange; dy <= visionRange; dy++) {
+                    const tileX = enemy.x + dx;
+                    const tileY = enemy.y + dy;
+
+                    // Skip tiles outside room bounds
+                    if (tileX < 0 || tileX >= roomSize || tileY < 0 || tileY >= roomSize) continue;
+
+                    // Check if this tile is in enemy's vision using directional logic
+                    const canSee = this.canEnemySeeTile(enemy, tileX, tileY);
+                    if (!canSee) continue;
+
+                    // Draw red transparent overlay on this tile
+                    const screenX = tileX * tileSize;
+                    const screenY = tileY * tileSize;
+
+                    ctx.save();
+                    ctx.fillStyle = GameConfig.debug.visionOverlayColor;
+                    ctx.globalAlpha = GameConfig.debug.visionOverlayOpacity;
+                    ctx.fillRect(screenX, screenY, tileSize, tileSize);
+                    ctx.restore();
+                }
+            }
+        });
+    }
+
+    /**
+     * Check if enemy can see a specific tile based on directional vision
+     * Uses same logic as EnemyManager.canEnemySeePlayer
+     */
+    private canEnemySeeTile(enemy: { x: number; y: number; lastX: number; lastY?: number }, tileX: number, tileY: number): boolean {
+        // Get last known positions (default to current position if never set)
+        const lastX = typeof enemy.lastX === 'number' ? enemy.lastX : enemy.x;
+        const lastY = typeof enemy.lastY === 'number' ? enemy.lastY : enemy.y;
+
+        // Calculate movement deltas
+        const deltaX = enemy.x - lastX;
+        const deltaY = enemy.y - lastY;
+
+        // Determine which axis had more movement to decide primary facing direction
+        const absDeltaX = Math.abs(deltaX);
+        const absDeltaY = Math.abs(deltaY);
+
+        // Special case: if both deltas are 0 (stopped) and lastY exists, prefer vertical
+        if (absDeltaX === 0 && absDeltaY === 0 && typeof enemy.lastY === 'number') {
+            // Stopped with vertical tracking - face down by default
+            return tileY >= enemy.y;
+        }
+
+        // If enemy is moving or has moved primarily horizontally
+        if (absDeltaX >= absDeltaY) {
+            // Facing direction based on X movement (or default to right if no movement)
+            const facingRight = deltaX >= 0;
+            // Can ONLY see in facing direction
+            return facingRight ? tileX >= enemy.x : tileX <= enemy.x;
+        } else {
+            // Facing direction based on Y movement
+            const facingDown = deltaY >= 0;
+            // Can ONLY see in facing direction
+            return facingDown ? tileY >= enemy.y : tileY <= enemy.y;
+        }
+    }
+
     draw() {
         const ctx = this.ctx;
         if (!ctx) return;
@@ -170,6 +254,8 @@ class Renderer {
                 this.entityRenderer.drawObjects(ctx);
                 this.entityRenderer.drawItems(ctx);
                 this.entityRenderer.drawNPCs(ctx);
+                // Debug: Draw enemy vision overlay before enemies
+                this.drawEnemyVisionDebug(ctx);
                 this.entityRenderer.drawEnemies(ctx);
                 this.entityRenderer.drawPlayer(ctx);
                 // Draw enemy life markers AFTER player to ensure they're always visible on top

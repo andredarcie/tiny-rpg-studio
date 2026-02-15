@@ -145,6 +145,12 @@ export interface GamePaletteConfig {
   readonly colors: readonly string[];
 }
 
+export interface GameDebugConfig {
+  readonly showEnemyVision: boolean;
+  readonly visionOverlayColor: string;
+  readonly visionOverlayOpacity: number;
+}
+
 /**
  * Type helpers for accessing nested config types
  */
@@ -162,6 +168,7 @@ export type GameConfigShape = {
   hud: GameHudConfig;
   tiles: GameTilesConfig;
   palette: GamePaletteConfig;
+  debug: GameDebugConfig;
 };
 
 /**
@@ -181,6 +188,7 @@ export class GameConfigSchema {
   private _hud: GameHudConfig;
   private _tiles: GameTilesConfig;
   private _palette: GamePaletteConfig;
+  private _debug: GameDebugConfig;
 
   constructor(config: {
     canvas: GameCanvasConfig;
@@ -196,6 +204,7 @@ export class GameConfigSchema {
     hud: GameHudConfig;
     tiles: GameTilesConfig;
     palette: GamePaletteConfig;
+    debug: GameDebugConfig;
   }) {
     this._canvas = this.validateCanvas(config.canvas);
     this._world = this.validateWorld(config.world);
@@ -210,6 +219,7 @@ export class GameConfigSchema {
     this._hud = this.validateHud(config.hud);
     this._tiles = this.validateTiles(config.tiles);
     this._palette = this.validatePalette(config.palette);
+    this._debug = this.validateDebug(config.debug);
   }
 
   // Getters
@@ -281,6 +291,10 @@ export class GameConfigSchema {
 
   get palette(): GamePaletteConfig {
     return { colors: [...this._palette.colors] };
+  }
+
+  get debug(): GameDebugConfig {
+    return { ...this._debug };
   }
 
   // Validation methods
@@ -486,6 +500,19 @@ export class GameConfigSchema {
     const colorsCopy = palette.colors.slice();
     const frozenColors = Object.freeze(colorsCopy) as readonly string[];
     return Object.freeze({ colors: frozenColors });
+  }
+
+  private validateDebug(debug: GameDebugConfig): GameDebugConfig {
+    if (typeof debug.showEnemyVision !== 'boolean') {
+      throw new Error('Debug showEnemyVision must be a boolean');
+    }
+    if (typeof debug.visionOverlayColor !== 'string' || !this.isValidColor(debug.visionOverlayColor)) {
+      throw new Error(`Invalid debug visionOverlayColor: ${debug.visionOverlayColor}`);
+    }
+    if (typeof debug.visionOverlayOpacity !== 'number' || debug.visionOverlayOpacity < 0 || debug.visionOverlayOpacity > 1) {
+      throw new Error(`Invalid debug visionOverlayOpacity: ${debug.visionOverlayOpacity}. Must be between 0 and 1.`);
+    }
+    return Object.freeze({ ...debug });
   }
 
   // Utility validation methods

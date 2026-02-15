@@ -50,12 +50,16 @@ export type EnemyDefinition = {
     x: number;
     y: number;
     lastX: number;
+    lastY?: number;
     lives?: number;
     defeatVariableId?: string | null;
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
     attackWarning?: boolean;
+    moveDirectionX?: number;
+    moveDirectionY?: number;
+    moveDirectionSteps?: number;
 };
 
 export type VariableDefinition = {

@@ -93,6 +93,7 @@ class EnemyManager {
       x: enemy.x,
       y: enemy.y,
       lastX: enemy.lastX ?? enemy.x,
+      lastY: enemy.lastY ?? enemy.y,
       lives: maxLives,
       defeatVariableId: enemy.defeatVariableId ?? null,
     });
@@ -252,6 +253,32 @@ class EnemyManager {
     return Array.isArray(enemies) && enemies.length > 0;
   }
 
+  findFreeDirection(enemy: EnemyState, game: GameData, enemies: EnemyState[], enemyIndex: number): number[] | null {
+    const currentDir = [enemy.moveDirectionX ?? 0, enemy.moveDirectionY ?? 0];
+
+    // Try all directions except the current blocked one
+    const allDirections = this.directions.filter(dir =>
+      !(dir[0] === 0 && dir[1] === 0) // Exclude [0,0] (no movement)
+    );
+
+    // Shuffle directions to avoid predictable patterns
+    const shuffledDirections = allDirections.sort(() => Math.random() - 0.5);
+
+    for (const dir of shuffledDirections) {
+      // Skip the current direction that's blocked
+      if (dir[0] === currentDir[0] && dir[1] === currentDir[1]) {
+        continue;
+      }
+
+      const target = this.getTargetPosition(enemy, dir);
+      if (this.canEnterTile(enemy.roomIndex, target.x, target.y, game, enemies, enemyIndex)) {
+        return dir;
+      }
+    }
+
+    return null; // No free direction found
+  }
+
   tryMoveEnemy(enemies: EnemyState[], index: number, game: GameData, player: PlayerState | null): EnemyMovementResult {
     if (index < 0 || index >= enemies.length) {
       return EnemyMovementResultConst.None;
@@ -260,7 +287,22 @@ class EnemyManager {
     enemy.type = this.normalizeEnemyType(enemy.type);
     if (enemy.playerInVision) return EnemyMovementResultConst.None;
 
-    const dir = this.pickRandomDirection();
+    // Movement inertia: keep moving in same direction for stability
+    let dir: number[];
+    const hasActiveDirection = typeof enemy.moveDirectionSteps === 'number' && enemy.moveDirectionSteps > 0;
+
+    if (hasActiveDirection && typeof enemy.moveDirectionX === 'number' && typeof enemy.moveDirectionY === 'number') {
+      // Continue in current direction
+      dir = [enemy.moveDirectionX, enemy.moveDirectionY];
+      enemy.moveDirectionSteps = (enemy.moveDirectionSteps ?? 0) - 1;
+    } else {
+      // Pick new direction and commit to it for 2 moves
+      dir = this.pickRandomDirection();
+      enemy.moveDirectionX = dir[0];
+      enemy.moveDirectionY = dir[1];
+      enemy.moveDirectionSteps = 2; // Move in this direction for 2 steps
+    }
+
     const target = this.getTargetPosition(enemy, dir);
     const roomIndex = enemy.roomIndex;
 
@@ -276,10 +318,45 @@ class EnemyManager {
     }
 
     if (!this.canEnterTile(roomIndex, target.x, target.y, game, enemies, index)) {
-      return EnemyMovementResultConst.None;
+      // Can't move in current direction - try to find an unblocked direction
+      const freeDirection = this.findFreeDirection(enemy, game, enemies, index);
+      if (freeDirection) {
+        // Found a free direction - commit to it
+        enemy.moveDirectionX = freeDirection[0];
+        enemy.moveDirectionY = freeDirection[1];
+        enemy.moveDirectionSteps = 2;
+
+        // Try to move in the new direction
+        const newTarget = this.getTargetPosition(enemy, freeDirection);
+
+        // Don't move into player's tile
+        if (player && player.roomIndex === roomIndex && player.x === newTarget.x && player.y === newTarget.y) {
+          if (enemy.id) {
+            this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+          }
+          this.handleEnemyCollision(index, { initiator: 'enemy' });
+          return EnemyMovementResultConst.Collided;
+        }
+
+        // Move to the new position
+        enemy.lastX = enemy.x;
+        enemy.lastY = enemy.y;
+        enemy.x = newTarget.x;
+        enemy.y = newTarget.y;
+
+        return this.resolvePostMove(roomIndex, newTarget.x, newTarget.y, index)
+          ? EnemyMovementResultConst.Collided
+          : EnemyMovementResultConst.Moved;
+      } else {
+        // No free direction found - stay in place
+        enemy.moveDirectionSteps = 0;
+        return EnemyMovementResultConst.None;
+      }
     }
 
+    // Update last known positions before moving
     enemy.lastX = enemy.x;
+    enemy.lastY = enemy.y;
     enemy.x = target.x;
     enemy.y = target.y;
 
@@ -327,7 +404,9 @@ class EnemyManager {
       if (!this.canEnterTile(roomIndex, target.x, target.y, game, enemies, index)) {
         continue;
       }
+      // Update last known positions before moving
       enemy.lastX = enemy.x;
+      enemy.lastY = enemy.y;
       enemy.x = target.x;
       enemy.y = target.y;
       return this.resolvePostMove(roomIndex, target.x, target.y, index)
@@ -360,6 +439,43 @@ class EnemyManager {
     }
   }
 
+  /**
+   * Check if enemy can see player based on directional vision
+   * Enemies can ONLY see in the direction they are facing - NEVER 360°
+   */
+  private canEnemySeePlayer(enemy: EnemyState, player: PlayerState): boolean {
+    // Get last known positions (default to current position if never set)
+    const lastX = typeof enemy.lastX === 'number' ? enemy.lastX : enemy.x;
+    const lastY = typeof enemy.lastY === 'number' ? enemy.lastY : enemy.y;
+
+    // Calculate movement deltas
+    const deltaX = enemy.x - lastX;
+    const deltaY = enemy.y - lastY;
+
+    // Determine which axis had more movement to decide primary facing direction
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+
+    // Special case: if both deltas are 0 (stopped) and lastY exists, prefer vertical
+    if (absDeltaX === 0 && absDeltaY === 0 && typeof enemy.lastY === 'number') {
+      // Stopped with vertical tracking - face down by default
+      return player.y >= enemy.y;
+    }
+
+    // If enemy is moving or has moved primarily horizontally
+    if (absDeltaX >= absDeltaY) {
+      // Facing direction based on X movement (or default to right if no movement)
+      const facingRight = deltaX >= 0;
+      // Can ONLY see in facing direction
+      return facingRight ? player.x >= enemy.x : player.x <= enemy.x;
+    } else {
+      // Facing direction based on Y movement
+      const facingDown = deltaY >= 0;
+      // Can ONLY see in facing direction
+      return facingDown ? player.y >= enemy.y : player.y <= enemy.y;
+    }
+  }
+
   evaluateVision(player: PlayerState | null): void {
     if (!player) return;
     const now = this.getNow();
@@ -375,7 +491,9 @@ class EnemyManager {
       }
       const dx = Math.abs(player.x - enemy.x);
       const dy = Math.abs(player.y - enemy.y);
-      const inVision = dx <= visionRange && dy <= visionRange;
+      const inRange = dx <= visionRange && dy <= visionRange;
+      const canSee = this.canEnemySeePlayer(enemy, player);
+      const inVision = inRange && canSee;
       if (inVision) {
         if (!enemy.playerInVision) {
           enemy.playerInVision = true;

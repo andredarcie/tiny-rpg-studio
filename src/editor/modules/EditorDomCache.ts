@@ -46,6 +46,7 @@ class EditorDomCache {
     projectTestStartLevel: HTMLSelectElement | null;
     projectTestSkillList: HTMLElement | null;
     projectTestGodMode: HTMLInputElement | null;
+    projectTestDebugVision: HTMLInputElement | null;
     projectPaletteContainer: HTMLElement | null;
     projectPaletteToggle: HTMLButtonElement | null;
     projectPalettePanel: HTMLElement | null;
@@ -111,6 +112,7 @@ class EditorDomCache {
             this.projectTestStartLevel = null;
             this.projectTestSkillList = null;
             this.projectTestGodMode = null;
+            this.projectTestDebugVision = null;
             this.projectPaletteContainer = null;
             this.projectPaletteToggle = null;
             this.projectPalettePanel = null;
@@ -175,6 +177,7 @@ class EditorDomCache {
         this.projectTestStartLevel = root.querySelector('#project-test-start-level') as HTMLSelectElement | null;
         this.projectTestSkillList = root.querySelector('#project-test-skill-list') as HTMLElement | null;
         this.projectTestGodMode = root.querySelector('#project-test-god-mode') as HTMLInputElement | null;
+        this.projectTestDebugVision = root.querySelector('#project-test-debug-vision') as HTMLInputElement | null;
         this.projectPaletteContainer = root.querySelector('#project-palette-container') as HTMLElement | null;
         this.projectPaletteToggle = root.querySelector('#project-palette-toggle') as HTMLButtonElement | null;
         this.projectPalettePanel = root.querySelector('#project-palette-panel') as HTMLElement | null;

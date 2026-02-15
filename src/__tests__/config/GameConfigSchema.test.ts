@@ -137,6 +137,11 @@ describe('GameConfigSchema', () => {
         '#FFCCAA',
       ],
     },
+    debug: {
+      showEnemyVision: false,
+      visionOverlayColor: '#FF004D',
+      visionOverlayOpacity: 0.3,
+    },
   });
 
   describe('Valid configuration', () => {

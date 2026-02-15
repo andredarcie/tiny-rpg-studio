@@ -49,6 +49,7 @@ describe('EnemyManager', () => {
     x: number;
     y: number;
     lastX: number;
+    lastY?: number;
     lives?: number;
     playerInVision?: boolean;
     alertUntil?: number | null;
@@ -202,6 +203,237 @@ describe('EnemyManager', () => {
     expect(enemy.alertStart).toBe(null);
     expect(enemy.alertUntil).toBe(null);
     nowSpy.mockRestore();
+  });
+
+  describe('Directional Vision - Enemies Can ONLY See in Facing Direction', () => {
+    describe('Horizontal Movement (Left/Right)', () => {
+      it('enemy facing RIGHT (moved 2→3) can ONLY see right side', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 2, // Moved right (2 → 3), facing RIGHT
+        };
+
+        // Player in FRONT (right) - should SEE
+        const playerFront = { roomIndex: 0, x: 4, y: 3 };
+        const gameStateFront = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerFront = new EnemyManager(gameStateFront, renderer, tileManager);
+        managerFront.evaluateVision(playerFront);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player BEHIND (left) - should NOT see
+        const playerBehind = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateBehind = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBehind = new EnemyManager(gameStateBehind, renderer, tileManager);
+        managerBehind.evaluateVision(playerBehind);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+
+      it('enemy facing LEFT (moved 4→3) can ONLY see left side', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 4, // Moved left (4 → 3), facing LEFT
+        };
+
+        // Player in FRONT (left) - should SEE
+        const playerFront = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateFront = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerFront = new EnemyManager(gameStateFront, renderer, tileManager);
+        managerFront.evaluateVision(playerFront);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player BEHIND (right) - should NOT see
+        const playerBehind = { roomIndex: 0, x: 5, y: 3 };
+        const gameStateBehind = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBehind = new EnemyManager(gameStateBehind, renderer, tileManager);
+        managerBehind.evaluateVision(playerBehind);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+
+    describe('Vertical Movement (Up/Down)', () => {
+      it('enemy facing DOWN (moved y: 2→3) can ONLY see downward', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3,
+          lastY: 2, // Moved down (2 → 3), facing DOWN
+        };
+
+        // Player BELOW (down) - should SEE
+        const playerBelow = { roomIndex: 0, x: 3, y: 4 };
+        const gameStateBelow = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBelow = new EnemyManager(gameStateBelow, renderer, tileManager);
+        managerBelow.evaluateVision(playerBelow);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player ABOVE (up) - should NOT see
+        const playerAbove = { roomIndex: 0, x: 3, y: 2 };
+        const gameStateAbove = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerAbove = new EnemyManager(gameStateAbove, renderer, tileManager);
+        managerAbove.evaluateVision(playerAbove);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+
+      it('enemy facing UP (moved y: 4→3) can ONLY see upward', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3,
+          lastY: 4, // Moved up (4 → 3), facing UP
+        };
+
+        // Player ABOVE (up) - should SEE
+        const playerAbove = { roomIndex: 0, x: 3, y: 2 };
+        const gameStateAbove = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerAbove = new EnemyManager(gameStateAbove, renderer, tileManager);
+        managerAbove.evaluateVision(playerAbove);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player BELOW (down) - should NOT see
+        const playerBelow = { roomIndex: 0, x: 3, y: 4 };
+        const gameStateBelow = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBelow = new EnemyManager(gameStateBelow, renderer, tileManager);
+        managerBelow.evaluateVision(playerBelow);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+
+    describe('Stopped Enemy - Maintains Last Direction', () => {
+      it('enemy stopped after moving RIGHT maintains right-facing vision', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3, // Stopped (delta = 0), defaults to facing RIGHT
+        };
+
+        // Player on RIGHT - should SEE
+        const playerRight = { roomIndex: 0, x: 4, y: 3 };
+        const gameStateRight = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerRight = new EnemyManager(gameStateRight, renderer, tileManager);
+        managerRight.evaluateVision(playerRight);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player on LEFT - should NOT see
+        const playerLeft = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateLeft = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerLeft = new EnemyManager(gameStateLeft, renderer, tileManager);
+        managerLeft.evaluateVision(playerLeft);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+
+      it('enemy stopped after moving DOWN maintains down-facing vision', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3,
+          lastY: 3, // Stopped (delta = 0), defaults to facing DOWN
+        };
+
+        // Player BELOW - should SEE
+        const playerBelow = { roomIndex: 0, x: 3, y: 4 };
+        const gameStateBelow = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBelow = new EnemyManager(gameStateBelow, renderer, tileManager);
+        managerBelow.evaluateVision(playerBelow);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player ABOVE - should NOT see
+        const playerAbove = { roomIndex: 0, x: 3, y: 2 };
+        const gameStateAbove = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerAbove = new EnemyManager(gameStateAbove, renderer, tileManager);
+        managerAbove.evaluateVision(playerAbove);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+
+    describe('Spawn State - Default Direction (NO 360° Vision)', () => {
+      it('enemy at spawn (no lastX/lastY) faces RIGHT by default, NOT 360°', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3, // Spawn state (no movement)
+          // lastY undefined
+        };
+
+        // Player on RIGHT - should SEE (default direction)
+        const playerRight = { roomIndex: 0, x: 4, y: 3 };
+        const gameStateRight = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerRight = new EnemyManager(gameStateRight, renderer, tileManager);
+        managerRight.evaluateVision(playerRight);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player on LEFT - should NOT see (NOT 360°!)
+        const playerLeft = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateLeft = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerLeft = new EnemyManager(gameStateLeft, renderer, tileManager);
+        managerLeft.evaluateVision(playerLeft);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
   });
 
   it('moves chasing enemy toward player per movement', () => {

@@ -1,5 +1,6 @@
 import type { EditorManager } from '../EditorManager';
 import { EditorManagerModule } from './EditorManagerModule';
+import { DebugFlags } from '../../runtime/debug/DebugFlags';
 
 class EditorEventBinder extends EditorManagerModule {
     declare manager: EditorManager;
@@ -36,6 +37,7 @@ class EditorEventBinder extends EditorManagerModule {
             projectTestStartLevel,
             projectTestSkillList,
             projectTestGodMode,
+            projectTestDebugVision,
             shareUrlInput
         } = this.dom;
 
@@ -70,6 +72,10 @@ class EditorEventBinder extends EditorManagerModule {
         projectTestGodMode?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setGodMode(target.checked);
+        });
+        projectTestDebugVision?.addEventListener('change', (ev: Event) => {
+            const target = ev.target as HTMLInputElement;
+            DebugFlags.setEnemyVision(target.checked);
         });
         shareUrlInput?.addEventListener('focus', () => shareUrlInput.select());
         shareUrlInput?.addEventListener('click', () => shareUrlInput.select());

@@ -195,13 +195,23 @@ class CombatManager {
     cameraShake: CameraShakeApi,
     enemyAttackMissed: boolean
   ): void {
+    // Check for backstab bonus
+    const isBackstab = this.isBackstab(player, enemy);
+    const finalPlayerDamage = playerDamage + (isBackstab ? 1 : 0);
+
     combatAnimator.startLungeAttack('player', enemyPos, () => {
       // Player hits enemy
       entityRenderer.flashEntity(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`, '#FFFFFF', 120);
 
+      // Show backstab message if applicable
+      if (isBackstab) {
+        const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
+        this.renderer.showCombatIndicator(backstabText, { duration: 500 });
+      }
+
       // Enemy loses life
       const previousLives = enemy.lives || 1;
-      enemy.lives = previousLives - playerDamage;
+      enemy.lives = previousLives - finalPlayerDamage;
 
       // Consume sword durability
       const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
@@ -210,7 +220,7 @@ class CombatManager {
       }
 
       // Spawn multiple life loss squares (one per damage point)
-      this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
+      this.spawnMultipleLifeLoss(enemy, previousLives, finalPlayerDamage);
 
       const enemyDefeated = enemy.lives <= 0;
 
@@ -276,11 +286,21 @@ class CombatManager {
       }
 
       // Player counter-attacks
+      // Check for backstab bonus
+      const isBackstab = this.isBackstab(player, enemy);
+      const finalPlayerDamage = playerDamage + (isBackstab ? 1 : 0);
+
       combatAnimator.startLungeAttack('player', enemyPos, () => {
         entityRenderer.flashEntity(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`, '#FFFFFF', 120);
 
+        // Show backstab message if applicable
+        if (isBackstab) {
+          const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
+          this.renderer.showCombatIndicator(backstabText, { duration: 500 });
+        }
+
         const previousLives = enemy.lives || 1;
-        enemy.lives = previousLives - playerDamage;
+        enemy.lives = previousLives - finalPlayerDamage;
 
         // Consume sword durability
         const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
@@ -289,7 +309,7 @@ class CombatManager {
         }
 
         // Spawn multiple life loss squares (one per damage point)
-        this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
+        this.spawnMultipleLifeLoss(enemy, previousLives, finalPlayerDamage);
 
         const enemyDefeated = enemy.lives <= 0;
 
@@ -372,8 +392,18 @@ class CombatManager {
     }
 
     // Player attacks enemy with sword damage
+    // Check for backstab bonus
+    const player = this.gameState.getPlayer();
+    const isBackstab = this.isBackstab(player, enemy);
+    const finalPlayerDamage = playerDamage + (isBackstab ? 1 : 0);
+
+    if (isBackstab) {
+      const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
+      this.renderer.showCombatIndicator(backstabText, { duration: 500 });
+    }
+
     const previousLives = enemy.lives || 1;
-    enemy.lives = previousLives - playerDamage;
+    enemy.lives = previousLives - finalPlayerDamage;
 
     // Consume sword durability
     const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
@@ -382,7 +412,7 @@ class CombatManager {
     }
 
     // Spawn multiple life loss squares (one per damage point)
-    this.spawnMultipleLifeLoss(enemy, previousLives, playerDamage);
+    this.spawnMultipleLifeLoss(enemy, previousLives, finalPlayerDamage);
 
     const enemyDefeated = enemy.lives <= 0;
 
@@ -503,6 +533,29 @@ class CombatManager {
       x: dx === 0 ? 0 : (dx > 0 ? 1 : -1),
       y: dy === 0 ? 0 : (dy > 0 ? 1 : -1)
     };
+  }
+
+  /**
+   * Check if player is attacking enemy from behind (backstab/flanking)
+   * Enemy is considered to be facing the direction they last moved
+   */
+  private isBackstab(player: PlayerState, enemy: EnemyState): boolean {
+    // If enemy has no lastX or hasn't moved, no backstab
+    if (typeof enemy.lastX !== 'number' || enemy.lastX === enemy.x) {
+      return false;
+    }
+
+    // Determine which direction the enemy is facing (based on last movement)
+    const enemyFacingRight = enemy.x > enemy.lastX;
+
+    // Player is behind if they're on the opposite side of where enemy is facing
+    if (enemyFacingRight) {
+      // Enemy facing right, player should be on the left (x < enemy.x)
+      return player.x < enemy.x;
+    } else {
+      // Enemy facing left, player should be on the right (x > enemy.x)
+      return player.x > enemy.x;
+    }
   }
 
   // ========== Damage & Stats ==========

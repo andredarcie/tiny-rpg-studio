@@ -152,7 +152,7 @@ export const GameConfig = new GameConfigSchema({
    */
   enemy: {
     /** Enemy movement interval (ms) */
-    movementInterval: 600,
+    movementInterval: 700,
     /** Default attack miss chance (0.0 - 1.0) */
     fallbackMissChance: 0.25,
     /** Stealth assassination miss chance (0.0 - 1.0) */
@@ -282,6 +282,18 @@ export const GameConfig = new GameConfigSchema({
       '#FF77A8', // 14 - Pink
       '#FFCCAA', // 15 - Peach
     ],
+  },
+
+  /**
+   * Debug visualization tools
+   */
+  debug: {
+    /** Enable enemy vision overlay visualization */
+    showEnemyVision: false,
+    /** Color for vision overlay */
+    visionOverlayColor: '#FF004D',
+    /** Opacity of vision overlay (0.0 - 1.0) */
+    visionOverlayOpacity: 0.3,
   },
 });
 
