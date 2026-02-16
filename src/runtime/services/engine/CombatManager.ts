@@ -421,34 +421,32 @@ class CombatManager {
   }
 
   /**
-   * Play enemy death animation with flashing
+   * Play enemy death animation (rotation + fade)
+   *
+   * Animation phases:
+   * 1. Rotation (0-500ms): Sprite rotates 90° clockwise (falls to side)
+   * 2. Fade + Float (500-1000ms): Sprite fades out while floating upward
+   *
+   * The animation is rendered by RendererEntityRenderer when deathStartTime is set.
    */
   private playEnemyDeathAnimation(enemy: EnemyState, onComplete: () => void): void {
-    if (!this.renderer.entityRenderer) {
+    // Guard: Skip if already dying
+    if (EnemyDefinitions.isDying(enemy)) {
+      console.warn('[Combat] Enemy already dying, skipping animation');
       onComplete();
       return;
     }
 
-    const entityId = enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`;
-    let flashCount = 0;
-    const maxFlashes = 6;
-    const flashInterval = 50;
+    // Mark enemy as dying (triggers rotation/fade animation in renderer)
+    enemy.deathStartTime = performance.now();
 
-    const flashLoop = () => {
-      if (flashCount >= maxFlashes) {
-        onComplete();
-        return;
-      }
+    // Schedule cleanup after animation completes
+    const timer = setTimeout(() => {
+      this.animationTimers.delete(timer);
+      onComplete();
+    }, GameConfig.combat.deathAnimationDuration);
 
-      const flashColor = flashCount % 2 === 0 ? '#FFFFFF' : '#000000';
-      this.renderer.entityRenderer?.flashEntity(entityId, flashColor, flashInterval);
-      flashCount++;
-
-      const timer = setTimeout(flashLoop, flashInterval);
-      this.animationTimers.add(timer);
-    };
-
-    flashLoop();
+    this.animationTimers.add(timer);
   }
 
   /**

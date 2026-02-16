@@ -508,8 +508,8 @@ describe('CombatManager', () => {
 
       manager.handleEnemyCollision(0, { initiator: 'player' });
 
-      // Advance timers to complete death animation (6 flashes * 50ms = 300ms)
-      vi.advanceTimersByTime(300);
+      // Advance timers to complete death animation (rotation + fade = 1000ms)
+      vi.advanceTimersByTime(1000);
 
       expect(renderer.combatAnimator.startLungeAttack).toHaveBeenCalled();
       expect(renderer.entityRenderer.flashEntity).toHaveBeenCalled();
@@ -738,7 +738,9 @@ describe('CombatManager', () => {
 
       manager['playEnemyDeathAnimation']({ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1 }, onEnemyDefeated);
 
-      // Should call onComplete immediately without animation
+      // Advance timers to complete death animation (even without renderer, cleanup still scheduled)
+      vi.advanceTimersByTime(1000);
+
       expect(onEnemyDefeated).toHaveBeenCalled();
     });
 
@@ -852,7 +854,7 @@ describe('CombatManager', () => {
       const manager = new CombatManager(gameState, renderer, { onEnemyDefeated });
 
       manager.handleEnemyCollision(0);
-      vi.advanceTimersByTime(300); // Complete death animation
+      vi.advanceTimersByTime(1000); // Complete death animation (rotation + fade)
 
       expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.objectContaining({ lives: -2 }));
     });

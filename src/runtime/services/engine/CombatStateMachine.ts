@@ -214,7 +214,7 @@ export class CombatStateMachine {
       ],
     };
 
-    const allowedStates = validTransitions[from] || [];
+    const allowedStates = validTransitions[from];
     return allowedStates.includes(to);
   }
 

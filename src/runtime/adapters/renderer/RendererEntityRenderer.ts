@@ -200,15 +200,53 @@ class RendererEntityRenderer {
                 py = windupPos.y;
             }
 
-            this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+            // Death animation: Rotation (0-500ms) + Fade + Float (500-1000ms)
+            const isDying = typeof enemy.deathStartTime === 'number';
+            if (isDying) {
+                const elapsed = performance.now() - (enemy.deathStartTime as number);
+                const deathDuration = 1000; // Total animation duration
+                const rotationPhase = 500; // First 500ms: rotation only
 
-            // Apply hit flash effect
-            const flashColor = this.getFlashColor(enemyId);
-            if (flashColor) {
-                this.applyFlashOverlay(ctx, flashColor, px, py, tileSize);
+                ctx.save();
+
+                // Phase 1 (0-500ms): Rotate 90° clockwise (fall to side)
+                if (elapsed < rotationPhase) {
+                    const rotationProgress = elapsed / rotationPhase;
+                    const angle = (Math.PI / 2) * rotationProgress; // 0 to 90 degrees
+                    const centerX = px + tileSize / 2;
+                    const centerY = py + tileSize / 2;
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(angle);
+                    ctx.translate(-centerX, -centerY);
+                } else {
+                    // Phase 2 (500-1000ms): Fade out + Float upward
+                    const fadeProgress = (elapsed - rotationPhase) / (deathDuration - rotationPhase);
+                    ctx.globalAlpha = 1 - fadeProgress; // Fade from 1 to 0
+                    py -= fadeProgress * tileSize * 0.5; // Float up half a tile
+
+                    // Keep rotation at 90°
+                    const centerX = px + tileSize / 2;
+                    const centerY = py + tileSize / 2;
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.translate(-centerX, -centerY);
+                }
+
+                this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+                ctx.restore();
+            } else {
+                // Normal rendering (not dying)
+                this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+
+                // Apply hit flash effect (only if not dying)
+                const flashColor = this.getFlashColor(enemyId);
+                if (flashColor) {
+                    this.applyFlashOverlay(ctx, flashColor, px, py, tileSize);
+                }
+
+                // Draw alert icon (only if not dying)
+                this.drawEnemyAlert(ctx, enemy, px, py, tileSize);
             }
-
-            this.drawEnemyAlert(ctx, enemy, px, py, tileSize);
         });
     }
 
@@ -224,6 +262,10 @@ class RendererEntityRenderer {
 
         enemies.forEach((enemy) => {
             if (enemy.roomIndex !== player.roomIndex) return;
+
+            // Skip life markers for dying enemies
+            const isDying = typeof enemy.deathStartTime === 'number';
+            if (isDying) return;
 
             // Apply wind-up animation offset to life markers
             let px = enemy.x * tileSize;

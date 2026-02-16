@@ -1,6 +1,7 @@
 import { SpriteMatrixRegistry } from '../sprites/SpriteMatrixRegistry';
 import { Enemy } from '../entities/Enemy';
 import type { EnemyDefinitionData } from '../entities/Enemy';
+import type { EnemyDefinition } from '../../../types/gameState';
 
 type EnemyTypeInput = string | null | undefined;
 /**
@@ -156,6 +157,15 @@ class EnemyDefinitions {
         const definition = this.getEnemyDefinition(type);
         if (!definition) return null;
         return definition.getMissChance();
+    }
+
+    /**
+     * Checks if an enemy instance is currently in the death animation.
+     * @param enemy - The enemy runtime state to check
+     * @returns true if the enemy is dying (death animation in progress), false otherwise
+     */
+    static isDying(enemy: EnemyDefinition): boolean {
+        return typeof enemy.deathStartTime === 'number';
     }
 }
 

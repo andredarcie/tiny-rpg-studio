@@ -60,6 +60,7 @@ export type EnemyDefinition = {
     moveDirectionX?: number;
     moveDirectionY?: number;
     moveDirectionSteps?: number;
+    deathStartTime?: number | null;
 };
 
 export type VariableDefinition = {
