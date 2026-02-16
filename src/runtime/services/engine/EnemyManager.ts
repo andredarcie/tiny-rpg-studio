@@ -164,6 +164,12 @@ class EnemyManager {
 
     for (let i = 0; i < enemies.length; i++) {
       const enemy = enemies[i];
+
+      // Skip dying enemies (in death animation) - they should not move
+      if (EnemyDefinitions.isDying(enemy)) {
+        continue;
+      }
+
       const result =
         enemy.playerInVision
           ? this.tryChaseEnemy(enemy, i, game, player, enemies)
@@ -510,6 +516,14 @@ class EnemyManager {
     const visionRange = GameConfig.enemy.vision.range;
     const alertDuration = GameConfig.enemy.vision.alertDuration;
     for (const enemy of enemies) {
+      // Skip dying enemies (in death animation) - they should not detect player
+      if (EnemyDefinitions.isDying(enemy)) {
+        enemy.playerInVision = false;
+        enemy.alertStart = null;
+        enemy.alertUntil = null;
+        continue;
+      }
+
       if (enemy.roomIndex !== player.roomIndex) {
         enemy.playerInVision = false;
         enemy.alertStart = null;

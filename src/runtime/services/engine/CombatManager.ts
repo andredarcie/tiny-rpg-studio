@@ -103,6 +103,11 @@ class CombatManager {
     if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
     const enemy = enemies[enemyIndex];
 
+    // Skip combat if enemy is already dying (in death animation)
+    if (EnemyDefinitions.isDying(enemy)) {
+      return;
+    }
+
     // Ensure enemy has ID (required for safe removal during async operations)
     if (!enemy.id) {
       console.error('Enemy missing ID, cannot process combat safely');
