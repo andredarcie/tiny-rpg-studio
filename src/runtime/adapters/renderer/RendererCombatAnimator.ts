@@ -55,6 +55,7 @@ class RendererCombatAnimator extends RendererModuleBase {
 
     /**
      * Start a lunge attack animation
+     * Uses attackTelegraph for wind-up animation (same as enemies)
      * @param attacker The attacking entity ('player')
      * @param target Target position { x, y } in tile coordinates
      * @param onComplete Callback when animation finishes
@@ -71,17 +72,21 @@ class RendererCombatAnimator extends RendererModuleBase {
             return;
         }
 
-        const from = { x: player.x, y: player.y };
-        const duration = GameConfig.combat.lungeAnimationDuration;
+        // Calculate direction to target (in tile coordinates)
+        const directionToTarget = {
+            x: target.x - player.x,
+            y: target.y - player.y
+        };
 
-        this.startAnimation({
-            type: 'lunge',
-            entity: 'player',
-            from,
-            to: target,
-            duration,
-            onComplete
-        });
+        // Activate wind-up animation using attackTelegraph (same system as enemies)
+        const rendererWithTelegraph = this.renderer as { attackTelegraph?: { activateTelegraph: (id: string, dir: Position) => void } };
+        rendererWithTelegraph.attackTelegraph?.activateTelegraph('player', directionToTarget);
+
+        // Wait for wind-up animation to complete, then execute callback
+        const duration = GameConfig.combat.lungeAnimationDuration; // 300ms
+        setTimeout(() => {
+            onComplete?.();
+        }, duration);
     }
 
     /**
@@ -127,6 +132,8 @@ class RendererCombatAnimator extends RendererModuleBase {
     /**
      * Get the current render position for an entity during animation
      * Returns undefined if entity is not being animated
+     * NOTE: This is now used ONLY for knockback animations
+     * Lunge attacks use attackTelegraph directly (same system as enemies)
      * @param entity The entity to get position for
      * @returns Position override in pixel coordinates, or undefined
      */
@@ -150,39 +157,7 @@ class RendererCombatAnimator extends RendererModuleBase {
         const progress = this.getProgress();
         const tileSize = 16; // Standard tile size
 
-        if (this.animation.type === 'lunge') {
-            // Lunge with wind-up: pull back → lunge forward → return
-            // 0-15%: Wind-up (pull back slightly)
-            // 15-60%: Lunge forward
-            // 60-100%: Return to start
-            const fromX = this.animation.from.x * tileSize;
-            const fromY = this.animation.from.y * tileSize;
-            const toX = this.animation.to.x * tileSize;
-            const toY = this.animation.to.y * tileSize;
-
-            let lungeProgress: number;
-            const windupPhase = 0.15;    // 15% of animation
-            const lungePhase = 0.60;     // Until 60%
-            const windupDistance = -0.15; // Pull back 15% in opposite direction
-
-            if (progress < windupPhase) {
-                // Wind-up: move backward
-                lungeProgress = (progress / windupPhase) * windupDistance;
-            } else if (progress < lungePhase) {
-                // Lunge forward
-                const lungeLocalProgress = (progress - windupPhase) / (lungePhase - windupPhase);
-                lungeProgress = lungeLocalProgress * 0.5; // Move 50% forward
-            } else {
-                // Return
-                const returnLocalProgress = (progress - lungePhase) / (1 - lungePhase);
-                lungeProgress = (1 - returnLocalProgress) * 0.5;
-            }
-
-            return {
-                x: Math.round(fromX + (toX - fromX) * lungeProgress),
-                y: Math.round(fromY + (toY - fromY) * lungeProgress)
-            };
-        } else if (this.animation.type === 'knockback') {
+        if (this.animation.type === 'knockback') {
             // Knockback with slight wind-up: brief pause → push back
             // 0-10%: Wind-up (lean toward enemy slightly)
             // 10-100%: Knockback with ease-out
