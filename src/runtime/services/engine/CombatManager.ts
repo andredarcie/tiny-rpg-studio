@@ -80,6 +80,38 @@ class CombatManager {
   }
 
   /**
+   * Check if two entities are within melee range (up to 2 tiles away)
+   */
+  private isInMeleeRange(pos1: { x: number; y: number; roomIndex?: number }, pos2: { x: number; y: number; roomIndex?: number }): boolean {
+    // Must be in same room
+    if (pos1.roomIndex !== undefined && pos2.roomIndex !== undefined && pos1.roomIndex !== pos2.roomIndex) {
+      return false;
+    }
+
+    // Calculate chebyshev distance (max of dx, dy)
+    const dx = Math.abs(pos1.x - pos2.x);
+    const dy = Math.abs(pos1.y - pos2.y);
+
+    // Melee range is up to 2 tiles away (allows player to escape if they run far enough)
+    return Math.max(dx, dy) <= 2;
+  }
+
+  /**
+   * Check if enemy and player are still in range for attack.
+   * If out of range, cancels the attack and refreshes the display.
+   * @returns true if in range (continue attack), false if out of range (cancel attack)
+   */
+  private checkCombatRangeOrCancel(enemy: EnemyState): boolean {
+    const currentPlayer = this.gameState.getPlayer();
+    if (!this.isInMeleeRange(enemy, currentPlayer)) {
+      // Out of range - one of them escaped during animation
+      this.renderer.draw();
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Main combat handler - processes player vs enemy collision
    */
   handleEnemyCollision(
@@ -199,6 +231,8 @@ class CombatManager {
     enemyAttackMissed: boolean
   ): void {
     combatAnimator.startLungeAttack('player', enemyPos, () => {
+      if (!this.checkCombatRangeOrCancel(enemy)) return;
+
       // Player hits enemy (consolidated damage logic)
       const result = this.applyDamageToEnemy(enemy, playerDamage, player, entityRenderer, {
         showBackstabMessage: true
@@ -217,6 +251,8 @@ class CombatManager {
         // Enemy counter-attacks
         const direction = this.calculateKnockbackDirection(player, enemy);
         combatAnimator.startKnockback('player', direction, () => {
+          if (!this.checkCombatRangeOrCancel(enemy)) return;
+
           if (enemyAttackMissed) {
             // Enemy missed the counter-attack
             this.showMissFeedback();
@@ -248,6 +284,8 @@ class CombatManager {
     const direction = this.calculateKnockbackDirection(player, enemy);
 
     combatAnimator.startKnockback('player', direction, () => {
+      if (!this.checkCombatRangeOrCancel(enemy)) return;
+
       let playerLives: number;
 
       if (enemyAttackMissed) {
@@ -267,6 +305,8 @@ class CombatManager {
 
       // Player counter-attacks (consolidated damage logic)
       combatAnimator.startLungeAttack('player', enemyPos, () => {
+        if (!this.checkCombatRangeOrCancel(enemy)) return;
+
         const result = this.applyDamageToEnemy(enemy, playerDamage, player, entityRenderer, {
           showBackstabMessage: true
         });
