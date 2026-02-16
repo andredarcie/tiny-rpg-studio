@@ -108,6 +108,17 @@ export const GameConfig = new GameConfigSchema({
     hitstopDuration: 60,
     /** Minimum damage to trigger hitstop */
     hitstopMinDamage: 3,
+    /** Entity flash duration when taking damage (ms) */
+    entityFlashDuration: 120,
+    /** Combat message display durations (ms) */
+    messageDuration: {
+      /** Standard messages (backstab, miss) */
+      standard: 500,
+      /** Cooldown/block messages */
+      cooldown: 700,
+      /** Death sequence message */
+      death: 2500,
+    },
     /** Floating damage numbers configuration */
     floatingNumbers: {
       /** Enable floating damage numbers */

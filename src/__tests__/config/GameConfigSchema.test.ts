@@ -47,6 +47,12 @@ describe('GameConfigSchema', () => {
       hitFlashDuration: 100,
       hitstopDuration: 60,
       hitstopMinDamage: 3,
+      entityFlashDuration: 120,
+      messageDuration: {
+        standard: 500,
+        cooldown: 700,
+        death: 2500,
+      },
       floatingNumbers: {
         enabled: true,
         duration: 800,

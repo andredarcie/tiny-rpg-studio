@@ -70,7 +70,6 @@ describe('CombatManager', () => {
     vi.useFakeTimers();
 
     getSpy.mockImplementation((key: string | null | undefined, fallback?: string) => {
-      if (key === 'combat.tooSoon') return 'Too soon!';
       if (key === 'combat.cooldown') return 'Cooldown!';
       if (key === 'combat.stealthKill') return 'Stealth Kill!';
       if (key === 'combat.stealthMiss') return 'Stealth Miss!';
@@ -175,7 +174,7 @@ describe('CombatManager', () => {
   });
 
   describe('Combat Cooldowns', () => {
-    it('shows cooldown message when attack cooldown is active', () => {
+    it('blocks combat when attack cooldown is active (no message)', () => {
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
       });
@@ -188,7 +187,9 @@ describe('CombatManager', () => {
 
       manager.handleEnemyCollision(0);
 
-      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Too soon!', { duration: 500 });
+      // No message shown, but combat is blocked
+      expect(renderer.showCombatIndicator).not.toHaveBeenCalled();
+      expect(gameState.damagePlayer).not.toHaveBeenCalled();
     });
 
     it('shows cooldown message when damage cooldown is active', () => {

@@ -67,6 +67,12 @@ export interface GameCombatTelegraphConfig {
   readonly triggerDistance: number;
 }
 
+export interface GameCombatMessageDurationConfig {
+  readonly standard: number;
+  readonly cooldown: number;
+  readonly death: number;
+}
+
 export interface GameCombatConfig {
   readonly attackCooldown: number;
   readonly hitStunDuration: number;
@@ -77,6 +83,8 @@ export interface GameCombatConfig {
   readonly hitFlashDuration: number;
   readonly hitstopDuration: number;
   readonly hitstopMinDamage: number;
+  readonly entityFlashDuration: number;
+  readonly messageDuration: GameCombatMessageDurationConfig;
   readonly floatingNumbers: GameCombatFloatingNumbersConfig;
   readonly particles: GameCombatParticlesConfig;
   readonly telegraph: GameCombatTelegraphConfig;
@@ -246,6 +254,8 @@ export class GameConfigSchema {
       hitFlashDuration: this._combat.hitFlashDuration,
       hitstopDuration: this._combat.hitstopDuration,
       hitstopMinDamage: this._combat.hitstopMinDamage,
+      entityFlashDuration: this._combat.entityFlashDuration,
+      messageDuration: { ...this._combat.messageDuration },
       floatingNumbers: { ...this._combat.floatingNumbers },
       particles: { ...this._combat.particles },
       telegraph: { ...this._combat.telegraph },
@@ -349,6 +359,12 @@ export class GameConfigSchema {
     this.assertPositiveInteger(combat.hitFlashDuration, 'hit flash duration');
     this.assertNonNegativeInteger(combat.hitstopDuration, 'hitstop duration');
     this.assertNonNegativeInteger(combat.hitstopMinDamage, 'hitstop min damage');
+    this.assertPositiveInteger(combat.entityFlashDuration, 'entity flash duration');
+
+    // Validate message duration
+    this.assertPositiveInteger(combat.messageDuration.standard, 'message duration standard');
+    this.assertPositiveInteger(combat.messageDuration.cooldown, 'message duration cooldown');
+    this.assertPositiveInteger(combat.messageDuration.death, 'message duration death');
 
     // Validate screen shake
     if (typeof combat.screenShake.enabled !== 'boolean') {
@@ -400,6 +416,8 @@ export class GameConfigSchema {
       hitFlashDuration: combat.hitFlashDuration,
       hitstopDuration: combat.hitstopDuration,
       hitstopMinDamage: combat.hitstopMinDamage,
+      entityFlashDuration: combat.entityFlashDuration,
+      messageDuration: Object.freeze({ ...combat.messageDuration }),
       floatingNumbers: Object.freeze({ ...combat.floatingNumbers }),
       particles: Object.freeze({ ...combat.particles }),
       telegraph: Object.freeze({ ...combat.telegraph }),

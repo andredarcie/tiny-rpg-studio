@@ -37,6 +37,7 @@ class EnemyManager {
   fallbackMissChance: number;
   combatStunManager: CombatStunManagerApi | null;
   playerManager: StatePlayerManagerApi | null;
+  windupTimers: Set<ReturnType<typeof setTimeout>>;
 
   constructor(gameState: GameStateApi, renderer: RendererApi, tileManager: TileManagerApi, options: EnemyManagerOptions = {}) {
     this.gameState = gameState;
@@ -55,6 +56,7 @@ class EnemyManager {
 
     this.combatStunManager = options.combatStunManager ?? null;
     this.playerManager = options.playerManager ?? null;
+    this.windupTimers = new Set();
 
     // Initialize CombatManager with callbacks
     this.combatManager = new CombatManager(gameState, renderer, {
@@ -141,6 +143,9 @@ class EnemyManager {
     }
     // Cancel death sequence to prevent race conditions on game reset
     this.combatManager.cancelDeathSequence();
+    // Cancel all pending wind-up timers
+    this.windupTimers.forEach(timer => clearTimeout(timer));
+    this.windupTimers.clear();
   }
 
   tick(): void {
@@ -311,9 +316,16 @@ class EnemyManager {
       // Trigger wind-up animation before attack
       if (enemy.id) {
         this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+        // Wait for wind-up animation to complete before applying damage (same as player)
+        const timer = setTimeout(() => {
+          this.windupTimers.delete(timer);
+          this.handleEnemyCollision(index, { initiator: 'enemy' });
+        }, GameConfig.combat.lungeAnimationDuration);
+        this.windupTimers.add(timer);
+      } else {
+        // No ID, trigger immediately
+        this.handleEnemyCollision(index, { initiator: 'enemy' });
       }
-      // Trigger collision without moving - enemy initiated
-      this.handleEnemyCollision(index, { initiator: 'enemy' });
       return EnemyMovementResultConst.Collided;
     }
 
@@ -333,8 +345,16 @@ class EnemyManager {
         if (player && player.roomIndex === roomIndex && player.x === newTarget.x && player.y === newTarget.y) {
           if (enemy.id) {
             this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+            // Wait for wind-up animation to complete before applying damage (same as player)
+            const timer = setTimeout(() => {
+              this.windupTimers.delete(timer);
+              this.handleEnemyCollision(index, { initiator: 'enemy' });
+            }, GameConfig.combat.lungeAnimationDuration);
+            this.windupTimers.add(timer);
+          } else {
+            // No ID, trigger immediately
+            this.handleEnemyCollision(index, { initiator: 'enemy' });
           }
-          this.handleEnemyCollision(index, { initiator: 'enemy' });
           return EnemyMovementResultConst.Collided;
         }
 
@@ -395,9 +415,16 @@ class EnemyManager {
         // Trigger wind-up animation before attack
         if (enemy.id) {
           this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+          // Wait for wind-up animation to complete before applying damage (same as player)
+          const timer = setTimeout(() => {
+            this.windupTimers.delete(timer);
+            this.handleEnemyCollision(index, { initiator: 'enemy' });
+          }, GameConfig.combat.lungeAnimationDuration);
+          this.windupTimers.add(timer);
+        } else {
+          // No ID, trigger immediately
+          this.handleEnemyCollision(index, { initiator: 'enemy' });
         }
-        // Trigger collision without moving - enemy initiated
-        this.handleEnemyCollision(index, { initiator: 'enemy' });
         return EnemyMovementResultConst.Collided;
       }
 

@@ -90,13 +90,12 @@ class CombatManager {
 
     // Check attack cooldown first
     if (this.playerManager?.isOnAttackCooldown()) {
-      this.renderer.showCombatIndicator(getEnemyLocaleText('combat.tooSoon', 'Too soon!'), { duration: 500 });
       return;
     }
 
     // Check damage cooldown (room change protection)
     if (this.gameState.isPlayerOnDamageCooldown()) {
-      this.renderer.showCombatIndicator(getEnemyLocaleText('combat.cooldown', ''), { duration: 700 });
+      this.renderer.showCombatIndicator(getEnemyLocaleText('combat.cooldown', ''), { duration: GameConfig.combat.messageDuration.cooldown });
       return;
     }
 
@@ -124,8 +123,7 @@ class CombatManager {
     const damage = this.getEnemyDamage(enemy.type);
 
     // Type-safe player damage retrieval
-    const gameStateWithDamage = this.gameState as GameStateApi & { getPlayerDamage?: () => number };
-    const playerDamage = gameStateWithDamage.getPlayerDamage ? gameStateWithDamage.getPlayerDamage() : 1;
+    const playerDamage = this.gameState.getPlayerDamage?.() ?? 1;
 
     const player = this.gameState.getPlayer();
     const enemyPos = { x: enemy.x, y: enemy.y };
@@ -195,36 +193,13 @@ class CombatManager {
     cameraShake: CameraShakeApi,
     enemyAttackMissed: boolean
   ): void {
-    // Check for backstab bonus
-    const isBackstab = this.isBackstab(player, enemy);
-    const finalPlayerDamage = playerDamage + (isBackstab ? 1 : 0);
-
     combatAnimator.startLungeAttack('player', enemyPos, () => {
-      // Player hits enemy
-      entityRenderer.flashEntity(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`, '#FFFFFF', 120);
+      // Player hits enemy (consolidated damage logic)
+      const result = this.applyDamageToEnemy(enemy, playerDamage, player, entityRenderer, {
+        showBackstabMessage: true
+      });
 
-      // Show backstab message if applicable
-      if (isBackstab) {
-        const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
-        this.renderer.showCombatIndicator(backstabText, { duration: 500 });
-      }
-
-      // Enemy loses life
-      const previousLives = enemy.lives || 1;
-      enemy.lives = previousLives - finalPlayerDamage;
-
-      // Consume sword durability
-      const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
-      if (gameStateWithDurability.consumeSwordDurability) {
-        gameStateWithDurability.consumeSwordDurability();
-      }
-
-      // Spawn multiple life loss squares (one per damage point)
-      this.spawnMultipleLifeLoss(enemy, previousLives, finalPlayerDamage);
-
-      const enemyDefeated = enemy.lives <= 0;
-
-      if (enemyDefeated) {
+      if (result.defeated) {
         // Enemy dies - no counter-attack
         this.playEnemyDeathAnimation(enemy, () => {
           if (enemy.id) {
@@ -285,35 +260,13 @@ class CombatManager {
         return;
       }
 
-      // Player counter-attacks
-      // Check for backstab bonus
-      const isBackstab = this.isBackstab(player, enemy);
-      const finalPlayerDamage = playerDamage + (isBackstab ? 1 : 0);
-
+      // Player counter-attacks (consolidated damage logic)
       combatAnimator.startLungeAttack('player', enemyPos, () => {
-        entityRenderer.flashEntity(enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`, '#FFFFFF', 120);
+        const result = this.applyDamageToEnemy(enemy, playerDamage, player, entityRenderer, {
+          showBackstabMessage: true
+        });
 
-        // Show backstab message if applicable
-        if (isBackstab) {
-          const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
-          this.renderer.showCombatIndicator(backstabText, { duration: 500 });
-        }
-
-        const previousLives = enemy.lives || 1;
-        enemy.lives = previousLives - finalPlayerDamage;
-
-        // Consume sword durability
-        const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
-        if (gameStateWithDurability.consumeSwordDurability) {
-          gameStateWithDurability.consumeSwordDurability();
-        }
-
-        // Spawn multiple life loss squares (one per damage point)
-        this.spawnMultipleLifeLoss(enemy, previousLives, finalPlayerDamage);
-
-        const enemyDefeated = enemy.lives <= 0;
-
-        if (enemyDefeated) {
+        if (result.defeated) {
           this.playEnemyDeathAnimation(enemy, () => {
             if (enemy.id) {
               this.onEnemyDefeated(enemy.id, enemy);
@@ -340,14 +293,14 @@ class CombatManager {
     const playerLives = this.gameState.damagePlayer(damage);
     const reduction = this.gameState.consumeLastDamageReduction();
 
-    entityRenderer.flashEntity('player', '#FF004D', 120);
+    entityRenderer.flashEntity('player', '#FF004D', GameConfig.combat.entityFlashDuration);
     cameraShake.triggerFromDamage(damage);
 
     if (reduction > 0) {
       const text = reduction >= damage
         ? getEnemyLocaleText('combat.block.full', '')
         : formatEnemyLocaleText('combat.block.partial', { value: reduction }, '');
-      this.renderer.showCombatIndicator(text, { duration: 700 });
+      this.renderer.showCombatIndicator(text, { duration: GameConfig.combat.messageDuration.cooldown });
     }
 
     this.combatStunManager?.applyStun();
@@ -362,6 +315,53 @@ class CombatManager {
     }
 
     return playerLives;
+  }
+
+  /**
+   * Apply damage to enemy with backstab bonus, durability consumption, and visual feedback
+   *
+   * Single source of truth for all enemy damage logic.
+   * Used by: handlePlayerInitiatedCombat, handleEnemyInitiatedCombat, handleCombatLegacy
+   *
+   * @returns Object with defeated status and actual damage dealt
+   */
+  private applyDamageToEnemy(
+    enemy: EnemyState,
+    baseDamage: number,
+    player: PlayerState,
+    entityRenderer: EntityRendererApi,
+    options: {
+      showBackstabMessage?: boolean;
+    } = {}
+  ): { defeated: boolean; actualDamage: number } {
+    // Check for backstab bonus
+    const isBackstab = this.isBackstab(player, enemy);
+    const finalDamage = baseDamage + (isBackstab ? 1 : 0);
+
+    // Show backstab message if applicable
+    if (isBackstab && options.showBackstabMessage) {
+      const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
+      this.renderer.showCombatIndicator(backstabText, { duration: GameConfig.combat.messageDuration.standard });
+    }
+
+    // Apply damage to enemy
+    const previousLives = enemy.lives || 1;
+    enemy.lives = previousLives - finalDamage;
+
+    // Consume sword durability (type-safe)
+    this.gameState.consumeSwordDurability?.();
+
+    // Flash enemy
+    const enemyId = enemy.id || `${enemy.type}-${enemy.x}-${enemy.y}`;
+    entityRenderer.flashEntity(enemyId, '#FFFFFF', GameConfig.combat.entityFlashDuration);
+
+    // Spawn multiple life loss squares (one per damage point)
+    this.spawnMultipleLifeLoss(enemy, previousLives, finalDamage);
+
+    // Check if enemy is defeated
+    const defeated = enemy.lives <= 0;
+
+    return { defeated, actualDamage: finalDamage };
   }
 
   /**
@@ -387,36 +387,22 @@ class CombatManager {
         const text = reduction >= damage
           ? getEnemyLocaleText('combat.block.full', '')
           : formatEnemyLocaleText('combat.block.partial', { value: reduction }, '');
-        this.renderer.showCombatIndicator(text, { duration: 700 });
+        this.renderer.showCombatIndicator(text, { duration: GameConfig.combat.messageDuration.cooldown });
       }
     }
 
-    // Player attacks enemy with sword damage
-    // Check for backstab bonus
+    // Player attacks enemy (consolidated damage logic)
     const player = this.gameState.getPlayer();
-    const isBackstab = this.isBackstab(player, enemy);
-    const finalPlayerDamage = playerDamage + (isBackstab ? 1 : 0);
+    // Note: entityRenderer not available in legacy mode, pass dummy that no-ops
+    const dummyEntityRenderer: EntityRendererApi = {
+      flashEntity: () => {} // No-op in legacy mode
+    };
 
-    if (isBackstab) {
-      const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
-      this.renderer.showCombatIndicator(backstabText, { duration: 500 });
-    }
+    const result = this.applyDamageToEnemy(enemy, playerDamage, player, dummyEntityRenderer, {
+      showBackstabMessage: true
+    });
 
-    const previousLives = enemy.lives || 1;
-    enemy.lives = previousLives - finalPlayerDamage;
-
-    // Consume sword durability
-    const gameStateWithDurability = this.gameState as typeof this.gameState & { consumeSwordDurability?: () => boolean };
-    if (gameStateWithDurability.consumeSwordDurability) {
-      gameStateWithDurability.consumeSwordDurability();
-    }
-
-    // Spawn multiple life loss squares (one per damage point)
-    this.spawnMultipleLifeLoss(enemy, previousLives, finalPlayerDamage);
-
-    const enemyDefeated = enemy.lives <= 0;
-
-    if (enemyDefeated && enemy.id) {
+    if (result.defeated && enemy.id) {
       this.onEnemyDefeated(enemy.id, enemy);
       this.onCheckAllEnemiesCleared();
       this.renderer.flashScreen({ intensity: 0.8, duration: 160 });
@@ -483,7 +469,7 @@ class CombatManager {
 
     // Show death message "Killed by [Enemy Name]"
     const deathMessage = formatEnemyLocaleText('combat.killedBy', { enemy: enemyName }, '');
-    this.renderer.showCombatIndicator(deathMessage, { duration: 2500 });
+    this.renderer.showCombatIndicator(deathMessage, { duration: GameConfig.combat.messageDuration.death });
 
     // Wait for death sequence to complete, then trigger game over
     this.deathSequenceTimer = setTimeout(() => {
@@ -497,7 +483,7 @@ class CombatManager {
 
       // Trigger game over
       this.onPlayerDefeated();
-    }, 2500);
+    }, GameConfig.combat.messageDuration.death);
   }
 
   /**
@@ -648,7 +634,7 @@ class CombatManager {
   }
 
   showMissFeedback(): void {
-    this.renderer.showCombatIndicator('Miss', { duration: 500 });
+    this.renderer.showCombatIndicator('Miss', { duration: GameConfig.combat.messageDuration.standard });
   }
 }
 

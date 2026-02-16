@@ -36,10 +36,12 @@ type GameStateApi = {
  */
 class RendererCombatAnimator extends RendererModuleBase {
     animation: AnimationState;
+    hitstopTimer: ReturnType<typeof setTimeout> | null;
 
     constructor(renderer: ConstructorParameters<typeof RendererModuleBase>[0]) {
         super(renderer);
         this.animation = { active: false };
+        this.hitstopTimer = null;
     }
 
     get combatGameState(): GameStateApi {
@@ -201,6 +203,13 @@ class RendererCombatAnimator extends RendererModuleBase {
         if (wasActive) {
             this.combatGameState.resumeGame?.('combat-animation');
         }
+
+        // Cancel any active hitstop timer
+        if (this.hitstopTimer) {
+            clearTimeout(this.hitstopTimer);
+            this.hitstopTimer = null;
+            this.combatGameState.resumeGame?.('hitstop');
+        }
     }
 
     /**
@@ -208,8 +217,15 @@ class RendererCombatAnimator extends RendererModuleBase {
      * @param duration Duration in milliseconds
      */
     freezeFrame(duration: number): void {
+        // Cancel any existing hitstop first
+        if (this.hitstopTimer) {
+            clearTimeout(this.hitstopTimer);
+            this.combatGameState.resumeGame?.('hitstop');
+        }
+
         this.combatGameState.pauseGame?.('hitstop');
-        setTimeout(() => {
+        this.hitstopTimer = setTimeout(() => {
+            this.hitstopTimer = null;
             this.combatGameState.resumeGame?.('hitstop');
         }, duration);
     }
