@@ -28,9 +28,10 @@ class EditorNpcRenderer extends EditorRendererBase {
         const list = this.dom.npcsList;
         if (!list) return;
 
+        list.innerHTML = '';
+
         this.gameEngine.npcManager.ensureDefaultNPCs();
         this.updateVariantButtons();
-        const game = this.gameEngine.getGame() as { world?: { cols?: number } };
         const filter = this.manager.state.npcVariantFilter || 'human';
         const definitions = this.gameEngine.npcManager.getDefinitions() as NpcDefinitionView[];
         const filteredDefinitions = definitions
@@ -39,10 +40,10 @@ class EditorNpcRenderer extends EditorRendererBase {
                 return variant === filter;
             });
         const npcs = this.gameEngine.getSprites() as EditorNpc[];
+        const currentRoomIndex = this.manager.state.activeRoomIndex;
 
-        list.innerHTML = '';
         filteredDefinitions.forEach((def: NpcDefinitionView) => {
-            const npc = npcs.find((entry) => entry.type === def.type);
+            const npc = npcs.find((entry) => entry.type === def.type && entry.roomIndex === currentRoomIndex);
             const card = document.createElement('div');
             card.className = 'npc-card';
             card.dataset.type = def.type;
@@ -50,8 +51,11 @@ class EditorNpcRenderer extends EditorRendererBase {
             if (def.type === this.manager.selectedNpcType) {
                 card.classList.add('selected');
             }
+
             if (npc?.placed) {
                 card.classList.add('npc-card-placed');
+            } else if (npc && !npc.placed) {
+                card.classList.add('npc-card-created');
             } else {
                 card.classList.add('npc-card-available');
             }
@@ -72,15 +76,7 @@ class EditorNpcRenderer extends EditorRendererBase {
             const pos = document.createElement('div');
             pos.className = 'npc-position';
             if (npc?.placed) {
-                const cols = game.world?.cols || 1;
-                const roomRow = Math.floor(npc.roomIndex / cols) + 1;
-                const roomCol = (npc.roomIndex % cols) + 1;
-                pos.textContent = this.tf('npc.status.position', {
-                    col: roomCol,
-                    row: roomRow,
-                    x: npc.x,
-                    y: npc.y
-                }, `Mapa (${roomCol}, ${roomRow}) - (${npc.x}, ${npc.y})`);
+                pos.textContent = `(${npc.x}, ${npc.y})`;
             } else {
                 pos.textContent = this.t('npc.status.available');
             }

@@ -7,6 +7,7 @@ import type { VariableDefinition } from '../../types/gameState';
 type SpriteInstance = {
     id: string;
     type: string;
+    roomIndex: number;
     placed?: boolean;
     text?: string | null;
     textKey?: string | null;
@@ -51,32 +52,30 @@ class EditorNpcService {
         this.gameEngine.npcManager.ensureDefaultNPCs();
         const sprites = this.gameEngine.getSprites() as SpriteInstance[];
         const definitions = this.gameEngine.npcManager.getDefinitions();
-        const available = definitions
-            .map((def: NpcDefinitionData) => ({
-                def,
-                npc: sprites.find((entry: SpriteInstance) => entry.type === def.type) || null
-            }))
-            .find((entry: { def: NpcDefinitionData; npc: SpriteInstance | null }) => !entry.npc || !entry.npc.placed);
+        const currentRoomIndex = this.state.activeRoomIndex;
+
+        // Find the first NPC type that is NOT already in the current scene
+        const available = definitions.find((def: NpcDefinitionData) => {
+            const existsInCurrentRoom = sprites.some(
+                (npc: SpriteInstance) => npc.type === def.type && npc.roomIndex === currentRoomIndex && npc.placed
+            );
+            return !existsInCurrentRoom;
+        });
 
         if (!available) {
             alert(this.t('alerts.npc.full'));
             return;
         }
 
-        const npc = available.npc;
-        if (!npc) {
-            const manager = this.gameEngine.npcManager as { createNPC?: (type: string) => SpriteInstance | null };
-            const created = manager.createNPC ? manager.createNPC(available.def.type) : null;
-            if (!created) {
-                alert(this.t('alerts.npc.createError'));
-                return;
-            }
-            this.state.selectedNpcId = created.id;
-            this.state.selectedNpcType = created.type;
-        } else {
-            this.state.selectedNpcId = npc.id;
-            this.state.selectedNpcType = npc.type;
+        // Always create a new NPC instance for this scene
+        const manager = this.gameEngine.npcManager as { createNPC?: (type: string, roomIndex?: number) => SpriteInstance | null };
+        const created = manager.createNPC ? manager.createNPC(available.type, currentRoomIndex) : null;
+        if (!created) {
+            alert(this.t('alerts.npc.createError'));
+            return;
         }
+        this.state.selectedNpcId = created.id;
+        this.state.selectedNpcType = created.type;
 
         this.activatePlacement();
         this.manager.renderService.renderNpcs();

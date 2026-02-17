@@ -137,10 +137,22 @@ class EditorEventBinder extends EditorManagerModule {
             const card = target.closest('.npc-card') as HTMLElement | null;
             if (!card) return;
             const type = card.dataset.type || null;
-            const id = card.dataset.id || null;
 
             manager.desselectAllAndRender();
-            npcService.updateNpcSelection(type, id);
+
+            const currentRoom = manager.state.activeRoomIndex;
+            const sprites = manager.gameEngine.getSprites() as { id: string; type: string; roomIndex: number; placed?: boolean }[];
+            const npcInCurrentRoom = sprites.find(n => n.type === type && n.roomIndex === currentRoom);
+
+            if (!npcInCurrentRoom && type) {
+                const manager_typed = manager.gameEngine.npcManager as { createNPC?: (type: string, roomIndex?: number) => unknown };
+                const created = manager_typed.createNPC ? manager_typed.createNPC(type, currentRoom) : null;
+                if (created && typeof created === 'object' && 'id' in created && 'type' in created) {
+                    npcService.updateNpcSelection(created.type as string, created.id as string);
+                }
+            } else if (npcInCurrentRoom) {
+                npcService.updateNpcSelection(type, npcInCurrentRoom.id);
+            }
         });
 
         objectTypes?.addEventListener('click', (ev: Event) => {

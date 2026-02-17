@@ -37,14 +37,22 @@ describe('ShareDataNormalizer', () => {
     expect(start.roomIndex).toBe(ShareConstants.MAX_ROOM_INDEX);
   });
 
-  it('normalizes sprites with defaults and unique types', () => {
+  it('normalizes sprites with defaults and allows multiple instances of same type', () => {
     const sprites = ShareDataNormalizer.normalizeSprites([
-      { type: 'bard', x: 1, y: 2 },
-      { type: 'bard', x: 3, y: 3 }
+      { type: 'bard', x: 1, y: 2, roomIndex: 0 },
+      { type: 'bard', x: 3, y: 3, roomIndex: 1 }
     ]);
 
-    expect(sprites.length).toBe(1);
+    // ✅ NEW: Now supports multiple NPCs of same type (one per scene)
+    expect(sprites.length).toBe(2);
     expect(sprites[0].text).toBe('ola');
+    expect(sprites[0].x).toBe(1);
+    expect(sprites[0].y).toBe(2);
+    expect(sprites[0].roomIndex).toBe(0);
+    expect(sprites[1].text).toBe('ola');
+    expect(sprites[1].x).toBe(3);
+    expect(sprites[1].y).toBe(3);
+    expect(sprites[1].roomIndex).toBe(1);
   });
 
   it('limits enemies per room', () => {
