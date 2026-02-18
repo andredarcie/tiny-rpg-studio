@@ -92,8 +92,8 @@ class CombatManager {
     const dx = Math.abs(pos1.x - pos2.x);
     const dy = Math.abs(pos1.y - pos2.y);
 
-    // Melee range is up to 2 tiles away (allows player to escape if they run far enough)
-    return Math.max(dx, dy) <= 2;
+    // Melee range is exactly 1 tile away (must be adjacent to hit)
+    return Math.max(dx, dy) <= 1;
   }
 
   /**
