@@ -1,0 +1,24 @@
+# Robots.txt for Tiny RPG Studio
+# Permite que os motores de busca indexem o site
+
+User-agent: *
+Allow: /
+Disallow: /node_modules/
+Disallow: /*.json
+Disallow: /src/
+Disallow: /__tests__/
+Disallow: /test-results/
+
+# Específico para Google
+User-agent: Googlebot
+Allow: /
+
+# Específico para Bing
+User-agent: Bingbot
+Allow: /
+
+# Sitemap location
+Sitemap: https://andredarcie.github.io/tiny-rpg-studio/sitemap.xml
+
+# Crawl delay (em segundos)
+Crawl-delay: 1

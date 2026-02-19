@@ -1,7 +1,6 @@
 
 const TEXT_BUNDLES = {
     'pt-BR': {
-        'app.title': 'Tiny RPG Studio',
         'intro.byline': 'por {author}',
         'intro.startAdventure': 'Iniciar aventura',
         'tabs.game': 'Jogo',
@@ -295,7 +294,6 @@ const TEXT_BUNDLES = {
         'tiles.summaryFallback': 'Tile {id}'
     },
     'en-US': {
-        'app.title': 'Tiny RPG Studio',
         'intro.byline': 'by {author}',
         'intro.startAdventure': 'Start adventure',
         'tabs.game': 'Game',
