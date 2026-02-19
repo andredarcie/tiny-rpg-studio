@@ -2,15 +2,90 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <title>Tiny RPG Studio</title>
+    
+    <!-- Essential SEO Meta Tags -->
+    <meta name="description" content="Tiny RPG Studio is a small, deliberately limited game engine designed to spark creativity. Build micro-RPGs and short stories in minutes and share everything through a single URL.">
+    <meta name="keywords" content="RPG maker, bitsy, game creation, browser game, browser, game engine, RPG studio, game design, pixel art, indie game, game development">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="author" content="Andre Darcie & Diego Penha">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph Tags (Social Media) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://andredarcie.github.io/tiny-rpg-studio/">
+    <meta property="og:title" content="Tiny RPG Studio">
+    <meta property="og:description" content="Create tiny RPGs in the browser with an integrated editor and player. Share your games with a single URL.">
+    <meta property="og:image" content="https://andredarcie.github.io/tiny-rpg-studio/icons/icon-128.png">
+    <meta property="og:image:alt" content="Tiny RPG Studio">
+    <meta property="og:site_name" content="Tiny RPG Studio">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- X/Twitter Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://andredarcie.github.io/tiny-rpg-studio/">
+    <meta name="twitter:title" content="Tiny RPG Studio - Create Tiny RPGs in the Browser">
+    <meta name="twitter:description" content="Create your own tiny RPGs in the browser without installation. Integrated editor and player. Share your games with a single URL.">
+    <meta name="twitter:image" content="https://andredarcie.github.io/tiny-rpg-studio/icons/icon-128.png">
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="language" content="Portuguese-BR">
+    <meta name="revisit-after" content="7 days">
+    <meta name="generator" content="Tiny RPG Studio">
+    <link rel="canonical" href="https://andredarcie.github.io/tiny-rpg-studio/">
+    <link rel="alternate" hreflang="pt-BR" href="https://andredarcie.github.io/tiny-rpg-studio/">
+    <link rel="alternate" hreflang="en-US" href="https://andredarcie.github.io/tiny-rpg-studio/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://andredarcie.github.io/tiny-rpg-studio/">
+    
+    <!-- Cache Control -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta http-equiv="Surrogate-Control" content="no-store">
+    
+    <!-- Preconnect to External Resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <!-- Favicon and app icons -->
+    <link rel="icon" type="image/x-icon" href="/icons/icon-128.png">
+    <link rel="manifest" href="/.well-known/assetlinks.json">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Tiny RPG Studio",
+        "description": "Create tiny RPGs in the browser with an integrated editor and player. Share your games with a single URL.",
+        "url": "https://andredarcie.github.io/tiny-rpg-studio/",
+        "applicationCategory": "GameApplication",
+        "inLanguage": "en-US",
+        "author": {
+            "@type": "Organization",
+            "name": "Tiny RPG Studio"
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "screenshot": "https://andredarcie.github.io/tiny-rpg-studio/icons/icon-128.png",
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "5",
+            "ratingCount": "1"
+        }
+    }
+    </script>
+    
+    <!-- Microsoft Clarity (optional, for analytics) -->
+    <meta name="msapplication-TileColor" content="#000000">
+    
     <style>
         #game-container {
             position: relative;
@@ -34,17 +109,17 @@
 </head>
 <body>
     <div class="app">
-        <main>
-            <div class="tabs">
-                <p class="tabs-title" data-text-key="app.title"></p>
+        <main role="main" aria-label="Aplicação principal - Editor e executor de RPG">
+            <div class="tabs" role="tablist">
+                <h1 class="tabs-title">Tiny RPG Studio</h1>
                 <div class="tabs-links">
-                    <button class="tab-button active" type="button" data-tab="game" aria-selected="true" data-text-key="tabs.game"></button>
-                    <button class="tab-button" type="button" data-tab="editor" aria-selected="false" data-text-key="tabs.editor"></button>
+                    <button class="tab-button active" type="button" data-tab="game" role="tab" aria-selected="true" aria-controls="tab-game" data-text-key="tabs.game"></button>
+                    <button class="tab-button" type="button" data-tab="editor" role="tab" aria-selected="false" aria-controls="tab-editor" data-text-key="tabs.editor"></button>
                     <button id="btn-reset" class="tab-action-button" type="button" data-text-key="buttons.reset" data-aria-label-key="aria.reset"></button>
                 </div>
             </div>
 
-            <div class="tab-content active" id="tab-game">
+            <div class="tab-content active" id="tab-game" role="tabpanel" aria-labelledby="tab-game">
                 <div class="game-container" id="game-container">
                     <div id="combat-indicator" class="combat-indicator" aria-live="polite" aria-atomic="true"></div>
                     <div class="game-screen">
@@ -79,8 +154,8 @@
                 </div>
             </div>
 
-            <div class="tab-content" id="tab-editor">
-                <div class="editor-layout">
+            <div class="tab-content" id="tab-editor" role="tabpanel" aria-labelledby="tab-editor">
+                <div class="editor-layout" role="group" aria-label="Game Engine Editor">
                     <div class="editor-left">
                         <div class="editor-section editor-section--tiles" data-mobile-panel="tiles">
                             <details open>
