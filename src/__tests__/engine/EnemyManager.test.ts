@@ -1093,10 +1093,10 @@ describe('EnemyManager', () => {
         ...giantRatDefinition,
         matchesType: (type: string) => type === 'giant-rat',
         getExperienceReward: () => 3,
-        getMissChance: () => 0.1,
+        getMissChance: () => 0,
         lives: giantRatDefinition.lives,
       }));
-      getMissChanceSpy.mockReturnValue(0.1);
+      getMissChanceSpy.mockReturnValue(0);
 
       // Mock TextResources to return localized strings
       getSpy.mockImplementation((key: string | null | undefined) => {

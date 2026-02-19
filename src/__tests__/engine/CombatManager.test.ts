@@ -310,7 +310,7 @@ describe('CombatManager', () => {
 
     it('deals +1 damage when attacking enemy from behind (enemy moved left)', () => {
       const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 3, y: 3, lastX: 4, lives: 3 };
-      const player = { x: 5, y: 3, roomIndex: 0, lives: 3, level: 1 };
+      const player = { x: 4, y: 3, roomIndex: 0, lives: 3, level: 1 };
 
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [enemy]),
@@ -386,7 +386,7 @@ describe('CombatManager', () => {
 
     it('deals +1 damage when attacking enemy from behind (enemy moved UP)', () => {
       const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 5, lastY: 4, lives: 3 };
-      const player = { x: 5, y: 5, roomIndex: 0, lives: 3, level: 1 };
+      const player = { x: 5, y: 4, roomIndex: 0, lives: 3, level: 1 };
 
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [enemy]),
@@ -407,7 +407,7 @@ describe('CombatManager', () => {
       // Scenario: Enemy moved up (y: 4 -> 3) but lastX is different from x
       // This can happen if lastX wasn't properly updated
       const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 5, y: 3, lastX: 4, lastY: 4, lives: 3 };
-      const player = { x: 5, y: 5, roomIndex: 0, lives: 3, level: 1 };
+      const player = { x: 5, y: 4, roomIndex: 0, lives: 3, level: 1 };
 
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [enemy]),
