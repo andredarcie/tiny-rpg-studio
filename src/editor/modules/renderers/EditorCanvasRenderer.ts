@@ -10,8 +10,9 @@ type CanvasNpc = {
     placed?: boolean;
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
+    conditionalRewardVariableId?: string | null;
 };
-type CanvasEnemy = { type: string; roomIndex: number; x: number; y: number; id?: string };
+type CanvasEnemy = { type: string; roomIndex: number; x: number; y: number; id?: string; defeatVariableId?: string | null };
 type TileMapWithLayers = {
     ground?: (string | number | null)[][];
     overlay?: (string | number | null)[][];
@@ -104,7 +105,7 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 step
             );
             // Draw variable indicator outlines
-            const variableIds = [npc.conditionVariableId, npc.rewardVariableId].filter((id): id is string => Boolean(id));
+            const variableIds = [npc.conditionVariableId, npc.rewardVariableId, npc.conditionalRewardVariableId].filter((id): id is string => Boolean(id));
             if (variableIds.length > 0) {
                 this.drawVariableOutline(ctx, npc.x * tileSize, npc.y * tileSize, tileSize, variableIds);
             }
@@ -125,6 +126,10 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 enemy.y * tileSize,
                 step
             );
+            // Draw variable indicator outline
+            if (enemy.defeatVariableId) {
+                this.drawVariableOutline(ctx, enemy.x * tileSize, enemy.y * tileSize, tileSize, [enemy.defeatVariableId]);
+            }
         }
     }
 
@@ -155,13 +160,23 @@ class EditorCanvasRenderer extends EditorRendererBase {
             ctx.strokeRect(x + offset, y + offset, size - lineWidth, size - lineWidth);
         } else if (validColors.length === 2) {
             // Two outlines: outer and inner
-            // Outer outline (first variable)
             ctx.strokeStyle = validColors[0];
             ctx.strokeRect(x + offset, y + offset, size - lineWidth, size - lineWidth);
 
-            // Inner outline (second variable)
             const innerOffset = lineWidth * 2;
             ctx.strokeStyle = validColors[1];
+            ctx.strokeRect(x + innerOffset, y + innerOffset, size - innerOffset * 2, size - innerOffset * 2);
+        } else if (validColors.length >= 3) {
+            // Three outlines: outer, middle, inner
+            ctx.strokeStyle = validColors[0];
+            ctx.strokeRect(x + offset, y + offset, size - lineWidth, size - lineWidth);
+
+            const middleOffset = lineWidth * 2;
+            ctx.strokeStyle = validColors[1];
+            ctx.strokeRect(x + middleOffset, y + middleOffset, size - middleOffset * 2, size - middleOffset * 2);
+
+            const innerOffset = lineWidth * 4;
+            ctx.strokeStyle = validColors[2];
             ctx.strokeRect(x + innerOffset, y + innerOffset, size - innerOffset * 2, size - innerOffset * 2);
         }
 

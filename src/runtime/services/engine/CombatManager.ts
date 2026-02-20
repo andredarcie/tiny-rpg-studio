@@ -603,7 +603,7 @@ class CombatManager {
 
     // Only moved vertically
     if (movedVertically) {
-      const enemyFacingDown = enemy.y > enemy.lastY;
+      const enemyFacingDown = enemy.y > (enemy.lastY ?? enemy.y);
       return enemyFacingDown ? player.y < enemy.y : player.y > enemy.y;
     }
 

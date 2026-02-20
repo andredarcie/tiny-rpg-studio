@@ -8,15 +8,17 @@
  * - Self-documenting (states are explicit)
  */
 
-export enum CombatState {
-  IDLE = 'IDLE',                           // No combat happening
-  PLAYER_WINDUP = 'PLAYER_WINDUP',         // Player preparing attack (300ms)
-  PLAYER_ATTACKING = 'PLAYER_ATTACKING',   // Player applying damage
-  ENEMY_WINDUP = 'ENEMY_WINDUP',           // Enemy preparing attack (300ms)
-  ENEMY_ATTACKING = 'ENEMY_ATTACKING',     // Enemy applying damage
-  ENEMY_DEATH = 'ENEMY_DEATH',             // Enemy death animation (1000ms)
-  PLAYER_DEATH = 'PLAYER_DEATH',           // Player death sequence (2500ms)
-}
+export const CombatState = {
+  IDLE: 'IDLE',                           // No combat happening
+  PLAYER_WINDUP: 'PLAYER_WINDUP',         // Player preparing attack (300ms)
+  PLAYER_ATTACKING: 'PLAYER_ATTACKING',   // Player applying damage
+  ENEMY_WINDUP: 'ENEMY_WINDUP',           // Enemy preparing attack (300ms)
+  ENEMY_ATTACKING: 'ENEMY_ATTACKING',     // Enemy applying damage
+  ENEMY_DEATH: 'ENEMY_DEATH',             // Enemy death animation (1000ms)
+  PLAYER_DEATH: 'PLAYER_DEATH',           // Player death sequence (2500ms)
+} as const;
+
+export type CombatState = typeof CombatState[keyof typeof CombatState];
 
 type StateTransition = {
   from: CombatState;

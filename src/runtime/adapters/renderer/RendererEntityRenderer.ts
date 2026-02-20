@@ -542,6 +542,7 @@ type EnemyState = {
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
+    deathStartTime?: number | null;
 };
 
 type EnemyStateWithId = EnemyState & {

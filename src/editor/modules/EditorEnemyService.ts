@@ -113,6 +113,7 @@ class EditorEnemyService {
         if (!changed) return;
         this.manager.renderService.renderEnemies();
         this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
         this.manager.updateJSON();
         this.manager.history.pushCurrentState();
     }
