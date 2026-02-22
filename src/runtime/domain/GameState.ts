@@ -1,5 +1,7 @@
 
 import { SkillDefinitions } from './definitions/SkillDefinitions';
+import { ItemDefinitions } from './definitions/ItemDefinitions';
+import type { ItemType } from './constants/itemTypes';
 import { GameStateLifecycle } from './state/GameStateLifecycle';
 import { GameStateScreenManager } from './state/GameStateScreenManager';
 import { GameStateDataFacade } from './state/GameStateDataFacade';
@@ -56,6 +58,7 @@ class GameState {
     playing: boolean;
     lifecycle: GameStateLifecycle;
     reviveSnapshot: ReviveSnapshot | null;
+    lastKillerEnemyId: string | null;
     editorMode: boolean;
 
     constructor() {
@@ -112,8 +115,11 @@ class GameState {
                 damageShield: 0,
                 damageShieldMax: 0,
                 swordType: null,
+                swordDurability: 0,
                 lastDamageReduction: 0,
-                godMode: false
+                godMode: false,
+                lastAttackTime: 0,
+                stunUntil: 0
             },
             dialog: { active: false, text: "", page: 1, maxPages: 1, meta: null },
             enemies: [],
@@ -142,6 +148,7 @@ class GameState {
             skillRuntime: null
         } as RuntimeState;
         this.testSettings = this.createDefaultTestSettings();
+        this.lastKillerEnemyId = null;
 
         this.worldManager = new StateWorldManager(this.game, roomSize);
         this.variableManager = new StateVariableManager(this.game, this.state);
@@ -372,6 +379,7 @@ class GameState {
         this.setGameOver(false);
         this.hidePickupOverlay();
         this.clearNecromancerRevive();
+        this.lastKillerEnemyId = null;
         this.hideLevelUpCelebration({ skipResume: true });
         this.resumeGame('game-over');
     }
@@ -472,6 +480,33 @@ class GameState {
 
     getSwordType() {
         return this.playerManager.getSwordType();
+    }
+
+    setSwordType(swordType: string | null) {
+        this.playerManager.setSwordType(swordType);
+    }
+
+    getSwordDurability() {
+        return this.playerManager.getSwordDurability();
+    }
+
+    setSwordDurability(durability: number) {
+        this.playerManager.setSwordDurability(durability);
+    }
+
+    consumeSwordDurability(): boolean {
+        return this.playerManager.consumeSwordDurability();
+    }
+
+    getPlayerDamage(): number {
+        const swordType = this.playerManager.getSwordType();
+        if (!swordType) return 1; // Base damage without sword
+
+        const itemDef = ItemDefinitions.getItemDefinition(swordType as ItemType);
+        if (!itemDef) return 1;
+
+        const damage = itemDef.getSwordDamage();
+        return damage !== null ? damage : 1;
     }
 
     consumeKey() {
@@ -746,6 +781,14 @@ class GameState {
         return Boolean(this.skillManager.hasPendingManualRevive() && this.reviveSnapshot);
     }
 
+    setLastKillerEnemy(enemyId: string | null): void {
+        this.lastKillerEnemyId = enemyId;
+    }
+
+    getLastKillerEnemyId(): string | null {
+        return this.lastKillerEnemyId;
+    }
+
     reviveFromNecromancer(): boolean {
         if (!this.hasNecromancerReviveReady()) return false;
         const restored = this.restoreReviveSnapshot(this.reviveSnapshot);
@@ -762,6 +805,14 @@ class GameState {
             : 1;
         this.state.player.currentLives = maxLives;
         this.state.player.lives = maxLives;
+
+        // Kill only the enemy that killed the player (not all enemies in room)
+        // Use removeEnemyFromRuntime to preserve enemy for game reset
+        if (this.lastKillerEnemyId) {
+            this.enemyManager.removeEnemyFromRuntime(this.lastKillerEnemyId);
+            this.lastKillerEnemyId = null;
+        }
+
         this.lifecycle.setGameOver(false);
         this.lifecycle.resumeGame('game-over');
         this.screenManager.clearGameOverCooldown();

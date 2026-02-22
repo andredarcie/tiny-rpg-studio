@@ -200,18 +200,10 @@ class NPCManager {
     ensureDefaultNPCs() {
         const allowedTypes = new Set(NPC_MANAGER_DEFINITIONS.map((def) => def.type));
         const normalized: NPCInstance[] = [];
-        const seen = new Set<string>();
 
         for (const npc of this.sprites) {
             if (!npc.type || !allowedTypes.has(npc.type)) continue;
-            if (seen.has(npc.type)) continue;
             normalized.push(this.normalizeNPC(npc));
-            seen.add(npc.type);
-        }
-
-        for (const def of NPC_MANAGER_DEFINITIONS) {
-            if (seen.has(def.type)) continue;
-            normalized.push(this.createFromDefinition(def));
         }
 
         this.sprites = normalized;
@@ -220,13 +212,13 @@ class NPCManager {
 
     normalizeNPC(npc: NPCInput) {
         const def = getNpcDefinition(npc.type || null);
-        const sequentialId = def ? sequentialIdForType(def.type) : null;
         const existingId = typeof npc.id === 'string' ? npc.id.trim() : '';
         const parsed = parseSequentialId(existingId);
         if (parsed) {
             ensureCounterAbove(parsed);
         }
-        const id = sequentialId || existingId || this.generateId();
+        // Use existing ID if valid, otherwise generate new unique ID (not sequential by type)
+        const id = existingId || this.generateId();
         const baseName = def ? resolveDefinitionName(def) : null;
         const name = npc.name || baseName || getNpcLocaleText('npc.defaultName', 'NPC');
         const { text, textKey } = normalizeNpcText(npc, def);
@@ -299,20 +291,37 @@ class NPCManager {
         }
     }
 
+    /**
+     * Create a new NPC instance for the editor (allows multiple instances of same type).
+     * This is called when placing an NPC in the editor.
+     */
+    createNPC(type: string, roomIndex?: number): NPCInstance | null {
+        const def = getNpcDefinition(type);
+        if (!def) return null;
+
+        const npc = this.normalizeNPC({
+            type: def.type,
+            name: resolveDefinitionName(def),
+            text: resolveDefinitionText(def),
+            textKey: def.defaultTextKey || null,
+            x: 1,
+            y: 1,
+            roomIndex: roomIndex ?? 0,
+            placed: false
+        });
+
+        this.sprites.push(npc);
+        return npc;
+    }
+
     addNPC(data: NPCInput) {
         const def = data.type ? getNpcDefinition(data.type) : null;
         if (!def) {
             return null;
         }
 
-        const existing = this.getNPCByType(def.type);
-        if (existing) {
-            Object.assign(existing, this.normalizeNPC({ ...existing, ...data, id: existing.id, type: def.type }));
-            return existing.id;
-        }
-
+        // Don't check for existing by type - allow multiple instances
         const npc = this.normalizeNPC({
-            id: def.id,
             type: def.type,
             name: resolveDefinitionName(def),
             text: data.text ?? resolveDefinitionText(def),
@@ -337,10 +346,8 @@ class NPCManager {
     removeNPC(npcId: string) {
         const npc = this.getNPC(npcId);
         if (!npc) return false;
-        npc.placed = false;
-        npc.x = 1;
-        npc.y = 1;
-        npc.roomIndex = 0;
+        // Actually remove the NPC from the array (like objects do)
+        this.sprites = this.sprites.filter((s) => s.id !== npcId);
         return true;
     }
 
@@ -348,16 +355,16 @@ class NPCManager {
         const npc = this.getNPC(npcId);
         if (!npc) return;
 
+        if (roomIndex !== null && roomIndex !== npc.roomIndex) {
+            return false;
+        }
+
         npc.x = clamp(Number(x), 0, 7, npc.x);
         npc.y = clamp(Number(y), 0, 7, npc.y);
         npc.initialX = npc.x;
         npc.initialY = npc.y;
-        if (roomIndex !== null) {
-            const maxRoomIndex = Math.max(0, this.gameState.game.rooms.length - 1);
-            npc.roomIndex = clamp(Number(roomIndex), 0, maxRoomIndex, npc.roomIndex);
-            npc.initialRoomIndex = npc.roomIndex;
-        }
         npc.placed = true;
+
         return true;
     }
 

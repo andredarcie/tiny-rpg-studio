@@ -105,6 +105,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         behavior: {
             order: 80,
             swordDurability: 5,
+            swordDamage: 4,
             tags: ['placeable', 'collectible', 'sword', 'hide-when-collected']
         },
         sprite: SpriteMatrixRegistry.get('object', 'sword')
@@ -117,6 +118,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         behavior: {
             order: 90,
             swordDurability: 4,
+            swordDamage: 3,
             tags: ['placeable', 'collectible', 'sword', 'hide-when-collected']
         },
         sprite: SpriteMatrixRegistry.get('object', 'sword-bronze')
@@ -129,6 +131,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         behavior: {
             order: 100,
             swordDurability: 3,
+            swordDamage: 2,
             tags: ['placeable', 'collectible', 'sword', 'hide-when-collected']
         },
         sprite: SpriteMatrixRegistry.get('object', 'sword-wood')

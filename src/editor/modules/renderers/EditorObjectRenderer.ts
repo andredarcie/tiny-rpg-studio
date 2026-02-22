@@ -1,6 +1,7 @@
 
 import { StateObjectManager } from '../../../runtime/domain/state/StateObjectManager';
-import { ITEM_TYPES } from '../../../runtime/domain/constants/itemTypes';
+import { ITEM_TYPES, type ItemType } from '../../../runtime/domain/constants/itemTypes';
+import { ItemDefinitions } from '../../../runtime/domain/definitions/ItemDefinitions';
 import { EditorConstants } from '../EditorConstants';
 import { EditorRendererBase } from './EditorRendererBase';
 
@@ -33,14 +34,26 @@ class EditorObjectRenderer extends EditorRendererBase {
         if (!container) return;
         container.innerHTML = '';
 
+        this.manager.objectService.updateCategoryButtons();
+
         const definitions = EditorConstants.OBJECT_DEFINITIONS as ObjectDefinitionView[];
         if (!Array.isArray(definitions) || !definitions.length) return;
+
+        const categoryFilter = this.state.objectCategoryFilter || 'all';
+        const filteredDefinitions = definitions.filter((def) => {
+            if (categoryFilter === 'all') return true;
+            if (categoryFilter === 'swords') {
+                const itemDef = ItemDefinitions.getItemDefinition(def.type as ItemType);
+                return itemDef && itemDef.hasTag('sword');
+            }
+            return true;
+        });
 
         const selectedType = this.manager.selectedObjectType;
         const placedObjects = (this.gameEngine.getObjectsForRoom(this.state.activeRoomIndex) || []) as EditorObject[];
         const placedTypes = new Set(placedObjects.map((object) => object.type));
 
-        definitions.forEach((definition) => {
+        filteredDefinitions.forEach((definition) => {
             const card = document.createElement('div');
             card.className = 'object-type-card';
             card.dataset.type = definition.type;
@@ -71,6 +84,42 @@ class EditorObjectRenderer extends EditorRendererBase {
                 : this.t('objects.info.available');
 
             meta.append(name, info);
+
+            // Add sword stats (durability and damage) if it's a sword
+            const itemDef = ItemDefinitions.getItemDefinition(definition.type as ItemType);
+            if (itemDef && itemDef.hasTag('sword')) {
+                const durability = itemDef.getSwordDurability();
+                const damage = itemDef.getSwordDamage();
+
+                if (durability !== null || damage !== null) {
+                    const stats = document.createElement('div');
+                    stats.className = 'object-type-stats';
+
+                    if (damage !== null) {
+                        const damageSpan = document.createElement('span');
+                        damageSpan.className = 'object-stat-damage';
+                        damageSpan.textContent = `${damage}`;
+                        stats.appendChild(damageSpan);
+                    }
+
+                    if (durability !== null && damage !== null) {
+                        const separator = document.createElement('span');
+                        separator.className = 'object-stat-separator';
+                        separator.textContent = '⚔';
+                        stats.appendChild(separator);
+                    }
+
+                    if (durability !== null) {
+                        const durabilitySpan = document.createElement('span');
+                        durabilitySpan.className = 'object-stat-durability';
+                        durabilitySpan.textContent = `${durability}`;
+                        stats.appendChild(durabilitySpan);
+                    }
+
+                    meta.appendChild(stats);
+                }
+            }
+
             card.append(preview, meta);
             container.appendChild(card);
         });
@@ -129,6 +178,7 @@ class EditorObjectRenderer extends EditorRendererBase {
                     this.gameEngine.setObjectVariable(object.type, object.roomIndex, select.value);
                     this.renderObjects();
                     this.service.worldRenderer.renderWorldGrid();
+                    this.service.renderEditor();
                     this.manager.updateJSON();
                     this.manager.history.pushCurrentState();
                 });

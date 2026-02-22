@@ -8,8 +8,14 @@ import { RendererHudRenderer } from './renderer/RendererHudRenderer';
 import { RendererEffectsManager } from './renderer/RendererEffectsManager';
 import { RendererTransitionManager } from './renderer/RendererTransitionManager';
 import { RendererOverlayRenderer } from './renderer/RendererOverlayRenderer';
+import { RendererCombatAnimator } from './renderer/RendererCombatAnimator';
+import { RendererCameraShake } from './renderer/RendererCameraShake';
+import { RendererFloatingText } from './renderer/RendererFloatingText';
+import { RendererParticleSystem } from './renderer/RendererParticleSystem';
+import { RendererAttackTelegraph } from './renderer/RendererAttackTelegraph';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
+import { DebugFlags } from '../debug/DebugFlags';
 
 type SpriteMatrix = (string | null)[][];
 type SpriteMap = Record<string, SpriteMatrix | undefined>;
@@ -18,6 +24,8 @@ type RendererGameState = {
     isPickupOverlayActive?: () => boolean;
     isLevelUpCelebrationActive?: () => boolean;
     isLevelUpOverlayActive?: () => boolean;
+    getPlayer?: () => { roomIndex: number; x: number; y: number };
+    getEnemies?: () => { id?: string; roomIndex: number; x: number; y: number; lastX: number; lastY?: number }[];
     isGameOver: () => boolean;
     isEditorModeActive?: () => boolean;
 };
@@ -58,11 +66,11 @@ class Renderer {
     effectsManager!: RendererEffectsManager;
     transitionManager!: RendererTransitionManager;
     overlayRenderer!: RendererOverlayRenderer;
-    playerSprite: SpriteMatrix | null;
-    npcSprites: SpriteMap;
-    enemySprites: SpriteMap;
-    enemySprite: SpriteMatrix | null;
-    objectSprites: SpriteMap;
+    combatAnimator!: RendererCombatAnimator;
+    cameraShake!: RendererCameraShake;
+    floatingText!: RendererFloatingText;
+    particleSystem!: RendererParticleSystem;
+    attackTelegraph!: RendererAttackTelegraph;
     drawIconIdNextFrame: string;
     timeIconOverPlayer: number;
     tileAnimationInterval: number;
@@ -121,18 +129,101 @@ class Renderer {
         this.effectsManager = new RendererEffectsManager(this as never);
         this.transitionManager = new RendererTransitionManager(this as never);
         this.overlayRenderer = new RendererOverlayRenderer(this as never);
+        this.combatAnimator = new RendererCombatAnimator(this as never);
+        this.cameraShake = new RendererCameraShake(this as never);
+        this.floatingText = new RendererFloatingText(this as never);
+        this.particleSystem = new RendererParticleSystem(this as never);
+        this.attackTelegraph = new RendererAttackTelegraph(this as never);
 
-        // Compatibilidade com código existente que acessa sprites diretamente.
-        this.playerSprite = this.spriteFactory.getPlayerSprite();
-        this.npcSprites = this.spriteFactory.getNpcSprites() as SpriteMap;
-        this.enemySprites = this.spriteFactory.getEnemySprites() as SpriteMap;
-        this.enemySprite = this.spriteFactory.getEnemySprite();
-        this.objectSprites = this.spriteFactory.getObjectSprites() as SpriteMap;
+        // Connect attack telegraph to entity renderer for wind-up animations
+        this.entityRenderer.attackTelegraph = this.attackTelegraph;
+
         this.drawIconIdNextFrame = '';
         this.timeIconOverPlayer = GameConfig.animation.iconOverPlayerDuration;
         this.tileAnimationInterval = GameConfig.animation.tileInterval;
         this.tileAnimationTimer = null;
         this.startTileAnimationLoop();
+    }
+
+    /**
+     * Debug visualization: Draw enemy vision range overlay
+     */
+    private drawEnemyVisionDebug(ctx: CanvasRenderingContext2D): void {
+        if (!DebugFlags.showEnemyVision) return;
+
+        const player = this.gameState.getPlayer?.();
+        const enemies = this.gameState.getEnemies?.();
+        if (!player || !enemies) return;
+
+        const visionRange = GameConfig.enemy.vision.range;
+        const roomSize = GameConfig.world.roomSize;
+        const tileSize = this.canvasHelper.getTilePixelSize();
+
+        enemies.forEach(enemy => {
+            if (enemy.roomIndex !== player.roomIndex) return;
+
+            // Calculate vision tiles based on directional vision
+            for (let dx = -visionRange; dx <= visionRange; dx++) {
+                for (let dy = -visionRange; dy <= visionRange; dy++) {
+                    const tileX = enemy.x + dx;
+                    const tileY = enemy.y + dy;
+
+                    // Skip tiles outside room bounds
+                    if (tileX < 0 || tileX >= roomSize || tileY < 0 || tileY >= roomSize) continue;
+
+                    // Check if this tile is in enemy's vision using directional logic
+                    const canSee = this.canEnemySeeTile(enemy, tileX, tileY);
+                    if (!canSee) continue;
+
+                    // Draw red transparent overlay on this tile
+                    const screenX = tileX * tileSize;
+                    const screenY = tileY * tileSize;
+
+                    ctx.save();
+                    ctx.fillStyle = GameConfig.debug.visionOverlayColor;
+                    ctx.globalAlpha = GameConfig.debug.visionOverlayOpacity;
+                    ctx.fillRect(screenX, screenY, tileSize, tileSize);
+                    ctx.restore();
+                }
+            }
+        });
+    }
+
+    /**
+     * Check if enemy can see a specific tile based on directional vision
+     * Uses same logic as EnemyManager.canEnemySeePlayer
+     */
+    private canEnemySeeTile(enemy: { x: number; y: number; lastX: number; lastY?: number }, tileX: number, tileY: number): boolean {
+        // Get last known positions (default to current position if never set)
+        const lastX = typeof enemy.lastX === 'number' ? enemy.lastX : enemy.x;
+        const lastY = typeof enemy.lastY === 'number' ? enemy.lastY : enemy.y;
+
+        // Calculate movement deltas
+        const deltaX = enemy.x - lastX;
+        const deltaY = enemy.y - lastY;
+
+        // Determine which axis had more movement to decide primary facing direction
+        const absDeltaX = Math.abs(deltaX);
+        const absDeltaY = Math.abs(deltaY);
+
+        // Special case: if both deltas are 0 (stopped) and lastY exists, prefer vertical
+        if (absDeltaX === 0 && absDeltaY === 0 && typeof enemy.lastY === 'number') {
+            // Stopped with vertical tracking - face down by default
+            return tileY >= enemy.y;
+        }
+
+        // If enemy is moving or has moved primarily horizontally
+        if (absDeltaX >= absDeltaY) {
+            // Facing direction based on X movement (or default to right if no movement)
+            const facingRight = deltaX >= 0;
+            // Can ONLY see in facing direction
+            return facingRight ? tileX >= enemy.x : tileX <= enemy.x;
+        } else {
+            // Facing direction based on Y movement
+            const facingDown = deltaY >= 0;
+            // Can ONLY see in facing direction
+            return facingDown ? tileY >= enemy.y : tileY <= enemy.y;
+        }
     }
 
     draw() {
@@ -146,7 +237,9 @@ class Renderer {
         const levelUpCelebrationActive = this.gameState.isLevelUpCelebrationActive?.();
         const levelUpOverlayActive = this.gameState.isLevelUpOverlayActive?.();
         ctx.save();
-        ctx.translate(0, this.gameplayOffsetY);
+        // Apply camera shake offset
+        const shakeOffset = this.cameraShake.getCurrentOffset();
+        ctx.translate(shakeOffset.x, this.gameplayOffsetY + shakeOffset.y);
 
         if (this.transitionManager.isActive()) {
             this.transitionManager.drawFrame(ctx, gameplayCanvas);
@@ -161,8 +254,16 @@ class Renderer {
                 this.entityRenderer.drawObjects(ctx);
                 this.entityRenderer.drawItems(ctx);
                 this.entityRenderer.drawNPCs(ctx);
+                // Debug: Draw enemy vision overlay before enemies
+                this.drawEnemyVisionDebug(ctx);
                 this.entityRenderer.drawEnemies(ctx);
                 this.entityRenderer.drawPlayer(ctx);
+                // Draw enemy life markers AFTER player to ensure they're always visible on top
+                this.entityRenderer.drawAllEnemyLivesMarkers(ctx);
+                // Draw combat effects after entities
+                this.particleSystem.draw(ctx);
+                this.entityRenderer.drawFlyingLifeSquares(ctx);
+                this.floatingText.draw(ctx);
                 if (this.drawIconIdNextFrame) {
                     this.drawTileIconOnPlayer(ctx, this.drawIconIdNextFrame);
                 }
@@ -346,6 +447,33 @@ class Renderer {
         this.effectsManager.flashScreen(options);
     }
 
+    /**
+     * Spawn a flying life square animation when enemy loses a life
+     * @param enemyX Enemy X position in tiles
+     * @param enemyY Enemy Y position in tiles
+     * @param lostLifeIndex Index of the life that was lost (rightmost square)
+     */
+    spawnEnemyLifeLoss(enemyX: number, enemyY: number, lostLifeIndex: number): void {
+        const tileSize = this.canvasHelper.getTilePixelSize();
+        const px = enemyX * tileSize;
+        const py = enemyY * tileSize;
+        this.entityRenderer.spawnFlyingLifeSquare(px, py, tileSize, lostLifeIndex);
+    }
+
+    /**
+     * Apply grayscale filter to canvas for death effect
+     */
+    applyGrayscaleFilter(): void {
+        this.canvas.style.filter = 'grayscale(100%)';
+    }
+
+    /**
+     * Remove grayscale filter from canvas
+     */
+    removeGrayscaleFilter(): void {
+        this.canvas.style.filter = '';
+    }
+
     drawObjectSprite(
         ctx: CanvasRenderingContext2D,
         type: string,
@@ -360,26 +488,42 @@ class Renderer {
         this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
     }
 
+    // Getters para compatibilidade com código existente que acessa sprites diretamente.
+    get playerSprite(): SpriteMatrix | null {
+        return this.spriteFactory.getPlayerSprite();
+    }
+
+    get npcSprites(): SpriteMap {
+        return this.spriteFactory.getNpcSprites() as SpriteMap;
+    }
+
+    get enemySprites(): SpriteMap {
+        return this.spriteFactory.getEnemySprites() as SpriteMap;
+    }
+
+    get enemySprite(): SpriteMatrix | null {
+        return this.spriteFactory.getEnemySprite();
+    }
+
+    get objectSprites(): SpriteMap {
+        return this.spriteFactory.getObjectSprites() as SpriteMap;
+    }
+
     // Métodos preservados para compatibilidade.
     buildPlayerSprite() {
-        this.playerSprite = this.spriteFactory.getPlayerSprite();
-        return this.playerSprite;
+        return this.spriteFactory.getPlayerSprite();
     }
 
     buildNpcSprites() {
-        this.npcSprites = this.spriteFactory.getNpcSprites() as SpriteMap;
-        return this.npcSprites;
+        return this.spriteFactory.getNpcSprites() as SpriteMap;
     }
 
     buildEnemySprite() {
-        this.enemySprites = this.spriteFactory.getEnemySprites() as SpriteMap;
-        this.enemySprite = this.spriteFactory.getEnemySprite();
-        return this.enemySprite;
+        return this.spriteFactory.getEnemySprite();
     }
 
     buildObjectSprites() {
-        this.objectSprites = this.spriteFactory.getObjectSprites() as SpriteMap;
-        return this.objectSprites;
+        return this.spriteFactory.getObjectSprites() as SpriteMap;
     }
 }
 

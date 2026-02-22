@@ -10,8 +10,6 @@ class RendererHudRenderer {
     backgroundColor: string;
     viewportOffsetY: number;
     canvasHelper: CanvasHelperApi;
-    healthIconDefinitions: Record<string, (string | null)[][]>;
-    objectSprites: Record<string, (string | null)[][] | undefined>;
 
     constructor(gameState: GameStateApi, entityRenderer: EntityRendererApi, paletteManager: PaletteManagerApi) {
         this.gameState = gameState;
@@ -22,9 +20,39 @@ class RendererHudRenderer {
         this.backgroundColor = GameConfig.hud.backgroundColor;
         this.viewportOffsetY = 0;
         this.canvasHelper = entityRenderer.canvasHelper;
-        this.healthIconDefinitions = {};
-        this.objectSprites = this.entityRenderer.spriteFactory?.getObjectSprites?.() || {};
-        this.setupHealthIcons();
+    }
+
+    // Getter to always get fresh sprites with current palette
+    get objectSprites(): Record<string, (string | null)[][] | undefined> {
+        return this.entityRenderer.spriteFactory?.getObjectSprites?.() || {};
+    }
+
+    // Getter to always generate health icons with current palette
+    get healthIconDefinitions(): Record<string, (string | null)[][]> {
+        const white = this.paletteManager.getColor(7);
+        const red = this.paletteManager.getColor(8);
+        return {
+            full: [
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null,red,red, null,red,red, null ],
+                [ null,red,red,red,red,red,white,red ],
+                [ null,red,red,red,red,red,red,red ],
+                [ null, null,red,red,red,red,red, null ],
+                [ null, null, null,red,red,red, null, null ],
+                [ null, null, null, null,red, null, null, null ]
+            ],
+            empty: [
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null, null, null, null, null, null, null ],
+                [ null, null,red,red, null,red,red, null ],
+                [ null,red,null,null,red,null,null,red ],
+                [ null,red,null,null,null,null,null,red ],
+                [ null, null,red,null,null,null,red, null ],
+                [ null, null, null,red,null,red, null, null ],
+                [ null, null, null, null,red, null, null, null ]
+            ]
+        };
     }
 
     drawHUD(ctx: CanvasRenderingContext2D, area: HudArea = {}) {
@@ -57,8 +85,8 @@ class RendererHudRenderer {
         const rightReserved = miniMapSize + this.gap + labelWidth + labelGap;
         const availableWidth = Math.max(0, width - padding - rightReserved);
 
-        const heartBaseSize = this.canvasHelper.getTilePixelSize?.() ?? 16;
-        const maxLives = this.gameState.getMaxLives?.() ?? 0;
+        const heartBaseSize = this.canvasHelper.getTilePixelSize();
+        const maxLives = this.gameState.getMaxLives();
         const heartSize = Math.max(6, Math.min(height - padding * 2, heartBaseSize / 2));
         const heartStride = heartSize + 2;
         const minPerRow = maxLives > 0 ? Math.max(1, Math.ceil(maxLives / 2)) : 1;
@@ -97,9 +125,7 @@ class RendererHudRenderer {
         const maxSlots = Math.min(9, this.gameState.getMaxKeys());
         let keys = this.gameState.getKeys();
         keys = Math.max(0, Math.min(maxSlots, keys));
-        const swordShield = Math.max(0, this.gameState.getDamageShield());
-        const swordShieldMax = Math.max(0, this.gameState.getDamageShieldMax());
-        const swordType = this.gameState.getSwordType?.() || null;
+        const swordType = this.gameState.getSwordType() || null;
 
         ctx.save();
         ctx.translate(offsetX, offsetY);
@@ -111,7 +137,7 @@ class RendererHudRenderer {
             return;
         }
 
-        const baseSize = this.canvasHelper.getTilePixelSize?.() ?? 16;
+        const baseSize = this.canvasHelper.getTilePixelSize();
         const availableHeight = Math.max(0, height - padding * 2);
         const maxIconSize = Math.max(6, Math.min(availableHeight, baseSize / 2));
         const fittedIconSize = Math.min(
@@ -139,17 +165,13 @@ class RendererHudRenderer {
         }
 
         const swordSprite = this.getSwordHudSprite(swordType);
-        if (swordShield > 0 && swordSprite) {
-            const tileSize = this.canvasHelper.getTilePixelSize?.() ?? 16;
+        if (swordType && swordSprite) {
+            const tileSize = this.canvasHelper.getTilePixelSize();
             const swordSize = tileSize;
             const swordX = width - padding - swordSize;
             const swordY = padding + Math.max(0, Math.round((height - padding * 2 - swordSize) / 2));
             const step = swordSize / 8;
-            const alpha = swordShieldMax > 0 ? Math.max(0.25, Math.min(1, swordShield / swordShieldMax)) : 1;
-            ctx.save();
-            ctx.globalAlpha = alpha;
             this.canvasHelper.drawSprite(ctx, swordSprite, swordX, swordY, step);
-            ctx.restore();
         }
 
         ctx.restore();
@@ -164,8 +186,8 @@ class RendererHudRenderer {
     }
 
     drawHealth(ctx: CanvasRenderingContext2D, options: HealthOptions = {}) {
-        const currentLives = this.gameState.getLives?.() ?? 0;
-        const maxLives = this.gameState.getMaxLives?.() ?? 0;
+        const currentLives = this.gameState.getLives();
+        const maxLives = this.gameState.getMaxLives();
 
         const offsetX = Number.isFinite(options.offsetX) ? (options.offsetX as number) : 0;
         const offsetY = Number.isFinite(options.offsetY) ? (options.offsetY as number) : 0;
@@ -174,7 +196,7 @@ class RendererHudRenderer {
             ? Math.max(1, Math.floor(options.heartsPerRow as number))
             : 5;
 
-        const tilePixelSize = this.canvasHelper.getTilePixelSize?.() ?? 16;
+        const tilePixelSize = this.canvasHelper.getTilePixelSize();
         let iconSize = Number.isFinite(options.heartSize) && (options.heartSize as number) > 0
             ? (options.heartSize as number)
             : tilePixelSize / 2;
@@ -194,8 +216,8 @@ class RendererHudRenderer {
     }
 
     getLevelLabel() {
-        const level = this.gameState.getLevel?.();
-        if (!Number.isFinite(level) || level === undefined) {
+        const level = this.gameState.getLevel();
+        if (!Number.isFinite(level)) {
             return null;
         }
         return `LVL ${Math.max(1, Math.floor(level))}`;
@@ -206,7 +228,7 @@ class RendererHudRenderer {
         const cols = 3;
         const bgColor = 'rgba(255,255,255,0.08)';
         const borderColor = 'rgba(255,255,255,0.25)';
-        const activeColor = '#64b5f6';
+        const activeColor = this.paletteManager.getColor(12);
 
         ctx.save();
         ctx.translate(x, y);
@@ -214,10 +236,10 @@ class RendererHudRenderer {
         ctx.strokeStyle = 'rgba(255,255,255,0.12)';
         ctx.strokeRect(-2, -2, mapSize + 4, mapSize + 4);
 
-        const game = this.gameState.getGame?.();
-        const worldRows = Math.max(1, game?.world?.rows || 1);
-        const worldCols = Math.max(1, game?.world?.cols || 1);
-        const playerRoom = this.gameState.getPlayer?.().roomIndex ?? 0;
+        const game = this.gameState.getGame();
+        const worldRows = Math.max(1, game.world?.rows || 1);
+        const worldCols = Math.max(1, game.world?.cols || 1);
+        const playerRoom = this.gameState.getPlayer().roomIndex ?? 0;
         const playerRow = Math.floor(playerRoom / worldCols);
         const playerCol = playerRoom % worldCols;
         const rowChunk = Math.max(1, Math.ceil(worldRows / rows));
@@ -240,7 +262,7 @@ class RendererHudRenderer {
     }
 
     drawXpBar(ctx: CanvasRenderingContext2D, x: number, y: number) {
-        const xpNeeded = this.gameState.getExperienceToNext?.() ?? 0;
+        const xpNeeded = this.gameState.getExperienceToNext();
         if (!Number.isFinite(xpNeeded) || xpNeeded <= 0) {
             return;
         }
@@ -253,7 +275,7 @@ class RendererHudRenderer {
         ctx.lineTo(x+totalBarSize, y);
         ctx.stroke();
 
-        const currentXp = this.gameState.getExperience?.() ?? 0;
+        const currentXp = this.gameState.getExperience();
         if (currentXp === 0) {return;}
         const barSize = (currentXp * totalBarSize / xpNeeded);
 
@@ -266,32 +288,6 @@ class RendererHudRenderer {
         ctx.stroke();
     }
 
-    setupHealthIcons() {
-        const white = this.paletteManager.getColor(7);
-        const red = this.paletteManager.getColor(8);
-        this.healthIconDefinitions = {
-            full: [
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null,red,red, null,red,red, null ],
-                [ null,red,red,red,red,red,white,red ],
-                [ null,red,red,red,red,red,red,red ],
-                [ null, null,red,red,red,red,red, null ],
-                [ null, null, null,red,red,red, null, null ],
-                [ null, null, null, null,red, null, null, null ]
-            ],
-            empty: [
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null,red,red, null,red,red, null ],
-                [ null,red,null,null,red,null,null,red ],
-                [ null,red,null,null,null,null,null,red ],
-                [ null, null,red,null,null,null,red, null ],
-                [ null, null, null,red,null,red, null, null ],
-                [ null, null, null, null,red, null, null, null ]
-            ]
-        }
-    }
 }
 
 type HudArea = {
@@ -314,18 +310,18 @@ type HealthOptions = {
 
 type GameStateApi = {
     isGameOver: () => boolean;
-    getMaxLives?: () => number;
-    getLives?: () => number;
+    getMaxLives: () => number;
+    getLives: () => number;
     getMaxKeys: () => number;
     getKeys: () => number;
     getDamageShield: () => number;
     getDamageShieldMax: () => number;
-    getSwordType?: () => string | null;
-    getLevel?: () => number;
-    getGame?: () => { world?: { rows?: number; cols?: number } };
-    getPlayer?: () => { roomIndex?: number };
-    getExperienceToNext?: () => number;
-    getExperience?: () => number;
+    getSwordType: () => string | null;
+    getLevel: () => number;
+    getGame: () => { world?: { rows?: number; cols?: number } };
+    getPlayer: () => { roomIndex?: number };
+    getExperienceToNext: () => number;
+    getExperience: () => number;
 };
 
 type EntityRendererApi = {
@@ -334,7 +330,7 @@ type EntityRendererApi = {
 };
 
 type CanvasHelperApi = {
-    getTilePixelSize?: () => number;
+    getTilePixelSize: () => number;
     drawSprite: (
         ctx: CanvasRenderingContext2D,
         sprite: (string | null)[][],

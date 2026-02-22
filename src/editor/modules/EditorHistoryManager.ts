@@ -46,8 +46,14 @@ class EditorHistoryManager {
     restoreCurrent() {
         const snapshot = this.stack[this.index];
         if (!snapshot) return;
-        const data: Record<string, unknown> = JSON.parse(snapshot) as Record<string, unknown>;
-        this.editorManager.restore(data, { skipHistory: true });
+        try {
+            const data: Record<string, unknown> = JSON.parse(snapshot) as Record<string, unknown>;
+            this.editorManager.restore(data, { skipHistory: true });
+        } catch (error) {
+            console.error('Failed to restore snapshot at index', this.index, error);
+            this.stack.splice(this.index, 1);
+            this.index = Math.min(this.index, this.stack.length - 1);
+        }
     }
 }
 

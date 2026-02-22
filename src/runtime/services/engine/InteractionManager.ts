@@ -197,10 +197,20 @@ class InteractionManager {
         if (!this.shouldPickupSword(object.type)) {
           return false;
         }
-        const durability = this.getSwordDurability(object.type);
         object.collected = true;
+        const swordType = object.type;
+        const durability = this.getSwordDurability(swordType);
+        const gameStateWithSword = this.gameState as typeof this.gameState & {
+          setSwordType?: (type: ItemType) => void;
+          setSwordDurability?: (durability: number) => void;
+        };
         this.showPickupOverlay(object.type, () => {
-          this.gameState.addDamageShield?.(durability, object.type);
+          if (gameStateWithSword.setSwordType) {
+            gameStateWithSword.setSwordType(swordType);
+          }
+          if (gameStateWithSword.setSwordDurability) {
+            gameStateWithSword.setSwordDurability(durability);
+          }
         });
         return true;
       }

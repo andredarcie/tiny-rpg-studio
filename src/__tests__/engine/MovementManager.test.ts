@@ -6,6 +6,7 @@ describe('MovementManager', () => {
   const getSpy = vi.spyOn(TextResources, 'get');
   const formatSpy = vi.spyOn(TextResources, 'format');
   const createGameState = (dialogActive = false) => ({
+    playing: true,
     game: { roomSize: 8 },
     isGameOver: () => false,
     isLevelUpCelebrationActive: () => false,

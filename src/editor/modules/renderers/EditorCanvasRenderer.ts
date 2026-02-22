@@ -1,13 +1,23 @@
 
 import { EditorRendererBase } from './EditorRendererBase';
 
-type CanvasObject = { type: string; roomIndex: number; x: number; y: number };
-type CanvasNpc = { type: string; roomIndex: number; x: number; y: number; placed?: boolean };
-type CanvasEnemy = { type: string; roomIndex: number; x: number; y: number; id?: string };
+type CanvasObject = { type: string; roomIndex: number; x: number; y: number; variableId?: string | null };
+type CanvasNpc = {
+    type: string;
+    roomIndex: number;
+    x: number;
+    y: number;
+    placed?: boolean;
+    conditionVariableId?: string | null;
+    rewardVariableId?: string | null;
+    conditionalRewardVariableId?: string | null;
+};
+type CanvasEnemy = { type: string; roomIndex: number; x: number; y: number; id?: string; defeatVariableId?: string | null };
 type TileMapWithLayers = {
     ground?: (string | number | null)[][];
     overlay?: (string | number | null)[][];
 };
+type VariableDefinition = { id: string; color?: string | null };
 
 class EditorCanvasRenderer extends EditorRendererBase {
     renderEditor(): void {
@@ -73,6 +83,10 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 object.y * tileSize,
                 step
             );
+            // Draw variable indicator outline
+            if (object.variableId) {
+                this.drawVariableOutline(ctx, object.x * tileSize, object.y * tileSize, tileSize, [object.variableId]);
+            }
         }
 
         const npcs = (this.gameEngine.getSprites() as CanvasNpc[]).filter(
@@ -90,6 +104,11 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 npc.y * tileSize,
                 step
             );
+            // Draw variable indicator outlines
+            const variableIds = [npc.conditionVariableId, npc.rewardVariableId, npc.conditionalRewardVariableId].filter((id): id is string => Boolean(id));
+            if (variableIds.length > 0) {
+                this.drawVariableOutline(ctx, npc.x * tileSize, npc.y * tileSize, tileSize, variableIds);
+            }
         }
 
         const enemies = (this.gameEngine.getActiveEnemies() as CanvasEnemy[]).filter(
@@ -107,7 +126,61 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 enemy.y * tileSize,
                 step
             );
+            // Draw variable indicator outline
+            if (enemy.defeatVariableId) {
+                this.drawVariableOutline(ctx, enemy.x * tileSize, enemy.y * tileSize, tileSize, [enemy.defeatVariableId]);
+            }
         }
+    }
+
+    getVariableColor(variableId: string): string | null {
+        const variables = this.gameEngine.getVariableDefinitions() as VariableDefinition[];
+        const variable = variables.find((v) => v.id === variableId);
+        if (!variable?.color) return null;
+        const color = this.service.resolvePicoColor(variable.color);
+        return typeof color === 'string' ? color : String(color);
+    }
+
+    drawVariableOutline(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, variableIds: string[]): void {
+        const validColors = variableIds
+            .map((id) => this.getVariableColor(id))
+            .filter((color): color is string => color !== null);
+
+        if (validColors.length === 0) return;
+
+        const lineWidth = 2;
+        const offset = lineWidth / 2;
+
+        ctx.save();
+        ctx.lineWidth = lineWidth;
+
+        if (validColors.length === 1) {
+            // Single outline for one variable
+            ctx.strokeStyle = validColors[0];
+            ctx.strokeRect(x + offset, y + offset, size - lineWidth, size - lineWidth);
+        } else if (validColors.length === 2) {
+            // Two outlines: outer and inner
+            ctx.strokeStyle = validColors[0];
+            ctx.strokeRect(x + offset, y + offset, size - lineWidth, size - lineWidth);
+
+            const innerOffset = lineWidth * 2;
+            ctx.strokeStyle = validColors[1];
+            ctx.strokeRect(x + innerOffset, y + innerOffset, size - innerOffset * 2, size - innerOffset * 2);
+        } else if (validColors.length >= 3) {
+            // Three outlines: outer, middle, inner
+            ctx.strokeStyle = validColors[0];
+            ctx.strokeRect(x + offset, y + offset, size - lineWidth, size - lineWidth);
+
+            const middleOffset = lineWidth * 2;
+            ctx.strokeStyle = validColors[1];
+            ctx.strokeRect(x + middleOffset, y + middleOffset, size - middleOffset * 2, size - middleOffset * 2);
+
+            const innerOffset = lineWidth * 4;
+            ctx.strokeStyle = validColors[2];
+            ctx.strokeRect(x + innerOffset, y + innerOffset, size - innerOffset * 2, size - innerOffset * 2);
+        }
+
+        ctx.restore();
     }
 
     drawTile(ctx: CanvasRenderingContext2D, tileId: string | number, px: number, py: number, size: number): void {

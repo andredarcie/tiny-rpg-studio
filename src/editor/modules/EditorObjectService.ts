@@ -144,6 +144,24 @@ class EditorObjectService {
         const fallbackTypes = new Set(itemCatalog.getPlaceableTypes());
         return fallbackTypes.has(type as never) ? (type as never as Parameters<typeof this.manager.gameEngine.gameState.objectManager.generateObjectId>[0]) : null;
     }
+
+    setCategoryFilter(category: string) {
+        if (!category) return;
+        this.state.objectCategoryFilter = category;
+        this.updateCategoryButtons();
+        this.manager.renderObjectCatalog();
+    }
+
+    updateCategoryButtons() {
+        const buttons = (Array.isArray(this.dom.objectCategoryButtons) ? this.dom.objectCategoryButtons : []) as HTMLButtonElement[];
+        if (!buttons.length) return;
+        const current = this.state.objectCategoryFilter || 'all';
+        buttons.forEach((btn) => {
+            const match = btn.dataset.objectCategoryFilter === current;
+            btn.classList.toggle('active', match);
+            btn.setAttribute('aria-pressed', match ? 'true' : 'false');
+        });
+    }
 }
 
 export { EditorObjectService };

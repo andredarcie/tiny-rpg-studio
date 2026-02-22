@@ -28,8 +28,11 @@ export type PlayerRuntimeState = {
     damageShield: number;
     damageShieldMax: number;
     swordType: string | null;
+    swordDurability: number;
     lastDamageReduction: number;
     godMode: boolean;
+    lastAttackTime: number;
+    stunUntil: number;
 };
 
 export type DialogState = {
@@ -47,11 +50,17 @@ export type EnemyDefinition = {
     x: number;
     y: number;
     lastX: number;
+    lastY?: number;
     lives?: number;
     defeatVariableId?: string | null;
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
+    attackWarning?: boolean;
+    moveDirectionX?: number;
+    moveDirectionY?: number;
+    moveDirectionSteps?: number;
+    deathStartTime?: number | null;
 };
 
 export type VariableDefinition = {
@@ -145,6 +154,7 @@ export type GameDefinition = {
     title: string;
     author: string;
     palette: string[];
+    customPalette?: string[];
     roomSize: number;
     world: { rows: number; cols: number };
     rooms: RoomDefinition[];
