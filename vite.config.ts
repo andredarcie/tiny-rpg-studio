@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
@@ -30,6 +31,13 @@ export default defineConfig({
   ],
   test: {
     environment: 'jsdom',
-    exclude: ['tests/e2e/**', 'node_modules/**']
+    setupFiles: ['src/__tests__/setup.ts'],
+    exclude: ['tests/e2e/**', 'node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov'],
+      reportsDirectory: './coverage',
+      exclude: ['node_modules/**', 'docs/**', 'src/__tests__/**', 'tests/**', 'public/**', '*.config.*']
+    }
   }
 })
