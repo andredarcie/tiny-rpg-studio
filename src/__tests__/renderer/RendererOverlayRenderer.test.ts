@@ -454,7 +454,7 @@ describe('RendererOverlayRenderer – ensurePickupAnimationLoop', () => {
         overlay.ensurePickupAnimationLoop();
         overlay.pickupAnimationHandle = 2;
         expect(capturedStep).toBeDefined();
-        (capturedStep as () => void)();
+        (capturedStep as unknown as () => void)();
         expect(overlay.pickupAnimationHandle).toBe(0);
     });
 
@@ -470,7 +470,7 @@ describe('RendererOverlayRenderer – ensurePickupAnimationLoop', () => {
         const overlay = new RendererOverlayRenderer(renderer as never);
         overlay.ensurePickupAnimationLoop();
         expect(capturedStep).toBeDefined();
-        (capturedStep as () => void)();
+        (capturedStep as unknown as () => void)();
         expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
         expect(renderer.draw).toHaveBeenCalled();
     });
@@ -511,7 +511,7 @@ describe('RendererOverlayRenderer – ensureLevelUpAnimationLoop', () => {
         overlay.ensureLevelUpAnimationLoop();
         overlay.levelUpAnimationHandle = 3;
         expect(capturedStep).toBeDefined();
-        (capturedStep as () => void)();
+        (capturedStep as unknown as () => void)();
         expect(overlay.levelUpAnimationHandle).toBe(0);
         expect(renderer.draw).toHaveBeenCalled();
     });
@@ -528,7 +528,7 @@ describe('RendererOverlayRenderer – ensureLevelUpAnimationLoop', () => {
         const overlay = new RendererOverlayRenderer(renderer as never);
         overlay.ensureLevelUpAnimationLoop();
         expect(capturedStep).toBeDefined();
-        (capturedStep as () => void)();
+        (capturedStep as unknown as () => void)();
         expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
         expect(renderer.draw).toHaveBeenCalled();
     });
