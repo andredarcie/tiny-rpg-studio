@@ -2,15 +2,89 @@
 <html lang="pt-BR">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
     <title>Tiny RPG Studio</title>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    
+    <!-- Essential SEO Meta Tags -->
+    <meta name="description" content="Tiny RPG Studio is a small, deliberately limited game engine designed to spark creativity. Build micro-RPGs and short stories in minutes and share everything through a single URL.">
+    <meta name="keywords" content="RPG maker, bitsy, game creation, browser game, browser, game engine, RPG studio, game design, pixel art, indie game, game development">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="author" content="Andre Darcie & Diego Penha">
+    <meta name="theme-color" content="#000000">
+    
+    <!-- Open Graph Tags (Social Media) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://andredarcie.github.io/tiny-rpg-studio/">
+    <meta property="og:title" content="Tiny RPG Studio">
+    <meta property="og:description" content="Create tiny RPGs in the browser with an integrated editor and player. Share your games with a single URL.">
+    <meta property="og:image" content="https://andredarcie.github.io/tiny-rpg-studio/icons/icon-128.png">
+    <meta property="og:image:alt" content="Tiny RPG Studio">
+    <meta property="og:site_name" content="Tiny RPG Studio">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- X/Twitter Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://andredarcie.github.io/tiny-rpg-studio/">
+    <meta name="twitter:title" content="Tiny RPG Studio - Create Tiny RPGs in the Browser">
+    <meta name="twitter:description" content="Create your own tiny RPGs in the browser without installation. Integrated editor and player. Share your games with a single URL.">
+    <meta name="twitter:image" content="https://andredarcie.github.io/tiny-rpg-studio/icons/icon-128.png">
+    
+    <!-- Additional SEO Meta Tags -->
+    <meta name="language" content="Portuguese-BR">
+    <meta name="revisit-after" content="7 days">
+    <meta name="generator" content="Tiny RPG Studio">
+    <link rel="canonical" href="https://andredarcie.github.io/tiny-rpg-studio/">
+    <link rel="alternate" hreflang="pt-BR" href="https://andredarcie.github.io/tiny-rpg-studio/">
+    <link rel="alternate" hreflang="en-US" href="https://andredarcie.github.io/tiny-rpg-studio/?lang=en">
+    <link rel="alternate" hreflang="x-default" href="https://andredarcie.github.io/tiny-rpg-studio/">
+    
+    <!-- Cache Control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, proxy-revalidate, max-age=0">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Surrogate-Control" content="no-store">
+    
+    <!-- Preconnect to External Resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=20250208">
+    
+    <!-- Favicon and app icons -->
+    <link rel="icon" type="image/x-icon" href="/icons/icon-128.png">
+    
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Tiny RPG Studio",
+        "description": "Create tiny RPGs in the browser with an integrated editor and player. Share your games with a single URL.",
+        "url": "https://andredarcie.github.io/tiny-rpg-studio/",
+        "applicationCategory": "GameApplication",
+        "inLanguage": "en-US",
+        "author": {
+            "@type": "Organization",
+            "name": "Tiny RPG Studio"
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "screenshot": "https://andredarcie.github.io/tiny-rpg-studio/icons/icon-128.png",
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "5",
+            "ratingCount": "1"
+        }
+    }
+    </script>
+    
+    <!-- Microsoft Clarity (optional, for analytics) -->
+    <meta name="msapplication-TileColor" content="#000000">
+    
     <style>
         #game-container {
             position: relative;
@@ -34,17 +108,17 @@
 </head>
 <body>
     <div class="app">
-        <main>
-            <div class="tabs">
-                <p class="tabs-title" data-text-key="app.title"></p>
+        <main role="main" aria-label="Aplicação principal - Editor e executor de RPG">
+            <div class="tabs" role="tablist">
+                <h1 class="tabs-title">Tiny RPG Studio</h1>
                 <div class="tabs-links">
-                    <button class="tab-button active" type="button" data-tab="game" aria-selected="true" data-text-key="tabs.game"></button>
-                    <button class="tab-button" type="button" data-tab="editor" aria-selected="false" data-text-key="tabs.editor"></button>
+                    <button class="tab-button active" type="button" data-tab="game" role="tab" aria-selected="true" aria-controls="tab-game" data-text-key="tabs.game"></button>
+                    <button class="tab-button" type="button" data-tab="editor" role="tab" aria-selected="false" aria-controls="tab-editor" data-text-key="tabs.editor"></button>
                     <button id="btn-reset" class="tab-action-button" type="button" data-text-key="buttons.reset" data-aria-label-key="aria.reset"></button>
                 </div>
             </div>
 
-            <div class="tab-content active" id="tab-game">
+            <div class="tab-content active" id="tab-game" role="tabpanel" aria-labelledby="tab-game">
                 <div class="game-container" id="game-container">
                     <div id="combat-indicator" class="combat-indicator" aria-live="polite" aria-atomic="true"></div>
                     <div class="game-screen">
@@ -79,8 +153,8 @@
                 </div>
             </div>
 
-            <div class="tab-content" id="tab-editor">
-                <div class="editor-layout">
+            <div class="tab-content" id="tab-editor" role="tabpanel" aria-labelledby="tab-editor">
+                <div class="editor-layout" role="group" aria-label="Game Engine Editor">
                     <div class="editor-left">
                         <div class="editor-section editor-section--tiles" data-mobile-panel="tiles">
                             <details open>
@@ -105,6 +179,12 @@
                             <details open>
                                 <summary data-text-key="sections.objects"></summary>
                                 <div class="objects-panel">
+                                    <div class="object-category-selector">
+                                        <div class="object-category-buttons">
+                                            <button type="button" class="object-category-button active" data-object-category-filter="all" aria-pressed="true" data-text-key="objects.category.all"></button>
+                                            <button type="button" class="object-category-button" data-object-category-filter="swords" aria-pressed="false" data-text-key="objects.category.swords"></button>
+                                        </div>
+                                    </div>
                                     <div id="object-types" class="object-types"></div>
                                     <div id="objects-list" class="objects-list"></div>
                                 </div>
@@ -147,12 +227,24 @@
                                 <canvas id="editor-canvas" width="384" height="384"></canvas>
                             </div>
                             <div class="editor-mobile-nav" aria-label="" data-aria-label-key="editor.mobileNav.label">
-                                <button type="button" class="editor-mobile-nav-button active" data-mobile-target="tiles" data-title-key="editor.mobileNav.tiles" data-aria-label-key="editor.mobileNav.tiles">🧱</button>
-                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="world" data-title-key="editor.mobileNav.world" data-aria-label-key="editor.mobileNav.world">🗺️</button>
-                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="objects" data-title-key="editor.mobileNav.objects" data-aria-label-key="editor.mobileNav.objects">🎒</button>
-                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="npcs" data-title-key="editor.mobileNav.npcs" data-aria-label-key="editor.mobileNav.npcs">🧍</button>
-                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="enemies" data-title-key="editor.mobileNav.enemies" data-aria-label-key="editor.mobileNav.enemies">👹</button>
-                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="project" data-title-key="editor.mobileNav.project" data-aria-label-key="editor.mobileNav.project">📁</button>
+                                <button type="button" class="editor-mobile-nav-button active" data-mobile-target="tiles" data-title-key="editor.mobileNav.tiles" data-aria-label-key="editor.mobileNav.tiles">
+                                    <canvas class="nav-icon" data-nav-icon="tree" width="16" height="16"></canvas>
+                                </button>
+                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="world" data-title-key="editor.mobileNav.world" data-aria-label-key="editor.mobileNav.world">
+                                    <canvas class="nav-icon" data-nav-icon="water" width="16" height="16"></canvas>
+                                </button>
+                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="objects" data-title-key="editor.mobileNav.objects" data-aria-label-key="editor.mobileNav.objects">
+                                    <canvas class="nav-icon" data-nav-icon="sword" width="16" height="16"></canvas>
+                                </button>
+                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="npcs" data-title-key="editor.mobileNav.npcs" data-aria-label-key="editor.mobileNav.npcs">
+                                    <canvas class="nav-icon" data-nav-icon="oldMage" width="16" height="16"></canvas>
+                                </button>
+                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="enemies" data-title-key="editor.mobileNav.enemies" data-aria-label-key="editor.mobileNav.enemies">
+                                    <canvas class="nav-icon" data-nav-icon="rat" width="16" height="16"></canvas>
+                                </button>
+                                <button type="button" class="editor-mobile-nav-button" data-mobile-target="project" data-title-key="editor.mobileNav.project" data-aria-label-key="editor.mobileNav.project">
+                                    <canvas class="nav-icon" data-nav-icon="scroll" width="16" height="16"></canvas>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -213,54 +305,160 @@
                             <details open>
                                 <summary data-text-key="sections.project"></summary>
                                 <div class="project-actions">
-                                    <div id="project-variables-container" class="project-variables">
-                                        <button id="project-variables-toggle" class="project-variables__toggle" type="button"></button>
-                                        <div id="project-variable-usage-list" class="project-variables__list"></div>
+                                    <!-- Grupo: Desenvolvimento -->
+                                    <div class="project-group project-group--development">
+                                        <h4 class="project-group__title" data-text-key="project.group.development">Desenvolvimento</h4>
+                                        <div id="project-variables-container" class="project-variables">
+                                            <button id="project-variables-toggle" class="project-variables__toggle" type="button"></button>
+                                            <div id="project-variable-usage-list" class="project-variables__list"></div>
+                                        </div>
+                                        <div id="project-skills-container" class="project-variables project-variables--skills">
+                                            <button id="project-skills-toggle" class="project-variables__toggle" type="button"></button>
+                                            <div id="project-skills-list" class="project-variables__list project-skills__list"></div>
+                                        </div>
                                     </div>
-                                    <div id="project-skills-container" class="project-variables project-variables--skills">
-                                        <button id="project-skills-toggle" class="project-variables__toggle" type="button"></button>
-                                        <div id="project-skills-list" class="project-variables__list project-skills__list"></div>
-                                    </div>
-                                    <div id="project-test-container" class="project-variables project-test">
-                                        <button id="project-test-toggle" class="project-variables__toggle project-test__toggle" type="button"></button>
-                                        <div id="project-test-panel" class="project-test__panel">
-                                            <p class="project-test__hint" data-text-key="project.test.hint"></p>
-                                            <label class="project-test__field">
-                                                <span data-text-key="project.test.startLevel"></span>
-                                                <select id="project-test-start-level"></select>
-                                            </label>
-                                            <label class="project-test__field project-test__checkbox">
-                                                <input type="checkbox" id="project-test-god-mode">
-                                                <span data-text-key="project.test.godMode"></span>
-                                            </label>
-                                            <div class="project-test__skills">
-                                                <div class="project-test__skills-title" data-text-key="project.test.skills"></div>
-                                                <div id="project-test-skill-list" class="project-test__skill-list"></div>
+
+                                    <div class="project-separator"></div>
+
+                                    <!-- Grupo: Testes -->
+                                    <div class="project-group project-group--testing">
+                                        <h4 class="project-group__title" data-text-key="project.group.testing">Testes</h4>
+                                        <div id="project-test-container" class="project-variables project-test">
+                                            <button id="project-test-toggle" class="project-variables__toggle project-test__toggle" type="button"></button>
+                                            <div id="project-test-panel" class="project-test__panel">
+                                                <p class="project-test__hint" data-text-key="project.test.hint"></p>
+                                                <label class="project-test__field">
+                                                    <span data-text-key="project.test.startLevel"></span>
+                                                    <select id="project-test-start-level"></select>
+                                                </label>
+                                                <label class="project-test__field project-test__checkbox">
+                                                    <input type="checkbox" id="project-test-god-mode">
+                                                    <span data-text-key="project.test.godMode"></span>
+                                                </label>
+                                                <label class="project-test__field project-test__checkbox">
+                                                    <input type="checkbox" id="project-test-debug-vision">
+                                                    <span data-text-key="project.test.debugVision"></span>
+                                                </label>
+                                                <div class="project-test__skills">
+                                                    <div class="project-test__skills-title" data-text-key="project.test.skills"></div>
+                                                    <div id="project-test-skill-list" class="project-test__skill-list"></div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <label class="project-field">
-                                        <span data-text-key="project.titleLabel"></span>
-                                        <input type="text" id="game-title" data-placeholder-key="project.titlePlaceholder" maxlength="18">
-                                    </label>
-                                    <label class="project-field">
-                                        <span data-text-key="project.authorLabel"></span>
-                                        <input type="text" id="game-author" data-placeholder-key="project.authorPlaceholder" maxlength="18">
-                                    </label>
-                                    <label class="project-field project-field--language">
-                                        <span data-text-key="project.languageLabel"></span>
-                                        <select id="language-select">
-                                            <option value="pt-BR" data-text-key="language.option.ptBR"></option>
-                                            <option value="en-US" data-text-key="language.option.enUS"></option>
-                                        </select>
-                                    </label>
-                                    <p class="project-share-hint" data-text-key="project.shareHint"></p>
-                                    <button id="btn-generate-url" data-text-key="project.generateUrl"></button>
-                                    <label class="project-field project-field--share-url">
-                                        <span data-text-key="project.shareUrlLabel"></span>
-                                        <input id="project-share-url" type="text" readonly spellcheck="false" autocomplete="off" inputmode="url">
-                                    </label>
-                                    <button id="btn-generate-html" data-text-key="project.generateHTML"></button>
+
+                                    <div class="project-separator"></div>
+
+                                    <!-- Grupo: Aparência -->
+                                    <div class="project-group project-group--appearance">
+                                        <h4 class="project-group__title" data-text-key="project.group.appearance">Aparência</h4>
+                                        <div id="project-palette-container" class="project-variables project-palette">
+                                            <button id="project-palette-toggle" class="project-variables__toggle project-palette__toggle" type="button"></button>
+                                            <div id="project-palette-panel" class="project-palette__panel" hidden>
+                                                <div class="palette-header">
+                                                    <p class="palette-description" data-text-key="project.paletteDescription"></p>
+                                                    <div style="display:flex;gap:8px;margin-bottom:8px;">
+                                                        <button id="palette-import-button" class="palette-action-btn" type="button">import</button>
+                                                        <button id="palette-export-button" class="palette-action-btn" type="button">export</button>
+                                                    </div>
+                                                    <button
+                                                        id="palette-reset-button"
+                                                        class="palette-reset-btn"
+                                                        data-text-key="project.paletteReset"
+                                                        title="Reset to PICO-8 colors"
+                                                    ></button>
+                                                </div>
+                                                <div class="palette-preset-field">
+                                                    <label data-text-key="project.palettePreset"></label>
+                                                    <select id="palette-preset-select"></select>
+                                                </div>
+                                                <div id="palette-grid" class="palette-grid"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Color Picker Modal -->
+                                    <div id="color-picker-modal" class="color-picker-modal" hidden>
+                                        <div class="color-picker-content">
+                                            <div class="color-picker-panel">
+                                                <div class="color-picker-header">
+                                                    <h3 data-text-key="project.colorPickerTitle"></h3>
+                                                    <span id="color-picker-index" class="color-index-label"></span>
+                                                </div>
+                                                <div class="color-picker-preview">
+                                                    <div class="color-preview-box">
+                                                        <div id="color-preview-current" class="color-preview-row">
+                                                            <div class="color-preview-meta">
+                                                                <span class="color-preview-label" data-text-key="project.colorCurrent"></span>
+                                                                <span id="color-preview-current-value" class="color-preview-value"></span>
+                                                            </div>
+                                                            <div class="color-preview-swatch"></div>
+                                                        </div>
+                                                        <div id="color-preview-new" class="color-preview-row">
+                                                            <div class="color-preview-meta">
+                                                                <span class="color-preview-label" data-text-key="project.colorNew"></span>
+                                                                <span id="color-preview-new-value" class="color-preview-value"></span>
+                                                            </div>
+                                                            <div class="color-preview-swatch"></div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <input
+                                                    type="color"
+                                                    id="color-picker-input"
+                                                    class="color-picker-input"
+                                                />
+                                                <div class="color-picker-actions">
+                                                    <button
+                                                        id="color-picker-cancel"
+                                                        class="btn-secondary"
+                                                        data-text-key="project.colorCancel"
+                                                    ></button>
+                                                    <button
+                                                        id="color-picker-confirm"
+                                                        class="btn-primary"
+                                                        data-text-key="project.colorConfirm"
+                                                    ></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="project-separator"></div>
+
+                                    <!-- Grupo: Informações -->
+                                    <div class="project-group project-group--info">
+                                        <h4 class="project-group__title" data-text-key="project.group.info">Informações</h4>
+                                        <label class="project-field">
+                                            <span data-text-key="project.titleLabel"></span>
+                                            <input type="text" id="game-title" data-placeholder-key="project.titlePlaceholder" maxlength="18">
+                                        </label>
+                                        <label class="project-field">
+                                            <span data-text-key="project.authorLabel"></span>
+                                            <input type="text" id="game-author" data-placeholder-key="project.authorPlaceholder" maxlength="18">
+                                        </label>
+                                        <label class="project-field project-field--language">
+                                            <span data-text-key="project.languageLabel"></span>
+                                            <select id="language-select">
+                                                <option value="pt-BR" data-text-key="language.option.ptBR"></option>
+                                                <option value="en-US" data-text-key="language.option.enUS"></option>
+                                            </select>
+                                        </label>
+                                    </div>
+
+                                    <div class="project-separator"></div>
+
+                                    <!-- Grupo: Exportação -->
+                                    <div class="project-group project-group--export">
+                                        <h4 class="project-group__title" data-text-key="project.group.export">Exportação</h4>
+                                        <p class="project-share-hint" data-text-key="project.shareHint"></p>
+                                        <button id="btn-generate-url" data-text-key="project.generateUrl"></button>
+                                        <label class="project-field project-field--share-url">
+                                            <span data-text-key="project.shareUrlLabel"></span>
+                                            <input id="project-share-url" type="text" readonly spellcheck="false" autocomplete="off" inputmode="url">
+                                        </label>
+                                        <button id="btn-generate-html" data-text-key="project.generateHTML"></button>
+                                    </div>
                                 </div>
                             </details>
                         </div>

@@ -24,6 +24,7 @@ class StatePlayerManager {
     experienceGrowth: number;
     maxKeys: number;
     roomChangeDamageCooldown: number;
+    attackCooldown: number;
 
     constructor(state: RuntimeState | null, worldManager: WorldManagerApi, skillManager: SkillManagerApi | null = null) {
         this.state = state;
@@ -35,6 +36,7 @@ class StatePlayerManager {
         this.experienceGrowth = GameConfig.player.experienceGrowth;
         this.maxKeys = GameConfig.player.maxKeys;
         this.roomChangeDamageCooldown = GameConfig.player.roomChangeDamageCooldown;
+        this.attackCooldown = GameConfig.combat.attackCooldown;
     }
 
     setState(state: RuntimeState | null) {
@@ -81,8 +83,11 @@ class StatePlayerManager {
         this.player.damageShield = 0;
         this.player.damageShieldMax = 0;
         this.player.swordType = null;
+        this.player.swordDurability = 0;
         this.player.lastDamageReduction = 0;
         this.player.godMode = false;
+        this.player.lastAttackTime = 0;
+        this.player.stunUntil = 0;
     }
 
     setLevel(level = 1) {
@@ -155,7 +160,6 @@ class StatePlayerManager {
         this.player.damageShield = Math.max(0, shield - reduction);
         if (this.player.damageShield === 0) {
             this.player.damageShieldMax = 0;
-            this.player.swordType = null;
         }
         this.player.lastDamageReduction = reduction;
         this.player.currentLives = Math.max(0, this.player.currentLives - effective);
@@ -170,6 +174,12 @@ class StatePlayerManager {
         const now = Date.now();
         const lastChange = this.player?.lastRoomChangeTime;
         return typeof lastChange === 'number' && now - lastChange < this.roomChangeDamageCooldown;
+    }
+
+    isOnAttackCooldown() {
+        const now = performance.now();
+        const lastAttack = this.player?.lastAttackTime ?? 0;
+        return now - lastAttack < this.attackCooldown;
     }
 
     addDamageShield(amount = 1, swordType: string | null = null) {
@@ -198,6 +208,39 @@ class StatePlayerManager {
 
     getSwordType() {
         return typeof this.player?.swordType === 'string' ? this.player.swordType : null;
+    }
+
+    setSwordType(swordType: string | null) {
+        if (!this.player) return;
+        this.player.swordType = swordType;
+    }
+
+    getSwordDurability() {
+        return Math.max(0, Number(this.player?.swordDurability) || 0);
+    }
+
+    setSwordDurability(durability: number) {
+        if (!this.player) return;
+        this.player.swordDurability = Math.max(0, Math.floor(Number(durability) || 0));
+    }
+
+    consumeSwordDurability(): boolean {
+        if (!this.player) return false;
+        const current = this.getSwordDurability();
+        if (current <= 0) {
+            // Sword already broken
+            this.player.swordType = null;
+            this.player.swordDurability = 0;
+            return true;
+        }
+        this.player.swordDurability = current - 1;
+        if (this.player.swordDurability <= 0) {
+            // Sword broke
+            this.player.swordType = null;
+            this.player.swordDurability = 0;
+            return true;
+        }
+        return false;
     }
 
     consumeLastDamageReduction() {
@@ -276,9 +319,6 @@ class StatePlayerManager {
             this.player.damageShieldMax = Math.max(this.player.damageShield, Math.floor(this.player.damageShieldMax));
         }
         if (typeof this.player.swordType !== 'string') {
-            this.player.swordType = null;
-        }
-        if (this.player.damageShield <= 0) {
             this.player.swordType = null;
         }
         if (!Number.isFinite(this.player.lastDamageReduction)) {

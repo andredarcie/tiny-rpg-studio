@@ -31,6 +31,49 @@ describe('GameConfigSchema', () => {
       maxKeys: 9,
       roomChangeDamageCooldown: 1000,
     },
+    combat: {
+      attackCooldown: 300,
+      hitStunDuration: 200,
+      lungeAnimationDuration: 150,
+      knockbackDuration: 150,
+      deathAnimationDuration: 300,
+      screenShake: {
+        enabled: true,
+        minIntensity: 0.3,
+        maxIntensity: 1.0,
+        baseDuration: 300,
+        intensityPerDamage: 0.2,
+      },
+      hitFlashDuration: 100,
+      hitstopDuration: 60,
+      hitstopMinDamage: 3,
+      entityFlashDuration: 120,
+      messageDuration: {
+        standard: 500,
+        cooldown: 700,
+        death: 2500,
+      },
+      floatingNumbers: {
+        enabled: true,
+        duration: 800,
+        riseSpeed: 0.5,
+        fontSize: 8,
+      },
+      particles: {
+        enabled: true,
+        impactCount: 8,
+        criticalImpactCount: 16,
+        deathCount: 20,
+        lifetime: 500,
+        gravity: 0.1,
+      },
+      telegraph: {
+        enabled: true,
+        color: '#FF004D',
+        pulseSpeed: 0.006,
+        triggerDistance: 1,
+      },
+    },
     enemy: {
       movementInterval: 600,
       fallbackMissChance: 0.25,
@@ -99,6 +142,11 @@ describe('GameConfigSchema', () => {
         '#FF77A8',
         '#FFCCAA',
       ],
+    },
+    debug: {
+      showEnemyVision: false,
+      visionOverlayColor: '#FF004D',
+      visionOverlayOpacity: 0.3,
     },
   });
 

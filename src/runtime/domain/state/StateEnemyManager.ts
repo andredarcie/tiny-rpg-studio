@@ -110,6 +110,12 @@ class StateEnemyManager {
         this.state.enemies = this.state.enemies.filter((enemy) => enemy.id !== enemyId);
     }
 
+    removeEnemyFromRuntime(enemyId: string) {
+        if (!this.state) return;
+        // Only remove from runtime, keep permanent definitions intact for reset
+        this.state.enemies = this.state.enemies.filter((enemy) => enemy.id !== enemyId);
+    }
+
     setEnemyPosition(enemyId: string | number, x: number, y: number, roomIndex: number | null = null) {
         const enemy = this.getEnemies().find((entry) => entry.id === enemyId);
         if (!enemy) return;

@@ -1,4 +1,5 @@
 import { GameConfig } from '../../config/GameConfig';
+import { DebugFlags } from '../debug/DebugFlags';
 
 type DialogState = {
   active: boolean;
@@ -70,6 +71,13 @@ class InputManager {
   }
 
   handleKeyDown(ev: KeyboardEvent): void {
+    // Debug toggle: V key (works in any game state)
+    if (ev.key.toLowerCase() === 'v' && ev.shiftKey && ev.ctrlKey) {
+      ev.preventDefault();
+      this.toggleEnemyVisionDebug();
+      return;
+    }
+
     if (this.gameEngine.isGameOver?.()) {
       ev.preventDefault();
       this.gameEngine.handleGameOverInteraction?.();
@@ -337,6 +345,14 @@ class InputManager {
         // Hook to finalize painting (for example, push to history)
       }
     });
+  }
+
+  /**
+   * Toggle enemy vision debug overlay
+   */
+  toggleEnemyVisionDebug(): void {
+    DebugFlags.toggleEnemyVision();
+    this.gameEngine.draw?.();
   }
 
   // Tile editor canvas interactions

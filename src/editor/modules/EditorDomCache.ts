@@ -18,6 +18,7 @@ class EditorDomCache {
     btnToggleNpcConditional: HTMLElement | null;
     npcConditionalSection: HTMLElement | null;
     npcVariantButtons: HTMLElement[];
+    objectCategoryButtons: HTMLElement[];
     worldGrid: HTMLElement | null;
     titleInput: HTMLInputElement | null;
     authorInput: HTMLInputElement | null;
@@ -45,6 +46,22 @@ class EditorDomCache {
     projectTestStartLevel: HTMLSelectElement | null;
     projectTestSkillList: HTMLElement | null;
     projectTestGodMode: HTMLInputElement | null;
+    projectTestDebugVision: HTMLInputElement | null;
+    projectPaletteContainer: HTMLElement | null;
+    projectPaletteToggle: HTMLButtonElement | null;
+    projectPalettePanel: HTMLElement | null;
+    paletteGrid: HTMLElement | null;
+    palettePresetSelect: HTMLSelectElement | null;
+    paletteResetButton: HTMLButtonElement | null;
+    paletteImportButton: HTMLButtonElement | null;
+    paletteExportButton: HTMLButtonElement | null;
+    colorPickerModal: HTMLElement | null;
+    colorPickerInput: HTMLInputElement | null;
+    colorPickerConfirm: HTMLButtonElement | null;
+    colorPickerCancel: HTMLButtonElement | null;
+    colorPreviewCurrent: HTMLElement | null;
+    colorPreviewNew: HTMLElement | null;
+    colorPickerIndex: HTMLElement | null;
     jsonArea?: HTMLTextAreaElement | null;
 
     constructor(root: Document | HTMLElement | null = typeof document !== 'undefined' ? document : null) {
@@ -67,6 +84,7 @@ class EditorDomCache {
             this.btnToggleNpcConditional = null;
             this.npcConditionalSection = null;
             this.npcVariantButtons = [];
+            this.objectCategoryButtons = [];
             this.worldGrid = null;
             this.titleInput = null;
             this.authorInput = null;
@@ -94,6 +112,22 @@ class EditorDomCache {
             this.projectTestStartLevel = null;
             this.projectTestSkillList = null;
             this.projectTestGodMode = null;
+            this.projectTestDebugVision = null;
+            this.projectPaletteContainer = null;
+            this.projectPaletteToggle = null;
+            this.projectPalettePanel = null;
+            this.paletteGrid = null;
+            this.palettePresetSelect = null;
+            this.paletteResetButton = null;
+            this.paletteImportButton = null;
+            this.paletteExportButton = null;
+            this.colorPickerModal = null;
+            this.colorPickerInput = null;
+            this.colorPickerConfirm = null;
+            this.colorPickerCancel = null;
+            this.colorPreviewCurrent = null;
+            this.colorPreviewNew = null;
+            this.colorPickerIndex = null;
             this.jsonArea = null;
             return;
         }
@@ -115,6 +149,7 @@ class EditorDomCache {
         this.btnToggleNpcConditional = root.querySelector('#btn-toggle-npc-conditional') as HTMLElement | null;
         this.npcConditionalSection = root.querySelector('#npc-conditional-section') as HTMLElement | null;
         this.npcVariantButtons = Array.from(root.querySelectorAll('[data-npc-variant-filter]'));
+        this.objectCategoryButtons = Array.from(root.querySelectorAll('[data-object-category-filter]'));
         this.worldGrid = root.querySelector('#world-grid') as HTMLElement | null;
         this.titleInput = root.querySelector('#game-title') as HTMLInputElement | null;
         this.authorInput = root.querySelector('#game-author') as HTMLInputElement | null;
@@ -142,6 +177,22 @@ class EditorDomCache {
         this.projectTestStartLevel = root.querySelector('#project-test-start-level') as HTMLSelectElement | null;
         this.projectTestSkillList = root.querySelector('#project-test-skill-list') as HTMLElement | null;
         this.projectTestGodMode = root.querySelector('#project-test-god-mode') as HTMLInputElement | null;
+        this.projectTestDebugVision = root.querySelector('#project-test-debug-vision') as HTMLInputElement | null;
+        this.projectPaletteContainer = root.querySelector('#project-palette-container') as HTMLElement | null;
+        this.projectPaletteToggle = root.querySelector('#project-palette-toggle') as HTMLButtonElement | null;
+        this.projectPalettePanel = root.querySelector('#project-palette-panel') as HTMLElement | null;
+        this.paletteGrid = root.querySelector('#palette-grid') as HTMLElement | null;
+        this.palettePresetSelect = root.querySelector('#palette-preset-select') as HTMLSelectElement | null;
+        this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
+        this.paletteImportButton = root.querySelector('#palette-import-button') as HTMLButtonElement | null;
+        this.paletteExportButton = root.querySelector('#palette-export-button') as HTMLButtonElement | null;
+        this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;
+        this.colorPickerInput = root.querySelector('#color-picker-input') as HTMLInputElement | null;
+        this.colorPickerConfirm = root.querySelector('#color-picker-confirm') as HTMLButtonElement | null;
+        this.colorPickerCancel = root.querySelector('#color-picker-cancel') as HTMLButtonElement | null;
+        this.colorPreviewCurrent = root.querySelector('#color-preview-current .color-preview-swatch') as HTMLElement | null;
+        this.colorPreviewNew = root.querySelector('#color-preview-new .color-preview-swatch') as HTMLElement | null;
+        this.colorPickerIndex = root.querySelector('#color-picker-index') as HTMLElement | null;
         this.jsonArea = root.querySelector('#json-area') as HTMLTextAreaElement | null;
     }
 }

@@ -39,6 +39,7 @@ class EditorWorldService {
         this.manager.renderObjectCatalog();
         this.manager.renderService.renderEditor();
         this.manager.renderService.renderEnemies();
+        this.manager.renderService.renderNpcs();
     }
 
     moveActiveRoom(direction: string | null | undefined) {

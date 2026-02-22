@@ -2,6 +2,7 @@ import { DialogManager } from './engine/DialogManager';
 import { EnemyManager } from './engine/EnemyManager';
 import { InteractionManager } from './engine/InteractionManager';
 import { MovementManager } from './engine/MovementManager';
+import { CombatStunManager } from './engine/CombatStunManager';
 import { GameState } from '../domain/GameState';
 import { InputManager } from '../adapters/InputManager';
 import { NPCManager } from './NPCManager';
@@ -9,6 +10,7 @@ import { Renderer } from '../adapters/Renderer';
 import { TextResources } from '../adapters/TextResources';
 import { TileManager } from './TileManager';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
+import { TileDefinitions } from '../domain/definitions/TileDefinitions';
 import { GameConfig } from '../../config/GameConfig';
 
 type IntroData = { title: string; author: string };
@@ -47,6 +49,7 @@ export class GameEngine {
   enemyManager: EnemyManager;
   movementManager: MovementManager;
   inputManager: InputManager;
+  combatStunManager: CombatStunManager;
   awaitingRestart: boolean;
   introVisible: boolean;
   introStartTime: number;
@@ -67,9 +70,12 @@ export class GameEngine {
     this.interactionManager = new InteractionManager(this.gameState as never, this.dialogManager, {
       onPlayerVictory: () => this.handleGameCompletion(),
     });
+    this.combatStunManager = new CombatStunManager(this.gameState.state);
     this.enemyManager = new EnemyManager(this.gameState as never, this.renderer, this.tileManager, {
       onPlayerDefeated: () => this.handlePlayerDefeat(),
       dialogManager: this.dialogManager,
+      combatStunManager: this.combatStunManager,
+      playerManager: this.gameState.playerManager,
     });
     this.movementManager = new MovementManager({
       gameState: this.gameState as never,
@@ -78,6 +84,7 @@ export class GameEngine {
       dialogManager: this.dialogManager,
       interactionManager: this.interactionManager,
       enemyManager: this.enemyManager,
+      combatStunManager: this.combatStunManager,
     });
     this.inputManager = new InputManager(this);
     this.awaitingRestart = false;
@@ -249,6 +256,12 @@ export class GameEngine {
     this.gameState.importGameData(data);
     this.npcManager.ensureDefaultNPCs();
     this.tileManager.ensureDefaultTiles();
+    const game = this.gameState.getGame();
+    if (Array.isArray(game.customPalette) && game.customPalette.length === 16) {
+      this.setCustomPalette(game.customPalette);
+    } else {
+      this.resetPaletteToDefault();
+    }
     this.syncDocumentTitle();
     this.startEnemyLoop();
     this.dialogManager.reset();
@@ -276,6 +289,35 @@ export class GameEngine {
 
   getGame(): GameData {
     return this.gameState.getGame();
+  }
+
+  // Custom Palette Management
+  setCustomPalette(colors: string[] | null): void {
+    const game = this.gameState.getGame();
+    game.customPalette = colors || undefined;
+
+    // Regenerate tiles with new palette colors
+    const activePalette = colors || (TileDefinitions.PICO8_COLORS as string[]);
+    this.tileManager.regenerateTilesWithPalette(activePalette);
+
+    // Invalidate sprite caches - they will be lazily rebuilt on next access via getters
+    this.renderer.spriteFactory.invalidate();
+
+    // Force complete re-render (triggers lazy rebuilding of sprites via getters)
+    this.draw();
+  }
+
+  getCustomPalette(): string[] | undefined {
+    const game = this.gameState.getGame();
+    return game.customPalette;
+  }
+
+  resetPaletteToDefault(): void {
+    this.setCustomPalette(null);
+  }
+
+  get rendererPalette() {
+    return this.renderer.paletteManager;
   }
 
   draw(): void {

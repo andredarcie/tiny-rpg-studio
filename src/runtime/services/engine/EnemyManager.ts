@@ -1,127 +1,26 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { TextResources } from '../../adapters/TextResources';
-import type { EnemyDefinition } from '../../../types/gameState';
 import { GameConfig } from '../../../config/GameConfig';
-
-type GameStateApi = {
-  playing: boolean;
-  isEditorModeActive: () => boolean;
-  getEnemyDefinitions: () => unknown;
-  getEnemies: () => EnemyState[];
-  addEnemy: (enemy: EnemyState) => string | null;
-  removeEnemy: (id: string) => void;
-  getGame: () => GameData;
-  getPlayer: () => PlayerState;
-  isPlayerOnDamageCooldown: () => boolean;
-  damagePlayer: (amount: number) => number;
-  consumeLastDamageReduction: () => number;
-  consumeRecentReviveFlag: () => boolean;
-  handleEnemyDefeated: (xp: number) => { leveledUp?: boolean } | null;
-  getPendingLevelUpChoices: () => number;
-  startLevelUpSelectionIfNeeded: () => void;
-  prepareNecromancerRevive?: () => void;
-  isVariableOn: (id: string) => boolean;
-  normalizeVariableId: (id: string | null) => string | null;
-  setVariableValue: (id: string, value: boolean, persist?: boolean) => Array<boolean | undefined>;
-  getObjectAt: (roomIndex: number, x: number, y: number) => GameObjectState | null;
-  hasSkill: (skillId: string) => boolean;
-};
-
-type RendererApi = {
-  draw: () => void;
-  flashScreen: (payload: Record<string, unknown>) => void;
-  showCombatIndicator: (text: string, options?: Record<string, unknown>) => void;
-};
-
-type TileManagerApi = {
-  getTileMap: (roomIndex: number) => TileMapState | null;
-  getTile: (tileId: string | number) => TileDefinition | null;
-};
-
-type Options = {
-  onPlayerDefeated?: () => void;
-  interval?: number;
-  directions?: number[][];
-  dialogManager?: { showDialog?: (text: string) => void } | null;
-  missChance?: number;
-};
-
-type PlayerState = {
-  roomIndex: number;
-  x: number;
-  y: number;
-};
-
-type RoomState = {
-  walls?: boolean[][];
-};
-
-type GameData = {
-  rooms: RoomState[];
-};
-
-type EnemyState = EnemyDefinition;
-
-const EnemyMovementResult = {
-  None: 'none',
-  Moved: 'moved',
-  Collided: 'collided',
-} as const;
-
-type EnemyMovementResult = typeof EnemyMovementResult[keyof typeof EnemyMovementResult];
-
-type EnemyInput = {
-  id?: string;
-  type: string;
-  roomIndex?: number;
-  x: number;
-  y: number;
-  lastX?: number;
-  defeatVariableId?: string | null;
-};
-
-type GameObjectState = {
-  type: string;
-  opened?: boolean;
-  variableId?: string | null;
-};
-
-type TileMapState = {
-  ground?: (string | number | null)[][];
-  overlay?: (string | number | null)[][];
-};
-
-type TileDefinition = {
-  collision?: boolean;
-};
-
-type DefeatVariableConfig = {
-  variableId?: string;
-  persist?: boolean;
-  message?: string;
-  messageKey?: string;
-};
-
-type EnemyDefinitionData = {
-  hasEyes?: boolean;
-  damage?: number;
-  activateVariableOnDefeat?: DefeatVariableConfig | null;
-  defeatActivationMessageKey?: string;
-  defeatActivationMessage?: string;
-};
+import { CombatManager } from './CombatManager';
+import type {
+  GameStateApi,
+  RendererApi,
+  CombatStunManagerApi,
+  StatePlayerManagerApi,
+  TileManagerApi,
+  EnemyManagerOptions,
+  PlayerState,
+  GameData,
+  EnemyState,
+  EnemyMovementResult,
+  EnemyInput,
+  EnemyDefinitionData,
+} from '../../../types/managerTypes';
+import { EnemyMovementResult as EnemyMovementResultConst } from '../../../types/managerTypes';
 
 const getEnemyLocaleText = (key: string, fallback = ''): string => {
   const value = TextResources.get(key, fallback) as string;
-  return value || fallback || '';
-};
-
-const formatEnemyLocaleText = (
-  key: string,
-  params: Record<string, string | number | boolean> = {},
-  fallback = '',
-): string => {
-  const value = TextResources.format(key, params, fallback) as string;
   return value || fallback || '';
 };
 
@@ -129,14 +28,18 @@ class EnemyManager {
   gameState: GameStateApi;
   renderer: RendererApi;
   tileManager: TileManagerApi;
+  combatManager: CombatManager;
   onPlayerDefeated: () => void;
   interval: number;
   enemyMoveTimer: ReturnType<typeof setInterval> | null;
   directions: number[][];
-  dialogManager: Options['dialogManager'] | null;
+  dialogManager: EnemyManagerOptions['dialogManager'] | null;
   fallbackMissChance: number;
+  combatStunManager: CombatStunManagerApi | null;
+  playerManager: StatePlayerManagerApi | null;
+  windupTimers: Set<ReturnType<typeof setTimeout>>;
 
-  constructor(gameState: GameStateApi, renderer: RendererApi, tileManager: TileManagerApi, options: Options = {}) {
+  constructor(gameState: GameStateApi, renderer: RendererApi, tileManager: TileManagerApi, options: EnemyManagerOptions = {}) {
     this.gameState = gameState;
     this.renderer = renderer;
     this.tileManager = tileManager;
@@ -145,13 +48,36 @@ class EnemyManager {
     this.enemyMoveTimer = null;
     this.directions = options.directions || this.defaultDirections();
     this.dialogManager = options.dialogManager || null;
-    this.fallbackMissChance = this.normalizeMissChance(
-      options.missChance === undefined ? GameConfig.enemy.fallbackMissChance : options.missChance
-    );
+
+    // Normalize miss chance inline (before CombatManager creation)
+    const rawMissChance = options.missChance === undefined ? GameConfig.enemy.fallbackMissChance : options.missChance;
+    const numeric = Number(rawMissChance);
+    this.fallbackMissChance = Number.isFinite(numeric) ? Math.max(0, Math.min(1, numeric)) : 0.25;
+
+    this.combatStunManager = options.combatStunManager ?? null;
+    this.playerManager = options.playerManager ?? null;
+    this.windupTimers = new Set();
+
+    // Initialize CombatManager with callbacks
+    this.combatManager = new CombatManager(gameState, renderer, {
+      onPlayerDefeated: this.onPlayerDefeated,
+      fallbackMissChance: this.fallbackMissChance,
+      combatStunManager: this.combatStunManager,
+      playerManager: this.playerManager,
+      onEnemyDefeated: (enemyId: string, enemy: EnemyState) => {
+        this.handleEnemyDefeated(enemyId, enemy);
+      },
+      onCheckAllEnemiesCleared: () => {
+        this.checkAllEnemiesCleared();
+      },
+      shouldStartLevelOverlay: () => {
+        return this.shouldStartLevelOverlay();
+      },
+    });
   }
 
   getEnemyDefinitions(): unknown {
-    return this.gameState.getEnemyDefinitions();
+    return this.gameState.getEnemyDefinitions?.();
   }
 
   getActiveEnemies(): EnemyState[] {
@@ -161,13 +87,16 @@ class EnemyManager {
   addEnemy(enemy: EnemyInput): string | null {
     const id = enemy.id || this.generateEnemyId();
     const type = this.normalizeEnemyType(enemy.type);
-    const addedId = this.gameState.addEnemy({
+    const maxLives = this.getEnemyMaxLives(type);
+    const addedId = this.gameState.addEnemy?.({
       id,
       type,
       roomIndex: enemy.roomIndex ?? 0,
       x: enemy.x,
       y: enemy.y,
       lastX: enemy.lastX ?? enemy.x,
+      lastY: enemy.lastY ?? enemy.y,
+      lives: maxLives,
       defeatVariableId: enemy.defeatVariableId ?? null,
     });
     if (!addedId) {
@@ -178,7 +107,7 @@ class EnemyManager {
   }
 
   removeEnemy(enemyId: string): void {
-    this.gameState.removeEnemy(enemyId);
+    this.gameState.removeEnemy?.(enemyId);
     this.renderer.draw();
   }
 
@@ -200,6 +129,10 @@ class EnemyManager {
     if (this.enemyMoveTimer) {
       clearInterval(this.enemyMoveTimer);
     }
+    // Cancel death sequence to prevent race conditions on game restart
+    this.combatManager.cancelDeathSequence();
+    // Migrate enemy lives from old system to new system
+    this.migrateEnemyLives();
     this.enemyMoveTimer = setInterval(() => this.tick(), this.interval);
   }
 
@@ -208,6 +141,11 @@ class EnemyManager {
       clearInterval(this.enemyMoveTimer);
       this.enemyMoveTimer = null;
     }
+    // Cancel death sequence to prevent race conditions on game reset
+    this.combatManager.cancelDeathSequence();
+    // Cancel all pending wind-up timers
+    this.windupTimers.forEach(timer => clearTimeout(timer));
+    this.windupTimers.clear();
   }
 
   tick(): void {
@@ -217,20 +155,28 @@ class EnemyManager {
     const enemies = this.gameState.getEnemies();
     if (!this.hasMovableEnemies(enemies)) return;
 
-    const game = this.gameState.getGame();
+    const game = this.gameState.getGame?.();
+    if (!game) return;
+
     const player = this.gameState.getPlayer();
     this.evaluateVision(player);
     let moved = false;
 
     for (let i = 0; i < enemies.length; i++) {
       const enemy = enemies[i];
+
+      // Skip dying enemies (in death animation) - they should not move
+      if (EnemyDefinitions.isDying(enemy)) {
+        continue;
+      }
+
       const result =
         enemy.playerInVision
           ? this.tryChaseEnemy(enemy, i, game, player, enemies)
-          : this.tryMoveEnemy(enemies, i, game);
-      if (result === EnemyMovementResult.Moved) {
+          : this.tryMoveEnemy(enemies, i, game, player);
+      if (result === EnemyMovementResultConst.Moved) {
         moved = true;
-      } else if (result === EnemyMovementResult.Collided) {
+      } else if (result === EnemyMovementResultConst.Collided) {
         moved = true;
         break;
       }
@@ -241,60 +187,49 @@ class EnemyManager {
     }
   }
 
-  handleEnemyCollision(enemyIndex: number): void {
-    if (this.gameState.isPlayerOnDamageCooldown()) {
-      this.renderer.showCombatIndicator(getEnemyLocaleText('combat.cooldown', ''), { duration: 700 });
-      return;
-    }
+  handleEnemyCollision(
+    enemyIndex: number,
+    options: { skipAssassinate?: boolean; initiator?: 'player' | 'enemy' } = {}
+  ): void {
+    // Delegate to CombatManager
+    this.combatManager.handleEnemyCollision(enemyIndex, options);
+  }
 
+  /**
+   * Handle enemy defeat - called by CombatManager
+   * Removes enemy from array, triggers defeat variable, awards XP, checks level up
+   */
+  private handleEnemyDefeated(enemyId: string, enemy: EnemyState): void {
     const enemies = this.gameState.getEnemies();
-    if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
-    const enemy = enemies[enemyIndex];
-    enemy.type = this.normalizeEnemyType(enemy.type);
-    if (this.canAssassinate(enemy)) {
-      this.assassinateEnemy(enemyIndex);
+
+    // Find enemy index by ID (safe against race conditions during async operations)
+    const enemyIndex = enemies.findIndex(e => e.id === enemyId);
+
+    // If enemy not found, it may have been removed already
+    if (enemyIndex === -1) {
+      console.warn(`Enemy ${enemyId} not found in array, may have been removed already`);
       return;
     }
-    const missChance = this.getEnemyMissChance(enemy.type);
-    const attackMissed = this.attackMissed(missChance);
 
+    // Clear attack telegraph warning
+    this.renderer.attackTelegraph?.deactivateTelegraph(enemyId);
+
+    // Remove enemy from array
     enemies.splice(enemyIndex, 1);
 
-    if (attackMissed) {
-      this.showMissFeedback();
-    } else {
-      const damage = this.getEnemyDamage(enemy.type);
-      const lives = this.gameState.damagePlayer(damage);
-      const reduction = this.gameState.consumeLastDamageReduction();
-      const revived = this.gameState.consumeRecentReviveFlag() || false;
-      if (revived) {
-        this.renderer.showCombatIndicator(getEnemyLocaleText('skills.necromancer.revive', ''), { duration: 900 });
-      }
-      if (reduction > 0) {
-        const text =
-          reduction >= damage
-            ? getEnemyLocaleText('combat.block.full', '')
-            : formatEnemyLocaleText('combat.block.partial', { value: reduction }, '');
-        this.renderer.showCombatIndicator(text, { duration: 700 });
-      }
-      if (lives <= 0) {
-        this.onPlayerDefeated();
-        return;
-      }
-    }
+    // Trigger defeat variable if configured
+    this.tryTriggerDefeatVariable(enemy);
 
+    // Award experience
     const experienceReward = this.getExperienceReward(enemy.type);
     const defeatResult = this.gameState.handleEnemyDefeated(experienceReward);
+
+    // Check if leveled up and should start level overlay
     if (defeatResult?.leveledUp && this.shouldStartLevelOverlay()) {
       this.gameState.startLevelUpSelectionIfNeeded();
     }
-
-    this.tryTriggerDefeatVariable(enemy);
-    this.renderer.flashScreen({ intensity: 0.8, duration: 160 });
-
-    this.checkAllEnemiesCleared();
-    this.renderer.draw();
   }
+
 
   checkCollisionAt(x: number, y: number): void {
     const enemies = this.gameState.getEnemies();
@@ -303,11 +238,6 @@ class EnemyManager {
       (enemy) => enemy.roomIndex === playerRoom && enemy.x === x && enemy.y === y,
     );
     if (index !== -1) {
-      const enemy = enemies[index];
-      if (this.canAssassinate(enemy)) {
-        this.assassinateEnemy(index);
-        return;
-      }
       this.handleEnemyCollision(index);
     }
   }
@@ -334,29 +264,131 @@ class EnemyManager {
     return Array.isArray(enemies) && enemies.length > 0;
   }
 
-  tryMoveEnemy(enemies: EnemyState[], index: number, game: GameData): EnemyMovementResult {
+  findFreeDirection(enemy: EnemyState, game: GameData, enemies: EnemyState[], enemyIndex: number): number[] | null {
+    const currentDir = [enemy.moveDirectionX ?? 0, enemy.moveDirectionY ?? 0];
+
+    // Try all directions except the current blocked one
+    const allDirections = this.directions.filter(dir =>
+      !(dir[0] === 0 && dir[1] === 0) // Exclude [0,0] (no movement)
+    );
+
+    // Shuffle directions to avoid predictable patterns
+    const shuffledDirections = allDirections.sort(() => Math.random() - 0.5);
+
+    for (const dir of shuffledDirections) {
+      // Skip the current direction that's blocked
+      if (dir[0] === currentDir[0] && dir[1] === currentDir[1]) {
+        continue;
+      }
+
+      const target = this.getTargetPosition(enemy, dir);
+      if (this.canEnterTile(enemy.roomIndex, target.x, target.y, game, enemies, enemyIndex)) {
+        return dir;
+      }
+    }
+
+    return null; // No free direction found
+  }
+
+  tryMoveEnemy(enemies: EnemyState[], index: number, game: GameData, player: PlayerState | null): EnemyMovementResult {
     if (index < 0 || index >= enemies.length) {
-      return EnemyMovementResult.None;
+      return EnemyMovementResultConst.None;
     }
     const enemy = enemies[index];
     enemy.type = this.normalizeEnemyType(enemy.type);
-    if (enemy.playerInVision) return EnemyMovementResult.None;
+    if (enemy.playerInVision) return EnemyMovementResultConst.None;
 
-    const dir = this.pickRandomDirection();
+    // Movement inertia: keep moving in same direction for stability
+    let dir: number[];
+    const hasActiveDirection = typeof enemy.moveDirectionSteps === 'number' && enemy.moveDirectionSteps > 0;
+
+    if (hasActiveDirection && typeof enemy.moveDirectionX === 'number' && typeof enemy.moveDirectionY === 'number') {
+      // Continue in current direction
+      dir = [enemy.moveDirectionX, enemy.moveDirectionY];
+      enemy.moveDirectionSteps = (enemy.moveDirectionSteps ?? 0) - 1;
+    } else {
+      // Pick new direction and commit to it for 2 moves
+      dir = this.pickRandomDirection();
+      enemy.moveDirectionX = dir[0];
+      enemy.moveDirectionY = dir[1];
+      enemy.moveDirectionSteps = 2; // Move in this direction for 2 steps
+    }
+
     const target = this.getTargetPosition(enemy, dir);
     const roomIndex = enemy.roomIndex;
 
-    if (!this.canEnterTile(roomIndex, target.x, target.y, game, enemies, index)) {
-      return EnemyMovementResult.None;
+    // Don't move into player's tile - trigger collision combat
+    if (player && player.roomIndex === roomIndex && player.x === target.x && player.y === target.y) {
+      // Trigger wind-up animation before attack
+      if (enemy.id) {
+        this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+        // Wait for wind-up animation to complete before applying damage (same as player)
+        const timer = setTimeout(() => {
+          this.windupTimers.delete(timer);
+          this.handleEnemyCollision(index, { initiator: 'enemy' });
+        }, GameConfig.combat.lungeAnimationDuration);
+        this.windupTimers.add(timer);
+      } else {
+        // No ID, trigger immediately
+        this.handleEnemyCollision(index, { initiator: 'enemy' });
+      }
+      return EnemyMovementResultConst.Collided;
     }
 
+    if (!this.canEnterTile(roomIndex, target.x, target.y, game, enemies, index)) {
+      // Can't move in current direction - try to find an unblocked direction
+      const freeDirection = this.findFreeDirection(enemy, game, enemies, index);
+      if (freeDirection) {
+        // Found a free direction - commit to it
+        enemy.moveDirectionX = freeDirection[0];
+        enemy.moveDirectionY = freeDirection[1];
+        enemy.moveDirectionSteps = 2;
+
+        // Try to move in the new direction
+        const newTarget = this.getTargetPosition(enemy, freeDirection);
+
+        // Don't move into player's tile
+        if (player && player.roomIndex === roomIndex && player.x === newTarget.x && player.y === newTarget.y) {
+          if (enemy.id) {
+            this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+            // Wait for wind-up animation to complete before applying damage (same as player)
+            const timer = setTimeout(() => {
+              this.windupTimers.delete(timer);
+              this.handleEnemyCollision(index, { initiator: 'enemy' });
+            }, GameConfig.combat.lungeAnimationDuration);
+            this.windupTimers.add(timer);
+          } else {
+            // No ID, trigger immediately
+            this.handleEnemyCollision(index, { initiator: 'enemy' });
+          }
+          return EnemyMovementResultConst.Collided;
+        }
+
+        // Move to the new position
+        enemy.lastX = enemy.x;
+        enemy.lastY = enemy.y;
+        enemy.x = newTarget.x;
+        enemy.y = newTarget.y;
+
+        return this.resolvePostMove(roomIndex, newTarget.x, newTarget.y, index)
+          ? EnemyMovementResultConst.Collided
+          : EnemyMovementResultConst.Moved;
+      } else {
+        // No free direction found - stay in place
+        enemy.moveDirectionSteps = 0;
+        return EnemyMovementResultConst.None;
+      }
+    }
+
+    // Update last known positions before moving
     enemy.lastX = enemy.x;
+    enemy.lastY = enemy.y;
     enemy.x = target.x;
     enemy.y = target.y;
 
     return this.resolvePostMove(roomIndex, target.x, target.y, index)
-      ? EnemyMovementResult.Collided
-      : EnemyMovementResult.Moved;
+      ? EnemyMovementResultConst.Collided
+      : EnemyMovementResultConst.Moved;
   }
 
   pickRandomDirection(): number[] {
@@ -383,37 +415,97 @@ class EnemyManager {
     for (const direction of directions) {
       const target = this.getTargetPosition(enemy, direction);
       const roomIndex = enemy.roomIndex;
+
+      // Don't move into player's tile - trigger collision combat
+      if (player.roomIndex === roomIndex && player.x === target.x && player.y === target.y) {
+        // Trigger wind-up animation before attack
+        if (enemy.id) {
+          this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: player.x, y: player.y });
+          // Wait for wind-up animation to complete before applying damage (same as player)
+          const timer = setTimeout(() => {
+            this.windupTimers.delete(timer);
+            this.handleEnemyCollision(index, { initiator: 'enemy' });
+          }, GameConfig.combat.lungeAnimationDuration);
+          this.windupTimers.add(timer);
+        } else {
+          // No ID, trigger immediately
+          this.handleEnemyCollision(index, { initiator: 'enemy' });
+        }
+        return EnemyMovementResultConst.Collided;
+      }
+
       if (!this.canEnterTile(roomIndex, target.x, target.y, game, enemies, index)) {
         continue;
       }
+      // Update last known positions before moving
       enemy.lastX = enemy.x;
+      enemy.lastY = enemy.y;
       enemy.x = target.x;
       enemy.y = target.y;
       return this.resolvePostMove(roomIndex, target.x, target.y, index)
-        ? EnemyMovementResult.Collided
-        : EnemyMovementResult.Moved;
+        ? EnemyMovementResultConst.Collided
+        : EnemyMovementResultConst.Moved;
     }
-    return EnemyMovementResult.None;
+    return EnemyMovementResultConst.None;
   }
 
   moveChasingEnemies(player: PlayerState | null): void {
     if (!player) return;
     const enemies = this.getActiveEnemies();
-    const game = this.gameState.getGame();
+    const game = this.gameState.getGame?.();
+    if (!game) return;
+
     let moved = false;
     for (let index = 0; index < enemies.length; index += 1) {
       const enemy = enemies[index];
       if (!enemy.playerInVision) continue;
       const result = this.tryChaseEnemy(enemy, index, game, player, enemies);
-      if (result === EnemyMovementResult.Moved) {
+      if (result === EnemyMovementResultConst.Moved) {
         moved = true;
-      } else if (result === EnemyMovementResult.Collided) {
+      } else if (result === EnemyMovementResultConst.Collided) {
         moved = true;
         break;
       }
     }
     if (moved) {
       this.renderer.draw();
+    }
+  }
+
+  /**
+   * Check if enemy can see player based on directional vision
+   * Enemies can ONLY see in the direction they are facing - NEVER 360°
+   */
+  private canEnemySeePlayer(enemy: EnemyState, player: PlayerState): boolean {
+    // Get last known positions (default to current position if never set)
+    const lastX = typeof enemy.lastX === 'number' ? enemy.lastX : enemy.x;
+    const lastY = typeof enemy.lastY === 'number' ? enemy.lastY : enemy.y;
+
+    // Calculate movement deltas
+    const deltaX = enemy.x - lastX;
+    const deltaY = enemy.y - lastY;
+
+    // Determine which axis had more movement to decide primary facing direction
+    const absDeltaX = Math.abs(deltaX);
+    const absDeltaY = Math.abs(deltaY);
+
+    // Special case: if both deltas are 0 (stopped) and lastY exists, prefer vertical
+    if (absDeltaX === 0 && absDeltaY === 0 && typeof enemy.lastY === 'number') {
+      // Stopped with vertical tracking - face down by default
+      return player.y >= enemy.y;
+    }
+
+    // If enemy is moving or has moved primarily horizontally
+    if (absDeltaX >= absDeltaY) {
+      // Facing direction based on X movement (or default to right if no movement)
+      const facingRight = deltaX >= 0;
+      // Can ONLY see in facing direction
+      return facingRight ? player.x >= enemy.x : player.x <= enemy.x;
+    } else {
+      // Facing direction based on Y movement
+      const facingDown = deltaY >= 0;
+      // Can ONLY see in facing direction
+      return facingDown ? player.y >= enemy.y : player.y <= enemy.y;
     }
   }
 
@@ -424,6 +516,14 @@ class EnemyManager {
     const visionRange = GameConfig.enemy.vision.range;
     const alertDuration = GameConfig.enemy.vision.alertDuration;
     for (const enemy of enemies) {
+      // Skip dying enemies (in death animation) - they should not detect player
+      if (EnemyDefinitions.isDying(enemy)) {
+        enemy.playerInVision = false;
+        enemy.alertStart = null;
+        enemy.alertUntil = null;
+        continue;
+      }
+
       if (enemy.roomIndex !== player.roomIndex) {
         enemy.playerInVision = false;
         enemy.alertStart = null;
@@ -432,7 +532,9 @@ class EnemyManager {
       }
       const dx = Math.abs(player.x - enemy.x);
       const dy = Math.abs(player.y - enemy.y);
-      const inVision = dx <= visionRange && dy <= visionRange;
+      const inRange = dx <= visionRange && dy <= visionRange;
+      const canSee = this.canEnemySeePlayer(enemy, player);
+      const inVision = inRange && canSee;
       if (inVision) {
         if (!enemy.playerInVision) {
           enemy.playerInVision = true;
@@ -498,11 +600,11 @@ class EnemyManager {
 
   hasBlockingObject(roomIndex: number, x: number, y: number): boolean {
     const OT = ITEM_TYPES;
-    const blockingObject = this.gameState.getObjectAt(roomIndex, x, y);
+    const blockingObject = this.gameState.getObjectAt?.(roomIndex, x, y);
     if (!blockingObject) return false;
     if (blockingObject.type === OT.DOOR && !blockingObject.opened) return true;
     if (blockingObject.type === OT.DOOR_VARIABLE) {
-      const isOpen = blockingObject.variableId ? this.gameState.isVariableOn(blockingObject.variableId) : false;
+      const isOpen = blockingObject.variableId ? this.gameState.isVariableOn?.(blockingObject.variableId) : false;
       return !isOpen;
     }
     return false;
@@ -515,10 +617,7 @@ class EnemyManager {
   resolvePostMove(roomIndex: number, x: number, y: number, enemyIndex: number): boolean {
     const player = this.gameState.getPlayer();
     if (player.roomIndex === roomIndex && player.x === x && player.y === y) {
-      if (this.tryStealthAssassination(enemyIndex)) {
-        return true;
-      }
-      this.handleEnemyCollision(enemyIndex);
+      this.handleEnemyCollision(enemyIndex, { initiator: 'enemy' });
       return true;
     }
     return false;
@@ -547,61 +646,6 @@ class EnemyManager {
     return true;
   }
 
-  canAssassinate(enemy: EnemyState): boolean {
-    const stealth = this.gameState.hasSkill('stealth');
-    if (!stealth) return false;
-    const damage = this.getEnemyDamage(enemy.type);
-    return damage <= 2;
-  }
-
-  tryStealthAssassination(enemyIndex: number): boolean {
-    const enemies = this.gameState.getEnemies();
-    if (enemyIndex < 0 || enemyIndex >= enemies.length) {
-      return false;
-    }
-    const enemy = enemies[enemyIndex];
-    if (!this.canAssassinate(enemy)) {
-      return false;
-    }
-    const missed = Math.random() < GameConfig.enemy.stealthMissChance;
-    if (missed) {
-      this.showStealthMissFeedback();
-      return false;
-    }
-    this.assassinateEnemy(enemyIndex);
-    return true;
-  }
-
-  assassinateEnemy(enemyIndex: number): void {
-    const enemies = this.gameState.getEnemies();
-    if (enemyIndex < 0 || enemyIndex >= enemies.length) return;
-    const enemy = enemies[enemyIndex];
-    const type = this.normalizeEnemyType(enemy.type);
-    enemies.splice(enemyIndex, 1);
-
-    const experienceReward = this.getExperienceReward(type);
-    const defeatResult = this.gameState.handleEnemyDefeated(experienceReward);
-    if (defeatResult?.leveledUp && this.shouldStartLevelOverlay()) {
-      this.gameState.startLevelUpSelectionIfNeeded();
-    }
-    this.tryTriggerDefeatVariable({ ...enemy, type });
-    this.showStealthKillFeedback();
-    this.renderer.flashScreen({ intensity: 0.4, duration: 120 });
-    this.checkAllEnemiesCleared();
-    this.renderer.draw();
-  }
-
-  showStealthKillFeedback(): void {
-    const text = getEnemyLocaleText('combat.stealthKill', '');
-    if (!text) return;
-    this.renderer.showCombatIndicator(text, { duration: 800 });
-  }
-
-  showStealthMissFeedback(): void {
-    const text = getEnemyLocaleText('combat.stealthMiss', '');
-    if (!text) return;
-    this.renderer.showCombatIndicator(text, { duration: 800 });
-  }
 
   shouldStartLevelOverlay(): boolean {
     const pendingChoices = this.gameState.getPendingLevelUpChoices();
@@ -609,11 +653,59 @@ class EnemyManager {
   }
 
   getEnemyDamage(type: string): number {
-    const definition = this.getEnemyDefinition(type);
-    if (definition && typeof definition.damage === 'number' && Number.isFinite(definition.damage)) {
-      return Math.max(1, definition.damage);
+    return this.combatManager.getEnemyDamage(type);
+  }
+
+  /**
+   * Get enemy max lives from definition
+   * Lives define how many gray squares appear above enemy head
+   * Giant Rat (vida 1) = 1 square, Ancient Demon (vida 8) = 8 squares
+   */
+  getEnemyMaxLives(type: string): number {
+    const definition = this.getEnemyDefinition(type) as EnemyDefinitionData & { lives?: number };
+    if (typeof definition.lives === 'number' && Number.isFinite(definition.lives)) {
+      const livesValue = Number(definition.lives);
+      return Math.max(1, livesValue);
     }
-    return 1;
+    return 1; // Fallback to 1 life if definition not found
+  }
+
+  /**
+   * Migrate all enemies from old tiered system to new lives-based system
+   * Called once when game starts to fix enemies saved with old system
+   */
+  migrateEnemyLives(): void {
+    const enemies = this.gameState.getEnemies();
+    enemies.forEach(enemy => {
+      const expectedLives = this.getEnemyMaxLives(enemy.type);
+
+      // Migrate if lives don't match expected (old system had different values)
+      // Only migrate if lives seem to be from initialization (1-4 range from old tiers)
+      // AND they don't match the new expected value
+      const looksLikeOldSystem =
+        typeof enemy.lives === 'number' &&
+        enemy.lives >= 1 &&
+        enemy.lives <= 4 &&
+        enemy.lives !== expectedLives;
+
+      if (looksLikeOldSystem) {
+        enemy.lives = expectedLives;
+      }
+
+      // Also fix if lives are missing or invalid
+      if (typeof enemy.lives !== 'number' || enemy.lives <= 0) {
+        enemy.lives = expectedLives;
+      }
+    });
+  }
+
+  /**
+   * Ensure enemy has lives initialized
+   * Only resets lives if they are missing or invalid
+   * Does NOT migrate during combat - migration happens at game start
+   */
+  ensureEnemyLives(enemy: EnemyState): void {
+    this.combatManager.ensureEnemyLives(enemy);
   }
 
   getExperienceReward(type: string): number {
@@ -621,11 +713,7 @@ class EnemyManager {
   }
 
   getEnemyMissChance(type: string): number {
-    const explicit = EnemyDefinitions.getMissChance(type);
-    if (explicit !== null) {
-      return this.normalizeMissChance(explicit);
-    }
-    return this.fallbackMissChance;
+    return this.combatManager.getEnemyMissChance(type);
   }
 
   checkAllEnemiesCleared(): void {
@@ -641,24 +729,11 @@ class EnemyManager {
   }
 
   normalizeMissChance(value: number): number {
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) {
-      return 0.25;
-    }
-    return Math.max(0, Math.min(1, numeric));
+    return this.combatManager.normalizeMissChance(value);
   }
 
   attackMissed(chance?: number): boolean {
-    let normalized: number;
-    if (chance === undefined) {
-      normalized = this.normalizeMissChance(this.fallbackMissChance);
-      this.fallbackMissChance = normalized;
-    } else {
-      normalized = this.normalizeMissChance(chance);
-    }
-    if (normalized <= 0) return false;
-    if (normalized >= 1) return true;
-    return Math.random() < normalized;
+    return this.combatManager.attackMissed(chance);
   }
 
     getDefeatVariableConfig(enemy: EnemyState): { variableId: string; persist: boolean; message: string | null } | null {
@@ -672,7 +747,7 @@ class EnemyManager {
       const fallbackId = typeof baseConfig?.variableId === 'string' ? baseConfig.variableId : null;
       variableId = fallbackId;
     }
-    variableId = this.gameState.normalizeVariableId(variableId);
+    variableId = this.gameState.normalizeVariableId?.(variableId) ?? null;
     if (!variableId) return null;
     const persist = baseConfig?.persist !== undefined ? Boolean(baseConfig.persist) : true;
     let message = null;
@@ -694,8 +769,9 @@ class EnemyManager {
   tryTriggerDefeatVariable(enemy: EnemyState): boolean {
     const config = this.getDefeatVariableConfig(enemy);
     if (!config) return false;
-    const [updated] = this.gameState.setVariableValue(config.variableId, true, config.persist);
-    const isActive = this.gameState.isVariableOn(config.variableId);
+    const result = this.gameState.setVariableValue?.(config.variableId, true, config.persist);
+    const [updated] = result ?? [false];
+    const isActive = this.gameState.isVariableOn?.(config.variableId);
     if (!updated && !isActive) {
       return false;
     }
@@ -707,7 +783,27 @@ class EnemyManager {
   }
 
   showMissFeedback(): void {
-    this.renderer.showCombatIndicator('Miss', { duration: 500 });
+    this.combatManager.showMissFeedback();
+  }
+
+  /**
+   * Trigger wind-up animation for enemy attack (one-time, not continuous)
+   * Called right before enemy executes attack
+   */
+  triggerEnemyWindup(enemyId: string, enemyPos: { x: number; y: number }, playerPos: { x: number; y: number }): void {
+    const telegraphConfig = GameConfig.combat.telegraph;
+    if (!telegraphConfig.enabled) return;
+
+    const attackTelegraph = this.renderer.attackTelegraph;
+    if (!attackTelegraph) return;
+
+    // Calculate direction from enemy to player
+    const directionToPlayer = {
+      x: playerPos.x - enemyPos.x,
+      y: playerPos.y - enemyPos.y
+    };
+
+    attackTelegraph.activateTelegraph(enemyId, directionToPlayer);
   }
 
   getNow() {
@@ -716,6 +812,27 @@ class EnemyManager {
       return perf.now();
     }
     return Date.now();
+  }
+
+  /**
+   * Check if there's an enemy adjacent (within 1 tile) to the given position
+   */
+  hasEnemyNear(roomIndex: number, x: number, y: number): boolean {
+    const enemies = this.gameState.getEnemies();
+    if (!Array.isArray(enemies) || enemies.length === 0) {
+      return false;
+    }
+
+    // Check all 8 adjacent positions (including diagonals)
+    return enemies.some(enemy => {
+      if (enemy.roomIndex !== roomIndex) return false;
+      if (typeof enemy.x !== 'number' || typeof enemy.y !== 'number') return false;
+
+      // Check if enemy is at player's position or adjacent
+      const dx = Math.abs(enemy.x - x);
+      const dy = Math.abs(enemy.y - y);
+      return dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0);
+    });
   }
 }
 

@@ -128,13 +128,12 @@ class ShareDataNormalizer {
 
     static normalizeSprites(list: unknown[] | null | undefined): NormalizedSprite[] {
         if (!Array.isArray(list)) return [];
-        const seen = new Set<string>();
         const normalized: NormalizedSprite[] = [];
         const defs = ShareConstants.NPC_DEFINITIONS as NpcDefinitionLookup[];
         for (const raw of list) {
             const npc = raw as ShareSpriteInput;
             const type = ShareDataNormalizer.resolveNpcType(npc);
-            if (!type || seen.has(type)) continue;
+            if (!type) continue;
             const def = defs.find((entry) => entry.type === type);
             if (!def) continue;
             const placed = npc.placed !== false;
@@ -173,7 +172,6 @@ class ShareDataNormalizer {
                 rewardVariableId: hasRewardId ? rewardId : null,
                 conditionalRewardVariableId: hasConditionalRewardId ? conditionalRewardId : null
             });
-            seen.add(type);
         }
         return normalized;
     }

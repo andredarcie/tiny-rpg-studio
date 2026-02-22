@@ -18,6 +18,9 @@ describe('EnemyManager', () => {
     draw: vi.fn(),
     flashScreen: vi.fn(),
     showCombatIndicator: vi.fn(),
+    spawnEnemyLifeLoss: vi.fn(),
+    applyGrayscaleFilter: vi.fn(),
+    removeGrayscaleFilter: vi.fn(),
   };
 
   const tileManager = {
@@ -31,6 +34,7 @@ describe('EnemyManager', () => {
     name: 'Test Enemy',
     nameKey: 'enemies.names.test',
     description: 'test',
+    lives: 1,
     damage: 1,
     missChance: 0,
     experience: 1,
@@ -45,6 +49,8 @@ describe('EnemyManager', () => {
     x: number;
     y: number;
     lastX: number;
+    lastY?: number;
+    lives?: number;
     playerInVision?: boolean;
     alertUntil?: number | null;
     alertStart?: number | null;
@@ -53,7 +59,7 @@ describe('EnemyManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSpy.mockImplementation((...args: unknown[]) => {
-      const key = args[0] as string;
+      const key = args[0] as string | null | undefined;
       const fallback = args[1] as string | undefined;
       return key === 'combat.cooldown' ? 'Safe' : fallback || 'text';
     });
@@ -69,6 +75,7 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => data.type === type,
         getExperienceReward: () => data.experience,
         getMissChance: () => data.missChance,
+        lives: data.lives,
       };
     });
     getExperienceSpy.mockImplementation(() => 2);
@@ -133,6 +140,7 @@ describe('EnemyManager', () => {
         matchesType: (type: string) => data.type === type,
         getExperienceReward: () => data.experience,
         getMissChance: () => data.missChance,
+        lives: data.lives,
       };
     });
     const gameState = createEnemyGameState();
@@ -197,6 +205,237 @@ describe('EnemyManager', () => {
     nowSpy.mockRestore();
   });
 
+  describe('Directional Vision - Enemies Can ONLY See in Facing Direction', () => {
+    describe('Horizontal Movement (Left/Right)', () => {
+      it('enemy facing RIGHT (moved 2→3) can ONLY see right side', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 2, // Moved right (2 → 3), facing RIGHT
+        };
+
+        // Player in FRONT (right) - should SEE
+        const playerFront = { roomIndex: 0, x: 4, y: 3 };
+        const gameStateFront = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerFront = new EnemyManager(gameStateFront, renderer, tileManager);
+        managerFront.evaluateVision(playerFront);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player BEHIND (left) - should NOT see
+        const playerBehind = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateBehind = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBehind = new EnemyManager(gameStateBehind, renderer, tileManager);
+        managerBehind.evaluateVision(playerBehind);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+
+      it('enemy facing LEFT (moved 4→3) can ONLY see left side', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 4, // Moved left (4 → 3), facing LEFT
+        };
+
+        // Player in FRONT (left) - should SEE
+        const playerFront = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateFront = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerFront = new EnemyManager(gameStateFront, renderer, tileManager);
+        managerFront.evaluateVision(playerFront);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player BEHIND (right) - should NOT see
+        const playerBehind = { roomIndex: 0, x: 5, y: 3 };
+        const gameStateBehind = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBehind = new EnemyManager(gameStateBehind, renderer, tileManager);
+        managerBehind.evaluateVision(playerBehind);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+
+    describe('Vertical Movement (Up/Down)', () => {
+      it('enemy facing DOWN (moved y: 2→3) can ONLY see downward', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3,
+          lastY: 2, // Moved down (2 → 3), facing DOWN
+        };
+
+        // Player BELOW (down) - should SEE
+        const playerBelow = { roomIndex: 0, x: 3, y: 4 };
+        const gameStateBelow = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBelow = new EnemyManager(gameStateBelow, renderer, tileManager);
+        managerBelow.evaluateVision(playerBelow);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player ABOVE (up) - should NOT see
+        const playerAbove = { roomIndex: 0, x: 3, y: 2 };
+        const gameStateAbove = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerAbove = new EnemyManager(gameStateAbove, renderer, tileManager);
+        managerAbove.evaluateVision(playerAbove);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+
+      it('enemy facing UP (moved y: 4→3) can ONLY see upward', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3,
+          lastY: 4, // Moved up (4 → 3), facing UP
+        };
+
+        // Player ABOVE (up) - should SEE
+        const playerAbove = { roomIndex: 0, x: 3, y: 2 };
+        const gameStateAbove = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerAbove = new EnemyManager(gameStateAbove, renderer, tileManager);
+        managerAbove.evaluateVision(playerAbove);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player BELOW (down) - should NOT see
+        const playerBelow = { roomIndex: 0, x: 3, y: 4 };
+        const gameStateBelow = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBelow = new EnemyManager(gameStateBelow, renderer, tileManager);
+        managerBelow.evaluateVision(playerBelow);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+
+    describe('Stopped Enemy - Maintains Last Direction', () => {
+      it('enemy stopped after moving RIGHT maintains right-facing vision', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3, // Stopped (delta = 0), defaults to facing RIGHT
+        };
+
+        // Player on RIGHT - should SEE
+        const playerRight = { roomIndex: 0, x: 4, y: 3 };
+        const gameStateRight = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerRight = new EnemyManager(gameStateRight, renderer, tileManager);
+        managerRight.evaluateVision(playerRight);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player on LEFT - should NOT see
+        const playerLeft = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateLeft = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerLeft = new EnemyManager(gameStateLeft, renderer, tileManager);
+        managerLeft.evaluateVision(playerLeft);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+
+      it('enemy stopped after moving DOWN maintains down-facing vision', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3,
+          lastY: 3, // Stopped (delta = 0), defaults to facing DOWN
+        };
+
+        // Player BELOW - should SEE
+        const playerBelow = { roomIndex: 0, x: 3, y: 4 };
+        const gameStateBelow = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerBelow = new EnemyManager(gameStateBelow, renderer, tileManager);
+        managerBelow.evaluateVision(playerBelow);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player ABOVE - should NOT see
+        const playerAbove = { roomIndex: 0, x: 3, y: 2 };
+        const gameStateAbove = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerAbove = new EnemyManager(gameStateAbove, renderer, tileManager);
+        managerAbove.evaluateVision(playerAbove);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+
+    describe('Spawn State - Default Direction (NO 360° Vision)', () => {
+      it('enemy at spawn (no lastX/lastY) faces RIGHT by default, NOT 360°', () => {
+        const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(1000);
+        const enemy: MockEnemyData = {
+          id: 'enemy-vision',
+          type: 'rat',
+          roomIndex: 0,
+          x: 3,
+          y: 3,
+          lastX: 3, // Spawn state (no movement)
+          // lastY undefined
+        };
+
+        // Player on RIGHT - should SEE (default direction)
+        const playerRight = { roomIndex: 0, x: 4, y: 3 };
+        const gameStateRight = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerRight = new EnemyManager(gameStateRight, renderer, tileManager);
+        managerRight.evaluateVision(playerRight);
+        expect(enemy.playerInVision).toBe(true);
+
+        // Reset
+        enemy.playerInVision = false;
+
+        // Player on LEFT - should NOT see (NOT 360°!)
+        const playerLeft = { roomIndex: 0, x: 2, y: 3 };
+        const gameStateLeft = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+        const managerLeft = new EnemyManager(gameStateLeft, renderer, tileManager);
+        managerLeft.evaluateVision(playerLeft);
+        expect(enemy.playerInVision).toBe(false);
+
+        nowSpy.mockRestore();
+      });
+    });
+  });
+
   it('moves chasing enemy toward player per movement', () => {
     const player = { roomIndex: 0, x: 5, y: 5 };
     const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
@@ -237,7 +476,7 @@ describe('EnemyManager', () => {
 
   it('moves chasing enemy during tick even if player stops', () => {
     const player = { roomIndex: 0, x: 3, y: 2 };
-    const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true };
+    const enemy: MockEnemyData = { id: 'chaser', type: 'rat', roomIndex: 0, x: 2, y: 2, lastX: 2, playerInVision: true, lives: 1 };
     const getEnemiesMock = vi.fn(() => [enemy]);
     const getPlayerMock = vi.fn(() => player);
     const getGameMock = vi.fn(() => ({ rooms: [{ walls: [] }] }));
@@ -251,7 +490,8 @@ describe('EnemyManager', () => {
 
     manager.tick();
 
-    expect(enemy.x).toBe(3);
+    // Enemy stops adjacent (doesn't enter player's tile in new collision system)
+    expect(enemy.x).toBe(2);
   });
 
   it('shows a cooldown message when damage is blocked by room change safety', () => {
@@ -278,6 +518,7 @@ describe('EnemyManager', () => {
         y: 2,
         lastX: 0,
         playerInVision: true,
+        lives: 1,
       };
 
       const walls = [
@@ -302,16 +543,18 @@ describe('EnemyManager', () => {
 
       const manager = new EnemyManager(gameState, renderer, tileManager);
 
-      let collided = false;
+      // Enemy should move adjacent to player and stop (new collision combat system)
+      let adjacentReached = false;
       for (let i = 0; i < 5; i += 1) {
         manager.moveChasingEnemies(player);
-        if (enemy.x === player.x && enemy.y === player.y) {
-          collided = true;
+        // Enemy stops at x=1 (adjacent to player at x=2)
+        if (enemy.x === 1 && enemy.y === 2) {
+          adjacentReached = true;
           break;
         }
       }
 
-      expect(collided).toBe(true);
+      expect(adjacentReached).toBe(true);
     });
 
     it('should collide after player stops moving when enemy becomes adjacent', () => {
@@ -324,6 +567,7 @@ describe('EnemyManager', () => {
         y: 3,
         lastX: 4,
         playerInVision: true,
+        lives: 1,
       };
 
       const walls = [
@@ -350,7 +594,8 @@ describe('EnemyManager', () => {
 
       manager.tick();
 
-      expect(enemy.x).toBe(5);
+      // Enemy is already adjacent, stays in place (collision combat triggered)
+      expect(enemy.x).toBe(4);
       expect(enemy.y).toBe(3);
     });
 
@@ -363,6 +608,7 @@ describe('EnemyManager', () => {
         y: 2,
         lastX: 2,
         playerInVision: true,
+        lives: 1,
       };
 
       const walls = [
@@ -388,13 +634,15 @@ describe('EnemyManager', () => {
 
       const manager = new EnemyManager(gameState, renderer, tileManager);
 
-      let collisionOccurred = false;
+      const initialX = enemy.x;
+      let enemyAdvanced = false;
       for (let i = 0; i < 10; i += 1) {
         const currentPlayer = getPlayerMock();
         manager.moveChasingEnemies(currentPlayer);
 
-        if (enemy.x === currentPlayer.x && enemy.y === currentPlayer.y) {
-          collisionOccurred = true;
+        // Check if enemy is advancing (not stuck)
+        if (enemy.x > initialX) {
+          enemyAdvanced = true;
           break;
         }
 
@@ -403,8 +651,112 @@ describe('EnemyManager', () => {
         }
       }
 
-      expect(collisionOccurred).toBe(true);
+      expect(enemyAdvanced).toBe(true);
     });
+  });
+
+  describe('Boss defeat variable + necromancer death', () => {
+    it('should trigger defeatVariable even when player dies in the collision', () => {
+      vi.useFakeTimers();
+
+      const bossDefinition = {
+        ...baseEnemyDefinition,
+        type: 'boss',
+        damage: 5,
+        activateVariableOnDefeat: { variableId: 'boss-door', message: 'Door opened!' },
+      };
+      getDefinitionSpy.mockImplementation(() => ({
+        ...bossDefinition,
+        matchesType: (type: string) => type === 'boss',
+        getExperienceReward: () => 10,
+        getMissChance: () => 0,
+        lives: bossDefinition.lives,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      const boss = {
+        id: 'boss-1',
+        type: 'boss',
+        roomIndex: 0,
+        x: 3,
+        y: 3,
+        lastX: 3,
+        lives: 1,
+        defeatVariableId: 'boss-door',
+      };
+      const enemies = [boss];
+      const onPlayerDefeated = vi.fn();
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        damagePlayer: vi.fn(() => 0),                   // player dies
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+        setVariableValue: vi.fn(() => [true, false] as [boolean, boolean]),
+        isVariableOn: vi.fn(() => true),
+        normalizeVariableId: vi.fn((id: string | null) => id),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager, {
+        onPlayerDefeated,
+      });
+
+      manager.handleEnemyCollision(0);
+
+      // Wait for death sequence delay (2500ms)
+      vi.advanceTimersByTime(2500);
+
+      // Player died - onPlayerDefeated should be called after death sequence
+      expect(onPlayerDefeated).toHaveBeenCalled();
+
+      // Bug: the variable is NEVER set because return happens before tryTriggerDefeatVariable
+      expect(gameState.setVariableValue).toHaveBeenCalledWith('boss-door', true, true);
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('Stealth skill consistency', () => {
+    it('should deal damage when enemy walks into player and stealth misses', () => {
+      const weakEnemy = {
+        id: 'rat-1', type: 'giant-rat', roomIndex: 0,
+        x: 3, y: 3, lastX: 2, playerInVision: true, lives: 1,
+      };
+      const enemies = [weakEnemy];
+      const player = { roomIndex: 0, x: 3, y: 3 };
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...baseEnemyDefinition, type: 'giant-rat', damage: 1, missChance: 0,
+        matchesType: (t: string) => t === 'giant-rat',
+        getExperienceReward: () => 3,
+        getMissChance: () => 0,
+        lives: 1,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        getPlayer: vi.fn(() => player),
+        hasSkill: vi.fn(() => true),
+        damagePlayer: vi.fn(() => 2),
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      // Force stealth miss
+      vi.spyOn(Math, 'random').mockReturnValue(0);  // 0 < 0.25 = miss
+
+      manager.resolvePostMove(0, 3, 3, 0);
+
+      // Player should take damage because stealth missed and enemy reached them
+      expect(gameState.damagePlayer).toHaveBeenCalled();
+      vi.spyOn(Math, 'random').mockRestore();
+    });
+
   });
 
   describe('Independent Enemy Movement (TDD)', () => {
@@ -647,6 +999,163 @@ describe('EnemyManager', () => {
     expect(gameState.damagePlayer).not.toHaveBeenCalled();
 
     vi.useRealTimers();
+  });
+
+  describe('Player death message localization', () => {
+    it('should show localized enemy name in death message for ancient-demon', () => {
+      vi.useFakeTimers();
+
+      const ancientDemonDefinition = {
+        ...baseEnemyDefinition,
+        type: 'ancient-demon',
+        nameKey: 'enemies.names.ancientDemon',
+        name: 'Demônio Ancião',
+        damage: 1,
+      };
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...ancientDemonDefinition,
+        matchesType: (type: string) => type === 'ancient-demon',
+        getExperienceReward: () => 20,
+        getMissChance: () => 0,
+        lives: ancientDemonDefinition.lives,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      // Mock TextResources to return localized strings
+      getSpy.mockImplementation((key: string | null | undefined) => {
+        if (key === 'enemies.names.ancientDemon') return 'Demônio Ancião';
+        return '';
+      });
+      formatSpy.mockImplementation((key: string | null | undefined, params?: Record<string, string | number | boolean>) => {
+        if (key === 'combat.killedBy' && params && params.enemy === 'Demônio Ancião') {
+          return 'Morto por Demônio Ancião';
+        }
+        return '';
+      });
+
+      const enemy = {
+        id: 'demon-1',
+        type: 'ancient-demon',
+        roomIndex: 0,
+        x: 3,
+        y: 3,
+        lastX: 3,
+        lives: 1,
+      };
+      const enemies = [enemy];
+      const onPlayerDefeated = vi.fn();
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        damagePlayer: vi.fn(() => 0), // player dies
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager, {
+        onPlayerDefeated,
+      });
+
+      manager.handleEnemyCollision(0);
+
+      // Check that showCombatIndicator was called with localized name
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith(
+        expect.stringContaining('Demônio Ancião'),
+        expect.objectContaining({ duration: 2500 })
+      );
+
+      // Verify grayscale filter was applied
+      expect(renderer.applyGrayscaleFilter).toHaveBeenCalled();
+
+      // Wait for death sequence to complete
+      vi.advanceTimersByTime(2500);
+
+      // Verify game over was triggered
+      expect(onPlayerDefeated).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
+
+    it('should show localized enemy name in death message for giant-rat', () => {
+      vi.useFakeTimers();
+
+      const giantRatDefinition = {
+        ...baseEnemyDefinition,
+        type: 'giant-rat',
+        nameKey: 'enemies.names.giantRat',
+        name: 'Rato Gigante',
+        damage: 1,
+      };
+
+      getDefinitionSpy.mockImplementation(() => ({
+        ...giantRatDefinition,
+        matchesType: (type: string) => type === 'giant-rat',
+        getExperienceReward: () => 3,
+        getMissChance: () => 0,
+        lives: giantRatDefinition.lives,
+      }));
+      getMissChanceSpy.mockReturnValue(0);
+
+      // Mock TextResources to return localized strings
+      getSpy.mockImplementation((key: string | null | undefined) => {
+        if (key === 'enemies.names.giantRat') return 'Rato Gigante';
+        return '';
+      });
+      formatSpy.mockImplementation((key: string | null | undefined, params?: Record<string, string | number | boolean>) => {
+        if (key === 'combat.killedBy' && params && params.enemy === 'Rato Gigante') {
+          return 'Morto por Rato Gigante';
+        }
+        return '';
+      });
+
+      const enemy = {
+        id: 'rat-1',
+        type: 'giant-rat',
+        roomIndex: 0,
+        x: 3,
+        y: 3,
+        lastX: 3,
+        lives: 1,
+      };
+      const enemies = [enemy];
+      const onPlayerDefeated = vi.fn();
+
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies),
+        damagePlayer: vi.fn(() => 0), // player dies
+        consumeLastDamageReduction: vi.fn(() => 0),
+        consumeRecentReviveFlag: vi.fn(() => false),
+        isPlayerOnDamageCooldown: vi.fn(() => false),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager, {
+        onPlayerDefeated,
+      });
+
+      manager.handleEnemyCollision(0);
+
+      // Check that showCombatIndicator was called with localized name (not "giant-rat")
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith(
+        expect.stringContaining('Rato Gigante'),
+        expect.objectContaining({ duration: 2500 })
+      );
+
+      // Should NOT contain the type id
+      const calls = (renderer.showCombatIndicator as ReturnType<typeof vi.fn>).mock.calls;
+      const deathMessageCall = calls.find((call: unknown[]) =>
+        typeof call[0] === 'string' && call[0].includes('Morto')
+      );
+      if (deathMessageCall) {
+        expect(deathMessageCall[0]).not.toContain('giant-rat');
+      }
+
+      vi.advanceTimersByTime(2500);
+      expect(onPlayerDefeated).toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 });
 

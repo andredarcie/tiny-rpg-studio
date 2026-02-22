@@ -36,6 +36,60 @@ export interface GamePlayerConfig {
   readonly roomChangeDamageCooldown: number;
 }
 
+export interface GameCombatScreenShakeConfig {
+  readonly enabled: boolean;
+  readonly minIntensity: number;
+  readonly maxIntensity: number;
+  readonly baseDuration: number;
+  readonly intensityPerDamage: number;
+}
+
+export interface GameCombatFloatingNumbersConfig {
+  readonly enabled: boolean;
+  readonly duration: number;
+  readonly riseSpeed: number;
+  readonly fontSize: number;
+}
+
+export interface GameCombatParticlesConfig {
+  readonly enabled: boolean;
+  readonly impactCount: number;
+  readonly criticalImpactCount: number;
+  readonly deathCount: number;
+  readonly lifetime: number;
+  readonly gravity: number;
+}
+
+export interface GameCombatTelegraphConfig {
+  readonly enabled: boolean;
+  readonly color: string;
+  readonly pulseSpeed: number;
+  readonly triggerDistance: number;
+}
+
+export interface GameCombatMessageDurationConfig {
+  readonly standard: number;
+  readonly cooldown: number;
+  readonly death: number;
+}
+
+export interface GameCombatConfig {
+  readonly attackCooldown: number;
+  readonly hitStunDuration: number;
+  readonly lungeAnimationDuration: number;
+  readonly knockbackDuration: number;
+  readonly deathAnimationDuration: number;
+  readonly screenShake: GameCombatScreenShakeConfig;
+  readonly hitFlashDuration: number;
+  readonly hitstopDuration: number;
+  readonly hitstopMinDamage: number;
+  readonly entityFlashDuration: number;
+  readonly messageDuration: GameCombatMessageDurationConfig;
+  readonly floatingNumbers: GameCombatFloatingNumbersConfig;
+  readonly particles: GameCombatParticlesConfig;
+  readonly telegraph: GameCombatTelegraphConfig;
+}
+
 export interface GameEnemyVisionConfig {
   readonly range: number;
   readonly alertDuration: number;
@@ -99,6 +153,12 @@ export interface GamePaletteConfig {
   readonly colors: readonly string[];
 }
 
+export interface GameDebugConfig {
+  readonly showEnemyVision: boolean;
+  readonly visionOverlayColor: string;
+  readonly visionOverlayOpacity: number;
+}
+
 /**
  * Type helpers for accessing nested config types
  */
@@ -106,6 +166,7 @@ export type GameConfigShape = {
   canvas: GameCanvasConfig;
   world: GameWorldConfig;
   player: GamePlayerConfig;
+  combat: GameCombatConfig;
   enemy: GameEnemyConfig;
   animation: GameAnimationConfig;
   effects: GameEffectsConfig;
@@ -115,6 +176,7 @@ export type GameConfigShape = {
   hud: GameHudConfig;
   tiles: GameTilesConfig;
   palette: GamePaletteConfig;
+  debug: GameDebugConfig;
 };
 
 /**
@@ -124,6 +186,7 @@ export class GameConfigSchema {
   private _canvas: GameCanvasConfig;
   private _world: GameWorldConfig;
   private _player: GamePlayerConfig;
+  private _combat: GameCombatConfig;
   private _enemy: GameEnemyConfig;
   private _animation: GameAnimationConfig;
   private _effects: GameEffectsConfig;
@@ -133,11 +196,13 @@ export class GameConfigSchema {
   private _hud: GameHudConfig;
   private _tiles: GameTilesConfig;
   private _palette: GamePaletteConfig;
+  private _debug: GameDebugConfig;
 
   constructor(config: {
     canvas: GameCanvasConfig;
     world: GameWorldConfig;
     player: GamePlayerConfig;
+    combat: GameCombatConfig;
     enemy: GameEnemyConfig;
     animation: GameAnimationConfig;
     effects: GameEffectsConfig;
@@ -147,10 +212,12 @@ export class GameConfigSchema {
     hud: GameHudConfig;
     tiles: GameTilesConfig;
     palette: GamePaletteConfig;
+    debug: GameDebugConfig;
   }) {
     this._canvas = this.validateCanvas(config.canvas);
     this._world = this.validateWorld(config.world);
     this._player = this.validatePlayer(config.player);
+    this._combat = this.validateCombat(config.combat);
     this._enemy = this.validateEnemy(config.enemy);
     this._animation = this.validateAnimation(config.animation);
     this._effects = this.validateEffects(config.effects);
@@ -160,6 +227,7 @@ export class GameConfigSchema {
     this._hud = this.validateHud(config.hud);
     this._tiles = this.validateTiles(config.tiles);
     this._palette = this.validatePalette(config.palette);
+    this._debug = this.validateDebug(config.debug);
   }
 
   // Getters
@@ -173,6 +241,25 @@ export class GameConfigSchema {
 
   get player(): GamePlayerConfig {
     return { ...this._player };
+  }
+
+  get combat(): GameCombatConfig {
+    return {
+      attackCooldown: this._combat.attackCooldown,
+      hitStunDuration: this._combat.hitStunDuration,
+      lungeAnimationDuration: this._combat.lungeAnimationDuration,
+      knockbackDuration: this._combat.knockbackDuration,
+      deathAnimationDuration: this._combat.deathAnimationDuration,
+      screenShake: { ...this._combat.screenShake },
+      hitFlashDuration: this._combat.hitFlashDuration,
+      hitstopDuration: this._combat.hitstopDuration,
+      hitstopMinDamage: this._combat.hitstopMinDamage,
+      entityFlashDuration: this._combat.entityFlashDuration,
+      messageDuration: { ...this._combat.messageDuration },
+      floatingNumbers: { ...this._combat.floatingNumbers },
+      particles: { ...this._combat.particles },
+      telegraph: { ...this._combat.telegraph },
+    };
   }
 
     get enemy(): GameEnemyConfig {
@@ -216,6 +303,10 @@ export class GameConfigSchema {
     return { colors: [...this._palette.colors] };
   }
 
+  get debug(): GameDebugConfig {
+    return { ...this._debug };
+  }
+
   // Validation methods
   private validateCanvas(canvas: GameCanvasConfig): GameCanvasConfig {
     this.assertPositiveInteger(canvas.width, 'canvas width');
@@ -257,6 +348,80 @@ export class GameConfigSchema {
     }
 
     return Object.freeze({ ...player });
+  }
+
+  private validateCombat(combat: GameCombatConfig): GameCombatConfig {
+    this.assertNonNegativeInteger(combat.attackCooldown, 'attack cooldown');
+    this.assertNonNegativeInteger(combat.hitStunDuration, 'hit stun duration');
+    this.assertPositiveInteger(combat.lungeAnimationDuration, 'lunge animation duration');
+    this.assertPositiveInteger(combat.knockbackDuration, 'knockback duration');
+    this.assertPositiveInteger(combat.deathAnimationDuration, 'death animation duration');
+    this.assertPositiveInteger(combat.hitFlashDuration, 'hit flash duration');
+    this.assertNonNegativeInteger(combat.hitstopDuration, 'hitstop duration');
+    this.assertNonNegativeInteger(combat.hitstopMinDamage, 'hitstop min damage');
+    this.assertPositiveInteger(combat.entityFlashDuration, 'entity flash duration');
+
+    // Validate message duration
+    this.assertPositiveInteger(combat.messageDuration.standard, 'message duration standard');
+    this.assertPositiveInteger(combat.messageDuration.cooldown, 'message duration cooldown');
+    this.assertPositiveInteger(combat.messageDuration.death, 'message duration death');
+
+    // Validate screen shake
+    if (typeof combat.screenShake.enabled !== 'boolean') {
+      throw new Error('Screen shake enabled must be a boolean');
+    }
+    this.assertProbability(combat.screenShake.minIntensity, 'screen shake min intensity');
+    this.assertProbability(combat.screenShake.maxIntensity, 'screen shake max intensity');
+    this.assertPositiveInteger(combat.screenShake.baseDuration, 'screen shake base duration');
+    this.assertPositiveNumber(combat.screenShake.intensityPerDamage, 'screen shake intensity per damage');
+    if (combat.screenShake.minIntensity > combat.screenShake.maxIntensity) {
+      throw new Error(`Screen shake min intensity (${combat.screenShake.minIntensity}) cannot exceed max intensity (${combat.screenShake.maxIntensity})`);
+    }
+
+    // Validate floating numbers
+    if (typeof combat.floatingNumbers.enabled !== 'boolean') {
+      throw new Error('Floating numbers enabled must be a boolean');
+    }
+    this.assertPositiveInteger(combat.floatingNumbers.duration, 'floating numbers duration');
+    this.assertPositiveNumber(combat.floatingNumbers.riseSpeed, 'floating numbers rise speed');
+    this.assertPositiveInteger(combat.floatingNumbers.fontSize, 'floating numbers font size');
+
+    // Validate particles
+    if (typeof combat.particles.enabled !== 'boolean') {
+      throw new Error('Particles enabled must be a boolean');
+    }
+    this.assertNonNegativeInteger(combat.particles.impactCount, 'particles impact count');
+    this.assertNonNegativeInteger(combat.particles.criticalImpactCount, 'particles critical impact count');
+    this.assertNonNegativeInteger(combat.particles.deathCount, 'particles death count');
+    this.assertPositiveInteger(combat.particles.lifetime, 'particles lifetime');
+    this.assertPositiveNumber(combat.particles.gravity, 'particles gravity');
+
+    // Validate telegraph
+    if (typeof combat.telegraph.enabled !== 'boolean') {
+      throw new Error('Telegraph enabled must be a boolean');
+    }
+    if (typeof combat.telegraph.color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(combat.telegraph.color)) {
+      throw new Error('Telegraph color must be a valid hex color (#RRGGBB)');
+    }
+    this.assertPositiveNumber(combat.telegraph.pulseSpeed, 'telegraph pulse speed');
+    this.assertPositiveInteger(combat.telegraph.triggerDistance, 'telegraph trigger distance');
+
+    return Object.freeze({
+      attackCooldown: combat.attackCooldown,
+      hitStunDuration: combat.hitStunDuration,
+      lungeAnimationDuration: combat.lungeAnimationDuration,
+      knockbackDuration: combat.knockbackDuration,
+      deathAnimationDuration: combat.deathAnimationDuration,
+      screenShake: Object.freeze({ ...combat.screenShake }),
+      hitFlashDuration: combat.hitFlashDuration,
+      hitstopDuration: combat.hitstopDuration,
+      hitstopMinDamage: combat.hitstopMinDamage,
+      entityFlashDuration: combat.entityFlashDuration,
+      messageDuration: Object.freeze({ ...combat.messageDuration }),
+      floatingNumbers: Object.freeze({ ...combat.floatingNumbers }),
+      particles: Object.freeze({ ...combat.particles }),
+      telegraph: Object.freeze({ ...combat.telegraph }),
+    });
   }
 
   private validateEnemy(enemy: GameEnemyConfig): GameEnemyConfig {
@@ -355,6 +520,19 @@ export class GameConfigSchema {
     return Object.freeze({ colors: frozenColors });
   }
 
+  private validateDebug(debug: GameDebugConfig): GameDebugConfig {
+    if (typeof debug.showEnemyVision !== 'boolean') {
+      throw new Error('Debug showEnemyVision must be a boolean');
+    }
+    if (typeof debug.visionOverlayColor !== 'string' || !this.isValidColor(debug.visionOverlayColor)) {
+      throw new Error(`Invalid debug visionOverlayColor: ${debug.visionOverlayColor}`);
+    }
+    if (typeof debug.visionOverlayOpacity !== 'number' || debug.visionOverlayOpacity < 0 || debug.visionOverlayOpacity > 1) {
+      throw new Error(`Invalid debug visionOverlayOpacity: ${debug.visionOverlayOpacity}. Must be between 0 and 1.`);
+    }
+    return Object.freeze({ ...debug });
+  }
+
   // Utility validation methods
   private assertPositiveInteger(value: number, name: string): void {
     if (!Number.isInteger(value) || value <= 0) {
@@ -393,6 +571,7 @@ export class GameConfigSchema {
       canvas: this.canvas,
       world: this.world,
       player: this.player,
+      combat: this.combat,
       enemy: this.enemy,
       animation: this.animation,
       effects: this.effects,

@@ -1,6 +1,7 @@
 import { SpriteMatrixRegistry } from '../sprites/SpriteMatrixRegistry';
 import { Enemy } from '../entities/Enemy';
 import type { EnemyDefinitionData } from '../entities/Enemy';
+import type { EnemyDefinition } from '../../../types/gameState';
 
 type EnemyTypeInput = string | null | undefined;
 /**
@@ -11,9 +12,10 @@ class EnemyDefinitions {
         {
             type: 'giant-rat',
             id: 'enemy-giant-rat',
-            name: '🐀 Rato Gigante',
+            name: 'Rato Gigante',
             nameKey: 'enemies.names.giantRat',
             description: 'o primeiro inimigo fraco.',
+            lives: 1,
             damage: 1,
             missChance: 0.10,
             experience: 3,
@@ -23,10 +25,11 @@ class EnemyDefinitions {
         {
             type: 'bandit',
             id: 'enemy-bandit',
-            name: '🧔 Bandido',
+            name: 'Bandido',
             nameKey: 'enemies.names.bandit',
             description: 'inimigo humano comum.',
-            damage: 2,
+            lives: 2,
+            damage: 1,
             missChance: 0.25,
             experience: 4,
             hasEyes: true,
@@ -35,10 +38,11 @@ class EnemyDefinitions {
         {
             type: 'skeleton',
             id: 'enemy-skeleton',
-            name: '💀 Esqueleto',
+            name: 'Esqueleto',
             nameKey: 'enemies.names.skeleton',
             description: 'o morto-vivo clássico.',
-            damage: 3,
+            lives: 3,
+            damage: 1,
             missChance: 0.25,
             experience: 5,
             aliases: ['skull'],
@@ -48,10 +52,11 @@ class EnemyDefinitions {
         {
             type: 'dark-knight',
             id: 'enemy-dark-knight',
-            name: '⚔️ Cavaleiro Negro',
+            name: 'Cavaleiro Negro',
             nameKey: 'enemies.names.darkKnight',
             description: 'o guerreiro corrompido.',
-            damage: 4,
+            lives: 4,
+            damage: 2,
             missChance: 0.18,
             experience: 7,
             hasEyes: true,
@@ -60,10 +65,11 @@ class EnemyDefinitions {
         {
             type: 'necromancer',
             id: 'enemy-necromancer',
-            name: '🧙‍♂️ Necro',
+            name: 'Necro',
             nameKey: 'enemies.names.necromancer',
             description: 'o mago das trevas.',
-            damage: 5,
+            lives: 5,
+            damage: 2,
             missChance: 0.12,
             experience: 8,
             hasEyes: true,
@@ -72,10 +78,11 @@ class EnemyDefinitions {
         {
             type: 'dragon',
             id: 'enemy-dragon',
-            name: '🐉 Dragão',
+            name: 'Dragão',
             nameKey: 'enemies.names.dragon',
             description: 'o monstro lendário.',
-            damage: 6,
+            lives: 6,
+            damage: 3,
             missChance: 0.08,
             defeatActivationMessage: 'Selo do Dragão ativado!',
             defeatActivationMessageKey: 'enemies.defeat.dragon',
@@ -87,10 +94,11 @@ class EnemyDefinitions {
         {
             type: 'fallen-king',
             id: 'enemy-fallen-king',
-            name: '👑 Rei Caído',
+            name: 'Rei Caído',
             nameKey: 'enemies.names.fallenKing',
             description: 'o chefe trágico corrompido pelo poder.',
-            damage: 7,
+            lives: 7,
+            damage: 3,
             missChance: 0.08,
             defeatActivationMessage: 'Selo Real despertou!',
             defeatActivationMessageKey: 'enemies.defeat.fallenKing',
@@ -102,10 +110,11 @@ class EnemyDefinitions {
         {
             type: 'ancient-demon',
             id: 'enemy-ancient-demon',
-            name: '😈 Demônio Ancião',
+            name: 'Demônio Ancião',
             nameKey: 'enemies.names.ancientDemon',
             description: 'o mal primordial e final.',
-            damage: 8,
+            lives: 8,
+            damage: 3,
             missChance: 0.05,
             defeatActivationMessage: 'Selo Demoníaco ativo!',
             defeatActivationMessageKey: 'enemies.defeat.ancientDemon',
@@ -148,6 +157,15 @@ class EnemyDefinitions {
         const definition = this.getEnemyDefinition(type);
         if (!definition) return null;
         return definition.getMissChance();
+    }
+
+    /**
+     * Checks if an enemy instance is currently in the death animation.
+     * @param enemy - The enemy runtime state to check
+     * @returns true if the enemy is dying (death animation in progress), false otherwise
+     */
+    static isDying(enemy: EnemyDefinition): boolean {
+        return typeof enemy.deathStartTime === 'number';
     }
 }
 

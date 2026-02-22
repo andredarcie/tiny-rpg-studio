@@ -1,6 +1,6 @@
 type MinimapGameState = {
     getGame: () => { world?: { rows?: number; cols?: number } };
-    getPlayer?: () => { roomIndex?: number | null };
+    getPlayer: () => { roomIndex?: number | null };
 };
 
 class RendererMinimapRenderer {
@@ -19,7 +19,7 @@ class RendererMinimapRenderer {
     drawMinimap() {
         if (!this.minimapElement) return;
         const game = this.gameState.getGame();
-        const player = this.gameState.getPlayer?.() ?? { roomIndex: 0 };
+        const player = this.gameState.getPlayer();
         const rows = game.world?.rows || 1;
         const cols = game.world?.cols || 1;
         const total = rows * cols;

@@ -1,3 +1,4 @@
+import './styles.css';
 import { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
 import { GameEngine } from './runtime/services/GameEngine';
@@ -336,9 +337,22 @@ class TinyRPGApplication {
   }
 
   static loadSharedGameIfAvailable(gameEngine: GameEngine): void {
-    const data = ShareUtils.extractGameDataFromLocation(globalThis.location);
-    if (data) {
-      gameEngine.importGameData(data);
+    const dataFromLocation = ShareUtils.extractGameDataFromLocation(globalThis.location);
+    if (dataFromLocation) {
+      gameEngine.importGameData(dataFromLocation);
+      return;
+    }
+
+    const sharedCode = (globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE;
+    if (typeof sharedCode === 'string' && sharedCode.trim().length > 0) {
+      try {
+        const decoded = ShareUtils.decode(sharedCode);
+        if (decoded) {
+          gameEngine.importGameData(decoded);
+        }
+      } catch (error) {
+        console.warn('[TinyRPG] Unable to decode shared game data from inline code.', error);
+      }
     }
   }
 

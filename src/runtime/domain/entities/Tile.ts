@@ -7,6 +7,7 @@ type TileDefinitionData = {
     frames: TileFrame[];
     collision: boolean;
     category: string;
+    layouts?: (number | null)[][][]; // Store original numeric layouts for palette regeneration
 };
 
 class Tile {
@@ -17,6 +18,7 @@ class Tile {
     animated: boolean;
     collision: boolean;
     category: string;
+    layouts?: (number | null)[][][]; // Store original numeric layouts for palette regeneration
 
     constructor(data: TileDefinitionData) {
         this.id = data.id;
@@ -26,6 +28,7 @@ class Tile {
         this.animated = data.frames.length > 1;
         this.collision = data.collision;
         this.category = data.category;
+        this.layouts = data.layouts;
     }
 }
 

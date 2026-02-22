@@ -76,11 +76,94 @@ export const GameConfig = new GameConfigSchema({
   },
 
   /**
+   * Combat system configuration
+   */
+  combat: {
+    /** Minimum time between attacks (ms) */
+    attackCooldown: 1500,
+    /** Duration of hit stun after taking damage (ms) */
+    hitStunDuration: 800,
+    /** Duration of lunge attack animation (ms) */
+    lungeAnimationDuration: 700,
+    /** Duration of knockback animation (ms) */
+    knockbackDuration: 600,
+    /** Duration of enemy death animation (ms) */
+    deathAnimationDuration: 1000,
+    /** Screen shake configuration */
+    screenShake: {
+      /** Enable screen shake effect */
+      enabled: true,
+      /** Minimum shake intensity (0.0 - 1.0) */
+      minIntensity: 0.3,
+      /** Maximum shake intensity (0.0 - 1.0) */
+      maxIntensity: 1.0,
+      /** Base shake duration (ms) */
+      baseDuration: 300,
+      /** Additional intensity per damage point */
+      intensityPerDamage: 0.2,
+    },
+    /** Hit flash duration (ms) */
+    hitFlashDuration: 100,
+    /** Camera freeze (hitstop) duration (ms) */
+    hitstopDuration: 60,
+    /** Minimum damage to trigger hitstop */
+    hitstopMinDamage: 3,
+    /** Entity flash duration when taking damage (ms) */
+    entityFlashDuration: 120,
+    /** Combat message display durations (ms) */
+    messageDuration: {
+      /** Standard messages (backstab, miss) */
+      standard: 500,
+      /** Cooldown/block messages */
+      cooldown: 700,
+      /** Death sequence message */
+      death: 2500,
+    },
+    /** Floating damage numbers configuration */
+    floatingNumbers: {
+      /** Enable floating damage numbers */
+      enabled: true,
+      /** Duration of floating text (ms) */
+      duration: 800,
+      /** Rise speed (pixels per second) */
+      riseSpeed: 0.5,
+      /** Font size for damage numbers (pixels) */
+      fontSize: 8,
+    },
+    /** Attack telegraph (warning) configuration */
+    telegraph: {
+      /** Enable attack warning indicators */
+      enabled: true,
+      /** Warning color (hex) */
+      color: '#FF004D',
+      /** Pulse speed (radians per millisecond) - faster = more noticeable */
+      pulseSpeed: 0.02,
+      /** Show warning when enemy is N tiles away */
+      triggerDistance: 1,
+    },
+    /** Particle effects configuration */
+    particles: {
+      /** Enable particle effects */
+      enabled: true,
+      /** Particle count for normal impact */
+      impactCount: 8,
+      /** Particle count for critical impact */
+      criticalImpactCount: 16,
+      /** Particle count for enemy death */
+      deathCount: 20,
+      /** Particle lifetime (ms) */
+      lifetime: 500,
+      /** Gravity acceleration (pixels per frame) */
+      gravity: 0.1,
+    },
+  },
+
+  /**
    * Enemy configuration
    */
   enemy: {
     /** Enemy movement interval (ms) */
-    movementInterval: 600,
+    movementInterval: 700,
     /** Default attack miss chance (0.0 - 1.0) */
     fallbackMissChance: 0.25,
     /** Stealth assassination miss chance (0.0 - 1.0) */
@@ -210,6 +293,18 @@ export const GameConfig = new GameConfigSchema({
       '#FF77A8', // 14 - Pink
       '#FFCCAA', // 15 - Peach
     ],
+  },
+
+  /**
+   * Debug visualization tools
+   */
+  debug: {
+    /** Enable enemy vision overlay visualization */
+    showEnemyVision: false,
+    /** Color for vision overlay */
+    visionOverlayColor: '#FF004D',
+    /** Opacity of vision overlay (0.0 - 1.0) */
+    visionOverlayOpacity: 0.3,
   },
 });
 

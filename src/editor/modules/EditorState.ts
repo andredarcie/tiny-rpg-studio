@@ -16,10 +16,13 @@ class EditorState {
     conditionalDialogueExpanded: boolean;
     activeMobilePanel: string;
     npcVariantFilter: string;
+    objectCategoryFilter: string;
     playerEndTextUpdateTimer: number | null;
     variablePanelCollapsed: boolean;
     skillPanelCollapsed: boolean;
     testPanelCollapsed: boolean;
+    palettePanelCollapsed: boolean;
+    editingColorIndex: number | null;
 
     constructor() {
         this.selectedTileId = null;
@@ -38,10 +41,13 @@ class EditorState {
         this.conditionalDialogueExpanded = false;
         this.activeMobilePanel = 'tiles';
         this.npcVariantFilter = 'human';
+        this.objectCategoryFilter = 'all';
         this.playerEndTextUpdateTimer = null;
         this.variablePanelCollapsed = true;
         this.skillPanelCollapsed = true;
         this.testPanelCollapsed = true;
+        this.palettePanelCollapsed = true;
+        this.editingColorIndex = null;
     }
 }
 

@@ -334,8 +334,9 @@ class StateSkillManager {
 
     consumeRecentReviveFlag() {
         const runtime = this.ensureRuntime();
+        const wasRevived = runtime.recentRevive;
         runtime.recentRevive = false;
-        return false;
+        return wasRevived;
     }
 
     hasPendingManualRevive() {

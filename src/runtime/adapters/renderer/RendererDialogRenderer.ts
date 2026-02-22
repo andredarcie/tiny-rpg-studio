@@ -32,9 +32,9 @@ class RendererDialogRenderer {
     }
 
     drawDialogBox(ctx: CanvasRenderingContext2D, canvas: { width: number; height: number }, dialog: DialogState) {
-        const pad = 6;
+        const pad = 4;
         const w = canvas.width - pad * 2;
-        const h = 40;
+        const h = 50;
         const x = pad;
         const y = canvas.height - h - pad;
 
@@ -49,9 +49,9 @@ class RendererDialogRenderer {
         ctx.font = "10px monospace";
 
         const lineHeight = 12;
-        const maxWidth = w - 16;
+        const maxWidth = w - 12;
 
-        const pages = this.calculateDialogPages(dialog, ctx, maxWidth, lineHeight, h - 8);
+        const pages = this.calculateDialogPages(dialog, ctx, maxWidth, lineHeight, h - 12);
         const totalPages = Math.max(1, pages.length);
         if (dialog.maxPages !== totalPages) {
             dialog.maxPages = totalPages;
@@ -62,9 +62,9 @@ class RendererDialogRenderer {
         }
         const lines = pages[currentIndex] || [];
 
-        let ty = y + 14;
+        let ty = y + 10;
         for (const line of lines) {
-            ctx.fillText(line, x + 8, ty);
+            ctx.fillText(line, x + 6, ty);
             ty += lineHeight;
         }
     }

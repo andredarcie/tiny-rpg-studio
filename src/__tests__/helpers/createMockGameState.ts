@@ -49,6 +49,7 @@ export interface MockGameState {
 
   // Equipment
   getSwordType: () => string | null;
+  getPlayerDamage: () => number;
   hasSkill: (skillId: string) => boolean;
 
   // Game world
@@ -79,6 +80,7 @@ export interface MockGameState {
   pauseGame?: (reason: string) => void;
   resumeGame?: (reason: string) => void;
   setDialog?: (active: boolean, text?: string, meta?: unknown) => void;
+  setLastKillerEnemy?: (enemyId: string) => void;
 }
 
 /**
@@ -95,7 +97,7 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
 
   return {
     // Core state
-    playing: true,
+    playing: overrides.playing !== undefined ? overrides.playing : true,
 
     // Mode checks
     isEditorModeActive: vi.fn(() => false),
@@ -137,6 +139,7 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
 
     // Equipment
     getSwordType: vi.fn(() => null),
+    getPlayerDamage: vi.fn(() => 1), // Base damage without sword
     hasSkill: vi.fn(() => false),
 
     // Game world
@@ -161,6 +164,10 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
 
     // Pickup overlay
     showPickupOverlay: vi.fn(),
+
+    // Optional methods
+    pauseGame: vi.fn(),
+    resumeGame: vi.fn(),
 
     // Apply overrides
     ...overrides,

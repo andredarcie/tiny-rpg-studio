@@ -112,7 +112,6 @@ describe('StatePlayerManager - Critical Path Tests', () => {
 
       expect(state.player.damageShield).toBe(0);
       expect(state.player.damageShieldMax).toBe(0);
-      expect(state.player.swordType).toBeNull();
       expect(state.player.currentLives).toBe(0); // 3 - 3 = 0 (2 absorbed by shield)
       expect(state.player.lastDamageReduction).toBe(2);
     });
@@ -128,15 +127,16 @@ describe('StatePlayerManager - Critical Path Tests', () => {
       expect(state.player.damageShield).toBe(3);
     });
 
-    it('clears sword type when shield depletes', () => {
+    it('sword type persists independently of shield', () => {
       const state = createRuntimeStateMock();
       const manager = new StatePlayerManager(state, createWorldManager());
 
-      manager.addDamageShield(2, 'wood');
+      manager.setSwordType('wood');
+      manager.addDamageShield(2, null);
       manager.damage(2);
 
       expect(state.player.damageShield).toBe(0);
-      expect(state.player.swordType).toBeNull();
+      expect(state.player.swordType).toBe('wood'); // Sword persists after shield depletes
     });
   });
 
@@ -302,6 +302,97 @@ describe('StatePlayerManager - Critical Path Tests', () => {
       manager.ensurePlayerStats();
 
       expect(state.player.experience).toBe(0);
+    });
+  });
+
+  describe('Sword Durability', () => {
+    it('initializes durability to 0', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      expect(manager.getSwordDurability()).toBe(0);
+    });
+
+    it('sets sword durability', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordDurability(5);
+
+      expect(manager.getSwordDurability()).toBe(5);
+    });
+
+    it('consumes sword durability by 1', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordType('sword-wood');
+      manager.setSwordDurability(3);
+
+      const broke = manager.consumeSwordDurability();
+
+      expect(broke).toBe(false);
+      expect(manager.getSwordDurability()).toBe(2);
+      expect(manager.getSwordType()).toBe('sword-wood');
+    });
+
+    it('breaks sword when durability reaches 0', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordType('sword-wood');
+      manager.setSwordDurability(1);
+
+      const broke = manager.consumeSwordDurability();
+
+      expect(broke).toBe(true);
+      expect(manager.getSwordDurability()).toBe(0);
+      expect(manager.getSwordType()).toBe(null);
+    });
+
+    it('handles consuming durability when already at 0', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordType('sword-wood');
+      manager.setSwordDurability(0);
+
+      const broke = manager.consumeSwordDurability();
+
+      expect(broke).toBe(true);
+      expect(manager.getSwordDurability()).toBe(0);
+      expect(manager.getSwordType()).toBe(null);
+    });
+
+    it('resets durability on player reset', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordType('sword-wood');
+      manager.setSwordDurability(5);
+
+      manager.reset({ x: 1, y: 1, roomIndex: 0 });
+
+      expect(manager.getSwordDurability()).toBe(0);
+      expect(manager.getSwordType()).toBe(null);
+    });
+
+    it('prevents negative durability', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordDurability(-5);
+
+      expect(manager.getSwordDurability()).toBe(0);
+    });
+
+    it('floors durability to integer', () => {
+      const state = createRuntimeStateMock();
+      const manager = new StatePlayerManager(state, createWorldManager());
+
+      manager.setSwordDurability(3.7);
+
+      expect(manager.getSwordDurability()).toBe(3);
     });
   });
 });
