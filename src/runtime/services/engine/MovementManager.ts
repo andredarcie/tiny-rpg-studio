@@ -28,6 +28,7 @@ type GameStateApi = {
   getKeys: () => number;
   isVariableOn: (id: string) => boolean;
   hasSkill?: (skillId: string) => boolean;
+  isInCombat?: () => boolean;
 };
 
 type TileManagerApi = {
@@ -324,15 +325,17 @@ class MovementManager {
     // Prevent passing through NPCs: trigger dialog and stay in place.
     const npcAtTarget = this.findNpcAt(targetRoomIndex, targetX, targetY);
     if (npcAtTarget) {
-      const dialogText = this.interactionManager.getNpcDialogText
-        ? this.interactionManager.getNpcDialogText(npcAtTarget)
-        : npcAtTarget.text || '';
-      const dialogMeta = this.interactionManager.getNpcDialogMeta
-        ? this.interactionManager.getNpcDialogMeta(npcAtTarget)
-        : undefined;
-      if (dialogText) {
-        this.dialogManager.showDialog(dialogText, dialogMeta);
-        this.renderer.draw();
+      if (!this.gameState.isInCombat?.()) {
+        const dialogText = this.interactionManager.getNpcDialogText
+          ? this.interactionManager.getNpcDialogText(npcAtTarget)
+          : npcAtTarget.text || '';
+        const dialogMeta = this.interactionManager.getNpcDialogMeta
+          ? this.interactionManager.getNpcDialogMeta(npcAtTarget)
+          : undefined;
+        if (dialogText) {
+          this.dialogManager.showDialog(dialogText, dialogMeta);
+          this.renderer.draw();
+        }
       }
       return;
     }

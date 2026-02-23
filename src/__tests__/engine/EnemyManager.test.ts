@@ -5,6 +5,7 @@ import { MovementManager } from '../../runtime/services/engine/MovementManager';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { GameConfig } from '../../config/GameConfig';
 import { createEnemyGameState } from '../helpers/createEnemyGameState';
+import type { GameData } from '../../types/managerTypes';
 
 describe('EnemyManager', () => {
   const getSpy = vi.spyOn(TextResources, 'get');
@@ -127,6 +128,95 @@ describe('EnemyManager', () => {
     });
     expect(manager.generateEnemyId()).toBe('enemy-uuid');
     Object.defineProperty(globalThis, 'crypto', { value: originalCrypto, configurable: true });
+  });
+
+  describe('isInCombat', () => {
+    it('returns false before any enemy interaction', () => {
+      const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
+      expect(manager.isInCombat()).toBe(false);
+    });
+
+    it('returns true during enemy windup window (300ms before attack fires)', () => {
+      // Enemy at (2,3) facing UP (lastY=4 > y=3), player at (2,2) — directly in front
+      // evaluateVision detects player → tick calls tryChaseEnemy → collision → windupTimers scheduled
+      const enemy: MockEnemyData = {
+        id: 'e1', type: 'rat', roomIndex: 0, x: 2, y: 3, lastX: 2, lastY: 4, lives: 1,
+      };
+      const gameState = createEnemyGameState({
+        getPlayer: vi.fn(() => ({ x: 2, y: 2, roomIndex: 0, lastX: 1 })),
+        getEnemies: vi.fn(() => [enemy]),
+        getGame: vi.fn(() => ({ rooms: [{ walls: [] }], sprites: [], items: [], exits: [] })),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+      manager.tick();
+
+      // windupTimers has a pending timer — combat is imminent
+      expect(manager.isInCombat()).toBe(true);
+    });
+
+    it('returns false after windup timer fires and combat resolves', () => {
+      vi.useFakeTimers();
+      const enemy: MockEnemyData = {
+        id: 'e1', type: 'rat', roomIndex: 0, x: 2, y: 3, lastX: 2, lastY: 4, lives: 1,
+      };
+      const gameState = createEnemyGameState({
+        getPlayer: vi.fn(() => ({ x: 2, y: 2, roomIndex: 0, lastX: 1 })),
+        getEnemies: vi.fn(() => [enemy]),
+        getGame: vi.fn(() => ({ rooms: [{ walls: [] }], sprites: [], items: [], exits: [] })),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+      manager.tick();
+      expect(manager.isInCombat()).toBe(true);
+
+      vi.runAllTimers();
+      vi.useRealTimers();
+
+      // windup fired → handleEnemyCollision ran → windupTimers is empty again
+      expect(manager.isInCombat()).toBe(false);
+    });
+
+    it('returns false when enemy has no id (fires immediately, no windup timer)', () => {
+      const enemyNoId: MockEnemyData = {
+        id: '', type: 'rat', roomIndex: 0, x: 2, y: 3, lastX: 2, lastY: 4, lives: 1,
+      };
+      const gameState = createEnemyGameState({
+        getPlayer: vi.fn(() => ({ x: 2, y: 2, roomIndex: 0, lastX: 1 })),
+        getEnemies: vi.fn(() => [enemyNoId]),
+        getGame: vi.fn(() => ({ rooms: [{ walls: [] }], sprites: [], items: [], exits: [] })),
+      });
+
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+      manager.tick();
+
+      // No id → collision fires immediately (no setTimeout) → windupTimers stays empty
+      expect(manager.isInCombat()).toBe(false);
+    });
+  });
+
+  it('cannot enter a tile occupied by a placed NPC', () => {
+    const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
+    const game: GameData = {
+      rooms: [{ walls: [] }],
+      sprites: [{ placed: true, roomIndex: 0, x: 2, y: 3 }],
+    };
+
+    const canEnter = manager.canEnterTile(0, 2, 3, game, [], 0);
+
+    expect(canEnter).toBe(false);
+  });
+
+  it('can enter a tile where a NPC is not placed', () => {
+    const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
+    const game: GameData = {
+      rooms: [{ walls: [] }],
+      sprites: [{ placed: false, roomIndex: 0, x: 2, y: 3 }],
+    };
+
+    const canEnter = manager.canEnterTile(0, 2, 3, game, [], 0);
+
+    expect(canEnter).toBe(true);
   });
 
   it('triggers defeat variables and shows message', () => {

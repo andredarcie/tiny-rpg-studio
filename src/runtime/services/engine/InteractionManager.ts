@@ -63,6 +63,7 @@ type GameData = {
 type GameStateApi = {
   getGame: () => GameData;
   getPlayer: () => PlayerPosition | null;
+  isInCombat?: () => boolean;
   getObjectsForRoom?: (roomIndex: number) => GameObjectState[];
   getPlayerEndText: (roomIndex: number) => string;
   setActiveEndingText?: (text: string) => void;
@@ -115,7 +116,9 @@ class InteractionManager {
 
     this.checkItems(items, player);
     this.checkObjects(player);
-    this.checkNpcs(sprites, player);
+    if (!this.gameState.isInCombat?.()) {
+      this.checkNpcs(sprites, player);
+    }
     this.checkRoomExits(exits, rooms, player);
   }
 

@@ -139,8 +139,16 @@ export type RoomState = {
   walls?: boolean[][];
 };
 
+export type NpcLike = {
+  placed?: boolean;
+  roomIndex: number;
+  x: number;
+  y: number;
+};
+
 export type GameData = {
   rooms: RoomState[];
+  sprites?: NpcLike[];
 };
 
 export type GameObjectState = {

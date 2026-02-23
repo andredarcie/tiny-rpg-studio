@@ -655,6 +655,21 @@ describe('CombatManager', () => {
 
       expect(manager['animationTimers'].size).toBe(0);
     });
+
+    it('resets combatActive to false when cancelDeathSequence is called (freeze bug fix)', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      // Simulate combat being active (as set by handleAnimatedCombat during combat)
+      manager.combatActive = true;
+      expect(manager.isInCombat()).toBe(true);
+
+      manager.cancelDeathSequence();
+
+      // After reset/stop, combat must be inactive so game is not frozen
+      expect(manager.isInCombat()).toBe(false);
+    });
   });
 
   describe('Bug Fixes Validation', () => {

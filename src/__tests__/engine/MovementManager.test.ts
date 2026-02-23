@@ -151,4 +151,51 @@ describe('MovementManager', () => {
 
     vi.useRealTimers();
   });
+
+  it('does not show NPC dialog when player walks into NPC tile during combat', () => {
+    const npc = { placed: true, roomIndex: 0, x: 1, y: 0, text: 'Hello!' };
+    const gameState = {
+      ...createGameState(false),
+      isInCombat: () => true,
+      getGame: () => ({ sprites: [npc], rooms: [{}] }),
+    };
+    interactionManager.getNpcDialogText.mockReturnValue('Hello!');
+
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+
+    // Player at (0,0) tries to move right into NPC at (1,0)
+    manager.tryMove(1, 0);
+
+    expect(dialogManager.showDialog).not.toHaveBeenCalled();
+  });
+
+  it('shows NPC dialog when player walks into NPC tile and NOT in combat', () => {
+    const npc = { placed: true, roomIndex: 0, x: 1, y: 0, text: 'Hello!' };
+    const gameState = {
+      ...createGameState(false),
+      isInCombat: () => false,
+      getGame: () => ({ sprites: [npc], rooms: [{}] }),
+    };
+    interactionManager.getNpcDialogText.mockReturnValue('Hello!');
+
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+
+    manager.tryMove(1, 0);
+
+    expect(dialogManager.showDialog).toHaveBeenCalledWith('Hello!', undefined);
+  });
 });

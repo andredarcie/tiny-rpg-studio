@@ -9,6 +9,9 @@ export interface MockGameState {
   // Core state
   playing: boolean;
 
+  // Combat state
+  isInCombat: () => boolean;
+
   // Mode checks
   isEditorModeActive: () => boolean;
   isGameOver: () => boolean;
@@ -98,6 +101,9 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
   return {
     // Core state
     playing: overrides.playing !== undefined ? overrides.playing : true,
+
+    // Combat state
+    isInCombat: vi.fn(() => false),
 
     // Mode checks
     isEditorModeActive: vi.fn(() => false),

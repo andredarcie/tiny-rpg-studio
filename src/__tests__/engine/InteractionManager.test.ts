@@ -87,6 +87,23 @@ describe('InteractionManager', () => {
     expect(text).toBe('Conditional');
   });
 
+  it('does not show NPC dialog when combat is active', () => {
+    const gameState = createInteractionGameState();
+    (gameState.isInCombat as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [],
+      exits: [],
+      rooms: [],
+      sprites: [{ placed: true, roomIndex: 0, x: 2, y: 3, text: 'Fala comigo!' }],
+    });
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    manager.handlePlayerInteractions();
+
+    expect(dialogManager.showDialog).not.toHaveBeenCalled();
+  });
+
   it('moves player through room exits', () => {
     const gameState = createInteractionGameState();
     (gameState.getRoomIndex as ReturnType<typeof vi.fn>).mockReturnValue(0);

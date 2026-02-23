@@ -77,6 +77,8 @@ export class GameEngine {
       combatStunManager: this.combatStunManager,
       playerManager: this.gameState.playerManager,
     });
+    (this.gameState as unknown as { isInCombat?: () => boolean }).isInCombat =
+      () => this.enemyManager.isInCombat();
     this.movementManager = new MovementManager({
       gameState: this.gameState as never,
       tileManager: this.tileManager,

@@ -381,7 +381,9 @@ class GameState {
         this.clearNecromancerRevive();
         this.lastKillerEnemyId = null;
         this.hideLevelUpCelebration({ skipResume: true });
-        this.resumeGame('game-over');
+        // Clear ALL pause reasons (not just 'game-over') to prevent freeze
+        // when resetting mid-combat or mid-level-up where multiple pause reasons accumulate
+        this.lifecycle.resumeGame(null);
     }
 
     exportGameData(): unknown {

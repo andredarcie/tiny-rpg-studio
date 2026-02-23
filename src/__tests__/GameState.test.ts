@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameState } from '../runtime/domain/GameState';
 
 describe('GameState', () => {
@@ -22,5 +22,70 @@ describe('GameState', () => {
     } finally {
       globalThis.document = originalDocument as Document;
     }
+  });
+
+  describe('resetGame (freeze bug fixes)', () => {
+    let originalDocument: Document;
+
+    beforeEach(() => {
+      originalDocument = globalThis.document;
+      globalThis.document = { addEventListener: vi.fn() } as unknown as Document;
+    });
+
+    afterEach(() => {
+      globalThis.document = originalDocument;
+    });
+
+    it('clears ALL pause reasons so playing is true after reset', () => {
+      const state = new GameState();
+
+      // Simulate multiple pause reasons that could accumulate during combat + level up
+      state.pauseGame('level-up');
+      state.pauseGame('player-death');
+      state.pauseGame('level-up-celebration');
+      expect(state.playing).toBe(false);
+
+      state.resetGame();
+
+      // After reset, game must be fully unpaused (playing = true)
+      // so the player can walk and enemies can move
+      expect(state.playing).toBe(true);
+    });
+
+    it('clears orphaned level-up-celebration pause reason (main freeze cause)', () => {
+      const state = new GameState();
+
+      // This happens when player levels up during combat and resets before dismissing
+      state.pauseGame('level-up-celebration');
+      expect(state.playing).toBe(false);
+
+      state.resetGame();
+
+      expect(state.playing).toBe(true);
+    });
+
+    it('clears orphaned level-up pause reason on reset', () => {
+      const state = new GameState();
+
+      // This happens when level-up skill selection overlay was active during reset
+      state.pauseGame('level-up');
+      expect(state.playing).toBe(false);
+
+      state.resetGame();
+
+      expect(state.playing).toBe(true);
+    });
+
+    it('clears any unknown orphaned pause reasons on reset', () => {
+      const state = new GameState();
+
+      // Simulate an unexpected pause reason (defensive - should not happen but could)
+      state.pauseGame('some-future-feature');
+      expect(state.playing).toBe(false);
+
+      state.resetGame();
+
+      expect(state.playing).toBe(true);
+    });
   });
 });

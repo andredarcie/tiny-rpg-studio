@@ -76,6 +76,10 @@ class EnemyManager {
     });
   }
 
+  isInCombat(): boolean {
+    return this.combatManager.isInCombat() || this.windupTimers.size > 0;
+  }
+
   getEnemyDefinitions(): unknown {
     return this.gameState.getEnemyDefinitions?.();
   }
@@ -582,6 +586,7 @@ class EnemyManager {
     if (walls && Array.isArray(walls[y]) && walls[y][x]) return false;
     if (this.isTileBlocked(roomIndex, x, y)) return false;
     if (this.hasBlockingObject(roomIndex, x, y)) return false;
+    if (this.isNpcAt(game, roomIndex, x, y)) return false;
     return !this.isOccupied(enemies, movingIndex, roomIndex, x, y);
   }
 
@@ -612,6 +617,11 @@ class EnemyManager {
 
   isOccupied(enemies: EnemyState[], movingIndex: number, roomIndex: number, x: number, y: number): boolean {
     return enemies.some((other, index) => index !== movingIndex && other.roomIndex === roomIndex && other.x === x && other.y === y);
+  }
+
+  isNpcAt(game: GameData, roomIndex: number, x: number, y: number): boolean {
+    if (!Array.isArray(game.sprites)) return false;
+    return game.sprites.some((npc) => npc.placed && npc.roomIndex === roomIndex && npc.x === x && npc.y === y);
   }
 
   resolvePostMove(roomIndex: number, x: number, y: number, enemyIndex: number): boolean {

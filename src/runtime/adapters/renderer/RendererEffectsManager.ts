@@ -170,6 +170,7 @@ class RendererEffectsManager extends RendererModuleBase {
         }
         ctx.restore();
     }
+
 }
 
 export { RendererEffectsManager };

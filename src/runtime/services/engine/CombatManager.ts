@@ -58,6 +58,7 @@ class CombatManager {
   shouldStartLevelOverlay: () => boolean;
   deathSequenceTimer: ReturnType<typeof setTimeout> | null;
   animationTimers: Set<ReturnType<typeof setTimeout>>;
+  combatActive: boolean;
 
   constructor(
     gameState: GameStateApi,
@@ -77,6 +78,16 @@ class CombatManager {
     this.shouldStartLevelOverlay = options.shouldStartLevelOverlay || (() => false);
     this.deathSequenceTimer = null;
     this.animationTimers = new Set();
+    this.combatActive = false;
+  }
+
+  isInCombat(): boolean {
+    return this.combatActive;
+  }
+
+  private finishCombat(): void {
+    this.combatActive = false;
+    this.renderer.draw();
   }
 
   /**
@@ -105,7 +116,7 @@ class CombatManager {
     const currentPlayer = this.gameState.getPlayer();
     if (!this.isInMeleeRange(enemy, currentPlayer)) {
       // Out of range - one of them escaped during animation
-      this.renderer.draw();
+      this.finishCombat();
       return false;
     }
     return true;
@@ -203,6 +214,8 @@ class CombatManager {
 
     if (!combatAnimator || !entityRenderer || !cameraShake) return;
 
+    this.combatActive = true;
+
     // Update last attack time
     if (this.playerManager?.player) {
       this.playerManager.player.lastAttackTime = performance.now();
@@ -245,7 +258,7 @@ class CombatManager {
             this.onEnemyDefeated(enemy.id, enemy);
           }
           this.onCheckAllEnemiesCleared();
-          this.renderer.draw();
+          this.finishCombat();
         });
       } else {
         // Enemy counter-attacks
@@ -256,7 +269,7 @@ class CombatManager {
           if (enemyAttackMissed) {
             // Enemy missed the counter-attack
             this.showMissFeedback();
-            this.renderer.draw();
+            this.finishCombat();
           } else {
             // Enemy hits player
             this.applyDamageToPlayer(damage, enemy, entityRenderer, cameraShake);
@@ -317,10 +330,10 @@ class CombatManager {
               this.onEnemyDefeated(enemy.id, enemy);
             }
             this.onCheckAllEnemiesCleared();
-            this.renderer.draw();
+            this.finishCombat();
           });
         } else {
-          this.renderer.draw();
+          this.finishCombat();
         }
       });
     });
@@ -353,10 +366,10 @@ class CombatManager {
     if (playerLives <= 0) {
       // Record which enemy killed the player
       this.gameState.setLastKillerEnemy?.(enemy.id || null);
-      this.renderer.draw();
+      this.finishCombat();
       this.playPlayerDeathSequence(enemy.type);
     } else {
-      this.renderer.draw();
+      this.finishCombat();
     }
 
     return playerLives;
@@ -537,6 +550,8 @@ class CombatManager {
       clearTimeout(this.deathSequenceTimer);
       this.deathSequenceTimer = null;
     }
+    // Reset combat flag so isInCombat() returns false after game reset
+    this.combatActive = false;
     // Clean up death sequence side effects
     this.renderer.removeGrayscaleFilter();
     this.gameState.resumeGame('player-death');
