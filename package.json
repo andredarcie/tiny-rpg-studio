@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently --kill-others -n export,server -c gray,cyan \"vite build -c vite.export.config.ts --watch\" \"vite\"",
+    "dev": "vite",
     "build": "npm run build:export && vite build",
     "build:check": "tsc --noEmit && npm run build",
     "build:export": "vite build -c vite.export.config.ts",
