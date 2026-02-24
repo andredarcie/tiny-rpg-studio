@@ -71,7 +71,7 @@ class EditorExportService {
             }
             api.importGameData(gameData);
             api.draw();
-            api.renderAll?.();
+            api.renderAll();
 
             const shareUrl = ShareUtils.buildShareUrl(gameData);
             if (shareUrl) {
@@ -135,7 +135,7 @@ class EditorExportService {
                 } else {
                     // Inline <style> tag (Vite dev mode injects CSS as style elements)
                     try {
-                        cssText += Array.from(sheet.cssRules ?? []).map((r) => r.cssText).join('\n') + '\n';
+                        cssText += Array.from(sheet.cssRules).map((r) => r.cssText).join('\n') + '\n';
                     } catch {
                         // Skip inaccessible stylesheets (cross-origin security restrictions)
                     }
