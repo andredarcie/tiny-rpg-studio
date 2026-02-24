@@ -110,6 +110,11 @@ class EditorExportService {
             const downloadError = 'Unable to download project assets. Please run Tiny RPG Studio from an HTTP/HTTPS server (not file://) to export HTML.';
 
             let cssText = '';
+            const looksLikeHtmlDocument = (text: string): boolean => {
+                const trimmed = String(text || '').trimStart().toLowerCase();
+                return trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
+            };
+            const invalidScriptResponseMessage = 'Export failed: expected a JavaScript asset but received HTML. Rebuild the export bundle with "npm run build:export" and try again.';
             // Collect CSS from all active non-external stylesheets.
             // Using document.styleSheets handles both prod mode (<link rel="stylesheet"> injected
             // by Vite build) and dev mode (<style> tags injected by Vite HMR).
@@ -150,8 +155,13 @@ class EditorExportService {
             try {
                 const bundleResp = await fetch(`${bundleSrc}?v=${cacheBust}`);
                 if (bundleResp.ok) {
-                    bundleSource = await bundleResp.text();
-                    scripts[bundleSrc] = bundleSource;
+                    const bundleText = await bundleResp.text();
+                    if (looksLikeHtmlDocument(bundleText)) {
+                        console.warn('[TinyRPG Export] export.bundle.js returned HTML instead of JS. The bundle is likely missing or stale.');
+                    } else {
+                        bundleSource = bundleText;
+                        scripts[bundleSrc] = bundleSource;
+                    }
                 }
             } catch {
                 // fallback handled below
@@ -276,6 +286,10 @@ class EditorExportService {
                     const resp = await fetch(`${src}?v=${cacheBust}` as RequestInfo);
                     if (resp.ok) {
                         const text = await resp.text();
+                        if (looksLikeHtmlDocument(text)) {
+                            alert(invalidScriptResponseMessage);
+                            return;
+                        }
                         const hasModuleSyntax = /^(?:\s*import\s+[\w*{]|\s*export\s+)/m.test(text);
                         if (hasModuleSyntax) {
                             skippedScripts.push(src);
@@ -304,6 +318,10 @@ class EditorExportService {
             const resetClone = resetButton ? (resetButton.cloneNode(true) as HTMLElement) : null;
 
             const allScripts = Object.values(scripts).join('');
+            if (!allScripts.trim()) {
+                alert(invalidScriptResponseMessage);
+                return;
+            }
 
             const html = `<!DOCTYPE html>
                 <html lang="${locale}">
