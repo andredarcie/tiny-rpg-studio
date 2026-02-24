@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorNpcService } from '../../editor/modules/EditorNpcService';
 
 vi.mock('../../runtime/adapters/TextResources', () => ({
-  TextResources: { get: vi.fn((_k: string, fb?: string) => fb || _k) },
+  TextResources: { get: vi.fn((_k: string | null | undefined, fb?: string) => fb || _k || '') },
 }));
 
 type TestNpcSprite = {
   id?: string;
-  type: string;
-  roomIndex: number;
+  type?: string;
+  roomIndex?: number;
   placed?: boolean;
   x?: number;
   y?: number;

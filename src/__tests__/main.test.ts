@@ -81,7 +81,7 @@ describe('TinyRPGApplication.setupTabs', () => {
     );
 
     expect(detail).not.toBeNull();
-    expect((detail as { initial?: boolean } | null)?.initial).toBe(false);
+    expect((detail as { initial?: boolean }).initial).toBe(false);
   });
 
   it('applies initial editor mode and dispatches initial editor activation', () => {
@@ -94,7 +94,8 @@ describe('TinyRPGApplication.setupTabs', () => {
 
     expect(document.body.classList.contains('editor-mode')).toBe(true);
     expect(document.body.classList.contains('game-mode')).toBe(false);
-    expect(detail?.initial).toBe(true);
+    expect(detail).not.toBeNull();
+    expect((detail as { initial?: boolean }).initial).toBe(true);
   });
 
   it('activates editor tab and calls TinyRpgApi methods on switch', () => {
@@ -342,7 +343,7 @@ describe('TinyRPGApplication.bindTouchPad', () => {
         <button class="pad-button" data-direction="up"></button>
       </div>
     `;
-    vi.spyOn(TextResources, 'get').mockImplementation((key: string) => {
+    vi.spyOn(TextResources, 'get').mockImplementation((key: string | null | undefined) => {
       if (key === 'touchControls.show') return 'Show Controls';
       if (key === 'touchControls.hide') return 'Hide Controls';
       return '';
@@ -390,7 +391,7 @@ describe('TinyRPGApplication.bindTouchPad', () => {
     const hide = document.getElementById('touch-controls-hide') as HTMLButtonElement;
 
     document.body.classList.add('touch-controls-visible');
-    vi.spyOn(TextResources, 'get').mockImplementation((key: string) => {
+    vi.spyOn(TextResources, 'get').mockImplementation((key: string | null | undefined) => {
       if (key === 'touchControls.show') return 'Mostrar';
       if (key === 'touchControls.hide') return 'Ocultar';
       return '';

@@ -49,9 +49,11 @@ const mocks = vi.hoisted(() => {
     GameEngineCtor: vi.fn(function GameEngineMock() { return engine; }),
     EditorManagerCtor: vi.fn(function EditorManagerMock() { return editorManagerInstance; }),
     EditorExportServiceCtor: vi.fn(function EditorExportServiceMock() { return {}; }),
-    textGet: vi.fn<(key: string, fallback?: string) => string>((key: string, fallback = ''): string => fallback || key),
+    textGet: vi.fn<(key: string | null | undefined, fallback?: string) => string>(
+      (key: string | null | undefined, fallback = ''): string => fallback || key || '',
+    ),
     textLocale: vi.fn(() => 'en-US'),
-    textSetLocale: vi.fn(() => true),
+    textSetLocale: vi.fn<(locale: string) => boolean>(() => true),
   };
 });
 
@@ -69,9 +71,9 @@ vi.mock('../editor/modules/EditorExportService', () => ({
 
 vi.mock('../runtime/adapters/TextResources', () => ({
   TextResources: {
-    get: (...args: [string, string?]) => mocks.textGet(...args),
+    get: (...args: [string | null | undefined, string?]) => mocks.textGet(...args),
     getLocale: () => mocks.textLocale(),
-    setLocale: (...args: [string]) => mocks.textSetLocale(...args),
+    setLocale: (locale: string) => mocks.textSetLocale(locale),
   },
 }));
 

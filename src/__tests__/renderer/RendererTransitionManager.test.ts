@@ -54,13 +54,15 @@ function createRendererFixture() {
   const gameState = {
     pauseGame: vi.fn(),
     resumeGame: vi.fn(),
-    getCurrentRoom: vi.fn(() => ({ bg: 3 })),
+    getCurrentRoom: vi.fn<() => { bg?: number }>(() => ({ bg: 3 })),
     getPlayer: vi.fn(() => ({ roomIndex: 2 })),
-    getGame: vi.fn(() => ({ rooms: [{ bg: 1 }, { bg: 2 }, { bg: 4 }] }))
+    getGame: vi.fn<() => { rooms: Array<{ bg?: number }> | unknown }>(
+      () => ({ rooms: [{ bg: 1 }, { bg: 2 }, { bg: 4 }] }),
+    )
   };
   const tileManager = {
-    getTileMap: vi.fn(() => null),
-    getTilePixels: vi.fn(() => null)
+    getTileMap: vi.fn<() => { ground?: (string | null)[][]; overlay?: (string | undefined | null)[][] } | null>(() => null),
+    getTilePixels: vi.fn<() => (string | null)[][] | null>(() => null)
   };
   const paletteManager = {
     getColor: vi.fn((idx: number) => `#${idx}`)

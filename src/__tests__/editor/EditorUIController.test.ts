@@ -37,7 +37,13 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
 
   return {
     state,
-    domCache: { titleInput, authorInput, jsonArea, mobileNavButtons: [], mobilePanels: [] },
+    domCache: {
+      titleInput,
+      authorInput,
+      jsonArea,
+      mobileNavButtons: [] as HTMLButtonElement[],
+      mobilePanels: [] as HTMLElement[],
+    },
     get dom() { return this.domCache; },
     renderService: {
       renderVariableUsage: vi.fn(), renderSkillList: vi.fn(), renderTestTools: vi.fn(),

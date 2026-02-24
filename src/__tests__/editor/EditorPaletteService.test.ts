@@ -21,18 +21,18 @@ const toRgb = (hex: string) => {
 type PaletteServiceManager = ConstructorParameters<typeof EditorPaletteService>[0];
 
 type PaletteDomFixture = {
-    paletteGrid: HTMLDivElement | null;
-    projectPalettePanel: HTMLDivElement | null;
-    projectPaletteToggle: HTMLButtonElement | null;
-    colorPickerModal: HTMLDivElement | null;
-    colorPickerInput: HTMLInputElement | null;
-    colorPreviewCurrent: HTMLDivElement | null;
-    colorPreviewNew: HTMLDivElement | null;
-    colorPickerIndex: HTMLSpanElement | null;
-    palettePresetSelect: HTMLSelectElement | null;
-    paletteResetButton: HTMLButtonElement | null;
-    colorPickerConfirm: HTMLButtonElement | null;
-    colorPickerCancel: HTMLButtonElement | null;
+    paletteGrid: HTMLDivElement;
+    projectPalettePanel: HTMLDivElement;
+    projectPaletteToggle: HTMLButtonElement;
+    colorPickerModal: HTMLDivElement;
+    colorPickerInput: HTMLInputElement;
+    colorPreviewCurrent: HTMLDivElement;
+    colorPreviewNew: HTMLDivElement;
+    colorPickerIndex: HTMLSpanElement;
+    palettePresetSelect: HTMLSelectElement;
+    paletteResetButton: HTMLButtonElement;
+    colorPickerConfirm: HTMLButtonElement;
+    colorPickerCancel: HTMLButtonElement;
     paletteImportButton: HTMLButtonElement | null;
     paletteExportButton: HTMLButtonElement | null;
 };
@@ -151,7 +151,7 @@ describe('EditorPaletteService', () => {
 
     it('returns early from renderPaletteGrid when grid element is missing', () => {
         const manager = createManager();
-        manager.dom.paletteGrid = null;
+        manager.dom.paletteGrid = null as unknown as HTMLDivElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         expect(() => service.renderPaletteGrid()).not.toThrow();
@@ -198,7 +198,7 @@ describe('EditorPaletteService', () => {
 
     it('returns early from syncPaletteState when dom elements are missing', () => {
         const manager = createManager();
-        manager.dom.projectPalettePanel = null;
+        manager.dom.projectPalettePanel = null as unknown as HTMLDivElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         expect(() => service.syncPaletteState()).not.toThrow();
@@ -228,7 +228,7 @@ describe('EditorPaletteService', () => {
 
     it('returns early from togglePanel when dom elements are missing', () => {
         const manager = createManager();
-        manager.dom.projectPalettePanel = null;
+        manager.dom.projectPalettePanel = null as unknown as HTMLDivElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         expect(() => service.togglePanel()).not.toThrow();
@@ -249,7 +249,7 @@ describe('EditorPaletteService', () => {
 
     it('closeColorPicker still clears state when modal element is missing', () => {
         const manager = createManager({ editingColorIndex: 5 });
-        manager.dom.colorPickerModal = null;
+        manager.dom.colorPickerModal = null as unknown as HTMLDivElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.closeColorPicker();
@@ -365,8 +365,8 @@ describe('EditorPaletteService', () => {
 
     it('initialize returns early for missing elements without throwing', () => {
         const manager = createManager();
-        manager.dom.paletteGrid = null;
-        manager.dom.palettePresetSelect = null;
+        manager.dom.paletteGrid = null as unknown as HTMLDivElement;
+        manager.dom.palettePresetSelect = null as unknown as HTMLSelectElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
         expect(() => service.initialize()).not.toThrow();
     });
@@ -395,7 +395,7 @@ describe('EditorPaletteService', () => {
 
     it('openColorPicker returns early when required DOM elements missing', () => {
         const manager = createManager();
-        manager.dom.colorPickerModal = null;
+        manager.dom.colorPickerModal = null as unknown as HTMLDivElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.renderPaletteGrid();
         const btn = manager.dom.paletteGrid.querySelector('.palette-color-button') as HTMLButtonElement;

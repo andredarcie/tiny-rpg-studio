@@ -3,7 +3,7 @@ import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefiniti
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
 import { RendererEntityRenderer } from '../../runtime/adapters/renderer/RendererEntityRenderer';
 
-type SpriteMatrix = (number | null)[][];
+type SpriteMatrix = (string | null)[][];
 type RendererEntityCtor = ConstructorParameters<typeof RendererEntityRenderer>;
 type EntityRendererGameState = RendererEntityCtor[0];
 type EntityRendererTileManager = RendererEntityCtor[1];
@@ -48,7 +48,7 @@ type EntityRendererPrivateAccess = {
 };
 
 function sprite(id = 1): SpriteMatrix {
-  return [[id]];
+  return [[String(id)]];
 }
 
 function asCanvasCtx(ctx: CtxMock): CanvasRenderingContext2D {
@@ -95,11 +95,11 @@ function makeFixture() {
     items: [] as Array<Record<string, unknown>>,
     sprites: [] as Array<Record<string, unknown>>
   };
-  const player = { roomIndex: 1, x: 2, y: 3, lastX: 1 };
+  const player: { roomIndex: number; x: number; y: number; lastX?: number } = { roomIndex: 1, x: 2, y: 3, lastX: 1 };
   const enemies: EnemyLike[] = [];
 
   const gameState: EntityRendererGameState = {
-    getGame: vi.fn(() => game) as EntityRendererGameState['getGame'],
+    getGame: vi.fn(() => game) as unknown as EntityRendererGameState['getGame'],
     getPlayer: vi.fn(() => player) as EntityRendererGameState['getPlayer'],
     getEnemies: vi.fn(() => enemies) as NonNullable<EntityRendererGameState['getEnemies']>,
     isVariableOn: vi.fn(() => false) as NonNullable<EntityRendererGameState['isVariableOn']>,
@@ -199,7 +199,8 @@ describe('RendererEntityRenderer', () => {
     };
     vi.mocked(spriteFactory.getObjectSprites).mockReturnValue(objectSprites);
     vi.spyOn(renderer, 'getFloatingOffset').mockReturnValue(2);
-    vi.mocked(gameState.isVariableOn).mockReturnValue(true);
+    const isVariableOn = gameState.isVariableOn as NonNullable<EntityRendererGameState['isVariableOn']>;
+    vi.mocked(isVariableOn).mockReturnValue(true);
     game.objects = [
       { roomIndex: 1, x: 0, y: 0, type: 'visible' }, // wrong room
       { roomIndex: 2, x: 1, y: 1, type: 'visible', hiddenInRuntime: true },
@@ -214,7 +215,8 @@ describe('RendererEntityRenderer', () => {
     renderer.drawObjects(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(2);
-    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(1, ctx, objectSprites[`${ITEM_TYPES.SWITCH}--on`], 32, 48, 2);
+    const switchOnSprite = objectSprites[`${ITEM_TYPES.SWITCH}--on`];
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(1, ctx, switchOnSprite, 32, 48, 2);
     expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(2, ctx, objectSprites.collectible, 48, 66, 2);
   });
 
@@ -298,7 +300,10 @@ describe('RendererEntityRenderer', () => {
   it('drawEnemies handles no enemy list and empty list', () => {
     const { renderer, gameState } = makeFixture();
     const ctx = createCtx();
-    vi.mocked(gameState.getEnemies).mockImplementationOnce(() => undefined).mockImplementationOnce(() => []);
+    const getEnemies = gameState.getEnemies as NonNullable<EntityRendererGameState['getEnemies']>;
+    vi.mocked(getEnemies)
+      .mockImplementationOnce(() => undefined as unknown as EnemyLike[])
+      .mockImplementationOnce(() => []);
     expect(() => renderer.drawEnemies(asCanvasCtx(ctx))).not.toThrow();
     expect(() => renderer.drawEnemies(asCanvasCtx(ctx))).not.toThrow();
   });
@@ -326,7 +331,8 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
     expect(overlaySpy).toHaveBeenCalledTimes(1);
     expect(alertSpy).toHaveBeenCalledTimes(1);
-    expect(renderer.attackTelegraph.applyWindupOffset).toHaveBeenCalledWith('e1', 32, 48);
+    const attackTelegraph = renderer.attackTelegraph;
+    expect(attackTelegraph.applyWindupOffset).toHaveBeenCalledWith('e1', 32, 48);
   });
 
   it('drawEnemies covers dying animation phases and fallback enemy id', () => {
@@ -445,7 +451,7 @@ describe('RendererEntityRenderer', () => {
     expect(renderer.adjustSpriteHorizontally(3, 2, s)).toBe(s);
     expect(renderer.getFloatingOffset(1, 2, 16)).toEqual(expect.any(Number));
 
-    const perfSpy = vi.spyOn(globalThis, 'performance', 'get').mockReturnValue(undefined);
+    const perfSpy = vi.spyOn(globalThis, 'performance', 'get').mockReturnValue(undefined as unknown as Performance);
     const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(12345);
     expect(renderer.getNow()).toBe(12345);
     dateSpy.mockRestore();
@@ -472,8 +478,9 @@ describe('RendererEntityRenderer', () => {
   it('shouldFadePlayerForStealth handles no skill and matching low-damage enemy', () => {
     const { renderer, gameState, enemies, player } = makeFixture();
     player.roomIndex = 1;
-    vi.mocked(gameState.hasSkill).mockReturnValueOnce(false).mockReturnValueOnce(true);
-    enemies.push({ roomIndex: 2, type: 'dragon' }, { roomIndex: 1, type: 'rat' });
+    const hasSkill = gameState.hasSkill as NonNullable<EntityRendererGameState['hasSkill']>;
+    vi.mocked(hasSkill).mockReturnValueOnce(false).mockReturnValueOnce(true);
+    enemies.push({ roomIndex: 2, x: 0, y: 0, type: 'dragon' }, { roomIndex: 1, x: 0, y: 0, type: 'rat' });
     vi.spyOn(renderer, 'getEnemyDamage').mockReturnValue(2);
 
     expect(renderer.shouldFadePlayerForStealth()).toBe(false);
@@ -482,8 +489,10 @@ describe('RendererEntityRenderer', () => {
 
   it('shouldFadePlayerForStealth uses empty enemy list when getEnemies returns undefined', () => {
     const { renderer, gameState } = makeFixture();
-    vi.mocked(gameState.hasSkill).mockReturnValue(true);
-    vi.mocked(gameState.getEnemies).mockImplementation(() => undefined);
+    const hasSkill = gameState.hasSkill as NonNullable<EntityRendererGameState['hasSkill']>;
+    const getEnemies = gameState.getEnemies as NonNullable<EntityRendererGameState['getEnemies']>;
+    vi.mocked(hasSkill).mockReturnValue(true);
+    vi.mocked(getEnemies).mockImplementation(() => undefined as unknown as EnemyLike[]);
 
     expect(renderer.shouldFadePlayerForStealth()).toBe(false);
   });
@@ -514,6 +523,8 @@ describe('RendererEntityRenderer', () => {
     renderer.drawFlyingLifeSquares(asCanvasCtx(ctx));
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.fillRect).toHaveBeenCalled();
+    expect(entityRenderer.flyingLifeSquares[0]).toBeDefined();
+    if (!entityRenderer.flyingLifeSquares[0]) throw new Error('flying square missing');
     expect(entityRenderer.flyingLifeSquares[0].opacity).toBeLessThan(1);
 
     now = 2000;

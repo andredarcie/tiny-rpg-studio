@@ -16,7 +16,20 @@ type GameVariableUsageMock = {
   enemies?: Array<Record<string, unknown>> | unknown;
   objects?: Array<Record<string, unknown>> | unknown;
 };
-type DomFixture = ReturnType<typeof createDomFixture>;
+type DomFixture = {
+  projectVariableList: HTMLDivElement;
+  projectVariablesContainer: HTMLDivElement;
+  projectVariablesToggle: HTMLButtonElement;
+  projectSkillsList: HTMLDivElement;
+  projectSkillsContainer: HTMLDivElement;
+  projectSkillsToggle: HTMLButtonElement;
+  projectTestContainer: HTMLDivElement;
+  projectTestToggle: HTMLButtonElement;
+  projectTestPanel: HTMLDivElement;
+  projectTestStartLevel: HTMLSelectElement;
+  projectTestSkillList: HTMLDivElement;
+  projectTestGodMode: HTMLInputElement;
+};
 type TestState = {
   variablePanelCollapsed: boolean;
   skillPanelCollapsed: boolean;
@@ -150,7 +163,7 @@ function asEditorManagerFixture(fixture: ManagerFixture): ConstructorParameters<
   return fixture as unknown as ConstructorParameters<typeof EditorRenderService>[0];
 }
 
-function createDomFixture() {
+function createDomFixture(): DomFixture {
   const projectVariableList = document.createElement('div');
   const projectVariablesContainer = document.createElement('div');
   const projectVariablesToggle = document.createElement('button');
@@ -188,7 +201,7 @@ function createDomFixture() {
 
 function createManagerFixture(): ManagerFixture {
   const domCache = createDomFixture();
-  const gameEngine = {
+  const gameEngine: ManagerFixture['gameEngine'] = {
     getVariableDefinitions: vi.fn(() => []),
     getGame: vi.fn(() => ({})),
     getTestSettings: vi.fn(() => ({ startLevel: 1, godMode: false, skills: [] })),
@@ -321,8 +334,8 @@ describe('EditorRenderService', () => {
 
   it('renders variable usage empty state and handles missing optional UI parts', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectVariablesToggle = null;
-    fixture.domCache.projectVariablesContainer = null;
+    fixture.domCache.projectVariablesToggle = null as unknown as HTMLButtonElement;
+    fixture.domCache.projectVariablesContainer = null as unknown as HTMLDivElement;
     fixture.gameEngine.getVariableDefinitions.mockReturnValue([]);
     const { service } = createService(fixture);
 
@@ -346,7 +359,7 @@ describe('EditorRenderService', () => {
 
   it('returns early in renderVariableUsage when list is missing', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectVariableList = null;
+    fixture.domCache.projectVariableList = null as unknown as HTMLDivElement;
     const { service } = createService(fixture);
 
     expect(() => service.renderVariableUsage()).not.toThrow();
@@ -471,7 +484,7 @@ describe('EditorRenderService', () => {
 
   it('returns early in renderSkillList when list is missing', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectSkillsList = null;
+    fixture.domCache.projectSkillsList = null as unknown as HTMLDivElement;
     const { service } = createService(fixture);
 
     expect(() => service.renderSkillList()).not.toThrow();
@@ -491,8 +504,8 @@ describe('EditorRenderService', () => {
 
   it('renders empty skill list state', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectSkillsToggle = null;
-    fixture.domCache.projectSkillsContainer = null;
+    fixture.domCache.projectSkillsToggle = null as unknown as HTMLButtonElement;
+    fixture.domCache.projectSkillsContainer = null as unknown as HTMLDivElement;
     mocks.skillDefinitions.getAll.mockReturnValue([]);
     const { service } = createService(fixture);
 
@@ -530,7 +543,7 @@ describe('EditorRenderService', () => {
 
   it('returns early in renderTestTools when required nodes are missing', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectTestContainer = null;
+    fixture.domCache.projectTestContainer = null as unknown as HTMLDivElement;
     const { service } = createService(fixture);
 
     expect(() => service.renderTestTools()).not.toThrow();
@@ -564,7 +577,7 @@ describe('EditorRenderService', () => {
 
   it('renders test tools without skill list section when skillList is missing', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectTestSkillList = null;
+    fixture.domCache.projectTestSkillList = null as unknown as HTMLDivElement;
     const { service } = createService(fixture);
 
     expect(() => service.renderTestTools()).not.toThrow();
@@ -572,8 +585,8 @@ describe('EditorRenderService', () => {
 
   it('renders test tools skill checklist and handles missing optional controls', () => {
     const fixture = createManagerFixture();
-    fixture.domCache.projectTestStartLevel = null;
-    fixture.domCache.projectTestGodMode = null;
+    fixture.domCache.projectTestStartLevel = null as unknown as HTMLSelectElement;
+    fixture.domCache.projectTestGodMode = null as unknown as HTMLInputElement;
     fixture.domCache.projectTestContainer = document.createElement('div');
     fixture.domCache.projectTestSkillList = document.createElement('div');
     fixture.gameEngine.getTestSettings.mockReturnValue({

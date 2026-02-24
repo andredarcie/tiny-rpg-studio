@@ -16,7 +16,9 @@ vi.mock('../../runtime/infra/share/ShareUtils', () => ({
 
 vi.mock('../../runtime/adapters/TextResources', () => ({
   TextResources: {
-    get: vi.fn<(key: string, fallback?: string) => string>((key: string, fallback = ''): string => fallback || key),
+    get: vi.fn<(key: string | null | undefined, fallback?: string) => string>(
+      (key: string | null | undefined, fallback = ''): string => fallback || key || '',
+    ),
   }
 }));
 
@@ -193,9 +195,9 @@ describe('EditorShareService', () => {
     });
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    vi.mocked(TextResources.get).mockImplementation((key: string, fallback = '') => {
+    vi.mocked(TextResources.get).mockImplementation((key: string | null | undefined, fallback = '') => {
       if (key === 'alerts.share.generateError') return 'Generate failed';
-      return fallback || key;
+      return fallback || key || '';
     });
     const svc = new EditorShareService(asShareServiceManager(mgr));
     await svc.generateShareableUrl();
@@ -262,7 +264,7 @@ describe('EditorShareService', () => {
     });
     const readAsTextSpy = vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function (this: FileReader) {
       Object.defineProperty(this, 'result', { configurable: true, value: '{"title":"Loaded"}' });
-      this.onload?.(new ProgressEvent('load'));
+      this.onload?.(new ProgressEvent('load') as ProgressEvent<FileReader>);
     });
     input.value = 'x';
 
@@ -278,9 +280,9 @@ describe('EditorShareService', () => {
     const mgr = makeManager();
     const svc = new EditorShareService(asShareServiceManager(mgr));
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
-    vi.mocked(TextResources.get).mockImplementation((key: string, fallback = '') => {
+    vi.mocked(TextResources.get).mockImplementation((key: string | null | undefined, fallback = '') => {
       if (key === 'alerts.share.loadError') return 'Load failed';
-      return fallback || key;
+      return fallback || key || '';
     });
     const input = document.createElement('input');
     Object.defineProperty(input, 'files', {
@@ -289,7 +291,7 @@ describe('EditorShareService', () => {
     });
     vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function (this: FileReader) {
       Object.defineProperty(this, 'result', { configurable: true, value: '{invalid json' });
-      this.onload?.(new ProgressEvent('load'));
+      this.onload?.(new ProgressEvent('load') as ProgressEvent<FileReader>);
     });
 
     svc.loadGameFile({ target: input } as unknown as Event);

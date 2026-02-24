@@ -42,9 +42,9 @@ function asCanvasCtx(ctx: PreviewCtxMock): CanvasRenderingContext2D {
 
 function enemyDef(overrides: Partial<EnemyDefinitionInput> & Pick<EnemyDefinitionInput, 'type'>): EnemyDefinitionInput {
   return {
-    type: overrides.type,
-    ...overrides
-  } as EnemyDefinitionInput;
+    ...overrides,
+    type: overrides.type
+  } as unknown as EnemyDefinitionInput;
 }
 
 function enemyNameDef(overrides: Partial<EnemyDisplayNameDefinition>): EnemyDisplayNameDefinition {
@@ -56,8 +56,33 @@ function enemyNameDef(overrides: Partial<EnemyDisplayNameDefinition>): EnemyDisp
     missChance: 0,
     experience: 1,
     sprite: null,
+    name: 'Enemy',
+    nameKey: null,
+    description: '',
+    descriptionKey: null,
     ...overrides
   } as EnemyDisplayNameDefinition;
+}
+
+function catalogEnemyDef(
+  overrides: Partial<EnemyDefinitionInput> & Pick<EnemyDefinitionInput, 'type'>
+): EnemyDefinitionInput {
+  const { type, ...rest } = overrides;
+  return {
+    id: `enemy-${type}`,
+    type,
+    name: 'Enemy',
+    nameKey: null,
+    description: '',
+    descriptionKey: null,
+    boss: false,
+    lives: 1,
+    damage: 1,
+    missChance: 0,
+    experience: 1,
+    sprite: null,
+    ...rest
+  } as unknown as EnemyDefinitionInput;
 }
 
 const mockData = vi.hoisted(() => ({
@@ -66,7 +91,7 @@ const mockData = vi.hoisted(() => ({
 
 function makeEnemy(overrides: Partial<{
   id: string; type: string; roomIndex: number; x: number; y: number;
-  defeatVariableId: string; deathStartTime: number | null;
+  defeatVariableId: string; deathStartTime: number | null; lastX: number;
 }> = {}): EnemyOverlayEnemy {
   return {
     id: overrides.id ?? 'e1',
@@ -74,6 +99,7 @@ function makeEnemy(overrides: Partial<{
     roomIndex: overrides.roomIndex ?? 1,
     x: overrides.x ?? 2,
     y: overrides.y ?? 3,
+    lastX: overrides.lastX ?? 2,
     defeatVariableId: overrides.defeatVariableId ?? '',
     deathStartTime: overrides.deathStartTime ?? null
   };
@@ -163,7 +189,7 @@ describe('EditorEnemyRenderer', () => {
 
   it('renders nothing when enemies are non-boss types', () => {
     const fixture = createFixture();
-    mockData.enemyDefinitions = [{ type: 'goblin', boss: false, lives: 3 }];
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'goblin', boss: false, lives: 3 })];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy({ type: 'goblin' })]);
     const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
@@ -174,7 +200,7 @@ describe('EditorEnemyRenderer', () => {
 
   it('renders boss enemy items with label, variable select and remove button', () => {
     const fixture = createFixture();
-    mockData.enemyDefinitions = [{ type: 'dragon', boss: true, lives: 10, name: 'Dragão' }];
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'dragon', boss: true, lives: 10, name: 'Dragão' })];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([
       makeEnemy({ id: 'b1', type: 'dragon', roomIndex: 1, x: 4, y: 5, defeatVariableId: 'v1' })
     ]);
@@ -197,7 +223,7 @@ describe('EditorEnemyRenderer', () => {
   it('resolves enemy type via aliases', () => {
     const fixture = createFixture();
     mockData.enemyDefinitions = [
-      { type: 'boss_main', boss: true, lives: 5, aliases: ['dragon_alt'], name: 'Boss' }
+      catalogEnemyDef({ type: 'boss_main', boss: true, lives: 5, aliases: ['dragon_alt'], name: 'Boss' })
     ];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([
       makeEnemy({ type: 'dragon_alt', roomIndex: 1 })
@@ -213,7 +239,7 @@ describe('EditorEnemyRenderer', () => {
 
   it('renders boss without lives info when lives is not finite', () => {
     const fixture = createFixture();
-    mockData.enemyDefinitions = [{ type: 'dragon', boss: true, lives: Infinity, name: 'Dragão' }];
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'dragon', boss: true, lives: Infinity, name: 'Dragão' })];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy({ type: 'dragon' })]);
     const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
@@ -224,7 +250,7 @@ describe('EditorEnemyRenderer', () => {
 
   it('filters enemies to active room only', () => {
     const fixture = createFixture();
-    mockData.enemyDefinitions = [{ type: 'dragon', boss: true, lives: 5, name: 'Dragão' }];
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'dragon', boss: true, lives: 5, name: 'Dragão' })];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([
       makeEnemy({ id: 'r1', type: 'dragon', roomIndex: 1 }),
       makeEnemy({ id: 'r2', type: 'dragon', roomIndex: 2 })
@@ -259,8 +285,8 @@ describe('EditorEnemyRenderer', () => {
   it('renders enemy cards with correct structure and selection state', () => {
     const fixture = createFixture();
     mockData.enemyDefinitions = [
-      { type: 'goblin', boss: false, lives: 3, damage: 1, name: 'Goblin' },
-      { type: 'dragon', boss: true, lives: 10, damage: 5, name: 'Dragão' }
+      catalogEnemyDef({ type: 'goblin', boss: false, lives: 3, damage: 1, name: 'Goblin' }),
+      catalogEnemyDef({ type: 'dragon', boss: true, lives: 10, damage: 5, name: 'Dragão' })
     ];
     fixture.manager.selectedEnemyType = 'goblin';
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
@@ -280,7 +306,7 @@ describe('EditorEnemyRenderer', () => {
   it('renders "?" for non-finite lives and damage in catalog', () => {
     const fixture = createFixture();
     mockData.enemyDefinitions = [
-      { type: 'ghost', boss: false, lives: NaN, damage: Infinity, name: 'Ghost' }
+      catalogEnemyDef({ type: 'ghost', boss: false, lives: NaN, damage: Infinity, name: 'Ghost' })
     ];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
     const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
@@ -296,7 +322,7 @@ describe('EditorEnemyRenderer', () => {
   it('returns early from drawEnemyPreview for non-canvas element', () => {
     const fixture = createFixture();
     const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-    expect(() => renderer.drawEnemyPreview(asCanvasElement({}), enemyDef({ type: 'goblin', sprite: null }))).not.toThrow();
+    expect(() => renderer.drawEnemyPreview(asCanvasElement({}), enemyDef({ type: 'goblin', sprite: undefined }))).not.toThrow();
   });
 
   it('returns early from drawEnemyPreview when getContext returns null', () => {
@@ -305,7 +331,7 @@ describe('EditorEnemyRenderer', () => {
     const canvas = document.createElement('canvas');
     vi.spyOn(canvas, 'getContext').mockReturnValue(null);
 
-    expect(() => renderer.drawEnemyPreview(canvas, enemyDef({ type: 'goblin', sprite: null }))).not.toThrow();
+    expect(() => renderer.drawEnemyPreview(canvas, enemyDef({ type: 'goblin', sprite: undefined }))).not.toThrow();
   });
 
   it('draws sprite pixels when enemySprites contains matching type', () => {
@@ -321,7 +347,7 @@ describe('EditorEnemyRenderer', () => {
     const ctx: PreviewCtxMock = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true };
     vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
 
-    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'goblin', sprite: null }));
+    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'goblin', sprite: undefined }));
 
     expect(ctx.clearRect).toHaveBeenCalledWith(0, 0, 56, 56);
     expect(ctx.fillRect).toHaveBeenCalledTimes(2);
@@ -338,7 +364,7 @@ describe('EditorEnemyRenderer', () => {
     const ctx: PreviewCtxMock = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true };
     vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
 
-    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'orc', sprite: null }));
+    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'orc', sprite: undefined }));
 
     expect(ctx.fillRect).toHaveBeenCalledTimes(1);
   });
@@ -346,7 +372,7 @@ describe('EditorEnemyRenderer', () => {
   it('maps definition sprite via spriteFactory when no cached sprite exists', () => {
     const fixture = createFixture();
     fixture.gameEngine.renderer.enemySprites = {};
-    fixture.gameEngine.renderer.enemySprite = null;
+    fixture.gameEngine.renderer.enemySprite = undefined as unknown as SpriteMatrix | null;
     fixture.gameEngine.renderer.spriteFactory.mapPixels.mockReturnValue([['#112233']]);
     const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
@@ -364,7 +390,7 @@ describe('EditorEnemyRenderer', () => {
   it('skips draw when sprite is not an array', () => {
     const fixture = createFixture();
     fixture.gameEngine.renderer.enemySprites = {};
-    fixture.gameEngine.renderer.enemySprite = null;
+    fixture.gameEngine.renderer.enemySprite = undefined as unknown as SpriteMatrix | null;
     fixture.gameEngine.renderer.spriteFactory.mapPixels.mockReturnValue(null);
     const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
@@ -596,5 +622,6 @@ describe('EditorEnemyRenderer', () => {
     expect(wrapper.querySelector('.enemy-overlay')).toBeNull();
   });
 });
+
 
 

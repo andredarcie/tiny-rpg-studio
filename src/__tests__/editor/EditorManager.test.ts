@@ -84,7 +84,9 @@ function makeGameEngine(overrides: Record<string, unknown> = {}) {
   return {
     tileManager: { ensureDefaultTiles: vi.fn() },
     getTiles: vi.fn(() => [{ id: 'tile-1' }]),
-    getGame: vi.fn(() => ({ start: { roomIndex: 0 }, rooms: [{}] })),
+    getGame: vi.fn<() => { start?: { roomIndex: number }; rooms: {}[] }>(
+      () => ({ start: { roomIndex: 0 }, rooms: [{}] }),
+    ),
     npcManager: { ensureDefaultNPCs: vi.fn() },
     setCustomPalette: vi.fn(),
     resetPaletteToDefault: vi.fn(),

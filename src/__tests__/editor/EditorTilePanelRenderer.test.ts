@@ -161,7 +161,7 @@ describe('EditorTilePanelRenderer', () => {
   it('calls tf as fallback when tile has no name', () => {
     const svc = makeService({}, { selectedTileId: 5 });
     // Add nameless tile
-    vi.mocked(svc.gameEngine.getTiles).mockReturnValue([{ id: 5 }]);
+    vi.mocked(svc.gameEngine.getTiles).mockReturnValue([{ id: 5, name: '', category: '' }]);
     const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.updateSelectedTilePreview();
     expect(svc.tf).toHaveBeenCalledWith('tiles.summaryFallback', { id: 5 }, '');

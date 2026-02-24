@@ -26,7 +26,40 @@ type NpcMock = {
 };
 type EnemyMock = { type: string; roomIndex: number; x: number; y: number; defeatVariableId?: string | null };
 type VariableMock = { id: string; color?: string | null };
-type TestService = ReturnType<typeof makeService>['service'];
+type RendererMock = {
+  drawObjectSprite: ReturnType<typeof vi.fn>;
+  drawSprite: ReturnType<typeof vi.fn>;
+  npcSprites: Record<string, (string | null)[][]>;
+  enemySprites: Record<string, (string | null)[][]>;
+  enemySprite: (string | null)[][];
+};
+type CanvasGameEngineFixture = {
+  getTileMap: ReturnType<typeof vi.fn<() => TileMapMock>>;
+  getObjectsForRoom: ReturnType<typeof vi.fn<() => ObjectMock[]>>;
+  getSprites: ReturnType<typeof vi.fn<() => NpcMock[]>>;
+  getActiveEnemies: ReturnType<typeof vi.fn<() => EnemyMock[]>>;
+  getVariableDefinitions: ReturnType<typeof vi.fn<() => VariableMock[]>>;
+  tileManager: {
+    getTile: ReturnType<typeof vi.fn>;
+    getTilePixels: ReturnType<typeof vi.fn<() => (string | null)[][]>>;
+  };
+  renderer: RendererMock;
+};
+type TestService = {
+  manager: {
+    ectx: CanvasCtxMock | null;
+    selectedTileId: string | number | null;
+    selectedNpcType: string | null;
+    selectedNpcId: string | null;
+    gameEngine: CanvasGameEngineFixture;
+  };
+  dom: { editorCanvas: HTMLCanvasElement | null };
+  state: { activeRoomIndex: number };
+  gameEngine: CanvasGameEngineFixture;
+  t: ReturnType<typeof vi.fn>;
+  tf: ReturnType<typeof vi.fn>;
+  resolvePicoColor: ReturnType<typeof vi.fn>;
+};
 
 function asEditorCanvasService(service: TestService): EditorCanvasService {
   return service as unknown as EditorCanvasService;
@@ -61,7 +94,7 @@ function makeService(overrides: Record<string, unknown> = {}) {
     getTilePixels: vi.fn((): string[][] => Array.from({ length: 8 }, () => Array<string>(8).fill('#FF0000'))),
   };
 
-  const manager = {
+  const manager: TestService['manager'] = {
     ectx: ctx,
     selectedTileId: null,
     selectedNpcType: null,
@@ -84,7 +117,7 @@ function makeService(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 
-  const service = {
+  const service: TestService = {
     manager,
     dom: { editorCanvas: canvas },
     state: { activeRoomIndex: 0 },
@@ -296,7 +329,7 @@ describe('EditorCanvasRenderer', () => {
 
   it('draws each non-transparent pixel', () => {
     const { service, ctx } = makeService();
-    const pixels = [
+    const pixels: (string | null)[][] = [
       ['#FF0000', 'transparent'],
       [null, '#00FF00'],
     ];

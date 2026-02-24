@@ -41,7 +41,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     enemyService: { deactivatePlacement: vi.fn() },
     history: { pushCurrentState: vi.fn() },
     gameEngine: {
-      setObjectPosition: vi.fn(() => ({ type: 'key' })),
+      setObjectPosition: vi.fn<() => { type: string } | null>(() => ({ type: 'key' })),
       removeObject: vi.fn(),
       setPlayerEndText: vi.fn(),
       draw: vi.fn(),

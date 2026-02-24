@@ -42,9 +42,9 @@ type EditorObjectRendererService = ConstructorParameters<typeof EditorObjectRend
 type ObjectLabelDefinitions = Parameters<EditorObjectRenderer['getObjectLabel']>[1];
 type EditorObjectMock = {
   type: string;
-  roomIndex: number;
-  x: number;
-  y: number;
+  roomIndex?: number;
+  x?: number;
+  y?: number;
   variableId?: string;
   on?: boolean;
   opened?: boolean;
@@ -178,7 +178,10 @@ describe('EditorObjectRenderer', () => {
     ];
     mockData.itemDefinitionMap.set(ITEM_TYPES.SWORD, makeSwordDef({ damage: 7, durability: 9 }));
     mockData.itemDefinitionMap.set(ITEM_TYPES.KEY, makeSwordDef({ isSword: false }));
-    fixture.gameEngine.getObjectsForRoom.mockReturnValue([{ type: ITEM_TYPES.SWORD }, { type: ITEM_TYPES.DOOR }]);
+    fixture.gameEngine.getObjectsForRoom.mockReturnValue([
+      { type: ITEM_TYPES.SWORD, roomIndex: 1, x: 0, y: 0 },
+      { type: ITEM_TYPES.DOOR, roomIndex: 1, x: 1, y: 1 }
+    ]);
 
     renderer.renderObjectCatalog();
 

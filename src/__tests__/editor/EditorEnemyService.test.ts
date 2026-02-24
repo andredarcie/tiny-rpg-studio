@@ -46,7 +46,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     gameEngine: {
       getEnemyDefinitions: vi.fn((): PlacedEnemy[] => []),
       getActiveEnemies: vi.fn((): PlacedEnemy[] => []),
-      addEnemy: vi.fn(() => 'enemy-new'),
+      addEnemy: vi.fn<() => string | null>(() => 'enemy-new'),
       removeEnemy: vi.fn(),
       setEnemyVariable: vi.fn(() => true),
       renderer: { showCombatIndicator: vi.fn() },
@@ -78,7 +78,7 @@ describe('EditorEnemyService', () => {
 
     it('returns early when already placing', () => {
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.placingEnemy = true;
       service.activatePlacement();
@@ -87,7 +87,7 @@ describe('EditorEnemyService', () => {
 
     it('clears npc and object selection when activating', () => {
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.placingObjectType = 'key';
       service.activatePlacement();
@@ -97,7 +97,7 @@ describe('EditorEnemyService', () => {
 
     it('sets cursor to crosshair and updates state', () => {
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.selectedEnemyType = 'giant-rat';
       service.activatePlacement();
       expect(manager.state.placingEnemy).toBe(true);
@@ -159,7 +159,7 @@ describe('EditorEnemyService', () => {
     it('skips render chain when addEnemy returns null', () => {
       manager.gameEngine.addEnemy = vi.fn<() => string | null>(() => null);
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.state.selectedEnemyType = 'giant-rat';
       service.placeEnemyAt({ x: 1, y: 1 });
       expect(manager.renderService.renderEnemies).not.toHaveBeenCalled();
@@ -167,7 +167,7 @@ describe('EditorEnemyService', () => {
 
     it('calls full render chain on success', () => {
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.selectedEnemyType = 'giant-rat';
       service.placeEnemyAt({ x: 1, y: 1 });
@@ -231,7 +231,7 @@ describe('EditorEnemyService', () => {
 
     it('does not call renderEnemyCatalog when same type already selected', () => {
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.selectedEnemyType = 'giant-rat';
       service.selectEnemyType('giant-rat');
@@ -240,7 +240,7 @@ describe('EditorEnemyService', () => {
 
     it('updates selectedEnemyType and calls renderEnemyCatalog for new type', () => {
       const def: EnemyDef = { type: 'wolf' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.selectedEnemyType = null;
       service.selectEnemyType('wolf');
       expect(manager.selectedEnemyType).toBe('wolf');
@@ -249,7 +249,7 @@ describe('EditorEnemyService', () => {
 
     it('calls activatePlacement after type update', () => {
       const def: EnemyDef = { type: 'wolf' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       const activate = vi.spyOn(service, 'activatePlacement');
       manager.selectedEnemyType = null;
       service.selectEnemyType('wolf');
@@ -287,7 +287,7 @@ describe('EditorEnemyService', () => {
   describe('getEnemyDefinition', () => {
     it('returns definition from EnemyDefinitions when found', () => {
       const def: EnemyDef = { type: 'giant-rat' };
-      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
+      vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       const result = service.getEnemyDefinition('giant-rat');
       expect(result).toBe(def);
     });
@@ -356,5 +356,6 @@ describe('EditorEnemyService', () => {
     });
   });
 });
+
 
 
