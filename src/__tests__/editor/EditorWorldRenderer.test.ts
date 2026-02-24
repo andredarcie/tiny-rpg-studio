@@ -1,6 +1,12 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorWorldRenderer } from '../../editor/modules/renderers/EditorWorldRenderer';
+
+type WorldRendererService = ConstructorParameters<typeof EditorWorldRenderer>[0];
+type WorldRendererServiceFixture = ReturnType<typeof makeService>;
+
+function asWorldRendererService(service: WorldRendererServiceFixture): WorldRendererService {
+  return service as unknown as WorldRendererService;
+}
 
 function makeService(stateOverrides: Record<string, unknown> = {}, gameOverrides: Record<string, unknown> = {}) {
   const worldGrid = document.createElement('div');
@@ -33,10 +39,10 @@ function makeService(stateOverrides: Record<string, unknown> = {}, gameOverrides
         ...gameOverrides,
       })),
     },
-    t: vi.fn((key: string, fallback = '') => fallback || key),
-    tf: vi.fn((_key: string, params: Record<string, unknown> = {}, fallback = '') => {
-      return fallback || `${params.col},${params.row}`;
-    }),
+    t: vi.fn<(key: string, fallback?: string) => string>((key: string, fallback = ''): string => fallback || key),
+    tf: vi.fn<(_key: string, params?: Record<string, unknown>, fallback?: string) => string>(
+      (_key: string, params: Record<string, unknown> = {}, fallback = ''): string => fallback || `${params.col},${params.row}`
+    ),
   };
 
   return service;
@@ -49,15 +55,15 @@ describe('EditorWorldRenderer', () => {
 
   it('returns early when worldGrid is null', () => {
     const svc = makeService();
-    (svc.dom as any).worldGrid = null;
-    const renderer = new EditorWorldRenderer(svc as any);
+    svc.dom.worldGrid = null as unknown as HTMLDivElement;
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     expect(() => renderer.renderWorldGrid()).not.toThrow();
     expect(svc.gameEngine.getGame).not.toHaveBeenCalled();
   });
 
   it('creates correct number of world cells', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     const cells = svc.dom.worldGrid.querySelectorAll('.world-cell');
     expect(cells.length).toBe(4); // 2 rows × 2 cols
@@ -65,7 +71,7 @@ describe('EditorWorldRenderer', () => {
 
   it('marks active room with "active" class', () => {
     const svc = makeService({ activeRoomIndex: 2 });
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     const activeCells = svc.dom.worldGrid.querySelectorAll('.world-cell.active');
     expect(activeCells.length).toBe(1);
@@ -74,7 +80,7 @@ describe('EditorWorldRenderer', () => {
 
   it('marks start room with "start" class and badge', () => {
     const svc = makeService({}, { start: { roomIndex: 1 } });
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     const startCells = svc.dom.worldGrid.querySelectorAll('.world-cell.start');
     expect(startCells.length).toBe(1);
@@ -83,7 +89,7 @@ describe('EditorWorldRenderer', () => {
 
   it('assigns data-room-index to each cell', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     const cells = svc.dom.worldGrid.querySelectorAll('[data-room-index]');
     expect(cells.length).toBe(4);
@@ -93,14 +99,14 @@ describe('EditorWorldRenderer', () => {
 
   it('sets --world-cols CSS variable', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     expect(svc.dom.worldGrid.style.getPropertyValue('--world-cols')).toBe('2');
   });
 
   it('renders 1x1 grid when world config missing', () => {
     const svc = makeService({}, { world: undefined });
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     const cells = svc.dom.worldGrid.querySelectorAll('.world-cell');
     expect(cells.length).toBe(1);
@@ -108,7 +114,7 @@ describe('EditorWorldRenderer', () => {
 
   it('calls tf for each cell title', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     expect(svc.tf).toHaveBeenCalledTimes(4);
   });
@@ -116,7 +122,7 @@ describe('EditorWorldRenderer', () => {
   it('clears grid before rendering', () => {
     const svc = makeService();
     svc.dom.worldGrid.innerHTML = '<div id="old-child">old</div>';
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderWorldGrid();
     expect(svc.dom.worldGrid.querySelector('#old-child')).toBeNull();
   });
@@ -125,7 +131,7 @@ describe('EditorWorldRenderer', () => {
 
   it('disables up button when in top row', () => {
     const svc = makeService({ activeRoomIndex: 0 }); // row 0
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderMapNavigation();
     const [upBtn] = svc.dom.mapNavButtons as HTMLButtonElement[];
     expect(upBtn.disabled).toBe(true);
@@ -133,7 +139,7 @@ describe('EditorWorldRenderer', () => {
 
   it('disables left button when in first column', () => {
     const svc = makeService({ activeRoomIndex: 0 }); // col 0
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderMapNavigation();
     const leftBtn = (svc.dom.mapNavButtons as HTMLButtonElement[])[2];
     expect(leftBtn.disabled).toBe(true);
@@ -141,7 +147,7 @@ describe('EditorWorldRenderer', () => {
 
   it('enables down button from top row in 2x2 grid', () => {
     const svc = makeService({ activeRoomIndex: 0 });
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderMapNavigation();
     const downBtn = (svc.dom.mapNavButtons as HTMLButtonElement[])[1];
     expect(downBtn.disabled).toBe(false);
@@ -149,7 +155,7 @@ describe('EditorWorldRenderer', () => {
 
   it('enables right button from first column', () => {
     const svc = makeService({ activeRoomIndex: 0 });
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderMapNavigation();
     const rightBtn = (svc.dom.mapNavButtons as HTMLButtonElement[])[3];
     expect(rightBtn.disabled).toBe(false);
@@ -157,7 +163,7 @@ describe('EditorWorldRenderer', () => {
 
   it('disables all buttons from last cell in 1x1 grid', () => {
     const svc = makeService({}, { world: { rows: 1, cols: 1 }, rooms: [{}] });
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderMapNavigation();
     const buttons = svc.dom.mapNavButtons as HTMLButtonElement[];
     expect(buttons.every((b) => b.disabled)).toBe(true);
@@ -165,8 +171,8 @@ describe('EditorWorldRenderer', () => {
 
   it('does nothing when mapNavButtons is empty', () => {
     const svc = makeService();
-    svc.dom.mapNavButtons = [] as any;
-    const renderer = new EditorWorldRenderer(svc as any);
+    svc.dom.mapNavButtons = [];
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     expect(() => renderer.renderMapNavigation()).not.toThrow();
   });
 
@@ -174,14 +180,14 @@ describe('EditorWorldRenderer', () => {
 
   it('returns early when mapPosition is null', () => {
     const svc = makeService();
-    (svc.dom as any).mapPosition = null;
-    const renderer = new EditorWorldRenderer(svc as any);
+    svc.dom.mapPosition = null as unknown as HTMLDivElement;
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     expect(() => renderer.renderGameMinimap(1, 1)).not.toThrow();
   });
 
   it('creates 9 minimap cells (3x3)', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderGameMinimap(2, 1);
     const cells = svc.dom.mapPosition.querySelectorAll('.game-minimap-cell');
     expect(cells.length).toBe(9);
@@ -189,7 +195,7 @@ describe('EditorWorldRenderer', () => {
 
   it('marks active cell with game-minimap-cell-active class', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderGameMinimap(1, 2);
     const activeCells = svc.dom.mapPosition.querySelectorAll('.game-minimap-cell-active');
     expect(activeCells.length).toBe(1);
@@ -200,7 +206,7 @@ describe('EditorWorldRenderer', () => {
 
   it('renderGameMinimap with null coords marks no cell active', () => {
     const svc = makeService();
-    const renderer = new EditorWorldRenderer(svc as any);
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderGameMinimap(null, null);
     const activeCells = svc.dom.mapPosition.querySelectorAll('.game-minimap-cell-active');
     expect(activeCells.length).toBe(0);

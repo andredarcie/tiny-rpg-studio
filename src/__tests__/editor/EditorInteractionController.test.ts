@@ -1,6 +1,12 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorInteractionController } from '../../editor/manager/EditorInteractionController';
+
+type InteractionControllerManager = ConstructorParameters<typeof EditorInteractionController>[0];
+type InteractionControllerManagerFixture = ReturnType<typeof makeManager>;
+
+function asInteractionControllerManager(mgr: InteractionControllerManagerFixture): InteractionControllerManager {
+  return mgr as unknown as InteractionControllerManager;
+}
 
 function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const canvas = document.createElement('canvas');
@@ -11,7 +17,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
   container.appendChild(canvas);
   document.body.appendChild(container);
 
-  const state: Record<string, unknown> = {
+  const state = {
     placingNpc: false, placingEnemy: false, placingObjectType: null, ...stateOverrides
   };
 
@@ -43,8 +49,8 @@ describe('EditorInteractionController', () => {
 
   it('returns early when editorCanvas is null', () => {
     const mgr = makeManager();
-    mgr.editorCanvas = null as any;
-    const ctrl = new EditorInteractionController(mgr as any);
+    mgr.editorCanvas = null as unknown as HTMLCanvasElement;
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     expect(() => ctrl.handleCanvasResize()).not.toThrow();
     expect(mgr.renderService.renderEditor).not.toHaveBeenCalled();
   });
@@ -53,14 +59,14 @@ describe('EditorInteractionController', () => {
     const canvas = document.createElement('canvas');
     const mgr = makeManager();
     mgr.editorCanvas = canvas;
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleCanvasResize();
     expect(mgr.renderService.renderEditor).not.toHaveBeenCalled();
   });
 
   it('resizes canvas and calls renderEditor and renderEnemies', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleCanvasResize(true);
     expect(mgr.renderService.renderEditor).toHaveBeenCalled();
     expect(mgr.renderService.renderEnemies).toHaveBeenCalled();
@@ -68,7 +74,7 @@ describe('EditorInteractionController', () => {
 
   it('skips resize when size is unchanged and force=false', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     // First call sets the size
     ctrl.handleCanvasResize(true);
     vi.clearAllMocks();
@@ -80,17 +86,18 @@ describe('EditorInteractionController', () => {
   it('clamps canvas size to min 128', () => {
     const mgr = makeManager();
     // Container has offsetWidth=320, so size should compute between 128-512
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleCanvasResize(true);
-    expect(mgr.editorCanvas!.width).toBeGreaterThanOrEqual(128);
-    expect(mgr.editorCanvas!.width).toBeLessThanOrEqual(512);
+    const canvas = mgr.editorCanvas;
+    expect(canvas.width).toBeGreaterThanOrEqual(128);
+    expect(canvas.width).toBeLessThanOrEqual(512);
   });
 
   // ─── handleKey ──────────────────────────────────────────────────────────
 
   it('ignores already-defaultPrevented events', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     const ev = { key: 'Escape', defaultPrevented: true, preventDefault: vi.fn() } as unknown as KeyboardEvent;
     ctrl.handleKey(ev);
     expect(mgr.npcService.clearSelection).not.toHaveBeenCalled();
@@ -98,66 +105,66 @@ describe('EditorInteractionController', () => {
 
   it('Escape clears npc selection when placingNpc', () => {
     const mgr = makeManager({ placingNpc: true });
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     const ev = makeKey('Escape');
     ctrl.handleKey(ev);
     expect(mgr.npcService.clearSelection).toHaveBeenCalled();
-    expect((ev.preventDefault as any)).toHaveBeenCalled();
+    expect(vi.mocked(ev.preventDefault)).toHaveBeenCalled();
   });
 
   it('Escape clears npc when selectedNpcId is set', () => {
     const mgr = makeManager();
-    (mgr as any).selectedNpcId = 'npc-1';
-    const ctrl = new EditorInteractionController(mgr as any);
+    mgr.selectedNpcId = 'npc-1';
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('Escape'));
     expect(mgr.npcService.clearSelection).toHaveBeenCalled();
   });
 
   it('Escape deactivates enemy placement when placingEnemy', () => {
     const mgr = makeManager({ placingEnemy: true });
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('Escape'));
     expect(mgr.enemyService.deactivatePlacement).toHaveBeenCalled();
   });
 
   it('Escape toggles object placement when placingObjectType', () => {
     const mgr = makeManager({ placingObjectType: 'key' });
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('Escape'));
     expect(mgr.objectService.togglePlacement).toHaveBeenCalledWith('key', true);
   });
 
   it('Ctrl+Z calls undo', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('z', { ctrlKey: true }));
     expect(mgr.undo).toHaveBeenCalled();
   });
 
   it('Ctrl+Shift+Z calls redo', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('z', { ctrlKey: true, shiftKey: true }));
     expect(mgr.redo).toHaveBeenCalled();
   });
 
   it('Ctrl+Y calls redo', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('y', { ctrlKey: true }));
     expect(mgr.redo).toHaveBeenCalled();
   });
 
   it('Meta+Z calls undo (macOS)', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('z', { metaKey: true }));
     expect(mgr.undo).toHaveBeenCalled();
   });
 
   it('other keys do nothing', () => {
     const mgr = makeManager();
-    const ctrl = new EditorInteractionController(mgr as any);
+    const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleKey(makeKey('Enter'));
     expect(mgr.undo).not.toHaveBeenCalled();
     expect(mgr.redo).not.toHaveBeenCalled();

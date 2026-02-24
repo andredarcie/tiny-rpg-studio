@@ -1,6 +1,13 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorNavIcons } from '../../editor/modules/EditorNavIcons';
+
+type NavIconsGameEngine = ConstructorParameters<typeof EditorNavIcons>[0];
+type NavIconsEngineFixture = ReturnType<typeof makeGameEngine>;
+type SpriteMatrix = (string | null)[][];
+
+function asNavIconsGameEngine(engine: NavIconsEngineFixture): NavIconsGameEngine {
+  return engine as unknown as NavIconsGameEngine;
+}
 
 function makeSprite(size = 8): (string | null)[][] {
   return Array.from({ length: size }, () => Array.from({ length: size }, () => '#FF0000'));
@@ -16,14 +23,14 @@ function makeGameEngine(overrides: Record<string, unknown> = {}) {
     renderer: {
       drawTileOnCanvas: vi.fn(),
       spriteFactory: {
-        getObjectSprites: vi.fn(() => ({
+        getObjectSprites: vi.fn((): Record<string, SpriteMatrix | undefined> => ({
           sword: sprite,
           'xp-scroll': sprite,
         })),
-        getNpcSprites: vi.fn(() => ({
+        getNpcSprites: vi.fn((): Record<string, SpriteMatrix | undefined> => ({
           'old-mage': sprite,
         })),
-        getEnemySprites: vi.fn(() => ({
+        getEnemySprites: vi.fn((): Record<string, SpriteMatrix | undefined> => ({
           'giant-rat': sprite,
         })),
       },
@@ -50,12 +57,12 @@ describe('EditorNavIcons', () => {
 
   it('instantiates without throwing', () => {
     const engine = makeGameEngine();
-    expect(() => new EditorNavIcons(engine as any)).not.toThrow();
+    expect(() => new EditorNavIcons(asNavIconsGameEngine(engine))).not.toThrow();
   });
 
   it('renderAll does nothing when no nav-icon canvases found', () => {
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     expect(() => icons.renderAll()).not.toThrow();
     expect(engine.getTiles).not.toHaveBeenCalled();
   });
@@ -67,7 +74,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.getTiles).not.toHaveBeenCalled();
     canvas.remove();
@@ -78,7 +85,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.drawTileOnCanvas).toHaveBeenCalled();
     canvas.remove();
@@ -89,7 +96,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.drawTileOnCanvas).toHaveBeenCalled();
     canvas.remove();
@@ -100,7 +107,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.spriteFactory.getObjectSprites).toHaveBeenCalled();
     canvas.remove();
@@ -111,7 +118,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.spriteFactory.getNpcSprites).toHaveBeenCalled();
     canvas.remove();
@@ -122,7 +129,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.spriteFactory.getEnemySprites).toHaveBeenCalled();
     canvas.remove();
@@ -133,7 +140,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.spriteFactory.getObjectSprites).toHaveBeenCalled();
     canvas.remove();
@@ -144,7 +151,7 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     expect(() => icons.renderAll()).not.toThrow();
     canvas.remove();
   });
@@ -155,7 +162,7 @@ describe('EditorNavIcons', () => {
 
     const engine = makeGameEngine();
     engine.getTiles.mockReturnValue([{ id: 5, name: 'water', category: 'Agua' }]); // no tile id 8
-    const icons = new EditorNavIcons(engine as any);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     expect(engine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();
     canvas.remove();
@@ -166,8 +173,8 @@ describe('EditorNavIcons', () => {
     document.body.appendChild(canvas);
 
     const engine = makeGameEngine();
-    engine.renderer.spriteFactory.getObjectSprites.mockReturnValue({} as any); // no sword
-    const icons = new EditorNavIcons(engine as any);
+    engine.renderer.spriteFactory.getObjectSprites.mockReturnValue({}); // no sword
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
     // No error, but drawTileOnCanvas not called (it's for tiles only)
     expect(engine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();

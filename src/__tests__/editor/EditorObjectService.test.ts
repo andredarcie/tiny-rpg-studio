@@ -1,7 +1,8 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const mockObjDefs = vi.hoisted(() => ({ list: [] as any[] }));
+type ObjectDef = { type: string };
+
+const mockObjDefs = vi.hoisted(() => ({ list: [] as ObjectDef[] }));
 vi.mock('../../editor/modules/EditorConstants', () => ({
   EditorConstants: { get OBJECT_DEFINITIONS() { return mockObjDefs.list; } }
 }));
@@ -11,6 +12,13 @@ vi.mock('../../runtime/domain/services/ItemCatalog', () => ({
 
 import { EditorObjectService } from '../../editor/modules/EditorObjectService';
 import { itemCatalog } from '../../runtime/domain/services/ItemCatalog';
+
+type ObjectServiceManager = ConstructorParameters<typeof EditorObjectService>[0];
+type ObjectManagerFixture = ReturnType<typeof makeManager>;
+
+function asObjectServiceManager(manager: ObjectManagerFixture): ObjectServiceManager {
+  return manager as unknown as ObjectServiceManager;
+}
 
 function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const canvas = document.createElement('canvas');
@@ -52,7 +60,7 @@ describe('EditorObjectService', () => {
     vi.clearAllMocks();
     mockObjDefs.list = [];
     manager = makeManager();
-    service = new EditorObjectService(manager as any);
+    service = new EditorObjectService(asObjectServiceManager(manager));
   });
 
   describe('normalizeType', () => {
@@ -115,7 +123,7 @@ describe('EditorObjectService', () => {
 
   describe('placeObjectAt', () => {
     it('skips when setObjectPosition returns null', () => {
-      manager.gameEngine.setObjectPosition = vi.fn(() => null as any);
+      manager.gameEngine.setObjectPosition = vi.fn<() => { type: string } | null>(() => null);
       service.placeObjectAt('key', { x: 1, y: 1 }, 0);
       expect(manager.renderService.renderObjects).not.toHaveBeenCalled();
     });

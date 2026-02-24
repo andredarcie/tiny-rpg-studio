@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { describe, it, expect } from 'vitest';
 import { PaletteGimpIO } from '../../editor/modules/PaletteGimpIO';
 
@@ -54,7 +53,7 @@ describe('PaletteGimpIO', () => {
   // ─── exportGpl ────────────────────────────────────────────────────────────
 
   it('exports correct GIMP header', () => {
-    const palette = Array(16).fill('#FF0000');
+    const palette: string[] = Array<string>(16).fill('#FF0000');
     const output = PaletteGimpIO.exportGpl(palette);
     expect(output).toContain('GIMP Palette');
     expect(output).toContain('Name: Tiny RPG Studio export');
@@ -62,7 +61,7 @@ describe('PaletteGimpIO', () => {
   });
 
   it('exports exactly 16 color lines', () => {
-    const palette = Array(16).fill('#AABBCC');
+    const palette: string[] = Array<string>(16).fill('#AABBCC');
     const output = PaletteGimpIO.exportGpl(palette);
     const lines = output.trim().split('\n');
     // 4 header lines + 16 color lines
@@ -70,14 +69,14 @@ describe('PaletteGimpIO', () => {
   });
 
   it('truncates to 16 colors when palette is larger', () => {
-    const palette = Array(20).fill('#112233');
+    const palette: string[] = Array<string>(20).fill('#112233');
     const output = PaletteGimpIO.exportGpl(palette);
     const colorLines = output.split('\n').slice(4, 20);
     expect(colorLines).toHaveLength(16);
   });
 
   it('exports correct RGB values from hex', () => {
-    const palette = Array(16).fill('#FF8000');
+    const palette: string[] = Array<string>(16).fill('#FF8000');
     const output = PaletteGimpIO.exportGpl(palette);
     expect(output).toContain('255');
     expect(output).toContain('128');
@@ -85,7 +84,7 @@ describe('PaletteGimpIO', () => {
   });
 
   it('handles empty/invalid hex gracefully', () => {
-    const palette = Array(16).fill('');
+    const palette: string[] = Array<string>(16).fill('');
     expect(() => PaletteGimpIO.exportGpl(palette)).not.toThrow();
   });
 

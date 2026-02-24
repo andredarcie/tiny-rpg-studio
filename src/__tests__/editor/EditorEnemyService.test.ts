@@ -1,7 +1,9 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const mockEnemyDefs = vi.hoisted(() => ({ list: [] as any[] }));
+type EnemyDef = { type: string; aliases?: string[] };
+type PlacedEnemy = { roomIndex: number; x?: number; y?: number; type?: string };
+
+const mockEnemyDefs = vi.hoisted(() => ({ list: [] as EnemyDef[] }));
 vi.mock('../../editor/modules/EditorConstants', () => ({
   EditorConstants: { get ENEMY_DEFINITIONS() { return mockEnemyDefs.list; } }
 }));
@@ -15,6 +17,13 @@ vi.mock('../../runtime/adapters/TextResources', () => ({
 import { EditorEnemyService } from '../../editor/modules/EditorEnemyService';
 import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
 import { TextResources } from '../../runtime/adapters/TextResources';
+
+type EnemyServiceManager = ConstructorParameters<typeof EditorEnemyService>[0];
+type EnemyManagerFixture = ReturnType<typeof makeManager>;
+
+function asEnemyServiceManager(manager: EnemyManagerFixture): EnemyServiceManager {
+  return manager as unknown as EnemyServiceManager;
+}
 
 function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const canvas = document.createElement('canvas');
@@ -35,8 +44,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     objectService: { togglePlacement: vi.fn() },
     history: { pushCurrentState: vi.fn() },
     gameEngine: {
-      getEnemyDefinitions: vi.fn((): any[] => []),
-      getActiveEnemies: vi.fn((): any[] => []),
+      getEnemyDefinitions: vi.fn((): PlacedEnemy[] => []),
+      getActiveEnemies: vi.fn((): PlacedEnemy[] => []),
       addEnemy: vi.fn(() => 'enemy-new'),
       removeEnemy: vi.fn(),
       setEnemyVariable: vi.fn(() => true),
@@ -56,7 +65,7 @@ describe('EditorEnemyService', () => {
     vi.clearAllMocks();
     mockEnemyDefs.list = [];
     manager = makeManager();
-    service = new EditorEnemyService(manager as any);
+    service = new EditorEnemyService(asEnemyServiceManager(manager));
   });
 
   describe('activatePlacement', () => {
@@ -68,7 +77,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('returns early when already placing', () => {
-      const def = { type: 'giant-rat' } as any;
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.placingEnemy = true;
@@ -77,7 +86,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('clears npc and object selection when activating', () => {
-      const def = { type: 'giant-rat' } as any;
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.placingObjectType = 'key';
@@ -87,7 +96,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('sets cursor to crosshair and updates state', () => {
-      const def = { type: 'giant-rat' } as any;
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.selectedEnemyType = 'giant-rat';
       service.activatePlacement();
@@ -148,8 +157,8 @@ describe('EditorEnemyService', () => {
     });
 
     it('skips render chain when addEnemy returns null', () => {
-      manager.gameEngine.addEnemy = vi.fn(() => null as any);
-      const def = { type: 'giant-rat' } as any;
+      manager.gameEngine.addEnemy = vi.fn<() => string | null>(() => null);
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.state.selectedEnemyType = 'giant-rat';
       service.placeEnemyAt({ x: 1, y: 1 });
@@ -157,7 +166,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('calls full render chain on success', () => {
-      const def = { type: 'giant-rat' } as any;
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.selectedEnemyType = 'giant-rat';
@@ -221,7 +230,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('does not call renderEnemyCatalog when same type already selected', () => {
-      const def = { type: 'giant-rat' } as any;
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.selectedEnemyType = 'giant-rat';
       manager.state.selectedEnemyType = 'giant-rat';
@@ -230,7 +239,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('updates selectedEnemyType and calls renderEnemyCatalog for new type', () => {
-      const def = { type: 'wolf' } as any;
+      const def: EnemyDef = { type: 'wolf' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       manager.selectedEnemyType = null;
       service.selectEnemyType('wolf');
@@ -239,7 +248,7 @@ describe('EditorEnemyService', () => {
     });
 
     it('calls activatePlacement after type update', () => {
-      const def = { type: 'wolf' } as any;
+      const def: EnemyDef = { type: 'wolf' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       const activate = vi.spyOn(service, 'activatePlacement');
       manager.selectedEnemyType = null;
@@ -277,7 +286,7 @@ describe('EditorEnemyService', () => {
 
   describe('getEnemyDefinition', () => {
     it('returns definition from EnemyDefinitions when found', () => {
-      const def = { type: 'giant-rat' } as any;
+      const def: EnemyDef = { type: 'giant-rat' };
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def);
       const result = service.getEnemyDefinition('giant-rat');
       expect(result).toBe(def);
@@ -285,7 +294,7 @@ describe('EditorEnemyService', () => {
 
     it('falls back to ENEMY_DEFINITIONS list by type', () => {
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(null);
-      const fallbackDef = { type: 'wolf' } as any;
+      const fallbackDef: EnemyDef = { type: 'wolf' };
       mockEnemyDefs.list = [fallbackDef];
       const result = service.getEnemyDefinition('wolf');
       expect(result).toBe(fallbackDef);
@@ -293,7 +302,7 @@ describe('EditorEnemyService', () => {
 
     it('falls back to aliases when type not found directly', () => {
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(null);
-      const fallbackDef = { type: 'wolf', aliases: ['grey-wolf'] } as any;
+      const fallbackDef: EnemyDef = { type: 'wolf', aliases: ['grey-wolf'] };
       mockEnemyDefs.list = [fallbackDef];
       const result = service.getEnemyDefinition('grey-wolf');
       expect(result).toBe(fallbackDef);

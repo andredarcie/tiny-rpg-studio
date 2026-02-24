@@ -70,7 +70,7 @@ function makeService(managerOverrides: Record<string, unknown> = {}, domOverride
         },
       },
     },
-    t: vi.fn((key: string, fallback = '') => {
+    t: vi.fn((key: string, fallback = ''): string => {
       const map: Record<string, string> = {
         'npc.status.available': 'Available',
         'npc.defaultName': 'NPC',
@@ -79,7 +79,9 @@ function makeService(managerOverrides: Record<string, unknown> = {}, domOverride
       };
       return map[key] ?? fallback;
     }),
-    tf: vi.fn((_key: string, _params: Record<string, unknown> = {}, fallback = ''): string => fallback),
+    tf: vi.fn<(_key: string, _params?: Record<string, unknown>, fallback?: string) => string>(
+      (_key: string, _params: Record<string, unknown> = {}, fallback = ''): string => fallback
+    ),
   };
 
   return service;

@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('../../editor/modules/EditorDomCache', () => ({
@@ -74,6 +73,13 @@ vi.mock('../../editor/manager/EditorInteractionController', () => ({
 
 import { EditorManager } from '../../editor/EditorManager';
 
+type EditorManagerGameEngine = ConstructorParameters<typeof EditorManager>[0];
+type GameEngineFixture = ReturnType<typeof makeGameEngine>;
+
+function asEditorManagerGameEngine(gameEngine: GameEngineFixture): EditorManagerGameEngine {
+  return gameEngine as unknown as EditorManagerGameEngine;
+}
+
 function makeGameEngine(overrides: Record<string, unknown> = {}) {
   return {
     tileManager: { ensureDefaultTiles: vi.fn() },
@@ -86,7 +92,7 @@ function makeGameEngine(overrides: Record<string, unknown> = {}) {
     draw: vi.fn(),
     getSprites: vi.fn(() => []),
     ...overrides,
-  } as any;
+  };
 }
 
 describe('EditorManager', () => {
@@ -98,58 +104,58 @@ describe('EditorManager', () => {
   });
 
   it('instantiates without throwing', () => {
-    expect(() => new EditorManager(gameEngine)).not.toThrow();
+    expect(() => new EditorManager(asEditorManagerGameEngine(gameEngine))).not.toThrow();
   });
 
   it('exposes gameEngine reference', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.gameEngine).toBe(gameEngine);
   });
 
   it('calls ensureDefaultTiles during initialize', () => {
-    new EditorManager(gameEngine);
+    new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(gameEngine.tileManager.ensureDefaultTiles).toHaveBeenCalledTimes(1);
   });
 
   it('calls ensureDefaultNPCs during initialize', () => {
-    new EditorManager(gameEngine);
+    new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(gameEngine.npcManager.ensureDefaultNPCs).toHaveBeenCalledTimes(1);
   });
 
   it('calls paletteService.initialize during initialize', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.paletteService.initialize).toHaveBeenCalledTimes(1);
   });
 
   it('calls eventBinder.bind during construction', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.eventBinder.bind).toHaveBeenCalledTimes(1);
   });
 
   it('calls history.pushCurrentState during initialize', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.history.pushCurrentState).toHaveBeenCalledTimes(1);
   });
 
   it('sets selectedTileId from first tile returned by getTiles', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.selectedTileId).toBe('tile-1');
   });
 
   it('selectedTileId stays null when getTiles returns empty array', () => {
     gameEngine.getTiles.mockReturnValue([]);
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.selectedTileId).toBeNull();
   });
 
   it('adds language-changed event listener to document', () => {
     const spy = vi.spyOn(document, 'addEventListener');
-    new EditorManager(gameEngine);
+    new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(spy).toHaveBeenCalledWith('language-changed', expect.any(Function));
   });
 
   it('renderAll delegates to all renderService methods', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.renderAll();
     expect(mgr.renderService.renderTileList).toHaveBeenCalledTimes(1);
@@ -164,17 +170,17 @@ describe('EditorManager', () => {
   });
 
   it('dom getter returns domCache', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.dom).toBe(mgr.domCache);
   });
 
   it('historyManager getter returns history', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.historyManager).toBe(mgr.history);
   });
 
   it('state accessors get and set correctly', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.placingNpc = true;
     expect(mgr.placingNpc).toBe(true);
     mgr.placingEnemy = true;
@@ -190,15 +196,15 @@ describe('EditorManager', () => {
   });
 
   it('desselectAllAndRender returns false when nothing was selected', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     const result = mgr.desselectAllAndRender();
     expect(result).toBe(false);
   });
 
   it('desselectAllAndRender renders affected sections when something clears', () => {
-    const mgr = new EditorManager(gameEngine);
-    (mgr.tileService.clearSelection as any).mockReturnValue(true);
-    (mgr.npcService.clearSelection as any).mockReturnValue(true);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
+    vi.mocked(mgr.tileService.clearSelection).mockReturnValue(true);
+    vi.mocked(mgr.npcService.clearSelection).mockReturnValue(true);
     vi.clearAllMocks();
     const result = mgr.desselectAllAndRender();
     expect(result).toBe(true);
@@ -207,7 +213,7 @@ describe('EditorManager', () => {
   });
 
   it('delegated render methods each call through to renderService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.renderEditor();
     expect(mgr.renderService.renderEditor).toHaveBeenCalledTimes(1);
@@ -229,34 +235,34 @@ describe('EditorManager', () => {
 
   it('activeRoomIndex is clamped to valid room range', () => {
     gameEngine.getGame.mockReturnValue({ start: { roomIndex: 99 }, rooms: [{}, {}] });
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.activeRoomIndex).toBe(1); // clamped to rooms.length-1
   });
 
   it('activeRoomIndex defaults to 0 when start is missing', () => {
     gameEngine.getGame.mockReturnValue({ rooms: [{}] });
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.activeRoomIndex).toBe(0);
   });
 
   // ─── History delegation ───────────────────────────────────────────────────
 
   it('undo delegates to history.undo', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.undo();
     expect(mgr.history.undo).toHaveBeenCalledTimes(1);
   });
 
   it('redo delegates to history.redo', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.redo();
     expect(mgr.history.redo).toHaveBeenCalledTimes(1);
   });
 
   it('pushHistory delegates to history.pushCurrentState', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.pushHistory();
     expect(mgr.history.pushCurrentState).toHaveBeenCalledTimes(1);
@@ -265,70 +271,70 @@ describe('EditorManager', () => {
   // ─── UI controller delegation ─────────────────────────────────────────────
 
   it('toggleVariablePanel delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.toggleVariablePanel();
     expect(mgr.uiController.toggleVariablePanel).toHaveBeenCalledTimes(1);
   });
 
   it('toggleSkillPanel delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.toggleSkillPanel();
     expect(mgr.uiController.toggleSkillPanel).toHaveBeenCalledTimes(1);
   });
 
   it('toggleTestPanel delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.toggleTestPanel();
     expect(mgr.uiController.toggleTestPanel).toHaveBeenCalledTimes(1);
   });
 
   it('setTestStartLevel delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.setTestStartLevel(3);
     expect(mgr.uiController.setTestStartLevel).toHaveBeenCalledWith(3);
   });
 
   it('setTestSkills delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.setTestSkills(['heal', 'fire']);
     expect(mgr.uiController.setTestSkills).toHaveBeenCalledWith(['heal', 'fire']);
   });
 
   it('setGodMode delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.setGodMode(true);
     expect(mgr.uiController.setGodMode).toHaveBeenCalledWith(true);
   });
 
   it('setActiveMobilePanel delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.setActiveMobilePanel('tiles');
     expect(mgr.uiController.setActiveMobilePanel).toHaveBeenCalledWith('tiles');
   });
 
   it('updateGameMetadata delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.updateGameMetadata();
     expect(mgr.uiController.updateGameMetadata).toHaveBeenCalledTimes(1);
   });
 
   it('updateJSON delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.updateJSON();
     expect(mgr.uiController.updateJSON).toHaveBeenCalledTimes(1);
   });
 
   it('handleLanguageChange delegates to uiController and paletteService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.handleLanguageChange();
     expect(mgr.uiController.handleLanguageChange).toHaveBeenCalledTimes(1);
@@ -336,7 +342,7 @@ describe('EditorManager', () => {
   });
 
   it('refreshNpcLocalizedText delegates to uiController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.refreshNpcLocalizedText();
     expect(mgr.uiController.refreshNpcLocalizedText).toHaveBeenCalledTimes(1);
@@ -345,7 +351,7 @@ describe('EditorManager', () => {
   // ─── Interaction controller delegation ───────────────────────────────────
 
   it('handleKey delegates to interactionController', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     const ev = new KeyboardEvent('keydown', { key: 'Escape' });
     mgr.handleKey(ev);
@@ -353,7 +359,7 @@ describe('EditorManager', () => {
   });
 
   it('renderWorldGrid delegates to renderService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.renderWorldGrid();
     expect(mgr.renderService.renderWorldGrid).toHaveBeenCalledTimes(1);
@@ -362,21 +368,21 @@ describe('EditorManager', () => {
   // ─── NPC delegation ───────────────────────────────────────────────────────
 
   it('addNPC delegates to npcService.addNpc', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.addNPC();
     expect(mgr.npcService.addNpc).toHaveBeenCalledTimes(1);
   });
 
   it('removeSelectedNpc delegates to npcService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.removeSelectedNpc();
     expect(mgr.npcService.removeSelectedNpc).toHaveBeenCalledTimes(1);
   });
 
   it('updateNpcSelection delegates with current selectedNpcType and selectedNpcId', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.selectedNpcType = 'mage';
     mgr.selectedNpcId = 'npc-5';
     vi.clearAllMocks();
@@ -385,33 +391,33 @@ describe('EditorManager', () => {
   });
 
   it('updateNpcText returns early when dom.npcText is missing', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     expect(() => mgr.updateNpcText()).not.toThrow();
     expect(mgr.npcService.updateNpcText).not.toHaveBeenCalled();
   });
 
   it('updateNpcConditionalText returns early when dom.npcConditionalText is missing', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     expect(() => mgr.updateNpcConditionalText()).not.toThrow();
     expect(mgr.npcService.updateNpcConditionalText).not.toHaveBeenCalled();
   });
 
   it('handleNpcConditionVariableChange returns early when dom element missing', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     expect(() => mgr.handleNpcConditionVariableChange()).not.toThrow();
   });
 
   it('handleNpcRewardVariableChange returns early when dom element missing', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     expect(() => mgr.handleNpcRewardVariableChange()).not.toThrow();
   });
 
   it('handleNpcConditionalRewardVariableChange returns early when dom element missing', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     expect(() => mgr.handleNpcConditionalRewardVariableChange()).not.toThrow();
   });
@@ -419,28 +425,28 @@ describe('EditorManager', () => {
   // ─── Enemy/Object delegation ──────────────────────────────────────────────
 
   it('removeEnemy delegates to enemyService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.removeEnemy('enemy-1');
     expect(mgr.enemyService.removeEnemy).toHaveBeenCalledWith('enemy-1');
   });
 
   it('removeObject delegates to objectService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.removeObject('chest', 0);
     expect(mgr.objectService.removeObject).toHaveBeenCalledWith('chest', 0);
   });
 
   it('toggleVariableDefault delegates to variableService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.toggleVariableDefault('var-1');
     expect(mgr.variableService.toggle).toHaveBeenCalledWith('var-1', null);
   });
 
   it('toggleVariableDefault passes nextValue to variableService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.toggleVariableDefault('var-2', true);
     expect(mgr.variableService.toggle).toHaveBeenCalledWith('var-2', true);
@@ -449,7 +455,7 @@ describe('EditorManager', () => {
   // ─── World delegation ─────────────────────────────────────────────────────
 
   it('setActiveRoom delegates to worldService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.setActiveRoom(2);
     expect(mgr.worldService.setActiveRoom).toHaveBeenCalledWith(2);
@@ -458,21 +464,21 @@ describe('EditorManager', () => {
   // ─── Share delegation ─────────────────────────────────────────────────────
 
   it('generateShareableUrl delegates to shareService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
-    mgr.generateShareableUrl();
+    void mgr.generateShareableUrl();
     expect(mgr.shareService.generateShareableUrl).toHaveBeenCalledTimes(1);
   });
 
   it('saveGame delegates to shareService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.saveGame();
     expect(mgr.shareService.saveGame).toHaveBeenCalledTimes(1);
   });
 
   it('loadGameFile delegates to shareService', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     const ev = new Event('change');
     mgr.loadGameFile(ev);
@@ -482,7 +488,7 @@ describe('EditorManager', () => {
   // ─── Tile painting delegation ─────────────────────────────────────────────
 
   it('startMapPaint delegates to tileService.startPaint', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     const ev = new Event('pointerdown') as PointerEvent;
     mgr.startMapPaint(ev);
@@ -490,7 +496,7 @@ describe('EditorManager', () => {
   });
 
   it('continueMapPaint delegates to tileService.continuePaint', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     const ev = new Event('pointermove') as PointerEvent;
     mgr.continueMapPaint(ev);
@@ -498,7 +504,7 @@ describe('EditorManager', () => {
   });
 
   it('finishMapPaint delegates to tileService.finishPaint', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     const ev = new Event('pointerup') as PointerEvent;
     mgr.finishMapPaint(ev);
@@ -508,16 +514,16 @@ describe('EditorManager', () => {
   // ─── desselectAllAndRender – enemy and object paths ───────────────────────
 
   it('desselectAllAndRender renders enemy catalog when enemy cleared', () => {
-    const mgr = new EditorManager(gameEngine);
-    (mgr.enemyService.clearSelection as any).mockReturnValue(true);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
+    vi.mocked(mgr.enemyService.clearSelection).mockReturnValue(true);
     vi.clearAllMocks();
     mgr.desselectAllAndRender();
     expect(mgr.renderService.renderEnemyCatalog).toHaveBeenCalled();
   });
 
   it('desselectAllAndRender renders object catalog when object cleared', () => {
-    const mgr = new EditorManager(gameEngine);
-    (mgr.objectService.clearSelection as any).mockReturnValue(true);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
+    vi.mocked(mgr.objectService.clearSelection).mockReturnValue(true);
     vi.clearAllMocks();
     mgr.desselectAllAndRender();
     expect(mgr.renderService.renderObjectCatalog).toHaveBeenCalled();
@@ -526,19 +532,19 @@ describe('EditorManager', () => {
   // ─── State accessors ──────────────────────────────────────────────────────
 
   it('selectedNpcId getter and setter', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.selectedNpcId = 'npc-abc';
     expect(mgr.selectedNpcId).toBe('npc-abc');
   });
 
   it('selectedNpcType getter and setter', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.selectedNpcType = 'healer';
     expect(mgr.selectedNpcType).toBe('healer');
   });
 
   it('placingObjectType getter and setter', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.placingObjectType = 'chest';
     expect(mgr.placingObjectType).toBe('chest');
   });
@@ -546,7 +552,7 @@ describe('EditorManager', () => {
   // ─── restore() ────────────────────────────────────────────────────────────
 
   it('restore calls importGameData and draw', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.restore({ foo: 'bar' });
     expect(gameEngine.importGameData).toHaveBeenCalledWith({ foo: 'bar' });
@@ -554,7 +560,7 @@ describe('EditorManager', () => {
   });
 
   it('restore calls renderAll', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.restore({});
     expect(mgr.renderService.renderTileList).toHaveBeenCalled();
@@ -562,21 +568,21 @@ describe('EditorManager', () => {
   });
 
   it('restore pushes history by default', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.restore({});
     expect(mgr.history.pushCurrentState).toHaveBeenCalledTimes(1);
   });
 
   it('restore with skipHistory does not push history', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.restore({}, { skipHistory: true });
     expect(mgr.history.pushCurrentState).not.toHaveBeenCalled();
   });
 
   it('restore with customPalette calls setCustomPalette', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.restore({ customPalette: ['#ff0000', '#00ff00'] });
     expect(gameEngine.setCustomPalette).toHaveBeenCalledWith(['#ff0000', '#00ff00']);
@@ -584,14 +590,14 @@ describe('EditorManager', () => {
   });
 
   it('restore without customPalette calls resetPaletteToDefault', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.restore({});
     expect(gameEngine.resetPaletteToDefault).toHaveBeenCalledTimes(1);
   });
 
   it('restore resets selectedTileId when current tile not found in new tiles', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.selectedTileId = 'non-existent';
     vi.clearAllMocks();
     mgr.restore({});
@@ -599,7 +605,7 @@ describe('EditorManager', () => {
   });
 
   it('restore clears selectedNpcId when npc not found in sprites', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     mgr.selectedNpcId = 'npc-missing';
     vi.clearAllMocks();
     mgr.restore({});
@@ -610,11 +616,12 @@ describe('EditorManager', () => {
   // ─── createNewGame() ──────────────────────────────────────────────────────
 
   it('createNewGame calls restore with a valid game structure', () => {
-    const mgr = new EditorManager(gameEngine);
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
     mgr.createNewGame();
     expect(gameEngine.importGameData).toHaveBeenCalled();
-    const data = (gameEngine.importGameData as any).mock.calls[0][0];
+    const importMock = vi.mocked(gameEngine.importGameData);
+    const data = importMock.mock.calls[0]?.[0] as { title: string; rooms: unknown[]; sprites: unknown[] };
     expect(data.title).toBe('Novo Jogo');
     expect(data.rooms).toHaveLength(1);
     expect(data.sprites).toEqual([]);

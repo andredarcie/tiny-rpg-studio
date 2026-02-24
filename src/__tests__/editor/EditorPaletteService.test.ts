@@ -1,9 +1,7 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EditorPaletteService } from '../../editor/modules/EditorPaletteService';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
-import type { EditorManager } from '../../editor/EditorManager';
 
 const CUSTOM_PALETTE = [
     '#112233', '#445566', '#778899', '#AABBCC',
@@ -20,11 +18,50 @@ const toRgb = (hex: string) => {
     return `rgb(${r}, ${g}, ${b})`;
 };
 
+type PaletteServiceManager = ConstructorParameters<typeof EditorPaletteService>[0];
+
+type PaletteDomFixture = {
+    paletteGrid: HTMLDivElement | null;
+    projectPalettePanel: HTMLDivElement | null;
+    projectPaletteToggle: HTMLButtonElement | null;
+    colorPickerModal: HTMLDivElement | null;
+    colorPickerInput: HTMLInputElement | null;
+    colorPreviewCurrent: HTMLDivElement | null;
+    colorPreviewNew: HTMLDivElement | null;
+    colorPickerIndex: HTMLSpanElement | null;
+    palettePresetSelect: HTMLSelectElement | null;
+    paletteResetButton: HTMLButtonElement | null;
+    colorPickerConfirm: HTMLButtonElement | null;
+    colorPickerCancel: HTMLButtonElement | null;
+    paletteImportButton: HTMLButtonElement | null;
+    paletteExportButton: HTMLButtonElement | null;
+};
+
+type PaletteManagerFixture = {
+    gameEngine: {
+        getCustomPalette: ReturnType<typeof vi.fn<() => string[] | null>>;
+        setCustomPalette: ReturnType<typeof vi.fn<(p: string[]) => void>>;
+        resetPaletteToDefault: ReturnType<typeof vi.fn<() => void>>;
+        draw: ReturnType<typeof vi.fn>;
+    };
+    historyManager: { pushCurrentState: ReturnType<typeof vi.fn> };
+    renderAll: ReturnType<typeof vi.fn>;
+    dom: PaletteDomFixture;
+    state: {
+        palettePanelCollapsed: boolean;
+        editingColorIndex: number | null;
+    };
+};
+
+function asPaletteServiceManager(manager: PaletteManagerFixture): PaletteServiceManager {
+    return manager as unknown as PaletteServiceManager;
+}
+
 function createManager(overrides: {
     paletteCollapsed?: boolean;
     palette?: string[] | null;
     editingColorIndex?: number | null;
-} = {}) {
+} = {}): PaletteManagerFixture {
     const {
         paletteCollapsed = true,
         palette = CUSTOM_PALETTE,
@@ -57,7 +94,7 @@ function createManager(overrides: {
     const historyManager = { pushCurrentState: vi.fn() };
     const renderAll = vi.fn();
 
-    const manager = {
+    const manager: PaletteManagerFixture = {
         gameEngine,
         historyManager,
         renderAll,
@@ -87,7 +124,7 @@ function createManager(overrides: {
 }
 
 describe('EditorPaletteService', () => {
-    const originalLocale = TextResources.getLocale() as string;
+    const originalLocale = TextResources.getLocale();
 
     beforeEach(() => {
         document.body.innerHTML = '';
@@ -103,7 +140,7 @@ describe('EditorPaletteService', () => {
 
     it('renders the palette grid using the custom palette colors', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.renderPaletteGrid();
 
@@ -114,15 +151,15 @@ describe('EditorPaletteService', () => {
 
     it('returns early from renderPaletteGrid when grid element is missing', () => {
         const manager = createManager();
-        manager.dom.paletteGrid = null as any;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.paletteGrid = null;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         expect(() => service.renderPaletteGrid()).not.toThrow();
     });
 
     it('falls back to PICO8_COLORS when no custom palette is set', () => {
         const manager = createManager({ palette: null });
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.renderPaletteGrid();
 
@@ -132,7 +169,7 @@ describe('EditorPaletteService', () => {
 
     it('sets data-color-index and aria-label on each button', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.renderPaletteGrid();
 
@@ -149,7 +186,7 @@ describe('EditorPaletteService', () => {
         TextResources.setLocale('en-US', { silent: true });
 
         const manager = createManager({ paletteCollapsed: true });
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.syncPaletteState();
         expect(manager.dom.projectPaletteToggle.textContent).toContain('Show color palette');
@@ -161,8 +198,8 @@ describe('EditorPaletteService', () => {
 
     it('returns early from syncPaletteState when dom elements are missing', () => {
         const manager = createManager();
-        manager.dom.projectPalettePanel = null as any;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.projectPalettePanel = null;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         expect(() => service.syncPaletteState()).not.toThrow();
     });
@@ -170,7 +207,7 @@ describe('EditorPaletteService', () => {
     it('togglePanel hides an open panel and collapses state', () => {
         const manager = createManager({ paletteCollapsed: false });
         manager.dom.projectPalettePanel.hidden = false;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.togglePanel();
 
@@ -181,7 +218,7 @@ describe('EditorPaletteService', () => {
     it('togglePanel shows a hidden panel and expands state', () => {
         const manager = createManager({ paletteCollapsed: true });
         manager.dom.projectPalettePanel.hidden = true;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.togglePanel();
 
@@ -191,8 +228,8 @@ describe('EditorPaletteService', () => {
 
     it('returns early from togglePanel when dom elements are missing', () => {
         const manager = createManager();
-        manager.dom.projectPalettePanel = null as any;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.projectPalettePanel = null;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         expect(() => service.togglePanel()).not.toThrow();
     });
@@ -202,7 +239,7 @@ describe('EditorPaletteService', () => {
     it('hides modal and clears editingColorIndex on closeColorPicker', () => {
         const manager = createManager({ editingColorIndex: 3 });
         manager.dom.colorPickerModal.hidden = false;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.closeColorPicker();
 
@@ -212,8 +249,8 @@ describe('EditorPaletteService', () => {
 
     it('closeColorPicker still clears state when modal element is missing', () => {
         const manager = createManager({ editingColorIndex: 5 });
-        manager.dom.colorPickerModal = null as any;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.colorPickerModal = null;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.closeColorPicker();
 
@@ -226,7 +263,7 @@ describe('EditorPaletteService', () => {
         const manager = createManager({ editingColorIndex: null });
         manager.dom.colorPickerModal.hidden = false;
         manager.dom.colorPickerInput.value = '#ABCDEF';
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.confirmColorChange();
 
@@ -238,7 +275,7 @@ describe('EditorPaletteService', () => {
         const manager = createManager({ editingColorIndex: 0 });
         manager.dom.colorPickerInput.value = 'not-a-color';
         const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.confirmColorChange();
 
@@ -251,7 +288,7 @@ describe('EditorPaletteService', () => {
     it('applies valid color, closes modal and triggers re-render', () => {
         const manager = createManager({ editingColorIndex: 2 });
         manager.dom.colorPickerInput.value = '#FF0000';
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.confirmColorChange();
 
@@ -267,7 +304,7 @@ describe('EditorPaletteService', () => {
     it('normalises color to uppercase before applying', () => {
         const manager = createManager({ editingColorIndex: 0 });
         manager.dom.colorPickerInput.value = '#abcdef';
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.confirmColorChange();
 
@@ -279,7 +316,7 @@ describe('EditorPaletteService', () => {
         const manager = createManager({ editingColorIndex: 20 });
         manager.dom.colorPickerInput.value = '#FFFFFF';
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.confirmColorChange();
 
@@ -290,7 +327,7 @@ describe('EditorPaletteService', () => {
     it('creates new palette from PICO8 colors when no custom palette is set', () => {
         const manager = createManager({ editingColorIndex: 1, palette: null });
         manager.dom.colorPickerInput.value = '#123456';
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.confirmColorChange();
 
@@ -303,7 +340,7 @@ describe('EditorPaletteService', () => {
 
     it('resets palette, re-renders and saves to history', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
         service.resetToDefault();
 
@@ -317,7 +354,7 @@ describe('EditorPaletteService', () => {
 
     it('initialize calls populatePresetSelect, renderPaletteGrid, syncPaletteState', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         // palettePresetSelect should have options populated
         expect(manager.dom.palettePresetSelect.options.length).toBeGreaterThan(0);
@@ -328,9 +365,9 @@ describe('EditorPaletteService', () => {
 
     it('initialize returns early for missing elements without throwing', () => {
         const manager = createManager();
-        (manager.dom as any).paletteGrid = null;
-        (manager.dom as any).palettePresetSelect = null;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.paletteGrid = null;
+        manager.dom.palettePresetSelect = null;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         expect(() => service.initialize()).not.toThrow();
     });
 
@@ -339,7 +376,7 @@ describe('EditorPaletteService', () => {
     it('clicking a palette button opens the color picker modal', () => {
         const manager = createManager({ editingColorIndex: null });
         manager.dom.colorPickerModal.hidden = true;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.renderPaletteGrid();
         const btn = manager.dom.paletteGrid.querySelector('.palette-color-button') as HTMLButtonElement;
         btn.click();
@@ -349,7 +386,7 @@ describe('EditorPaletteService', () => {
 
     it('openColorPicker sets input value and swatches to current color', () => {
         const manager = createManager({ editingColorIndex: null });
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.renderPaletteGrid();
         const btn = manager.dom.paletteGrid.querySelectorAll('.palette-color-button')[2] as HTMLButtonElement;
         btn.click();
@@ -358,8 +395,8 @@ describe('EditorPaletteService', () => {
 
     it('openColorPicker returns early when required DOM elements missing', () => {
         const manager = createManager();
-        manager.dom.colorPickerModal = null as any;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.colorPickerModal = null;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.renderPaletteGrid();
         const btn = manager.dom.paletteGrid.querySelector('.palette-color-button') as HTMLButtonElement;
         expect(() => btn.click()).not.toThrow();
@@ -371,7 +408,7 @@ describe('EditorPaletteService', () => {
 
     it('populatePresetSelect creates options for each preset plus Custom', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         // First option should be "Custom"
         expect(manager.dom.palettePresetSelect.options[0].value).toBe('custom');
@@ -381,7 +418,7 @@ describe('EditorPaletteService', () => {
 
     it('syncPresetSelect selects "custom" when palette does not match any preset', () => {
         const manager = createManager({ palette: CUSTOM_PALETTE }); // non-standard palette
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         expect(manager.dom.palettePresetSelect.value).toBe('custom');
     });
@@ -390,7 +427,7 @@ describe('EditorPaletteService', () => {
 
     it('changing preset select applies preset palette and re-renders', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         // Change select to first non-custom option
         if (manager.dom.palettePresetSelect.options.length > 1) {
@@ -403,7 +440,7 @@ describe('EditorPaletteService', () => {
 
     it('selecting "custom" in preset select does nothing', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         manager.dom.palettePresetSelect.value = 'custom';
         manager.dom.palettePresetSelect.dispatchEvent(new Event('change'));
@@ -414,7 +451,7 @@ describe('EditorPaletteService', () => {
 
     it('reset button click calls resetToDefault', () => {
         const manager = createManager();
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         manager.dom.paletteResetButton.click();
         expect(manager.gameEngine.resetPaletteToDefault).toHaveBeenCalled();
@@ -423,7 +460,7 @@ describe('EditorPaletteService', () => {
     it('toggle button click calls togglePanel', () => {
         const manager = createManager({ paletteCollapsed: false });
         manager.dom.projectPalettePanel.hidden = false;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         manager.dom.projectPaletteToggle.click();
         expect(manager.state.palettePanelCollapsed).toBe(true);
@@ -432,7 +469,7 @@ describe('EditorPaletteService', () => {
     it('color picker confirm button calls confirmColorChange', () => {
         const manager = createManager({ editingColorIndex: 0 });
         manager.dom.colorPickerInput.value = '#AABBCC';
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         manager.dom.colorPickerConfirm.click();
         expect(manager.gameEngine.setCustomPalette).toHaveBeenCalled();
@@ -441,7 +478,7 @@ describe('EditorPaletteService', () => {
     it('color picker cancel button closes the picker', () => {
         const manager = createManager({ editingColorIndex: 3 });
         manager.dom.colorPickerModal.hidden = false;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         manager.dom.colorPickerCancel.click();
         expect(manager.dom.colorPickerModal.hidden).toBe(true);
@@ -450,7 +487,7 @@ describe('EditorPaletteService', () => {
     it('ESC key closes the color picker when modal is visible', () => {
         const manager = createManager({ editingColorIndex: 1 });
         manager.dom.colorPickerModal.hidden = false;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         const ev = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
         document.dispatchEvent(ev);
@@ -460,7 +497,7 @@ describe('EditorPaletteService', () => {
     it('ESC key does nothing when modal is already hidden', () => {
         const manager = createManager({ editingColorIndex: null });
         manager.dom.colorPickerModal.hidden = true;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         const ev = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
         document.dispatchEvent(ev);
@@ -471,7 +508,7 @@ describe('EditorPaletteService', () => {
     it('clicking modal backdrop closes the color picker', () => {
         const manager = createManager({ editingColorIndex: 2 });
         manager.dom.colorPickerModal.hidden = false;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         // Simulate click on the modal itself (not a child element)
         const ev = new MouseEvent('click', { bubbles: true });
@@ -488,13 +525,14 @@ describe('EditorPaletteService', () => {
         URL.revokeObjectURL = vi.fn();
         const exportBtn = document.createElement('button');
         const manager = createManager();
-        (manager.dom as any).paletteExportButton = exportBtn;
-        const service = new EditorPaletteService(manager as unknown as EditorManager);
+        manager.dom.paletteExportButton = exportBtn;
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
         service.initialize();
         exportBtn.click();
         expect(URL.createObjectURL).toHaveBeenCalled();
         URL.createObjectURL = origCreate;
     });
 });
+
 
 

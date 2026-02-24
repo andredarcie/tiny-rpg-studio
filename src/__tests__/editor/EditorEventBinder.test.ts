@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('../../runtime/debug/DebugFlags', () => ({
@@ -7,6 +6,14 @@ vi.mock('../../runtime/debug/DebugFlags', () => ({
 
 import { EditorEventBinder } from '../../editor/manager/EditorEventBinder';
 import { DebugFlags } from '../../runtime/debug/DebugFlags';
+
+type EventBinderManager = ConstructorParameters<typeof EditorEventBinder>[0];
+type EventBinderFixture = ReturnType<typeof makeManager>;
+type TestNpcSprite = { id: string; type: string; roomIndex?: number; placed?: boolean };
+
+function asEventBinderManager(manager: EventBinderFixture['manager']): EventBinderManager {
+    return manager as unknown as EventBinderManager;
+}
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -186,7 +193,7 @@ function makeManager() {
     };
 
     const gameEngine = {
-        getSprites: vi.fn((): any[] => []),
+        getSprites: vi.fn((): TestNpcSprite[] => []),
         npcManager: {
             createNPC: vi.fn(() => ({ id: 'npc-1', type: 'hero' })),
         },
@@ -256,7 +263,7 @@ describe('EditorEventBinder', () => {
         worldService = built.worldService;
         gameEngine = built.gameEngine;
 
-        svc = new EditorEventBinder(manager as any);
+        svc = new EditorEventBinder(asEventBinderManager(manager));
         svc.bind();
     });
 
@@ -446,13 +453,15 @@ describe('EditorEventBinder', () => {
         vi.clearAllMocks();
         const built2 = makeManager();
         delete built2.dom.npcVariantButtons[0].dataset.npcVariantFilter;
-        const svc2 = new EditorEventBinder(built2.manager as any);
+        const svc2 = new EditorEventBinder(asEventBinderManager(built2.manager));
         svc2.bind();
         built2.dom.npcVariantButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(built2.npcService.setVariantFilter).not.toHaveBeenCalled();
 
         // Restore
-        dom.npcVariantButtons[0].dataset.npcVariantFilter = originalFilter!;
+        if (originalFilter) {
+            dom.npcVariantButtons[0].dataset.npcVariantFilter = originalFilter;
+        }
     });
 
     // 19. objectCategoryButtons click with data-object-category-filter
@@ -748,7 +757,7 @@ describe('EditorEventBinder', () => {
     it('mapNavButton without data-direction does not call moveActiveRoom', () => {
         const built2 = makeManager();
         delete built2.dom.mapNavButtons[0].dataset.direction;
-        const svc2 = new EditorEventBinder(built2.manager as any);
+        const svc2 = new EditorEventBinder(asEventBinderManager(built2.manager));
         svc2.bind();
         built2.dom.mapNavButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(built2.worldService.moveActiveRoom).not.toHaveBeenCalled();
@@ -793,7 +802,7 @@ describe('EditorEventBinder', () => {
     it('mobileNavButton without data-mobile-target does not call setActiveMobilePanel', () => {
         const built2 = makeManager();
         delete built2.dom.mobileNavButtons[0].dataset.mobileTarget;
-        const svc2 = new EditorEventBinder(built2.manager as any);
+        const svc2 = new EditorEventBinder(asEventBinderManager(built2.manager));
         svc2.bind();
         built2.dom.mobileNavButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
         expect(built2.manager.setActiveMobilePanel).not.toHaveBeenCalled();

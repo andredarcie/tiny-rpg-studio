@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorNpcService } from '../../editor/modules/EditorNpcService';
 
@@ -6,20 +5,59 @@ vi.mock('../../runtime/adapters/TextResources', () => ({
   TextResources: { get: vi.fn((_k: string, fb?: string) => fb || _k) },
 }));
 
-function makeManager(ov: Record<string, any> = {}) {
+type TestNpcSprite = {
+  id?: string;
+  type: string;
+  roomIndex: number;
+  placed?: boolean;
+  x?: number;
+  y?: number;
+  text?: string | null;
+  textKey?: string | null;
+  conditionText?: string | null;
+  conditionVariableId?: string | null;
+  rewardVariableId?: string | null;
+  conditionalRewardVariableId?: string | null;
+};
+
+type CreatedNpc = {
+  id: string;
+  type: string;
+  roomIndex: number;
+  placed: boolean;
+};
+
+type VariableDef = { id: string; name: string };
+
+type NpcServiceManager = ConstructorParameters<typeof EditorNpcService>[0];
+type ManagerFixture = ReturnType<typeof makeManager>;
+
+function asNpcServiceManager(manager: ManagerFixture): NpcServiceManager {
+  return manager as unknown as NpcServiceManager;
+}
+
+function makeManager(ov: Record<string, unknown> = {}) {
   const canvas = document.createElement('canvas');
   const state = { selectedNpcId: null, selectedNpcType: null, activeRoomIndex: 0, placingNpc: false, placingEnemy: false, placingObjectType: null, conditionalDialogueExpanded: false, npcTextUpdateTimer: null, npcVariantFilter: 'human', ...ov };
   const renderService = { renderNpcs: vi.fn(), renderWorldGrid: vi.fn(), renderEditor: vi.fn() };
   const history = { pushCurrentState: vi.fn() };
   const gameEngine = {
-    npcManager: { ensureDefaultNPCs: vi.fn(), getDefinitions: vi.fn(() => [{ type: 'villager' }, { type: 'elder' }]), createNPC: vi.fn((_t, _r) => ({ id: 'npc-new', type: _t, roomIndex: _r, placed: true })), removeNPC: vi.fn(() => true), setNPCPosition: vi.fn(() => true) },
-    getSprites: vi.fn((): any[] => []),
-    getVariableDefinitions: vi.fn(() => [{ id: 'var-1', name: 'Flag 1' }, { id: 'var-2', name: '' }]),
+    npcManager: {
+      ensureDefaultNPCs: vi.fn(),
+      getDefinitions: vi.fn(() => [{ type: 'villager' }, { type: 'elder' }]),
+      createNPC: vi.fn<(type: string, roomIndex: number) => CreatedNpc | null>(
+        (type: string, roomIndex: number) => ({ id: 'npc-new', type, roomIndex, placed: true })
+      ),
+      removeNPC: vi.fn(() => true),
+      setNPCPosition: vi.fn(() => true),
+    },
+    getSprites: vi.fn((): TestNpcSprite[] => []),
+    getVariableDefinitions: vi.fn((): VariableDef[] => [{ id: 'var-1', name: 'Flag 1' }, { id: 'var-2', name: '' }]),
     draw: vi.fn(),
   };
   return { state, renderService, history, gameEngine, domCache: { editorCanvas: canvas }, enemyService: { deactivatePlacement: vi.fn() }, objectService: { togglePlacement: vi.fn() }, updateJSON: vi.fn() };
 }
-function makeService(ov: Record<string, any> = {}) { const m = makeManager(ov); return { service: new EditorNpcService(m as any), manager: m }; }
+function makeService(ov: Record<string, unknown> = {}) { const m = makeManager(ov); return { service: new EditorNpcService(asNpcServiceManager(m)), manager: m }; }
 beforeEach(() => { vi.stubGlobal('alert', vi.fn()); });
 
 describe('activatePlacement', () => {
@@ -51,7 +89,7 @@ describe('clearSelection', () => {
 
 describe('addNpc', () => {
   it('alerts when all types occupied', () => { const {service,manager} = makeService({activeRoomIndex:0}); manager.gameEngine.getSprites.mockReturnValue([{type:'villager',roomIndex:0,placed:true},{type:'elder',roomIndex:0,placed:true}]); service.addNpc(); expect(alert).toHaveBeenCalledTimes(1); expect(manager.renderService.renderNpcs).not.toHaveBeenCalled(); });
-  it('alerts when createNPC null', () => { const {service,manager} = makeService({activeRoomIndex:0}); manager.gameEngine.getSprites.mockReturnValue([]); manager.gameEngine.npcManager.createNPC.mockReturnValue(null as any); service.addNpc(); expect(alert).toHaveBeenCalledTimes(1); expect(manager.renderService.renderNpcs).not.toHaveBeenCalled(); });
+  it('alerts when createNPC null', () => { const {service,manager} = makeService({activeRoomIndex:0}); manager.gameEngine.getSprites.mockReturnValue([]); manager.gameEngine.npcManager.createNPC.mockReturnValue(null); service.addNpc(); expect(alert).toHaveBeenCalledTimes(1); expect(manager.renderService.renderNpcs).not.toHaveBeenCalled(); });
   it('sets selectedNpcId on success', () => { const {service,manager} = makeService({activeRoomIndex:0}); manager.gameEngine.getSprites.mockReturnValue([]); service.addNpc(); expect(service.state.selectedNpcId).toBe('npc-new'); expect(service.state.selectedNpcType).toBe('villager'); });
   it('calls full render chain on success', () => { const {service,manager} = makeService({activeRoomIndex:0}); manager.gameEngine.getSprites.mockReturnValue([]); service.addNpc(); expect(manager.renderService.renderNpcs).toHaveBeenCalledTimes(1); expect(manager.renderService.renderWorldGrid).toHaveBeenCalledTimes(1); expect(manager.renderService.renderEditor).toHaveBeenCalledTimes(1); expect(manager.gameEngine.draw).toHaveBeenCalledTimes(1); expect(manager.updateJSON).toHaveBeenCalledTimes(1); expect(manager.history.pushCurrentState).toHaveBeenCalledTimes(1); });
   it('finds available type not in current room', () => { const {service,manager} = makeService({activeRoomIndex:1}); manager.gameEngine.getSprites.mockReturnValue([{type:'villager',roomIndex:0,placed:true}]); service.addNpc(); expect(manager.gameEngine.npcManager.createNPC).toHaveBeenCalledWith('villager',1); });
@@ -82,7 +120,7 @@ describe('populateVariableSelect', () => {
   it('no throw when null', () => { const {service} = makeService(); expect(() => service.populateVariableSelect(null)).not.toThrow(); });
   it('creates empty option first', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel); expect(sel.options[0].value).toBe(''); });
   it('adds empty + var options', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel); expect(sel.options.length).toBe(3); });
-  it('uses id as text when name empty', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel); const opt=Array.from(sel.options).find(o=>o.value==='var-2'); expect(opt!.textContent).toBe('var-2'); });
+  it('uses id as text when name empty', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel); const opt=Array.from(sel.options).find(o=>o.value==='var-2'); expect(opt).toBeDefined(); if (!opt) throw new Error('option var-2 not found'); expect(opt.textContent).toBe('var-2'); });
   it('sets value to selectedId', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel,'var-1'); expect(sel.value).toBe('var-1'); });
   it('adds bard when includeBardSkill=true', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel,'',{includeBardSkill:true}); expect(Array.from(sel.options).find(o=>o.value==='skill:bard')).toBeDefined(); });
   it('no bard when includeBardSkill=false', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel,'',{includeBardSkill:false}); expect(Array.from(sel.options).find(o=>o.value==='skill:bard')).toBeUndefined(); });

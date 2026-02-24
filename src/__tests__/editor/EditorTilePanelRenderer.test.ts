@@ -1,6 +1,12 @@
-/* eslint-disable */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorTilePanelRenderer } from '../../editor/modules/renderers/EditorTilePanelRenderer';
+
+type TilePanelService = ConstructorParameters<typeof EditorTilePanelRenderer>[0];
+type TilePanelServiceFixture = ReturnType<typeof makeService>;
+
+function asTilePanelService(service: TilePanelServiceFixture): TilePanelService {
+  return service as unknown as TilePanelService;
+}
 
 function makeService(domOverrides: Record<string, unknown> = {}, managerOverrides: Record<string, unknown> = {}) {
   const tileList = document.createElement('div');
@@ -32,8 +38,10 @@ function makeService(domOverrides: Record<string, unknown> = {}, managerOverride
         drawTileOnCanvas: vi.fn(),
       },
     },
-    t: vi.fn((_key: string, fallback = '') => fallback),
-    tf: vi.fn((_key: string, params: Record<string, unknown> = {}, fallback = '') => fallback || String(params.id ?? '')),
+    t: vi.fn<(_key: string, fallback?: string) => string>((_key: string, fallback = ''): string => fallback),
+    tf: vi.fn<(_key: string, params?: Record<string, unknown>, fallback?: string) => string>(
+      (_key: string, params: Record<string, unknown> = {}, fallback = ''): string => fallback || String(params.id ?? '')
+    ),
   };
 
   return service;
@@ -46,13 +54,13 @@ describe('EditorTilePanelRenderer', () => {
 
   it('returns early when tileList element is null', () => {
     const svc = makeService({ tileList: null });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     expect(() => renderer.renderTileList()).not.toThrow();
   });
 
   it('renders a tile-grid inside tileList', () => {
     const svc = makeService();
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const grid = (svc.dom.tileList as HTMLElement).querySelector('.tile-grid');
     expect(grid).toBeTruthy();
@@ -60,7 +68,7 @@ describe('EditorTilePanelRenderer', () => {
 
   it('creates one button per tile', () => {
     const svc = makeService();
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const buttons = (svc.dom.tileList as HTMLElement).querySelectorAll('.tile-card');
     expect(buttons.length).toBe(4);
@@ -68,7 +76,7 @@ describe('EditorTilePanelRenderer', () => {
 
   it('marks selected tile with "selected" class', () => {
     const svc = makeService({}, { selectedTileId: 2 });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const selectedCard = (svc.dom.tileList as HTMLElement).querySelector('.tile-card.selected');
     expect(selectedCard).toBeTruthy();
@@ -77,7 +85,7 @@ describe('EditorTilePanelRenderer', () => {
 
   it('does not mark any card as selected when selectedTileId is null', () => {
     const svc = makeService({}, { selectedTileId: null });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const selectedCards = (svc.dom.tileList as HTMLElement).querySelectorAll('.tile-card.selected');
     expect(selectedCards.length).toBe(0);
@@ -85,14 +93,14 @@ describe('EditorTilePanelRenderer', () => {
 
   it('calls drawTileOnCanvas for each tile', () => {
     const svc = makeService();
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     expect(svc.gameEngine.renderer.drawTileOnCanvas).toHaveBeenCalledTimes(4);
   });
 
   it('orders tiles by categoryOrder (Terreno before Agua)', () => {
     const svc = makeService();
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const cards = Array.from((svc.dom.tileList as HTMLElement).querySelectorAll('.tile-card'));
     const tileIds = cards.map((c) => Number((c as HTMLElement).dataset.tileId));
@@ -102,7 +110,7 @@ describe('EditorTilePanelRenderer', () => {
 
   it('assigns data-tile-id to each card', () => {
     const svc = makeService();
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const cards = (svc.dom.tileList as HTMLElement).querySelectorAll('[data-tile-id]');
     expect(cards.length).toBe(4);
@@ -111,7 +119,7 @@ describe('EditorTilePanelRenderer', () => {
   it('handles empty tile list gracefully', () => {
     const svc = makeService();
     svc.gameEngine.getTiles.mockReturnValue([]);
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.renderTileList();
     const buttons = (svc.dom.tileList as HTMLElement).querySelectorAll('.tile-card');
     expect(buttons.length).toBe(0);
@@ -121,21 +129,21 @@ describe('EditorTilePanelRenderer', () => {
 
   it('returns early when preview element is null', () => {
     const svc = makeService({ selectedTilePreview: null });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     expect(() => renderer.updateSelectedTilePreview()).not.toThrow();
     expect(svc.gameEngine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();
   });
 
   it('returns early when no tile matches selectedTileId', () => {
     const svc = makeService({}, { selectedTileId: 999 });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.updateSelectedTilePreview();
     expect(svc.gameEngine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();
   });
 
   it('calls drawTileOnCanvas with selected tile', () => {
     const svc = makeService({}, { selectedTileId: 1 });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.updateSelectedTilePreview();
     expect(svc.gameEngine.renderer.drawTileOnCanvas).toHaveBeenCalledWith(
       svc.dom.selectedTilePreview,
@@ -145,7 +153,7 @@ describe('EditorTilePanelRenderer', () => {
 
   it('sets tileSummary textContent to tile name', () => {
     const svc = makeService({}, { selectedTileId: 1 });
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.updateSelectedTilePreview();
     expect((svc.dom.tileSummary as HTMLElement).textContent).toBe('Grass');
   });
@@ -153,8 +161,8 @@ describe('EditorTilePanelRenderer', () => {
   it('calls tf as fallback when tile has no name', () => {
     const svc = makeService({}, { selectedTileId: 5 });
     // Add nameless tile
-    (svc.gameEngine.getTiles as any).mockReturnValue([{ id: 5 }]);
-    const renderer = new EditorTilePanelRenderer(svc as any);
+    vi.mocked(svc.gameEngine.getTiles).mockReturnValue([{ id: 5 }]);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.updateSelectedTilePreview();
     expect(svc.tf).toHaveBeenCalledWith('tiles.summaryFallback', { id: 5 }, '');
   });
