@@ -1,9 +1,5 @@
-/* eslint-disable */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockData = vi.hoisted(() => ({
-  enemyDefinitions: [] as any[]
-}));
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../editor/modules/EditorConstants', () => ({
   EditorConstants: {
@@ -21,10 +17,57 @@ vi.mock('../../runtime/adapters/renderer/RendererConstants', () => ({
 
 import { EditorEnemyRenderer } from '../../editor/modules/renderers/EditorEnemyRenderer';
 
+type EnemyRendererService = ConstructorParameters<typeof EditorEnemyRenderer>[0];
+type EnemyOverlayEnemy = Parameters<EditorEnemyRenderer['renderEnemyOverlay']>[0][number];
+type EnemyDefinitionInput = Parameters<EditorEnemyRenderer['drawEnemyPreview']>[1];
+type EnemyDisplayNameDefinition = NonNullable<Parameters<EditorEnemyRenderer['getEnemyDisplayName']>[0]>;
+type EnemyGameDataMock = { world?: { rows?: number; cols?: number } } & Record<string, unknown>;
+type PreviewCtxMock = Pick<CanvasRenderingContext2D, 'clearRect' | 'fillRect'> & {
+  fillStyle: string | CanvasGradient | CanvasPattern;
+  imageSmoothingEnabled: boolean;
+};
+type SpriteMatrix = (string | null)[][];
+
+function asEnemyRendererService(service: ReturnType<typeof createFixture>['service']): EnemyRendererService {
+  return service as unknown as EnemyRendererService;
+}
+
+function asCanvasElement(value: unknown): HTMLCanvasElement {
+  return value as HTMLCanvasElement;
+}
+
+function asCanvasCtx(ctx: PreviewCtxMock): CanvasRenderingContext2D {
+  return ctx as unknown as CanvasRenderingContext2D;
+}
+
+function enemyDef(overrides: Partial<EnemyDefinitionInput> & Pick<EnemyDefinitionInput, 'type'>): EnemyDefinitionInput {
+  return {
+    type: overrides.type,
+    ...overrides
+  } as EnemyDefinitionInput;
+}
+
+function enemyNameDef(overrides: Partial<EnemyDisplayNameDefinition>): EnemyDisplayNameDefinition {
+  return {
+    type: 'goblin',
+    id: 'enemy-goblin',
+    lives: 1,
+    damage: 1,
+    missChance: 0,
+    experience: 1,
+    sprite: null,
+    ...overrides
+  } as EnemyDisplayNameDefinition;
+}
+
+const mockData = vi.hoisted(() => ({
+  enemyDefinitions: [] as EnemyDefinitionInput[]
+}));
+
 function makeEnemy(overrides: Partial<{
   id: string; type: string; roomIndex: number; x: number; y: number;
   defeatVariableId: string; deathStartTime: number | null;
-}> = {}) {
+}> = {}): EnemyOverlayEnemy {
   return {
     id: overrides.id ?? 'e1',
     type: overrides.type ?? 'goblin',
@@ -58,15 +101,15 @@ function createFixture() {
   };
 
   const spriteFactory = {
-    mapPixels: vi.fn((sprite: any) => sprite)
+    mapPixels: vi.fn((sprite: unknown) => sprite)
   };
 
   const gameEngine = {
-    getActiveEnemies: vi.fn((): any[] => []),
-    getGame: vi.fn(() => ({ world: { rows: 2, cols: 3 } })),
+    getActiveEnemies: vi.fn((): EnemyOverlayEnemy[] => []),
+    getGame: vi.fn((): EnemyGameDataMock => ({ world: { rows: 2, cols: 3 } })),
     renderer: {
-      enemySprites: {} as Record<string, any>,
-      enemySprite: null as any,
+      enemySprites: {} as Record<string, SpriteMatrix>,
+      enemySprite: null as SpriteMatrix | null,
       paletteManager,
       spriteFactory
     },
@@ -75,8 +118,10 @@ function createFixture() {
     }
   };
 
-  const t = vi.fn((key: string, fallback = '') => fallback || key);
-  const tf = vi.fn((_key: string, _params: Record<string, string | number>, fallback = '') => fallback || _key);
+  const t = vi.fn<(key: string, fallback?: string) => string>((key: string, fallback = ''): string => fallback || key);
+  const tf = vi.fn<(_key: string, _params: Record<string, string | number>, fallback?: string) => string>(
+    (_key: string, _params: Record<string, string | number>, fallback = ''): string => fallback || _key
+  );
 
   const service = {
     manager,
@@ -101,15 +146,15 @@ describe('EditorEnemyRenderer', () => {
 
   it('returns early from renderEnemies when list element is missing', () => {
     const fixture = createFixture();
-    fixture.service.dom.enemiesList = null as any;
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    fixture.service.dom.enemiesList = null as unknown as HTMLDivElement;
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     expect(() => renderer.renderEnemies()).not.toThrow();
   });
 
   it('renders nothing when no enemies exist in active room', () => {
     const fixture = createFixture();
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemies();
 
@@ -120,7 +165,7 @@ describe('EditorEnemyRenderer', () => {
     const fixture = createFixture();
     mockData.enemyDefinitions = [{ type: 'goblin', boss: false, lives: 3 }];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy({ type: 'goblin' })]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemies();
 
@@ -133,7 +178,7 @@ describe('EditorEnemyRenderer', () => {
     fixture.gameEngine.getActiveEnemies.mockReturnValue([
       makeEnemy({ id: 'b1', type: 'dragon', roomIndex: 1, x: 4, y: 5, defeatVariableId: 'v1' })
     ]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemies();
 
@@ -157,7 +202,7 @@ describe('EditorEnemyRenderer', () => {
     fixture.gameEngine.getActiveEnemies.mockReturnValue([
       makeEnemy({ type: 'dragon_alt', roomIndex: 1 })
     ]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemies();
 
@@ -170,7 +215,7 @@ describe('EditorEnemyRenderer', () => {
     const fixture = createFixture();
     mockData.enemyDefinitions = [{ type: 'dragon', boss: true, lives: Infinity, name: 'Dragão' }];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy({ type: 'dragon' })]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemies();
 
@@ -185,7 +230,7 @@ describe('EditorEnemyRenderer', () => {
       makeEnemy({ id: 'r2', type: 'dragon', roomIndex: 2 })
     ]);
     fixture.service.state.activeRoomIndex = 1;
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemies();
 
@@ -196,15 +241,15 @@ describe('EditorEnemyRenderer', () => {
 
   it('returns early from renderEnemyCatalog when container is missing', () => {
     const fixture = createFixture();
-    fixture.service.dom.enemyTypes = null as any;
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    fixture.service.dom.enemyTypes = null as unknown as HTMLDivElement;
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     expect(() => renderer.renderEnemyCatalog()).not.toThrow();
   });
 
   it('returns early from renderEnemyCatalog when definitions are empty', () => {
     const fixture = createFixture();
     mockData.enemyDefinitions = [];
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyCatalog();
 
@@ -219,7 +264,7 @@ describe('EditorEnemyRenderer', () => {
     ];
     fixture.manager.selectedEnemyType = 'goblin';
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyCatalog();
 
@@ -238,7 +283,7 @@ describe('EditorEnemyRenderer', () => {
       { type: 'ghost', boss: false, lives: NaN, damage: Infinity, name: 'Ghost' }
     ];
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyCatalog();
 
@@ -250,17 +295,17 @@ describe('EditorEnemyRenderer', () => {
 
   it('returns early from drawEnemyPreview for non-canvas element', () => {
     const fixture = createFixture();
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
-    expect(() => renderer.drawEnemyPreview({} as any, { type: 'goblin', sprite: null } as any)).not.toThrow();
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
+    expect(() => renderer.drawEnemyPreview(asCanvasElement({}), enemyDef({ type: 'goblin', sprite: null }))).not.toThrow();
   });
 
   it('returns early from drawEnemyPreview when getContext returns null', () => {
     const fixture = createFixture();
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
     vi.spyOn(canvas, 'getContext').mockReturnValue(null);
 
-    expect(() => renderer.drawEnemyPreview(canvas, { type: 'goblin', sprite: null } as any)).not.toThrow();
+    expect(() => renderer.drawEnemyPreview(canvas, enemyDef({ type: 'goblin', sprite: null }))).not.toThrow();
   });
 
   it('draws sprite pixels when enemySprites contains matching type', () => {
@@ -269,14 +314,14 @@ describe('EditorEnemyRenderer', () => {
       ['#FF0000', null],
       [null, '#00FF00']
     ];
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
     canvas.width = 56;
     canvas.height = 56;
-    const ctx = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true } as any;
-    vi.spyOn(canvas, 'getContext').mockReturnValue(ctx);
+    const ctx: PreviewCtxMock = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
 
-    renderer.drawEnemyPreview(canvas, { type: 'goblin', sprite: null } as any);
+    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'goblin', sprite: null }));
 
     expect(ctx.clearRect).toHaveBeenCalledWith(0, 0, 56, 56);
     expect(ctx.fillRect).toHaveBeenCalledTimes(2);
@@ -286,14 +331,14 @@ describe('EditorEnemyRenderer', () => {
     const fixture = createFixture();
     fixture.gameEngine.renderer.enemySprites = {};
     fixture.gameEngine.renderer.enemySprite = [['#AABBCC']];
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
     canvas.width = 56;
     canvas.height = 56;
-    const ctx = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true } as any;
-    vi.spyOn(canvas, 'getContext').mockReturnValue(ctx);
+    const ctx: PreviewCtxMock = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
 
-    renderer.drawEnemyPreview(canvas, { type: 'orc', sprite: null } as any);
+    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'orc', sprite: null }));
 
     expect(ctx.fillRect).toHaveBeenCalledTimes(1);
   });
@@ -303,14 +348,14 @@ describe('EditorEnemyRenderer', () => {
     fixture.gameEngine.renderer.enemySprites = {};
     fixture.gameEngine.renderer.enemySprite = null;
     fixture.gameEngine.renderer.spriteFactory.mapPixels.mockReturnValue([['#112233']]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
     canvas.width = 56;
     canvas.height = 56;
-    const ctx = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true } as any;
-    vi.spyOn(canvas, 'getContext').mockReturnValue(ctx);
+    const ctx: PreviewCtxMock = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
 
-    renderer.drawEnemyPreview(canvas, { type: 'orc', sprite: [[0, 1]] } as any);
+    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'orc', sprite: [[0, 1]] }));
 
     expect(fixture.gameEngine.renderer.spriteFactory.mapPixels).toHaveBeenCalled();
     expect(ctx.fillRect).toHaveBeenCalledTimes(1);
@@ -321,14 +366,14 @@ describe('EditorEnemyRenderer', () => {
     fixture.gameEngine.renderer.enemySprites = {};
     fixture.gameEngine.renderer.enemySprite = null;
     fixture.gameEngine.renderer.spriteFactory.mapPixels.mockReturnValue(null);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     const canvas = document.createElement('canvas');
     canvas.width = 56;
     canvas.height = 56;
-    const ctx = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true } as any;
-    vi.spyOn(canvas, 'getContext').mockReturnValue(ctx);
+    const ctx: PreviewCtxMock = { clearRect: vi.fn(), fillRect: vi.fn(), fillStyle: '', imageSmoothingEnabled: true };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
 
-    renderer.drawEnemyPreview(canvas, { type: 'orc', sprite: [[0]] } as any);
+    renderer.drawEnemyPreview(canvas, enemyDef({ type: 'orc', sprite: [[0]] }));
 
     expect(ctx.fillRect).not.toHaveBeenCalled();
   });
@@ -338,7 +383,7 @@ describe('EditorEnemyRenderer', () => {
   it('returns default name when definition is null', () => {
     const fixture = createFixture();
     fixture.t.mockImplementation((_key: string, fallback = '') => fallback || 'Inimigo');
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     const result = renderer.getEnemyDisplayName(null);
 
@@ -348,9 +393,9 @@ describe('EditorEnemyRenderer', () => {
   it('uses definition name when nameKey is absent', () => {
     const fixture = createFixture();
     fixture.t.mockImplementation((_key: string, fallback = '') => fallback);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
-    const result = renderer.getEnemyDisplayName({ name: 'Goblin' } as any, 'fallback');
+    const result = renderer.getEnemyDisplayName(enemyNameDef({ name: 'Goblin' }), 'fallback');
 
     expect(result).toBe('Goblin');
   });
@@ -358,9 +403,9 @@ describe('EditorEnemyRenderer', () => {
   it('uses nameKey for translation when present', () => {
     const fixture = createFixture();
     fixture.t.mockImplementation((key: string, fallback = '') => key === 'enemy.goblin' ? 'Goblin Traduzido' : fallback);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
-    const result = renderer.getEnemyDisplayName({ name: 'Goblin', nameKey: 'enemy.goblin' } as any);
+    const result = renderer.getEnemyDisplayName(enemyNameDef({ name: 'Goblin', nameKey: 'enemy.goblin' }));
 
     expect(result).toBe('Goblin Traduzido');
   });
@@ -368,9 +413,9 @@ describe('EditorEnemyRenderer', () => {
   it('strips invalid characters from display name', () => {
     const fixture = createFixture();
     fixture.t.mockImplementation((_key: string, fallback = '') => fallback);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
-    const result = renderer.getEnemyDisplayName({ name: 'Goblin!@#$%' } as any);
+    const result = renderer.getEnemyDisplayName(enemyNameDef({ name: 'Goblin!@#$%' }));
 
     expect(result).not.toContain('@');
     expect(result).not.toContain('#');
@@ -383,7 +428,7 @@ describe('EditorEnemyRenderer', () => {
     const fixture = createFixture();
     fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy(), makeEnemy({ id: 'e2' })]);
     fixture.gameEngine.getGame.mockReturnValue({ world: { rows: 2, cols: 3 } });
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     const { currentCount, totalCount, ratio } = renderer.getEnemyCountProgress();
 
@@ -395,8 +440,8 @@ describe('EditorEnemyRenderer', () => {
   it('defaults rows and cols to 3x3 when world is missing', () => {
     const fixture = createFixture();
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
-    fixture.gameEngine.getGame.mockReturnValue({} as any);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    fixture.gameEngine.getGame.mockReturnValue({});
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     const { totalCount } = renderer.getEnemyCountProgress();
 
@@ -409,7 +454,7 @@ describe('EditorEnemyRenderer', () => {
       Array.from({ length: 60 }, (_, i) => makeEnemy({ id: `e${i}` }))
     );
     fixture.gameEngine.getGame.mockReturnValue({ world: { rows: 1, cols: 1 } });
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     const { ratio } = renderer.getEnemyCountProgress();
 
@@ -421,7 +466,7 @@ describe('EditorEnemyRenderer', () => {
   it('returns early when parent is null', () => {
     const fixture = createFixture();
     fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     expect(() => renderer.renderEnemyCountProgress(null)).not.toThrow();
   });
 
@@ -429,11 +474,11 @@ describe('EditorEnemyRenderer', () => {
     const fixture = createFixture();
     fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy(), makeEnemy({ id: 'e2' })]);
     fixture.gameEngine.getGame.mockReturnValue({ world: { rows: 1, cols: 1 } });
-    fixture.tf.mockImplementation((_key: string, params: any, _fallback: string) =>
+    fixture.tf.mockImplementation((_key: string, params: Record<string, string | number>, _fallback = '') =>
       `${params.current} / ${params.total}`
     );
     const parent = document.createElement('div');
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyCountProgress(parent);
 
@@ -451,7 +496,7 @@ describe('EditorEnemyRenderer', () => {
     const oldBlock = document.createElement('div');
     oldBlock.className = 'enemy-xp-block';
     parent.appendChild(oldBlock);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyCountProgress(parent);
 
@@ -465,21 +510,23 @@ describe('EditorEnemyRenderer', () => {
     const parent = document.createElement('div');
     const beforeNode = document.createElement('div');
     parent.appendChild(beforeNode);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyCountProgress(parent, beforeNode);
 
     const children = Array.from(parent.children);
-    expect(children.indexOf(parent.querySelector('.enemy-xp-block')!))
-      .toBeLessThan(children.indexOf(beforeNode));
+    const xpBlock = parent.querySelector('.enemy-xp-block');
+    expect(xpBlock).not.toBeNull();
+    if (!xpBlock) throw new Error('xp block missing');
+    expect(children.indexOf(xpBlock)).toBeLessThan(children.indexOf(beforeNode));
   });
 
   // ─── renderEnemyOverlay ───────────────────────────────────────────────────
 
   it('returns early when canvas is missing', () => {
     const fixture = createFixture();
-    fixture.service.dom.editorCanvas = null as any;
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    fixture.service.dom.editorCanvas = null as unknown as HTMLCanvasElement;
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
     expect(() => renderer.renderEnemyOverlay([], 1)).not.toThrow();
   });
 
@@ -494,7 +541,7 @@ describe('EditorEnemyRenderer', () => {
     existingOverlay.className = 'enemy-overlay';
     wrapper.appendChild(existingOverlay);
 
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyOverlay([], 1);
 
@@ -508,14 +555,15 @@ describe('EditorEnemyRenderer', () => {
     wrapper.appendChild(canvas);
     document.body.appendChild(wrapper);
 
-    const enemies = [makeEnemy({ id: 'a', roomIndex: 1, x: 1, y: 1 })] as any[];
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const enemies: EnemyOverlayEnemy[] = [makeEnemy({ id: 'a', roomIndex: 1, x: 1, y: 1 })];
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
     renderer.renderEnemyOverlay(enemies, 1);
 
     const overlay = wrapper.querySelector('.enemy-overlay');
     expect(overlay).not.toBeNull();
-    const buttons = overlay!.querySelectorAll('.enemy-overlay-remove');
+    if (!overlay) throw new Error('overlay missing');
+    const buttons = overlay.querySelectorAll('.enemy-overlay-remove');
     expect(buttons).toHaveLength(1);
   });
 
@@ -527,8 +575,8 @@ describe('EditorEnemyRenderer', () => {
     document.body.appendChild(wrapper);
 
     const enemy = makeEnemy({ id: 'enemy-click', roomIndex: 1 });
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
-    renderer.renderEnemyOverlay([enemy] as any[], 1);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
+    renderer.renderEnemyOverlay([enemy] as EnemyOverlayEnemy[], 1);
 
     const btn = wrapper.querySelector('.enemy-overlay-remove') as HTMLButtonElement;
     btn.click();
@@ -542,9 +590,9 @@ describe('EditorEnemyRenderer', () => {
     const wrapper = document.createElement('div');
     wrapper.appendChild(canvas);
     document.body.appendChild(wrapper);
-    const renderer = new EditorEnemyRenderer(fixture.service as any);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
 
-    expect(() => renderer.renderEnemyOverlay(null as any, 1)).not.toThrow();
+    expect(() => renderer.renderEnemyOverlay(null as unknown as EnemyOverlayEnemy[], 1)).not.toThrow();
     expect(wrapper.querySelector('.enemy-overlay')).toBeNull();
   });
 });

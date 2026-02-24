@@ -1,9 +1,36 @@
-/* eslint-disable */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GameConfig } from '../../config/GameConfig';
 import { RendererTransitionManager } from '../../runtime/adapters/renderer/RendererTransitionManager';
 
-function createCtxMock() {
+type TransitionRendererInput = ConstructorParameters<typeof RendererTransitionManager>[0];
+type SpriteMatrix = (number | null)[][];
+type FrameCanvas = HTMLCanvasElement;
+type DrawFrameCanvas = { width: number; height: number };
+
+type CtxMock = Pick<
+  CanvasRenderingContext2D,
+  'save' | 'restore' | 'fillRect' | 'drawImage' | 'translate' | 'rotate' | 'fillText' | 'strokeRect'
+> & {
+  fillStyle: string | CanvasGradient | CanvasPattern;
+  strokeStyle: string | CanvasGradient | CanvasPattern;
+  lineWidth: number;
+  globalAlpha: number;
+  font: string;
+  textAlign: CanvasTextAlign;
+  textBaseline: CanvasTextBaseline;
+};
+
+type Fixture = ReturnType<typeof createRendererFixture>;
+
+function asCanvasCtx(ctx: CtxMock): CanvasRenderingContext2D {
+  return ctx as unknown as CanvasRenderingContext2D;
+}
+
+function asRendererInput(renderer: Fixture['renderer']): TransitionRendererInput {
+  return renderer as unknown as TransitionRendererInput;
+}
+
+function createCtxMock(): CtxMock {
   return {
     save: vi.fn(),
     restore: vi.fn(),
@@ -20,7 +47,7 @@ function createCtxMock() {
     font: '',
     textAlign: 'left',
     textBaseline: 'alphabetic'
-  } as any;
+  };
 }
 
 function createRendererFixture() {
@@ -39,11 +66,13 @@ function createRendererFixture() {
     getColor: vi.fn((idx: number) => `#${idx}`)
   };
   const spriteFactory = {
-    getPlayerSprite: vi.fn(() => [[1]] as any),
-    turnSpriteHorizontally: vi.fn((sprite: any) => sprite)
+    getPlayerSprite: vi.fn<() => SpriteMatrix | null>(() => [[1]]),
+    turnSpriteHorizontally: vi.fn<(sprite: SpriteMatrix | null) => SpriteMatrix | null>((sprite) => sprite)
   };
   const canvasHelper = {
-    drawSprite: vi.fn()
+    drawSprite: vi.fn<
+      (ctx: CanvasRenderingContext2D, sprite: SpriteMatrix | null, x: number, y: number, step: number) => void
+    >()
   };
   const renderer = {
     canvas: { width: 128, height: 128 } as HTMLCanvasElement,
@@ -63,8 +92,7 @@ describe('RendererTransitionManager', () => {
   let now = 1000;
   let rafQueue: FrameRequestCallback[];
   let rafId = 0;
-  let rafSpy: ReturnType<typeof vi.spyOn>;
-  let cancelSpy: ReturnType<typeof vi.spyOn>;
+  let shiftRaf: () => FrameRequestCallback;
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -72,17 +100,24 @@ describe('RendererTransitionManager', () => {
     rafQueue = [];
     rafId = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
-    rafSpy = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(((cb: FrameRequestCallback) => {
+    vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
       rafQueue.push(cb);
       rafId += 1;
       return rafId;
-    }) as any);
-    cancelSpy = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {});
+    });
+    vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {});
+    shiftRaf = () => {
+      const callback = rafQueue.shift();
+      if (!callback) {
+        throw new Error('Expected queued RAF callback');
+      }
+      return callback;
+    };
   });
 
   it('exposes typed getters and starts inactive', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
 
     expect(manager.isActive()).toBe(false);
     expect(manager.transitionGameState).toBe(renderer.gameState);
@@ -90,12 +125,12 @@ describe('RendererTransitionManager', () => {
     expect(manager.transitionPalette).toBe(renderer.paletteManager);
     expect(manager.transitionSpriteFactory).toBe(renderer.spriteFactory);
     expect(manager.transitionCanvasHelper).toBe(renderer.canvasHelper);
-    expect(manager.transitionRenderer).toBe(renderer as any);
+    expect(manager.transitionRenderer).toBe(renderer);
   });
 
   it('start returns false and calls onComplete when frames are missing', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const onComplete = vi.fn();
 
     expect(manager.start({ onComplete })).toBe(false);
@@ -105,7 +140,7 @@ describe('RendererTransitionManager', () => {
 
   it('start initializes transition, clamps duration, removes player, pauses game and schedules tick', () => {
     const { renderer, gameState } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const fromFrame = document.createElement('canvas');
     const toFrame = document.createElement('canvas');
     const removeSpy = vi.spyOn(manager, 'removePlayerFromFrame');
@@ -121,7 +156,7 @@ describe('RendererTransitionManager', () => {
     });
 
     expect(result).toBe(true);
-    expect(cancelSpy).toHaveBeenCalledWith(99);
+    expect(globalThis.cancelAnimationFrame).toHaveBeenCalledWith(99);
     expect(removeSpy).toHaveBeenNthCalledWith(1, fromFrame, { x: 1, y: 2 });
     expect(removeSpy).toHaveBeenNthCalledWith(2, toFrame, { x: 3, y: 4 });
     expect(manager.transition.active).toBe(true);
@@ -129,12 +164,12 @@ describe('RendererTransitionManager', () => {
     expect(manager.transition.duration).toBe(GameConfig.transitions.roomMinDuration);
     expect(gameState.pauseGame).toHaveBeenCalledWith('room-transition');
     expect(renderer.draw).toHaveBeenCalledTimes(1);
-    expect(rafSpy).toHaveBeenCalledTimes(1);
+    expect(globalThis.requestAnimationFrame).toHaveBeenCalledTimes(1);
   });
 
   it('start uses defaults for direction, duration, playerPath and null onComplete', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const fromFrame = document.createElement('canvas');
     const toFrame = document.createElement('canvas');
     vi.spyOn(manager, 'removePlayerFromFrame').mockImplementation(() => {});
@@ -149,10 +184,10 @@ describe('RendererTransitionManager', () => {
 
   it('scheduleTick stops immediately when inactive, finishes at progress 1, and reschedules otherwise', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
 
     manager.scheduleTick();
-    const firstTick = rafQueue.shift()!;
+    const firstTick = shiftRaf();
     firstTick(0);
     expect(renderer.draw).not.toHaveBeenCalled();
 
@@ -160,23 +195,23 @@ describe('RendererTransitionManager', () => {
     const finishSpy = vi.spyOn(manager, 'finish').mockImplementation(() => {});
     const progressSpy = vi.spyOn(manager, 'getProgress').mockReturnValue(1);
     manager.scheduleTick();
-    rafQueue.shift()!(0);
+    shiftRaf()(0);
     expect(finishSpy).toHaveBeenCalledTimes(1);
 
     finishSpy.mockClear();
     progressSpy.mockReturnValue(0.5);
     manager.scheduleTick();
-    rafQueue.shift()!(0);
+    shiftRaf()(0);
     expect(renderer.draw).toHaveBeenCalledTimes(1);
-    expect(rafSpy).toHaveBeenCalled();
+    expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
   });
 
   it('getProgress returns 1 when inactive and clamps active progress', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     expect(manager.getProgress()).toBe(1);
 
-    manager.transition = { active: true, startTime: 1000, duration: 200 } as any;
+    manager.transition = { active: true, startTime: 1000, duration: 200 };
     now = 900;
     expect(manager.getProgress()).toBe(0);
     now = 1100;
@@ -187,27 +222,27 @@ describe('RendererTransitionManager', () => {
 
   it('getProgress uses fallback values when startTime/duration are missing', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
-    manager.transition = { active: true } as any;
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
+    manager.transition = { active: true };
 
     expect(manager.getProgress()).toBe(0);
   });
 
   it('drawFrame renders transition for all directions and default, and finishes when complete', () => {
     const { renderer, paletteManager, gameState } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
-    const gameplayCanvas = { width: 80, height: 40 };
-    const fromFrame = document.createElement('canvas');
-    const toFrame = document.createElement('canvas');
+    const gameplayCanvas: DrawFrameCanvas = { width: 80, height: 40 };
+    const fromFrame: FrameCanvas = document.createElement('canvas');
+    const toFrame: FrameCanvas = document.createElement('canvas');
     const drawPlayerSpy = vi.spyOn(manager, 'drawTransitionPlayer').mockImplementation(() => {});
     const finishSpy = vi.spyOn(manager, 'finish').mockImplementation(() => {});
 
-    const directions: Array<any> = ['left', 'right', 'up', 'down', 'weird'];
+    const directions: Array<'left' | 'right' | 'up' | 'down' | 'weird'> = ['left', 'right', 'up', 'down', 'weird'];
     directions.forEach((direction, idx) => {
       vi.spyOn(manager, 'getProgress').mockReturnValue(idx === directions.length - 1 ? 1 : 0.25);
-      manager.transition = { active: true, direction, fromFrame, toFrame } as any;
-      manager.drawFrame(ctx as any, gameplayCanvas);
+      manager.transition = { active: true, direction, fromFrame, toFrame } as unknown as typeof manager.transition;
+      manager.drawFrame(asCanvasCtx(ctx), gameplayCanvas);
     });
 
     expect(ctx.save).toHaveBeenCalledTimes(5);
@@ -221,24 +256,24 @@ describe('RendererTransitionManager', () => {
 
   it('drawFrame returns early when inactive', () => {
     const { renderer } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
 
-    manager.drawFrame(ctx as any, { width: 10, height: 10 });
+    manager.drawFrame(asCanvasCtx(ctx), { width: 10, height: 10 });
 
     expect(ctx.fillRect).not.toHaveBeenCalled();
   });
 
   it('drawFrame handles active transition without from/to frames', () => {
     const { renderer, gameState, paletteManager } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
     vi.spyOn(manager, 'getProgress').mockReturnValue(0.5);
     vi.spyOn(manager, 'drawTransitionPlayer').mockImplementation(() => {});
-    gameState.getCurrentRoom.mockReturnValue({} as any);
-    manager.transition = { active: true, direction: 'right', fromFrame: undefined, toFrame: undefined } as any;
+    gameState.getCurrentRoom.mockReturnValue({});
+    manager.transition = { active: true, direction: 'right', fromFrame: undefined, toFrame: undefined };
 
-    manager.drawFrame(ctx as any, { width: 32, height: 32 });
+    manager.drawFrame(asCanvasCtx(ctx), { width: 32, height: 32 });
 
     expect(ctx.drawImage).not.toHaveBeenCalled();
     expect(ctx.fillRect).toHaveBeenCalledWith(0, 0, 32, 32);
@@ -247,7 +282,7 @@ describe('RendererTransitionManager', () => {
 
   it('removePlayerFromFrame handles missing coords/context and repaints tile stack with bg fallbacks', () => {
     const { renderer, paletteManager, gameState } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const frameCanvas = document.createElement('canvas');
     frameCanvas.width = 80;
     const ctx = createCtxMock();
@@ -260,76 +295,76 @@ describe('RendererTransitionManager', () => {
     manager.removePlayerFromFrame(frameCanvas, { x: 1, y: 1 });
     expect(drawTileStackSpy).not.toHaveBeenCalled();
 
-    vi.spyOn(frameCanvas, 'getContext').mockReturnValue(ctx as any);
-    gameState.getGame.mockReturnValueOnce({ rooms: 'bad' as any });
+    vi.spyOn(frameCanvas, 'getContext').mockReturnValue(asCanvasCtx(ctx));
+    gameState.getGame.mockReturnValueOnce({ rooms: 'bad' as unknown as Array<{ bg?: number }> });
     manager.removePlayerFromFrame(frameCanvas, { x: 99, y: -5, roomIndex: Number.NaN });
     expect(paletteManager.getColor).toHaveBeenCalledWith(0);
     expect(ctx.fillRect).toHaveBeenCalledWith(7 * 10, 0, 10, 10);
     expect(drawTileStackSpy).toHaveBeenLastCalledWith(ctx, 2, 7, 0, 10);
 
-    gameState.getGame.mockReturnValueOnce({ rooms: [{ bg: 'x' as any }] });
+    gameState.getGame.mockReturnValueOnce({ rooms: [{ bg: 'x' as unknown as number }] });
     manager.removePlayerFromFrame(frameCanvas, { x: 1.9, y: 2.2, roomIndex: 0 });
     expect(paletteManager.getColor).toHaveBeenCalledWith(0);
   });
 
   it('drawTransitionPlayer handles missing path, facing calculation and horizontal flip', () => {
     const { renderer, spriteFactory, canvasHelper } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
-    manager.transition = { active: true, playerPath: null } as any;
+    manager.transition = { active: true, playerPath: null };
 
-    manager.drawTransitionPlayer(ctx as any, { width: 80, height: 80 }, 0.5);
+    manager.drawTransitionPlayer(asCanvasCtx(ctx), { width: 80, height: 80 }, 0.5);
     expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
 
-    manager.transition.playerPath = { from: { x: 4, y: 4 }, to: { x: 2, y: 6 } } as any;
-    manager.drawTransitionPlayer(ctx as any, { width: 80, height: 80 }, 0.5);
+    manager.transition.playerPath = { from: { x: 4, y: 4 }, to: { x: 2, y: 6 } };
+    manager.drawTransitionPlayer(asCanvasCtx(ctx), { width: 80, height: 80 }, 0.5);
     expect(spriteFactory.turnSpriteHorizontally).toHaveBeenCalledTimes(1);
     expect(canvasHelper.drawSprite).toHaveBeenCalledWith(ctx, [[1]], 30, 50, 1.25);
 
-    manager.transition.playerPath = { from: { x: 1, y: 1 }, to: { x: 2, y: 1 }, facingLeft: false } as any;
-    manager.drawTransitionPlayer(ctx as any, { width: 80, height: 80 }, 0);
+    manager.transition.playerPath = { from: { x: 1, y: 1 }, to: { x: 2, y: 1 }, facingLeft: false };
+    manager.drawTransitionPlayer(asCanvasCtx(ctx), { width: 80, height: 80 }, 0);
     expect(spriteFactory.turnSpriteHorizontally).toHaveBeenCalledTimes(1);
 
-    manager.transition.playerPath = { from: { x: 1, y: 1 }, to: { x: 2, y: 1 }, facingLeft: true } as any;
-    manager.drawTransitionPlayer(ctx as any, { width: 80, height: 80 }, 0);
+    manager.transition.playerPath = { from: { x: 1, y: 1 }, to: { x: 2, y: 1 }, facingLeft: true };
+    manager.drawTransitionPlayer(asCanvasCtx(ctx), { width: 80, height: 80 }, 0);
     expect(spriteFactory.turnSpriteHorizontally).toHaveBeenCalledTimes(2);
   });
 
   it('drawTileStackOnContext handles missing map and draws ground/overlay when present', () => {
     const { renderer, tileManager } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
     const drawTileSpy = vi.spyOn(manager, 'drawTilePixelsOnContext').mockImplementation(() => {});
 
     tileManager.getTileMap.mockReturnValueOnce(null);
-    manager.drawTileStackOnContext(ctx as any, 0, 1, 2, 10);
+    manager.drawTileStackOnContext(asCanvasCtx(ctx), 0, 1, 2, 10);
     expect(drawTileSpy).not.toHaveBeenCalled();
 
     tileManager.getTileMap.mockReturnValueOnce({
       ground: [[null, 'g1']],
       overlay: [[undefined, 'o1']]
-    } as any);
-    manager.drawTileStackOnContext(ctx as any, 0, 1, 0, 10);
+    });
+    manager.drawTileStackOnContext(asCanvasCtx(ctx), 0, 1, 0, 10);
     expect(drawTileSpy).toHaveBeenNthCalledWith(1, ctx, 'g1', 10, 0, 10);
     expect(drawTileSpy).toHaveBeenNthCalledWith(2, ctx, 'o1', 10, 0, 10);
   });
 
   it('drawTilePixelsOnContext skips missing/transparent pixels and draws colored pixels', () => {
     const { renderer, tileManager } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
 
     tileManager.getTilePixels.mockReturnValueOnce(null);
-    manager.drawTilePixelsOnContext(ctx as any, 'tile-a', 0, 0, 16);
+    manager.drawTilePixelsOnContext(asCanvasCtx(ctx), 'tile-a', 0, 0, 16);
     expect(ctx.fillRect).not.toHaveBeenCalled();
 
-    const pixels = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => null)) as any[][];
+    const pixels: (string | null)[][] = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => null));
     pixels[0][0] = 'transparent';
     pixels[0][1] = '#ABC';
     pixels[1][0] = '#DEF';
-    tileManager.getTilePixels.mockReturnValueOnce(pixels as any);
+    tileManager.getTilePixels.mockReturnValueOnce(pixels);
 
-    manager.drawTilePixelsOnContext(ctx as any, 'tile-b', 4, 8, 16);
+    manager.drawTilePixelsOnContext(asCanvasCtx(ctx), 'tile-b', 4, 8, 16);
 
     expect(ctx.fillRect).toHaveBeenCalledWith(6, 8, 2, 2);
     expect(ctx.fillRect).toHaveBeenCalledWith(4, 10, 2, 2);
@@ -337,20 +372,20 @@ describe('RendererTransitionManager', () => {
 
   it('finish cancels raf when present, resumes game and calls callback, and is safe when inactive', () => {
     const { renderer, gameState } = createRendererFixture();
-    const manager = new RendererTransitionManager(renderer as any);
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
     const onComplete = vi.fn();
 
     manager.finish();
     expect(gameState.resumeGame).not.toHaveBeenCalled();
 
-    manager.transition = { active: true, rafId: 7, onComplete } as any;
+    manager.transition = { active: true, rafId: 7, onComplete };
     manager.finish();
-    expect(cancelSpy).toHaveBeenCalledWith(7);
+    expect(globalThis.cancelAnimationFrame).toHaveBeenCalledWith(7);
     expect(gameState.resumeGame).toHaveBeenCalledWith('room-transition');
     expect(onComplete).toHaveBeenCalledTimes(1);
     expect(manager.isActive()).toBe(false);
 
-    manager.transition = { active: true, rafId: null, onComplete: null } as any;
+    manager.transition = { active: true, rafId: null, onComplete: null };
     manager.finish();
     expect(gameState.resumeGame).toHaveBeenCalledTimes(2);
   });

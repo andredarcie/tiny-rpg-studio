@@ -1,14 +1,75 @@
-/* eslint-disable */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
 import { RendererEntityRenderer } from '../../runtime/adapters/renderer/RendererEntityRenderer';
 
-function sprite(id = 1) {
-  return [[id]] as any;
+type SpriteMatrix = (number | null)[][];
+type RendererEntityCtor = ConstructorParameters<typeof RendererEntityRenderer>;
+type EntityRendererGameState = RendererEntityCtor[0];
+type EntityRendererTileManager = RendererEntityCtor[1];
+type EntityRendererSpriteFactory = RendererEntityCtor[2];
+type EntityRendererCanvasHelper = RendererEntityCtor[3];
+type EntityRendererPalette = RendererEntityCtor[4];
+type EnemyAlertState = Parameters<RendererEntityRenderer['drawEnemyAlert']>[1];
+type EnemyDefinitionResult = NonNullable<ReturnType<typeof EnemyDefinitions.getEnemyDefinition>>;
+
+type EnemyLike = {
+  id?: string;
+  roomIndex: number;
+  x: number;
+  y: number;
+  lastX?: number;
+  type: string;
+  lives?: number;
+  alertUntil?: number | null;
+  alertStart?: number | null;
+  deathStartTime?: number | null;
+};
+
+type CtxMock = Pick<
+  CanvasRenderingContext2D,
+  'save' | 'restore' | 'fillRect' | 'strokeRect' | 'translate' | 'rotate' | 'fillText'
+> & {
+  fillStyle: string | CanvasGradient | CanvasPattern;
+  strokeStyle: string | CanvasGradient | CanvasPattern;
+  globalAlpha: number;
+  globalCompositeOperation: GlobalCompositeOperation;
+  lineWidth: number;
+  font: string;
+  textAlign: CanvasTextAlign;
+  textBaseline: CanvasTextBaseline;
+};
+
+type EntityRendererPrivateAccess = {
+  getFlashColor(entityId: string): string | null;
+  applyFlashOverlay(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, size: number): void;
+  flashStates: Map<string, { color: string; startTime: number; duration: number }>;
+  flyingLifeSquares: Array<{ opacity: number }>;
+};
+
+function sprite(id = 1): SpriteMatrix {
+  return [[id]];
 }
 
-function createCtx() {
+function asCanvasCtx(ctx: CtxMock): CanvasRenderingContext2D {
+  return ctx as unknown as CanvasRenderingContext2D;
+}
+
+function asEntityRendererAccess(renderer: RendererEntityRenderer): EntityRendererPrivateAccess {
+  return renderer as unknown as EntityRendererPrivateAccess;
+}
+
+function alertEnemy(overrides: Partial<EnemyAlertState>): EnemyAlertState {
+  return {
+    roomIndex: 0,
+    x: 0,
+    y: 0,
+    type: 'rat',
+    ...overrides
+  };
+}
+
+function createCtx(): CtxMock {
   return {
     save: vi.fn(),
     restore: vi.fn(),
@@ -25,47 +86,47 @@ function createCtx() {
     font: '',
     textAlign: 'left',
     textBaseline: 'alphabetic'
-  } as any;
+  };
 }
 
 function makeFixture() {
   const game = {
-    objects: [] as any[],
-    items: [] as any[],
-    sprites: [] as any[]
+    objects: [] as Array<Record<string, unknown>>,
+    items: [] as Array<Record<string, unknown>>,
+    sprites: [] as Array<Record<string, unknown>>
   };
   const player = { roomIndex: 1, x: 2, y: 3, lastX: 1 };
-  const enemies: any[] = [];
+  const enemies: EnemyLike[] = [];
 
-  const gameState = {
-    getGame: vi.fn(() => game),
-    getPlayer: vi.fn(() => player),
-    getEnemies: vi.fn(() => enemies),
-    isVariableOn: vi.fn(() => false),
-    hasSkill: vi.fn(() => false)
+  const gameState: EntityRendererGameState = {
+    getGame: vi.fn(() => game) as EntityRendererGameState['getGame'],
+    getPlayer: vi.fn(() => player) as EntityRendererGameState['getPlayer'],
+    getEnemies: vi.fn(() => enemies) as NonNullable<EntityRendererGameState['getEnemies']>,
+    isVariableOn: vi.fn(() => false) as NonNullable<EntityRendererGameState['isVariableOn']>,
+    hasSkill: vi.fn(() => false) as NonNullable<EntityRendererGameState['hasSkill']>
   };
-  const spriteFactory = {
-    getObjectSprites: vi.fn(() => ({})),
-    getNpcSprites: vi.fn(() => ({ default: sprite(9) })),
-    getEnemySprite: vi.fn(() => sprite(7)),
-    getPlayerSprite: vi.fn(() => sprite(5)),
-    turnSpriteHorizontally: vi.fn((s: any) => s)
+  const spriteFactory: EntityRendererSpriteFactory = {
+    getObjectSprites: vi.fn(() => ({} as Record<string, SpriteMatrix | undefined>)) as EntityRendererSpriteFactory['getObjectSprites'],
+    getNpcSprites: vi.fn(() => ({ default: sprite(9) })) as EntityRendererSpriteFactory['getNpcSprites'],
+    getEnemySprite: vi.fn(() => sprite(7)) as EntityRendererSpriteFactory['getEnemySprite'],
+    getPlayerSprite: vi.fn(() => sprite(5)) as EntityRendererSpriteFactory['getPlayerSprite'],
+    turnSpriteHorizontally: vi.fn((s: SpriteMatrix) => s) as EntityRendererSpriteFactory['turnSpriteHorizontally']
   };
-  const canvasHelper = {
-    getTilePixelSize: vi.fn(() => 16),
-    drawSprite: vi.fn()
+  const canvasHelper: EntityRendererCanvasHelper = {
+    getTilePixelSize: vi.fn(() => 16) as EntityRendererCanvasHelper['getTilePixelSize'],
+    drawSprite: vi.fn() as EntityRendererCanvasHelper['drawSprite']
   };
-  const paletteManager = {
-    getColor: vi.fn((i: number) => `#${i}`)
+  const paletteManager: EntityRendererPalette = {
+    getColor: vi.fn((i: number) => `#${i}`) as EntityRendererPalette['getColor']
   };
-  const tileManager = {};
+  const tileManager: EntityRendererTileManager = {};
 
   const renderer = new RendererEntityRenderer(
-    gameState as any,
-    tileManager as any,
-    spriteFactory as any,
-    canvasHelper as any,
-    paletteManager as any
+    gameState,
+    tileManager,
+    spriteFactory,
+    canvasHelper,
+    paletteManager
   );
 
   return { renderer, game, player, enemies, gameState, spriteFactory, canvasHelper, paletteManager };
@@ -92,31 +153,31 @@ describe('RendererEntityRenderer', () => {
 
   it('flashEntity stores flash state and getFlashColor expires it', () => {
     const { renderer } = makeFixture();
-    const anyRenderer = renderer as any;
+    const entityRenderer = asEntityRendererAccess(renderer);
 
     renderer.flashEntity('enemy-1', '#F00', 100);
-    expect(anyRenderer.getFlashColor('enemy-1')).toBe('#F00');
+    expect(entityRenderer.getFlashColor('enemy-1')).toBe('#F00');
 
     now = 1200;
-    expect(anyRenderer.getFlashColor('enemy-1')).toBeNull();
-    expect(anyRenderer.flashStates.has('enemy-1')).toBe(false);
-    expect(anyRenderer.getFlashColor('missing')).toBeNull();
+    expect(entityRenderer.getFlashColor('enemy-1')).toBeNull();
+    expect(entityRenderer.flashStates.has('enemy-1')).toBe(false);
+    expect(entityRenderer.getFlashColor('missing')).toBeNull();
   });
 
   it('flashEntity uses default duration when not provided', () => {
     const { renderer } = makeFixture();
-    const anyRenderer = renderer as any;
+    const entityRenderer = asEntityRendererAccess(renderer);
 
     renderer.flashEntity('enemy-default', '#0FF');
 
-    expect(anyRenderer.flashStates.get('enemy-default')?.duration).toEqual(expect.any(Number));
+    expect(entityRenderer.flashStates.get('enemy-default')?.duration).toEqual(expect.any(Number));
   });
 
   it('applies flash overlay with expected canvas operations', () => {
     const { renderer } = makeFixture();
     const ctx = createCtx();
 
-    (renderer as any).applyFlashOverlay(ctx, '#ABC', 1, 2, 3);
+    asEntityRendererAccess(renderer).applyFlashOverlay(asCanvasCtx(ctx), '#ABC', 1, 2, 3);
 
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.fillRect).toHaveBeenCalledWith(1, 2, 3, 3);
@@ -136,9 +197,9 @@ describe('RendererEntityRenderer', () => {
       visible: sprite(4),
       collectible: sprite(5)
     };
-    spriteFactory.getObjectSprites.mockReturnValue(objectSprites);
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue(objectSprites);
     vi.spyOn(renderer, 'getFloatingOffset').mockReturnValue(2);
-    gameState.isVariableOn.mockReturnValue(true);
+    vi.mocked(gameState.isVariableOn).mockReturnValue(true);
     game.objects = [
       { roomIndex: 1, x: 0, y: 0, type: 'visible' }, // wrong room
       { roomIndex: 2, x: 1, y: 1, type: 'visible', hiddenInRuntime: true },
@@ -150,7 +211,7 @@ describe('RendererEntityRenderer', () => {
       { roomIndex: 2, x: 4, y: 5, type: 'missing' }
     ];
 
-    renderer.drawObjects(ctx as any);
+    renderer.drawObjects(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(2);
     expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(1, ctx, objectSprites[`${ITEM_TYPES.SWITCH}--on`], 32, 48, 2);
@@ -161,10 +222,10 @@ describe('RendererEntityRenderer', () => {
     const { renderer, game, player, spriteFactory, canvasHelper } = makeFixture();
     const ctx = createCtx();
     player.roomIndex = 1;
-    spriteFactory.getObjectSprites.mockReturnValue({ visible: sprite(1) });
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue({ visible: sprite(1) });
     game.objects = [{ roomIndex: 1, x: 0, y: 0, type: 'visible', hideWhenVariableOpen: true }];
 
-    renderer.drawObjects(ctx as any);
+    renderer.drawObjects(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
   });
@@ -173,13 +234,13 @@ describe('RendererEntityRenderer', () => {
     const { renderer, game, spriteFactory, canvasHelper } = makeFixture();
     const ctx = createCtx();
 
-    game.objects = 'bad' as any;
-    renderer.drawObjects(ctx as any);
+    game.objects = 'bad' as unknown as Array<Record<string, unknown>>;
+    renderer.drawObjects(asCanvasCtx(ctx));
     expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
 
     game.objects = [{ roomIndex: 1, x: 0, y: 0, type: ITEM_TYPES.SWITCH, on: true }];
-    spriteFactory.getObjectSprites.mockReturnValue({ [ITEM_TYPES.SWITCH]: sprite(2) });
-    renderer.drawObjects(ctx as any);
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue({ [ITEM_TYPES.SWITCH]: sprite(2) });
+    renderer.drawObjects(asCanvasCtx(ctx));
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
   });
 
@@ -193,7 +254,7 @@ describe('RendererEntityRenderer', () => {
       { roomIndex: 4, x: 3, y: 4, collected: false }
     ];
 
-    renderer.drawItems(ctx as any);
+    renderer.drawItems(asCanvasCtx(ctx));
 
     expect(paletteManager.getColor).toHaveBeenCalledWith(2);
     expect(ctx.fillRect).toHaveBeenCalledTimes(1);
@@ -205,10 +266,10 @@ describe('RendererEntityRenderer', () => {
     const ctx = createCtx();
     player.roomIndex = 1;
     player.x = 1;
-    spriteFactory.getNpcSprites.mockReturnValue({
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({
       default: sprite(9),
       villager: sprite(2)
-    } as any);
+    });
     const adjustSpy = vi.spyOn(renderer, 'adjustSpriteHorizontally').mockReturnValue(sprite(2));
     game.sprites = [
       { placed: false, roomIndex: 1, x: 0, y: 0, type: 'villager' },
@@ -217,7 +278,7 @@ describe('RendererEntityRenderer', () => {
       { placed: true, roomIndex: 1, x: 3, y: 4, type: 'missing' }
     ];
 
-    renderer.drawNPCs(ctx as any);
+    renderer.drawNPCs(asCanvasCtx(ctx));
 
     expect(adjustSpy).toHaveBeenCalledTimes(2);
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(2);
@@ -226,10 +287,10 @@ describe('RendererEntityRenderer', () => {
   it('drawNPCs skips npc when neither typed nor default sprite exists', () => {
     const { renderer, game, spriteFactory, canvasHelper } = makeFixture();
     const ctx = createCtx();
-    spriteFactory.getNpcSprites.mockReturnValue({} as any);
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({});
     game.sprites = [{ placed: true, roomIndex: 1, x: 1, y: 1, type: 'none' }];
 
-    renderer.drawNPCs(ctx as any);
+    renderer.drawNPCs(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
   });
@@ -237,9 +298,9 @@ describe('RendererEntityRenderer', () => {
   it('drawEnemies handles no enemy list and empty list', () => {
     const { renderer, gameState } = makeFixture();
     const ctx = createCtx();
-    gameState.getEnemies.mockReturnValueOnce(undefined as any).mockReturnValueOnce([]);
-    expect(() => renderer.drawEnemies(ctx as any)).not.toThrow();
-    expect(() => renderer.drawEnemies(ctx as any)).not.toThrow();
+    vi.mocked(gameState.getEnemies).mockImplementationOnce(() => undefined).mockImplementationOnce(() => []);
+    expect(() => renderer.drawEnemies(asCanvasCtx(ctx))).not.toThrow();
+    expect(() => renderer.drawEnemies(asCanvasCtx(ctx))).not.toThrow();
   });
 
   it('drawEnemies covers room mismatch, missing sprite, normal draw, flash, alert and attack telegraph', () => {
@@ -251,16 +312,16 @@ describe('RendererEntityRenderer', () => {
       { id: 'skip-sprite', roomIndex: 1, x: 1, y: 1, type: 'ghost' },
       { id: 'e1', roomIndex: 1, x: 2, y: 3, lastX: 3, type: 'rat', alertStart: 900, alertUntil: 2000 }
     );
-    (spriteFactory.getEnemySprite as any).mockImplementation((type: string) => (type === 'ghost' ? null : sprite(3)));
+    vi.mocked(spriteFactory.getEnemySprite).mockImplementation((type: string | null) => (type === 'ghost' ? null : sprite(3)));
     vi.spyOn(renderer, 'adjustSpriteHorizontally').mockReturnValue(sprite(3));
     const alertSpy = vi.spyOn(renderer, 'drawEnemyAlert').mockImplementation(() => {});
-    const overlaySpy = vi.spyOn(renderer as any, 'applyFlashOverlay').mockImplementation(() => {});
+    const overlaySpy = vi.spyOn(asEntityRendererAccess(renderer), 'applyFlashOverlay').mockImplementation(() => {});
     renderer.attackTelegraph = {
-      applyWindupOffset: vi.fn((_id, x, y) => ({ x: x + 1, y: y + 2 }))
+      applyWindupOffset: vi.fn((_id: string, x: number, y: number) => ({ x: x + 1, y: y + 2 }))
     };
     renderer.flashEntity('e1', '#F00', 1000);
 
-    renderer.drawEnemies(ctx as any);
+    renderer.drawEnemies(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
     expect(overlaySpy).toHaveBeenCalledTimes(1);
@@ -277,10 +338,10 @@ describe('RendererEntityRenderer', () => {
       { roomIndex: 1, x: 2, y: 2, type: 'rat', deathStartTime: 400 } // elapsed 600 -> phase 2
     );
     renderer.attackTelegraph = {
-      applyWindupOffset: vi.fn((_id, x, y) => ({ x, y }))
+      applyWindupOffset: vi.fn((_id: string, x: number, y: number) => ({ x, y }))
     };
 
-    renderer.drawEnemies(ctx as any);
+    renderer.drawEnemies(asCanvasCtx(ctx));
 
     expect(ctx.save).toHaveBeenCalledTimes(2);
     expect(ctx.restore).toHaveBeenCalledTimes(2);
@@ -292,11 +353,11 @@ describe('RendererEntityRenderer', () => {
   it('drawEnemies normal render path skips flash overlay when no flash is active', () => {
     const { renderer, enemies, canvasHelper } = makeFixture();
     const ctx = createCtx();
-    const overlaySpy = vi.spyOn(renderer as any, 'applyFlashOverlay').mockImplementation(() => {});
+    const overlaySpy = vi.spyOn(asEntityRendererAccess(renderer), 'applyFlashOverlay').mockImplementation(() => {});
     const alertSpy = vi.spyOn(renderer, 'drawEnemyAlert').mockImplementation(() => {});
     enemies.push({ id: 'e2', roomIndex: 1, x: 1, y: 1, type: 'rat' });
 
-    renderer.drawEnemies(ctx as any);
+    renderer.drawEnemies(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
     expect(overlaySpy).not.toHaveBeenCalled();
@@ -311,7 +372,7 @@ describe('RendererEntityRenderer', () => {
     renderer.attackTelegraph = telegraph;
 
     // no enemies
-    renderer.drawAllEnemyLivesMarkers(ctx as any);
+    renderer.drawAllEnemyLivesMarkers(asCanvasCtx(ctx));
 
     player.roomIndex = 1;
     enemies.push(
@@ -321,7 +382,7 @@ describe('RendererEntityRenderer', () => {
       { roomIndex: 1, x: 3, y: 4, type: 'd' }
     );
 
-    renderer.drawAllEnemyLivesMarkers(ctx as any);
+    renderer.drawAllEnemyLivesMarkers(asCanvasCtx(ctx));
 
     expect(markerSpy).toHaveBeenCalledTimes(2);
     expect(markerSpy).toHaveBeenNthCalledWith(1, ctx, 34, 49, 16, 4);
@@ -332,17 +393,17 @@ describe('RendererEntityRenderer', () => {
   it('drawPlayer handles no sprite, stealth fade, flash overlay and no-fade path', () => {
     const { renderer, spriteFactory, canvasHelper, gameState } = makeFixture();
     const ctx = createCtx();
-    const overlaySpy = vi.spyOn(renderer as any, 'applyFlashOverlay').mockImplementation(() => {});
+    const overlaySpy = vi.spyOn(asEntityRendererAccess(renderer), 'applyFlashOverlay').mockImplementation(() => {});
 
-    spriteFactory.getPlayerSprite.mockReturnValueOnce(null);
-    renderer.drawPlayer(ctx as any);
+    vi.mocked(spriteFactory.getPlayerSprite).mockReturnValueOnce(null);
+    renderer.drawPlayer(asCanvasCtx(ctx));
     expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
 
-    spriteFactory.getPlayerSprite.mockReturnValue(sprite(5));
+    vi.mocked(spriteFactory.getPlayerSprite).mockReturnValue(sprite(5));
     vi.spyOn(renderer, 'shouldFadePlayerForStealth').mockReturnValueOnce(true).mockReturnValueOnce(false);
     renderer.flashEntity('player', '#0F0', 1000);
-    renderer.drawPlayer(ctx as any);
-    renderer.drawPlayer(ctx as any);
+    renderer.drawPlayer(asCanvasCtx(ctx));
+    renderer.drawPlayer(asCanvasCtx(ctx));
 
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.restore).toHaveBeenCalled();
@@ -354,11 +415,11 @@ describe('RendererEntityRenderer', () => {
   it('drawPlayer uses player.x fallback when lastX is undefined and skips flash overlay when absent', () => {
     const { renderer, player, canvasHelper } = makeFixture();
     const ctx = createCtx();
-    (player as any).lastX = undefined;
+    player.lastX = undefined;
     const adjustSpy = vi.spyOn(renderer, 'adjustSpriteHorizontally');
-    const overlaySpy = vi.spyOn(renderer as any, 'applyFlashOverlay').mockImplementation(() => {});
+    const overlaySpy = vi.spyOn(asEntityRendererAccess(renderer), 'applyFlashOverlay').mockImplementation(() => {});
 
-    renderer.drawPlayer(ctx as any);
+    renderer.drawPlayer(asCanvasCtx(ctx));
 
     expect(adjustSpy).toHaveBeenCalledWith(player.x, player.x, expect.anything());
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
@@ -368,10 +429,10 @@ describe('RendererEntityRenderer', () => {
   it('drawTileIconOnPlayer returns early without sprite and draws icon when available', () => {
     const { renderer, spriteFactory, canvasHelper } = makeFixture();
     const ctx = createCtx();
-    spriteFactory.getObjectSprites.mockReturnValueOnce({}).mockReturnValueOnce({ icon: sprite(3) });
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValueOnce({}).mockReturnValueOnce({ icon: sprite(3) });
 
-    renderer.drawTileIconOnPlayer(ctx as any, 'icon');
-    renderer.drawTileIconOnPlayer(ctx as any, 'icon');
+    renderer.drawTileIconOnPlayer(asCanvasCtx(ctx), 'icon');
+    renderer.drawTileIconOnPlayer(asCanvasCtx(ctx), 'icon');
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
   });
@@ -384,7 +445,7 @@ describe('RendererEntityRenderer', () => {
     expect(renderer.adjustSpriteHorizontally(3, 2, s)).toBe(s);
     expect(renderer.getFloatingOffset(1, 2, 16)).toEqual(expect.any(Number));
 
-    const perfSpy = vi.spyOn(globalThis as any, 'performance', 'get').mockReturnValue(undefined);
+    const perfSpy = vi.spyOn(globalThis, 'performance', 'get').mockReturnValue(undefined);
     const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(12345);
     expect(renderer.getNow()).toBe(12345);
     dateSpy.mockRestore();
@@ -396,14 +457,14 @@ describe('RendererEntityRenderer', () => {
     const getSpy = vi.spyOn(EnemyDefinitions, 'getEnemyDefinition');
     const normSpy = vi.spyOn(EnemyDefinitions, 'normalizeType');
 
-    getSpy.mockReturnValueOnce({ damage: 0 } as any);
+    getSpy.mockReturnValueOnce({ damage: 0 } as unknown as EnemyDefinitionResult);
     expect(renderer.getEnemyDamage('a')).toBe(1);
 
-    getSpy.mockReturnValueOnce(null).mockReturnValueOnce({ damage: 5 } as any);
+    getSpy.mockReturnValueOnce(null).mockReturnValueOnce({ damage: 5 } as unknown as EnemyDefinitionResult);
     normSpy.mockReturnValueOnce('norm');
     expect(renderer.getEnemyDamage('b')).toBe(5);
 
-    getSpy.mockReturnValueOnce(null).mockReturnValueOnce({ damage: NaN } as any);
+    getSpy.mockReturnValueOnce(null).mockReturnValueOnce({ damage: NaN } as unknown as EnemyDefinitionResult);
     normSpy.mockReturnValueOnce('norm2');
     expect(renderer.getEnemyDamage('c')).toBe(1);
   });
@@ -411,7 +472,7 @@ describe('RendererEntityRenderer', () => {
   it('shouldFadePlayerForStealth handles no skill and matching low-damage enemy', () => {
     const { renderer, gameState, enemies, player } = makeFixture();
     player.roomIndex = 1;
-    gameState.hasSkill.mockReturnValueOnce(false).mockReturnValueOnce(true);
+    vi.mocked(gameState.hasSkill).mockReturnValueOnce(false).mockReturnValueOnce(true);
     enemies.push({ roomIndex: 2, type: 'dragon' }, { roomIndex: 1, type: 'rat' });
     vi.spyOn(renderer, 'getEnemyDamage').mockReturnValue(2);
 
@@ -421,8 +482,8 @@ describe('RendererEntityRenderer', () => {
 
   it('shouldFadePlayerForStealth uses empty enemy list when getEnemies returns undefined', () => {
     const { renderer, gameState } = makeFixture();
-    gameState.hasSkill.mockReturnValue(true);
-    gameState.getEnemies.mockReturnValue(undefined as any);
+    vi.mocked(gameState.hasSkill).mockReturnValue(true);
+    vi.mocked(gameState.getEnemies).mockImplementation(() => undefined);
 
     expect(renderer.shouldFadePlayerForStealth()).toBe(false);
   });
@@ -430,12 +491,12 @@ describe('RendererEntityRenderer', () => {
   it('drawEnemyLivesMarkers handles dead enemies and draws markers with fallback fill', () => {
     const { renderer, paletteManager } = makeFixture();
     const ctx = createCtx();
-    paletteManager.getColor.mockReturnValue('');
+    vi.mocked(paletteManager.getColor).mockReturnValue('');
 
-    renderer.drawEnemyLivesMarkers(ctx as any, 0, 0, 16, 0);
+    renderer.drawEnemyLivesMarkers(asCanvasCtx(ctx), 0, 0, 16, 0);
     expect(ctx.fillRect).not.toHaveBeenCalled();
 
-    renderer.drawEnemyLivesMarkers(ctx as any, 10, 20, 16, 2.8);
+    renderer.drawEnemyLivesMarkers(asCanvasCtx(ctx), 10, 20, 16, 2.8);
     expect(ctx.fillRect).toHaveBeenCalledTimes(2);
     expect(ctx.strokeRect).toHaveBeenCalledTimes(2);
   });
@@ -443,38 +504,38 @@ describe('RendererEntityRenderer', () => {
   it('spawnFlyingLifeSquare and drawFlyingLifeSquares animate, fade and remove completed squares', () => {
     const { renderer, paletteManager } = makeFixture();
     const ctx = createCtx();
-    paletteManager.getColor.mockReturnValue('');
+    vi.mocked(paletteManager.getColor).mockReturnValue('');
 
     renderer.spawnFlyingLifeSquare(10, 20, 16, 1);
-    const anyRenderer = renderer as any;
-    expect(anyRenderer.flyingLifeSquares).toHaveLength(1);
+    const entityRenderer = asEntityRendererAccess(renderer);
+    expect(entityRenderer.flyingLifeSquares).toHaveLength(1);
 
     now = 1100;
-    renderer.drawFlyingLifeSquares(ctx as any);
+    renderer.drawFlyingLifeSquares(asCanvasCtx(ctx));
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.fillRect).toHaveBeenCalled();
-    expect(anyRenderer.flyingLifeSquares[0].opacity).toBeLessThan(1);
+    expect(entityRenderer.flyingLifeSquares[0].opacity).toBeLessThan(1);
 
     now = 2000;
-    renderer.drawFlyingLifeSquares(ctx as any);
-    expect(anyRenderer.flyingLifeSquares).toHaveLength(0);
+    renderer.drawFlyingLifeSquares(asCanvasCtx(ctx));
+    expect(entityRenderer.flyingLifeSquares).toHaveLength(0);
   });
 
   it('drawEnemyAlert handles invalid timings, expiry and draws alert with fallback color', () => {
     const { renderer, paletteManager } = makeFixture();
     const ctx = createCtx();
-    paletteManager.getColor.mockReturnValue('');
+    vi.mocked(paletteManager.getColor).mockReturnValue('');
 
-    renderer.drawEnemyAlert(ctx as any, { alertStart: null, alertUntil: 2 } as any, 0, 0, 16);
-    renderer.drawEnemyAlert(ctx as any, { alertStart: 0, alertUntil: null } as any, 0, 0, 16);
-    renderer.drawEnemyAlert(ctx as any, { alertStart: 0, alertUntil: 1 } as any, 0, 0, 16);
+    renderer.drawEnemyAlert(asCanvasCtx(ctx), alertEnemy({ alertStart: null, alertUntil: 2 }), 0, 0, 16);
+    renderer.drawEnemyAlert(asCanvasCtx(ctx), alertEnemy({ alertStart: 0, alertUntil: null }), 0, 0, 16);
+    renderer.drawEnemyAlert(asCanvasCtx(ctx), alertEnemy({ alertStart: 0, alertUntil: 1 }), 0, 0, 16);
 
     now = 3000;
-    renderer.drawEnemyAlert(ctx as any, { alertStart: 2000, alertUntil: 2500 } as any, 0, 0, 16);
+    renderer.drawEnemyAlert(asCanvasCtx(ctx), alertEnemy({ alertStart: 2000, alertUntil: 2500 }), 0, 0, 16);
     expect(ctx.fillText).not.toHaveBeenCalled();
 
     now = 2200;
-    renderer.drawEnemyAlert(ctx as any, { alertStart: 2000, alertUntil: 2600 } as any, 10, 20, 16);
+    renderer.drawEnemyAlert(asCanvasCtx(ctx), alertEnemy({ alertStart: 2000, alertUntil: 2600 }), 10, 20, 16);
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.fillText).toHaveBeenCalledWith('!', 18, 12);
     expect(ctx.restore).toHaveBeenCalled();

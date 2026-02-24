@@ -1,10 +1,16 @@
-/* eslint-disable */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+type ObjectDefinitionMock = { type: string; name?: string; nameKey?: string };
+type ItemDefinitionMock = {
+  hasTag: (tag: string) => boolean;
+  getSwordDamage: () => number | null;
+  getSwordDurability: () => number | null;
+};
+
 const mockData = vi.hoisted(() => ({
-  objectDefinitions: [] as any[],
+  objectDefinitions: [] as ObjectDefinitionMock[] | null,
   playerEndTextLimit: 80 as number | string,
-  itemDefinitionMap: new Map<string, any>()
+  itemDefinitionMap: new Map<string, ItemDefinitionMock>()
 }));
 
 vi.mock('../../editor/modules/EditorConstants', () => ({
@@ -31,6 +37,32 @@ vi.mock('../../runtime/domain/definitions/ItemDefinitions', () => ({
 
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
 import { EditorObjectRenderer } from '../../editor/modules/renderers/EditorObjectRenderer';
+
+type EditorObjectRendererService = ConstructorParameters<typeof EditorObjectRenderer>[0];
+type ObjectLabelDefinitions = Parameters<EditorObjectRenderer['getObjectLabel']>[1];
+type EditorObjectMock = {
+  type: string;
+  roomIndex: number;
+  x: number;
+  y: number;
+  variableId?: string;
+  on?: boolean;
+  opened?: boolean;
+  collected?: boolean;
+  endingText?: string;
+};
+type PreviewCtxMock = Pick<CanvasRenderingContext2D, 'clearRect' | 'fillRect'> & {
+  fillStyle: string | CanvasGradient | CanvasPattern;
+  imageSmoothingEnabled: boolean;
+};
+
+function asCanvasElement(value: unknown): HTMLCanvasElement {
+  return value as HTMLCanvasElement;
+}
+
+function asCanvasContext(value: PreviewCtxMock): CanvasRenderingContext2D {
+  return value as unknown as CanvasRenderingContext2D;
+}
 
 
 function makeSwordDef({
@@ -71,7 +103,7 @@ function createFixture() {
   };
 
   const gameEngine = {
-    getObjectsForRoom: vi.fn((): any[] => []),
+    getObjectsForRoom: vi.fn((): EditorObjectMock[] => []),
     setObjectVariable: vi.fn(),
     isVariableOn: vi.fn(() => false),
     renderer: {
@@ -98,6 +130,12 @@ function createFixture() {
   return { service, manager, gameEngine, worldRenderer, renderEditor, t, tf };
 }
 
+type TestService = ReturnType<typeof createFixture>['service'];
+
+function asEditorRenderService(service: TestService): EditorObjectRendererService {
+  return service as unknown as EditorObjectRendererService;
+}
+
 describe('EditorObjectRenderer', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
@@ -109,8 +147,8 @@ describe('EditorObjectRenderer', () => {
 
   it('returns early in renderObjectCatalog when container is missing', () => {
     const fixture = createFixture();
-    fixture.service.dom.objectTypes = null as any;
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    fixture.service.dom.objectTypes = null as unknown as HTMLDivElement;
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
     expect(() => renderer.renderObjectCatalog()).not.toThrow();
     expect(fixture.manager.objectService.updateCategoryButtons).not.toHaveBeenCalled();
@@ -118,9 +156,9 @@ describe('EditorObjectRenderer', () => {
 
   it('returns early in renderObjectCatalog for invalid/empty definitions', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
-    mockData.objectDefinitions = null as any;
+    mockData.objectDefinitions = null;
     renderer.renderObjectCatalog();
     expect(fixture.manager.objectService.updateCategoryButtons).toHaveBeenCalledTimes(1);
     expect(fixture.service.dom.objectTypes.children).toHaveLength(0);
@@ -132,7 +170,7 @@ describe('EditorObjectRenderer', () => {
 
   it('renders object catalog with selection, placed markers and sword stats', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
     mockData.objectDefinitions = [
       { type: ITEM_TYPES.KEY, name: 'Key Local' },
       { type: ITEM_TYPES.SWORD, nameKey: 'obj.sword', name: 'Sword' },
@@ -158,7 +196,7 @@ describe('EditorObjectRenderer', () => {
 
   it('filters catalog by swords category and handles stats partial/null cases', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
     fixture.service.state.objectCategoryFilter = 'swords';
     mockData.objectDefinitions = [
       { type: ITEM_TYPES.SWORD_BRONZE, name: 'Bronze' },
@@ -181,7 +219,7 @@ describe('EditorObjectRenderer', () => {
   it('renders catalog with non-sword custom category as pass-through', () => {
     const fixture = createFixture();
     fixture.service.state.objectCategoryFilter = 'misc';
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
     mockData.objectDefinitions = [{ type: ITEM_TYPES.KEY, name: 'Key' }];
 
     renderer.renderObjectCatalog();
@@ -191,10 +229,10 @@ describe('EditorObjectRenderer', () => {
 
   it('defaults catalog category to all and handles missing room objects', () => {
     const fixture = createFixture();
-    fixture.service.state.objectCategoryFilter = undefined as any;
-    fixture.gameEngine.getObjectsForRoom.mockReturnValue(undefined as any);
+    fixture.service.state.objectCategoryFilter = undefined as unknown as string;
+    fixture.gameEngine.getObjectsForRoom.mockReturnValue(undefined as unknown as EditorObjectMock[]);
     mockData.objectDefinitions = [{ type: ITEM_TYPES.KEY, name: 'Key' }];
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
     renderer.renderObjectCatalog();
 
@@ -207,7 +245,7 @@ describe('EditorObjectRenderer', () => {
     fixture.service.state.objectCategoryFilter = 'swords';
     mockData.objectDefinitions = [{ type: ITEM_TYPES.SWORD_WOOD, name: 'Wood' }];
     mockData.itemDefinitionMap.set(ITEM_TYPES.SWORD_WOOD, makeSwordDef({ damage: null, durability: 3 }));
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
     renderer.renderObjectCatalog();
 
@@ -217,15 +255,15 @@ describe('EditorObjectRenderer', () => {
 
   it('returns early in renderObjects when list is missing', () => {
     const fixture = createFixture();
-    fixture.service.dom.objectsList = null as any;
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    fixture.service.dom.objectsList = null as unknown as HTMLDivElement;
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
     expect(() => renderer.renderObjects()).not.toThrow();
   });
 
   it('renders object cards, statuses and interactive controls', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
     mockData.objectDefinitions = [
       { type: ITEM_TYPES.KEY, name: 'Key Def' },
       { type: ITEM_TYPES.PLAYER_END, nameKey: 'objects.end.named', name: 'Ending' }
@@ -243,7 +281,7 @@ describe('EditorObjectRenderer', () => {
       { type: ITEM_TYPES.SWORD_WOOD, roomIndex: 1, x: 9, y: 10, collected: true },
       { type: ITEM_TYPES.PLAYER_END, roomIndex: 1, x: 10, y: 11, endingText: 'bye' },
       { type: ITEM_TYPES.PLAYER_START, roomIndex: 1, x: 11, y: 12 }
-    ] as any[]);
+    ] as EditorObjectMock[]);
 
     renderer.renderObjects();
 
@@ -279,11 +317,11 @@ describe('EditorObjectRenderer', () => {
 
   it('uses fallback player end text limit when constant is not numeric', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
     mockData.playerEndTextLimit = 'x';
     fixture.gameEngine.getObjectsForRoom.mockReturnValue([
       { type: ITEM_TYPES.PLAYER_END, roomIndex: 1, x: 0, y: 0, endingText: '' }
-    ] as any[]);
+    ] as EditorObjectMock[]);
 
     renderer.renderObjects();
 
@@ -293,10 +331,10 @@ describe('EditorObjectRenderer', () => {
 
   it('uses empty fallback variable ids and missing room objects in renderObjects', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
-    fixture.gameEngine.getObjectsForRoom.mockReturnValueOnce(undefined as any).mockReturnValueOnce([
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
+    fixture.gameEngine.getObjectsForRoom.mockReturnValueOnce(undefined as unknown as EditorObjectMock[]).mockReturnValueOnce([
       { type: ITEM_TYPES.DOOR_VARIABLE, roomIndex: 1, x: 0, y: 0 }
-    ] as any[]);
+    ] as EditorObjectMock[]);
 
     renderer.renderObjects();
     expect(fixture.service.dom.objectsList.children).toHaveLength(0);
@@ -308,9 +346,9 @@ describe('EditorObjectRenderer', () => {
 
   it('drawObjectPreview returns early for invalid canvas and null context', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
-    expect(() => renderer.drawObjectPreview({} as any, ITEM_TYPES.KEY)).not.toThrow();
+    expect(() => renderer.drawObjectPreview(asCanvasElement({}), ITEM_TYPES.KEY)).not.toThrow();
 
     const canvas = document.createElement('canvas');
     const getContextSpy = vi.spyOn(canvas, 'getContext').mockReturnValue(null);
@@ -321,7 +359,7 @@ describe('EditorObjectRenderer', () => {
 
   it('drawObjectPreview draws using renderer when canvas context exists', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
     const canvas = document.createElement('canvas');
     canvas.width = 48;
     canvas.height = 48;
@@ -330,8 +368,8 @@ describe('EditorObjectRenderer', () => {
       fillRect: vi.fn(),
       fillStyle: '',
       imageSmoothingEnabled: true
-    } as any;
-    vi.spyOn(canvas, 'getContext').mockReturnValue(ctx);
+    };
+    vi.spyOn(canvas, 'getContext').mockReturnValue(asCanvasContext(ctx));
 
     renderer.drawObjectPreview(canvas, ITEM_TYPES.KEY);
 
@@ -343,7 +381,7 @@ describe('EditorObjectRenderer', () => {
 
   it('getObjectLabel prioritizes nameKey and explicit name', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
     expect(renderer.getObjectLabel('custom', [{ type: 'custom', nameKey: 'k.name', name: 'Fallback' }])).toBe(
       't:k.name|Fallback'
@@ -353,15 +391,15 @@ describe('EditorObjectRenderer', () => {
 
   it('getObjectLabel uses type as fallback when nameKey exists without name', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
 
     expect(renderer.getObjectLabel('custom3', [{ type: 'custom3', nameKey: 'k.only' }])).toBe('t:k.only|custom3');
   });
 
   it('getObjectLabel covers built-in object types and default fallback', () => {
     const fixture = createFixture();
-    const renderer = new EditorObjectRenderer(fixture.service as any);
-    const defs: any[] = [];
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
+    const defs: ObjectLabelDefinitions = [];
     const cases = [
       ITEM_TYPES.DOOR,
       ITEM_TYPES.DOOR_VARIABLE,

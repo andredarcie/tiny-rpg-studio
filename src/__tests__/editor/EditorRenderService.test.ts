@@ -1,5 +1,42 @@
-/* eslint-disable */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { EditorRenderService as EditorRenderServiceType } from '../../editor/modules/EditorRenderService';
+
+type MockFn = ReturnType<typeof vi.fn>;
+type CanvasRendererMockInstance = { renderEditor: MockFn };
+type TilePanelRendererMockInstance = { renderTileList: MockFn; updateSelectedTilePreview: MockFn };
+type NpcRendererMockInstance = { renderNpcs: MockFn; updateNpcForm: MockFn };
+type EnemyRendererMockInstance = { renderEnemies: MockFn; renderEnemyCatalog: MockFn };
+type WorldRendererMockInstance = { renderWorldGrid: MockFn; renderMapNavigation: MockFn; updateMapPosition: MockFn };
+type ObjectRendererMockInstance = { renderObjectCatalog: MockFn; renderObjects: MockFn };
+type SkillListInput = Parameters<EditorRenderServiceType['groupSkillsByLevel']>[0];
+type SkillListItem = SkillListInput[number];
+type VariableDefinitionMock = { id: string; name?: string; color?: string | number };
+type GameVariableUsageMock = {
+  sprites?: Array<Record<string, unknown>> | unknown;
+  enemies?: Array<Record<string, unknown>> | unknown;
+  objects?: Array<Record<string, unknown>> | unknown;
+};
+type DomFixture = ReturnType<typeof createDomFixture>;
+type TestState = {
+  variablePanelCollapsed: boolean;
+  skillPanelCollapsed: boolean;
+  testPanelCollapsed: boolean;
+};
+type ManagerFixture = {
+  domCache: DomFixture;
+  gameEngine: {
+    getVariableDefinitions: ReturnType<typeof vi.fn<() => VariableDefinitionMock[]>>;
+    getGame: ReturnType<typeof vi.fn<() => GameVariableUsageMock>>;
+    getTestSettings: ReturnType<typeof vi.fn<() => { startLevel: number; godMode: boolean; skills: unknown }>>;
+    getMaxPlayerLevel: ReturnType<typeof vi.fn<() => number>>;
+  };
+  state: TestState;
+};
+type BucketMapHack = Map<unknown, unknown> & { __editorRenderBuckets?: boolean };
+
+function skillItem(overrides: Partial<SkillListItem> & Pick<SkillListItem, 'id'>): SkillListItem {
+  return { ...overrides } as SkillListItem;
+}
 
 const mocks = vi.hoisted(() => {
   const textGet = vi.fn<(key: string, fallback: string) => string | undefined>();
@@ -11,12 +48,12 @@ const mocks = vi.hoisted(() => {
     LEVEL_SKILLS: {} as Record<string, unknown>
   };
 
-  const canvasInstances: any[] = [];
-  const tilePanelInstances: any[] = [];
-  const npcInstances: any[] = [];
-  const enemyInstances: any[] = [];
-  const worldInstances: any[] = [];
-  const objectInstances: any[] = [];
+  const canvasInstances: CanvasRendererMockInstance[] = [];
+  const tilePanelInstances: TilePanelRendererMockInstance[] = [];
+  const npcInstances: NpcRendererMockInstance[] = [];
+  const enemyInstances: EnemyRendererMockInstance[] = [];
+  const worldInstances: WorldRendererMockInstance[] = [];
+  const objectInstances: ObjectRendererMockInstance[] = [];
 
   return {
     textGet,
@@ -109,16 +146,9 @@ vi.mock('../../editor/modules/renderers/EditorObjectRenderer', () => ({
 
 import { EditorRenderService } from '../../editor/modules/EditorRenderService';
 
-type ManagerFixture = {
-  domCache: Record<string, any>;
-  gameEngine: {
-    getVariableDefinitions: ReturnType<typeof vi.fn>;
-    getGame: ReturnType<typeof vi.fn>;
-    getTestSettings: ReturnType<typeof vi.fn>;
-    getMaxPlayerLevel: ReturnType<typeof vi.fn>;
-  };
-  state: Record<string, any>;
-};
+function asEditorManagerFixture(fixture: ManagerFixture): ConstructorParameters<typeof EditorRenderService>[0] {
+  return fixture as unknown as ConstructorParameters<typeof EditorRenderService>[0];
+}
 
 function createDomFixture() {
   const projectVariableList = document.createElement('div');
@@ -173,8 +203,7 @@ function createManagerFixture(): ManagerFixture {
 }
 
 function createService(fixture = createManagerFixture()) {
-  const manager = fixture as any;
-  const service = new EditorRenderService(manager);
+  const service = new EditorRenderService(asEditorManagerFixture(fixture));
   return { service, fixture };
 }
 
@@ -248,7 +277,7 @@ describe('EditorRenderService', () => {
     expect(service.picoPalette).toEqual(['#000000', '#ABCDEF']);
     expect(service.resolvePicoColor(1)).toBe('#ABCDEF');
     expect(service.resolvePicoColor(99)).toBe('#000000');
-    expect(service.resolvePicoColor({} as any)).toBe('#000000');
+    expect(service.resolvePicoColor({} as unknown as string | number | null)).toBe('#000000');
     expect(service.resolvePicoColor(' abcdef ')).toBe('#ABCDEF');
     expect(service.resolvePicoColor('')).toBe('#000000');
     expect(service.resolvePicoColor('#ff00ff')).toBe('#000000');
@@ -394,11 +423,7 @@ describe('EditorRenderService', () => {
   it('groups skills by level and places unknown skills last', () => {
     const { service } = createService();
     const grouped = service.groupSkillsByLevel(
-      [
-        { id: 'b', name: 'B' } as any,
-        { id: 'x', name: 'X' } as any,
-        { id: 'a', name: 'A' } as any
-      ],
+      [skillItem({ id: 'b', name: 'B' }), skillItem({ id: 'x', name: 'X' }), skillItem({ id: 'a', name: 'A' })],
       new Map([
         ['a', 1],
         ['b', 2]
@@ -417,21 +442,25 @@ describe('EditorRenderService', () => {
     const originalSet = Map.prototype.set;
     let forcedMisses = 0;
 
-    const setSpy = vi.spyOn(Map.prototype, 'set').mockImplementation(function (this: Map<any, any>, key: any, value: any) {
+    const setSpy = vi.spyOn(Map.prototype, 'set').mockImplementation(function (
+      this: Map<unknown, unknown>,
+      key: unknown,
+      value: unknown
+    ) {
       if (Array.isArray(value)) {
-        (this as any).__editorRenderBuckets = true;
+        (this as BucketMapHack).__editorRenderBuckets = true;
       }
       return originalSet.call(this, key, value);
     });
-    const getSpy = vi.spyOn(Map.prototype, 'get').mockImplementation(function (this: Map<any, any>, key: any) {
-      if ((this as any).__editorRenderBuckets && forcedMisses < 2) {
+    const getSpy = vi.spyOn(Map.prototype, 'get').mockImplementation(function (this: Map<unknown, unknown>, key: unknown) {
+      if ((this as BucketMapHack).__editorRenderBuckets && forcedMisses < 2) {
         forcedMisses += 1;
         return undefined;
       }
-      return originalGet.call(this, key);
+      return originalGet.call(this, key) as unknown;
     });
 
-    const grouped = service.groupSkillsByLevel([{ id: 'x' } as any], new Map());
+    const grouped = service.groupSkillsByLevel([skillItem({ id: 'x' })], new Map());
 
     expect(grouped).toHaveLength(1);
     expect(grouped[0].items).toEqual([]);
