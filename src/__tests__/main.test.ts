@@ -81,7 +81,7 @@ describe('TinyRPGApplication.setupTabs', () => {
     );
 
     expect(detail).not.toBeNull();
-    expect((detail as { initial?: boolean }).initial).toBe(false);
+    expect((detail as unknown as { initial?: boolean }).initial).toBe(false);
   });
 
   it('applies initial editor mode and dispatches initial editor activation', () => {
@@ -95,7 +95,7 @@ describe('TinyRPGApplication.setupTabs', () => {
     expect(document.body.classList.contains('editor-mode')).toBe(true);
     expect(document.body.classList.contains('game-mode')).toBe(false);
     expect(detail).not.toBeNull();
-    expect((detail as { initial?: boolean }).initial).toBe(true);
+    expect((detail as unknown as { initial?: boolean }).initial).toBe(true);
   });
 
   it('activates editor tab and calls TinyRpgApi methods on switch', () => {
