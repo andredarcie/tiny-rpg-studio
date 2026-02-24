@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
 import { EnemyManager } from '../../runtime/services/engine/EnemyManager';
 import { MovementManager } from '../../runtime/services/engine/MovementManager';
+import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { GameConfig } from '../../config/GameConfig';
 import { createEnemyGameState } from '../helpers/createEnemyGameState';
@@ -1089,6 +1090,268 @@ describe('EnemyManager', () => {
     expect(gameState.damagePlayer).not.toHaveBeenCalled();
 
     vi.useRealTimers();
+  });
+
+  describe('Low-level helpers and defeat variable config', () => {
+    it('handles blocking objects for door and door-variable branches', () => {
+      const gameState = createEnemyGameState({
+        getObjectAt: vi.fn((_r, _x, y) => {
+          if (y === 0) return { type: ITEM_TYPES.DOOR, opened: false };
+          if (y === 1) return { type: ITEM_TYPES.DOOR, opened: true };
+          if (y === 2) return { type: ITEM_TYPES.DOOR_VARIABLE, variableId: 'v1' };
+          if (y === 3) return { type: ITEM_TYPES.DOOR_VARIABLE, variableId: null };
+          return { type: ITEM_TYPES.KEY };
+        }),
+        isVariableOn: vi.fn((id: string) => id === 'v1'),
+      });
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      expect(manager.hasBlockingObject(0, 0, 0)).toBe(true);
+      expect(manager.hasBlockingObject(0, 0, 1)).toBe(false);
+      expect(manager.hasBlockingObject(0, 0, 2)).toBe(false);
+      expect(manager.hasBlockingObject(0, 0, 3)).toBe(true);
+      expect(manager.hasBlockingObject(0, 0, 4)).toBe(false);
+    });
+
+    it('checks tile collision with overlay precedence and null tile maps', () => {
+      const customTileManager = {
+        getTileMap: vi
+          .fn()
+          .mockReturnValueOnce(null)
+          .mockReturnValueOnce({ ground: [[1]], overlay: [[2]] })
+          .mockReturnValueOnce({ ground: [[1]], overlay: [[]] }),
+        getTile: vi.fn((id: unknown) => {
+          if (id === 2) return { collision: true };
+          if (id === 1) return { collision: false };
+          return null;
+        }),
+      };
+      const manager = new EnemyManager(createEnemyGameState(), renderer, customTileManager);
+
+      expect(manager.isTileBlocked(0, 0, 0)).toBe(false);
+      expect(manager.isTileBlocked(0, 0, 0)).toBe(true);
+      expect(manager.isTileBlocked(0, 0, 0)).toBe(false);
+    });
+
+    it('checks occupancy and npc presence helpers', () => {
+      const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
+      const enemies = [
+        { id: 'a', roomIndex: 0, x: 1, y: 1, type: 'rat', lastX: 1 },
+        { id: 'b', roomIndex: 0, x: 2, y: 2, type: 'rat', lastX: 2 },
+      ] as never;
+
+      expect(manager.isOccupied(enemies, 0, 0, 2, 2)).toBe(true);
+      expect(manager.isOccupied(enemies, 1, 0, 2, 2)).toBe(false);
+      expect(manager.isNpcAt({ rooms: [], sprites: 'bad' as never }, 0, 1, 1)).toBe(false);
+      expect(
+        manager.isNpcAt(
+          { rooms: [], sprites: [{ placed: true, roomIndex: 0, x: 1, y: 1 }, { placed: false, roomIndex: 0, x: 1, y: 1 }] } as never,
+          0,
+          1,
+          1,
+        ),
+      ).toBe(true);
+    });
+
+    it('resolvePostMove and collideAt trigger collisions only when positions match', () => {
+      const enemies = [{ id: 'e1', roomIndex: 0, x: 1, y: 1, type: 'rat', lastX: 1 }];
+      const gameState = createEnemyGameState({
+        getEnemies: vi.fn(() => enemies as never),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 1, y: 1, lastX: 1 })),
+      });
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+      const collisionSpy = vi.spyOn(manager, 'handleEnemyCollision').mockImplementation(() => {});
+
+      expect(manager.resolvePostMove(0, 1, 1, 0)).toBe(true);
+      expect(collisionSpy).toHaveBeenCalledWith(0, { initiator: 'enemy' });
+      collisionSpy.mockClear();
+
+      expect(manager.resolvePostMove(0, 2, 2, 0)).toBe(false);
+      expect(manager.collideAt(0, 1, 1)).toBe(true);
+      expect(manager.collideAt(0, 9, 9)).toBe(false);
+    });
+
+    it('enemyHasEyes returns false only when definition explicitly disables eyes', () => {
+      const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
+      const defSpy = vi.spyOn(manager, 'getEnemyDefinition');
+
+      defSpy.mockReturnValueOnce(null);
+      expect(manager.enemyHasEyes({ type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 } as never)).toBe(true);
+      defSpy.mockReturnValueOnce({ hasEyes: false } as never);
+      expect(manager.enemyHasEyes({ type: 'bat', roomIndex: 0, x: 0, y: 0, lastX: 0 } as never)).toBe(false);
+      defSpy.mockReturnValueOnce({ hasEyes: true } as never);
+      expect(manager.enemyHasEyes({ type: 'slime', roomIndex: 0, x: 0, y: 0, lastX: 0 } as never)).toBe(true);
+    });
+
+    it('delegates overlay/start and combat wrappers', () => {
+      const gameState = createEnemyGameState({ getPendingLevelUpChoices: vi.fn(() => 2) });
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      vi.spyOn(manager.combatManager, 'getEnemyDamage').mockReturnValue(7);
+      vi.spyOn(manager.combatManager, 'getEnemyMissChance').mockReturnValue(0.4);
+      vi.spyOn(manager.combatManager, 'normalizeMissChance').mockReturnValue(0.2);
+      vi.spyOn(manager.combatManager, 'attackMissed').mockReturnValue(true);
+      const missSpy = vi.spyOn(manager.combatManager, 'showMissFeedback').mockImplementation(() => {});
+
+      expect(manager.shouldStartLevelOverlay()).toBe(true);
+      expect(manager.getEnemyDamage('x')).toBe(7);
+      expect(manager.getEnemyMissChance('x')).toBe(0.4);
+      expect(manager.normalizeMissChance(5)).toBe(0.2);
+      expect(manager.attackMissed(0.9)).toBe(true);
+      manager.showMissFeedback();
+      expect(missSpy).toHaveBeenCalled();
+    });
+
+    it('computes enemy max lives and migrates old/invalid saves', () => {
+      const enemies = [
+        { id: 'a', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, lives: 2 }, // old tier -> migrate
+        { id: 'b', type: 'rat', roomIndex: 0, x: 1, y: 0, lastX: 1, lives: 5 }, // already expected
+        { id: 'c', type: 'rat', roomIndex: 0, x: 2, y: 0, lastX: 2, lives: 0 }, // invalid -> fix
+        { id: 'd', type: 'rat', roomIndex: 0, x: 3, y: 0, lastX: 3 }, // missing -> fix
+      ];
+      const manager = new EnemyManager(createEnemyGameState({ getEnemies: vi.fn(() => enemies as never) }), renderer, tileManager);
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValue({ lives: 5 } as never);
+
+      expect(manager.getEnemyMaxLives('rat')).toBe(5);
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce({ lives: Number.NaN } as never);
+      expect(manager.getEnemyMaxLives('rat')).toBe(1);
+
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValue({ lives: 5 } as never);
+      manager.migrateEnemyLives();
+
+      expect(enemies[0].lives).toBe(5);
+      expect(enemies[1].lives).toBe(5);
+      expect(enemies[2].lives).toBe(5);
+      expect(enemies[3].lives).toBe(5);
+    });
+
+    it('shows clear-all-enemies dialog only when no enemies remain and localized text exists', () => {
+      const dialogManager = { showDialog: vi.fn() };
+      const emptyState = createEnemyGameState({ getEnemies: vi.fn(() => []) });
+      const manager = new EnemyManager(emptyState, renderer, tileManager, { dialogManager });
+
+      getSpy.mockImplementationOnce(() => 'All cleared!');
+      manager.checkAllEnemiesCleared();
+      expect(dialogManager.showDialog).toHaveBeenCalledWith('All cleared!');
+
+      dialogManager.showDialog.mockClear();
+      getSpy.mockImplementationOnce(() => '');
+      manager.checkAllEnemiesCleared();
+      expect(dialogManager.showDialog).not.toHaveBeenCalled();
+
+      const withEnemies = new EnemyManager(
+        createEnemyGameState({ getEnemies: vi.fn(() => [{ id: 'e', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 }] as never) }),
+        renderer,
+        tileManager,
+        { dialogManager },
+      );
+      withEnemies.checkAllEnemiesCleared();
+      expect(dialogManager.showDialog).not.toHaveBeenCalled();
+    });
+
+    it('builds defeat variable config from enemy override/base config/message key and fallback message sources', () => {
+      const gameState = createEnemyGameState({
+        normalizeVariableId: vi.fn((id: string | null) => (id ? id.trim() : null)),
+      });
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValue({
+        activateVariableOnDefeat: { variableId: ' base-var ', persist: false, messageKey: 'enemy.unlock' },
+        defeatActivationMessageKey: 'enemy.defeat.key',
+        defeatActivationMessage: 'Defeat fallback',
+      } as never);
+      getSpy.mockImplementation((key: string | null | undefined, fallback?: string) => {
+        if (key === 'enemy.unlock') return 'Unlocked via key';
+        if (key === 'enemy.defeat.key') return 'Defeat via enemy key';
+        return fallback || '';
+      });
+
+      const cfg1 = manager.getDefeatVariableConfig({ type: 'rat', defeatVariableId: ' enemy-var ' } as never);
+      expect(cfg1).toEqual({ variableId: 'enemy-var', persist: false, message: 'Unlocked via key' });
+
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce({
+        activateVariableOnDefeat: { variableId: 'base', message: '  Direct message  ' },
+      } as never);
+      expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)).toEqual({
+        variableId: 'base',
+        persist: true,
+        message: 'Direct message',
+      });
+
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce({
+        activateVariableOnDefeat: { variableId: 'base2' },
+        defeatActivationMessageKey: 'enemy.defeat.key',
+      } as never);
+      expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)?.message).toBe('Defeat via enemy key');
+
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce({
+        activateVariableOnDefeat: { variableId: 'base3' },
+        defeatActivationMessage: '  Plain defeat msg ',
+      } as never);
+      expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)?.message).toBe('Plain defeat msg');
+
+      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce(null);
+      expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)).toBeNull();
+    });
+
+    it('triggers defeat variable success/failure paths and indicator message', () => {
+      const gameState = createEnemyGameState({
+        setVariableValue: vi.fn()
+          .mockReturnValueOnce([false, false])
+          .mockReturnValueOnce([true, false])
+          .mockReturnValueOnce(undefined),
+        isVariableOn: vi.fn()
+          .mockReturnValueOnce(false)
+          .mockReturnValueOnce(false)
+          .mockReturnValueOnce(true),
+      });
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+      const cfgSpy = vi.spyOn(manager, 'getDefeatVariableConfig');
+
+      cfgSpy.mockReturnValueOnce(null);
+      expect(manager.tryTriggerDefeatVariable({ type: 'rat' } as never)).toBe(false);
+
+      cfgSpy.mockReturnValueOnce({ variableId: 'v1', persist: true, message: 'Hi' });
+      expect(manager.tryTriggerDefeatVariable({ type: 'rat' } as never)).toBe(false);
+
+      cfgSpy.mockReturnValueOnce({ variableId: 'v2', persist: false, message: 'Done' });
+      expect(manager.tryTriggerDefeatVariable({ type: 'rat' } as never)).toBe(true);
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Done', { duration: 900 });
+    });
+
+    it('triggerEnemyWindup returns when telegraph renderer is unavailable and activates with direction when available', () => {
+      const attackTelegraph = { activateTelegraph: vi.fn() };
+      const localRenderer: typeof renderer & { attackTelegraph?: typeof attackTelegraph } = { ...renderer, attackTelegraph };
+      const manager = new EnemyManager(createEnemyGameState(), localRenderer as never, tileManager);
+      localRenderer.attackTelegraph = undefined;
+      manager.triggerEnemyWindup('e1', { x: 1, y: 1 }, { x: 2, y: 3 });
+      expect(attackTelegraph.activateTelegraph).not.toHaveBeenCalled();
+
+      localRenderer.attackTelegraph = attackTelegraph;
+      manager.triggerEnemyWindup('e1', { x: 1, y: 1 }, { x: 2, y: 3 });
+      expect(attackTelegraph.activateTelegraph).toHaveBeenCalledWith('e1', { x: 1, y: 2 });
+    });
+
+    it('getNow falls back to Date.now and hasEnemyNear checks adjacency safely', () => {
+      const manager = new EnemyManager(createEnemyGameState({
+        getEnemies: vi.fn(() => [
+          { roomIndex: 1, x: 0, y: 0, type: 'rat', lastX: 0 },
+          { roomIndex: 0, x: 'bad', y: 0, type: 'rat', lastX: 0 },
+          { roomIndex: 0, x: 5, y: 5, type: 'rat', lastX: 5 },
+          { roomIndex: 0, x: 3, y: 2, type: 'rat', lastX: 3 },
+        ] as never),
+      }), renderer, tileManager);
+
+      const perfSpy = vi.spyOn(globalThis, 'performance', 'get').mockReturnValue(undefined as unknown as Performance);
+      const dateSpy = vi.spyOn(Date, 'now').mockReturnValue(123456);
+      expect(manager.getNow()).toBe(123456);
+      perfSpy.mockRestore();
+      dateSpy.mockRestore();
+
+      expect(manager.hasEnemyNear(0, 2, 2)).toBe(true); // adjacent enemy at 3,2
+      expect(manager.hasEnemyNear(0, 5, 5)).toBe(false); // same tile does not count
+      expect(new EnemyManager(createEnemyGameState({ getEnemies: vi.fn(() => []) }), renderer, tileManager).hasEnemyNear(0, 0, 0)).toBe(false);
+    });
   });
 
   describe('Player death message localization', () => {

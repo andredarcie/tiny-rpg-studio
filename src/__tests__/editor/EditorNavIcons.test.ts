@@ -156,6 +156,20 @@ describe('EditorNavIcons', () => {
     canvas.remove();
   });
 
+  it('skips canvas when 2d context is unavailable', () => {
+    const canvas = makeCanvas('tree');
+    const getContextSpy = vi.spyOn(canvas, 'getContext').mockReturnValue(null);
+    document.body.appendChild(canvas);
+
+    const engine = makeGameEngine();
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
+    icons.renderAll();
+
+    expect(getContextSpy).toHaveBeenCalledWith('2d');
+    expect(engine.getTiles).not.toHaveBeenCalled();
+    canvas.remove();
+  });
+
   it('skips tree render when tile id 8 not found', () => {
     const canvas = makeCanvas('tree');
     document.body.appendChild(canvas);
@@ -164,6 +178,19 @@ describe('EditorNavIcons', () => {
     engine.getTiles.mockReturnValue([{ id: 5, name: 'water', category: 'Agua' }]); // no tile id 8
     const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     icons.renderAll();
+    expect(engine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();
+    canvas.remove();
+  });
+
+  it('skips water render when tile id 5 not found', () => {
+    const canvas = makeCanvas('water');
+    document.body.appendChild(canvas);
+
+    const engine = makeGameEngine();
+    engine.getTiles.mockReturnValue([{ id: 8, name: 'tree', category: 'Natureza' }]);
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
+    icons.renderAll();
+
     expect(engine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();
     canvas.remove();
   });
@@ -178,6 +205,63 @@ describe('EditorNavIcons', () => {
     icons.renderAll();
     // No error, but drawTileOnCanvas not called (it's for tiles only)
     expect(engine.renderer.drawTileOnCanvas).not.toHaveBeenCalled();
+    canvas.remove();
+  });
+
+  it('skips oldMage render when npc sprite is not found', () => {
+    const canvas = makeCanvas('oldMage');
+    document.body.appendChild(canvas);
+
+    const engine = makeGameEngine();
+    engine.renderer.spriteFactory.getNpcSprites.mockReturnValue({});
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
+    expect(() => icons.renderAll()).not.toThrow();
+
+    canvas.remove();
+  });
+
+  it('skips rat render when enemy sprite is not found', () => {
+    const canvas = makeCanvas('rat');
+    document.body.appendChild(canvas);
+
+    const engine = makeGameEngine();
+    engine.renderer.spriteFactory.getEnemySprites.mockReturnValue({});
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
+    expect(() => icons.renderAll()).not.toThrow();
+
+    canvas.remove();
+  });
+
+  it('skips scroll render when object sprite is not found', () => {
+    const canvas = makeCanvas('scroll');
+    document.body.appendChild(canvas);
+
+    const engine = makeGameEngine();
+    engine.renderer.spriteFactory.getObjectSprites.mockReturnValue({ sword: makeSprite() });
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
+    expect(() => icons.renderAll()).not.toThrow();
+
+    canvas.remove();
+  });
+
+  it('drawSprite skips null pixels and paints colored pixels only', () => {
+    const canvas = makeCanvas('sword');
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    expect(ctx).not.toBeNull();
+    if (!ctx) return;
+
+    const fillRectSpy = vi.spyOn(ctx, 'fillRect');
+    const engine = makeGameEngine();
+    const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
+    const sprite: SpriteMatrix = [
+      ['#111111', null],
+      [null, '#222222'],
+    ];
+
+    icons['drawSprite'](ctx, sprite);
+
+    expect(fillRectSpy).toHaveBeenCalledTimes(2);
     canvas.remove();
   });
 });

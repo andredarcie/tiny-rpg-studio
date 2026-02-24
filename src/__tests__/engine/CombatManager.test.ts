@@ -889,4 +889,195 @@ describe('CombatManager', () => {
       expect(enemy.lives).toBe(2); // 5 - 3 = 2
     });
   });
+
+  describe('Coverage Gap Closers', () => {
+    it('returns false for melee range when entities are in different rooms', () => {
+      const manager = new CombatManager(createCombatGameState(), createRenderer());
+
+      const inRange = manager['isInMeleeRange'](
+        { x: 0, y: 0, roomIndex: 0 },
+        { x: 0, y: 0, roomIndex: 1 }
+      );
+
+      expect(inRange).toBe(false);
+    });
+
+    it('cancels combat when target moves out of range during animation', () => {
+      const gameState = createCombatGameState({
+        getPlayer: vi.fn(() => ({ x: 10, y: 10, roomIndex: 0 })),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+      manager.combatActive = true;
+
+      const result = manager['checkCombatRangeOrCancel']({
+        id: 'e1',
+        type: 'rat',
+        x: 0,
+        y: 0,
+        roomIndex: 0,
+        lastX: 0,
+      });
+
+      expect(result).toBe(false);
+      expect(manager.isInCombat()).toBe(false);
+      expect(renderer.draw).toHaveBeenCalled();
+    });
+
+    it('skips combat when enemy is already dying', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+      const isDyingSpy = vi.spyOn(EnemyDefinitions, 'isDying').mockReturnValue(true);
+
+      manager.handleEnemyCollision(0);
+
+      expect(renderer.combatAnimator.startLungeAttack).not.toHaveBeenCalled();
+      isDyingSpy.mockRestore();
+    });
+
+    it('updates player lastAttackTime in animated combat when playerManager is present', () => {
+      const enemy = { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 };
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [enemy]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+      });
+      const renderer = createRenderer();
+      const playerManager = {
+        isOnAttackCooldown: vi.fn(() => false),
+        player: { lastAttackTime: 0 },
+      };
+      const perfSpy = vi.spyOn(performance, 'now').mockReturnValue(1234);
+      const manager = new CombatManager(gameState, renderer, { playerManager, fallbackMissChance: 1 });
+
+      manager.handleEnemyCollision(0, { initiator: 'player' });
+
+      expect(playerManager.player.lastAttackTime).toBe(1234);
+      perfSpy.mockRestore();
+    });
+
+    it('calls enemy defeat callbacks when player counter-attack kills enemy in enemy-initiated combat', () => {
+      const onEnemyDefeated = vi.fn();
+      const onCheckAllEnemiesCleared = vi.fn();
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
+        getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
+        getPlayerDamage: vi.fn(() => 1),
+        damagePlayer: vi.fn(() => 2),
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer, {
+        onEnemyDefeated,
+        onCheckAllEnemiesCleared,
+        fallbackMissChance: 0,
+      });
+
+      manager.handleEnemyCollision(0, { initiator: 'enemy' });
+      vi.advanceTimersByTime(1000);
+
+      expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
+      expect(onCheckAllEnemiesCleared).toHaveBeenCalled();
+      expect(renderer.draw).toHaveBeenCalled();
+    });
+
+    it('shows shield reduction feedback in legacy combat path', () => {
+      getMissChanceSpy.mockImplementation(() => 0);
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, damage: 2 } as never));
+      const gameState = createCombatGameState({
+        getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 3 }]),
+        consumeLastDamageReduction: vi.fn(() => 1),
+        damagePlayer: vi.fn(() => 2),
+        getLives: vi.fn(() => 3),
+      });
+      const renderer = { ...createRenderer(), combatAnimator: undefined };
+      const manager = new CombatManager(gameState, renderer, { fallbackMissChance: 0 });
+
+      manager.handleEnemyCollision(0);
+
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Blocked 1', { duration: 700 });
+    });
+
+    it('returns fallback enemy name when definition has no nameKey in death sequence', () => {
+      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, nameKey: undefined } as never));
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+
+      manager['playPlayerDeathSequence']('mystery-enemy');
+
+      expect(formatSpy).toHaveBeenCalledWith(
+        'combat.killedBy',
+        expect.objectContaining({ enemy: 'mystery-enemy' }),
+        ''
+      );
+    });
+
+    it('short-circuits enemy death animation when enemy is already dying', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+      const onComplete = vi.fn();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const isDyingSpy = vi.spyOn(EnemyDefinitions, 'isDying').mockReturnValue(true);
+
+      manager['playEnemyDeathAnimation'](
+        { id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1 },
+        onComplete
+      );
+
+      expect(warnSpy).toHaveBeenCalledWith('[Combat] Enemy already dying, skipping animation');
+      expect(onComplete).toHaveBeenCalled();
+      warnSpy.mockRestore();
+      isDyingSpy.mockRestore();
+    });
+
+    it('clears an active death sequence timer when canceling', () => {
+      const gameState = createCombatGameState();
+      const renderer = createRenderer();
+      const manager = new CombatManager(gameState, renderer);
+      const timer = setTimeout(() => {}, 1000);
+
+      manager.deathSequenceTimer = timer;
+      manager.cancelDeathSequence();
+
+      expect(manager.deathSequenceTimer).toBeNull();
+    });
+
+    it('handles diagonal movement backstab using horizontal dominant direction', () => {
+      const manager = new CombatManager(createCombatGameState(), createRenderer());
+      const enemy = {
+        id: 'e1',
+        type: 'rat',
+        roomIndex: 0,
+        x: 7,
+        y: 4,
+        lastX: 5,
+        lastY: 3,
+      };
+      const player = { x: 6, y: 4, roomIndex: 0, lives: 3, level: 1 };
+
+      expect(manager['isBackstab'](player, enemy)).toBe(true);
+    });
+
+    it('returns 1 damage when enemy definition is missing', () => {
+      getDefinitionSpy.mockImplementation(() => null);
+      const manager = new CombatManager(createCombatGameState(), createRenderer());
+
+      expect(manager.getEnemyDamage('unknown')).toBe(1);
+    });
+
+    it('falls back to 1 life when enemy definition is missing during lives initialization', () => {
+      getDefinitionSpy.mockImplementation(() => null);
+      const manager = new CombatManager(createCombatGameState(), createRenderer());
+      const enemy: EnemyState = { id: 'e1', type: 'unknown', roomIndex: 0, x: 0, y: 0, lastX: 0 };
+
+      manager.ensureEnemyLives(enemy);
+
+      expect(enemy.lives).toBe(1);
+    });
+  });
 });

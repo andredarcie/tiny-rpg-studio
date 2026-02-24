@@ -279,6 +279,38 @@ describe('TinyRPGApplication.bindResetButton', () => {
     expect(preventDefaultSpy).toHaveBeenCalled();
     expect(stopImmediatePropagationSpy).toHaveBeenCalled();
   });
+
+  it('returns early when reset button is missing', () => {
+    document.body.innerHTML = '';
+    expect(() =>
+      TinyRPGApplication.bindResetButton(asBindResetGameEngine(mockGameEngine)),
+    ).not.toThrow();
+  });
+
+  it('uses popup path when window.open returns a window handle', () => {
+    const popupHandle = {} as Window;
+    globalThis.open = vi.fn(() => popupHandle) as unknown as typeof window.open;
+    document.body.classList.add('editor-mode');
+
+    resetButton?.click();
+
+    expect(globalThis.open).toHaveBeenCalledWith(
+      'http://localhost/some/path',
+      '_blank',
+      'noopener',
+    );
+    expect(document.querySelector('a')).toBeNull();
+  });
+
+  it('handles missing global location by opening blank target url in editor mode', () => {
+    // @ts-expect-error test replaces window.location in jsdom
+    delete globalThis.location;
+    document.body.classList.add('editor-mode');
+
+    resetButton?.click();
+
+    expect(globalThis.open).toHaveBeenCalledWith('', '_blank', 'noopener');
+  });
 });
 
 describe('TinyRPGApplication.loadSharedGameIfAvailable', () => {
@@ -404,6 +436,23 @@ describe('TinyRPGApplication.bindTouchPad', () => {
     expect(document.body.classList.contains('touch-controls-visible')).toBe(false);
     expect(toggle.textContent).toBe('Mostrar');
   });
+
+  it('ignores touch buttons without data-direction', () => {
+    document.body.innerHTML = `
+      <div id="mobile-touch-pad"></div>
+      <button id="touch-controls-toggle"></button>
+      <button id="touch-controls-hide"></button>
+      <div class="game-touch-pad">
+        <button class="pad-button"></button>
+      </div>
+    `;
+    TinyRPGApplication.bindTouchPad(asTouchPadGameEngine(engine));
+    const button = document.querySelector<HTMLButtonElement>('.pad-button');
+
+    button?.dispatchEvent(new Event('touchstart', { bubbles: true, cancelable: true }));
+
+    expect(engine.tryMove).not.toHaveBeenCalled();
+  });
 });
 
 describe('TinyRPGApplication.bindLanguageSelector', () => {
@@ -503,6 +552,42 @@ describe('TinyRPGApplication.setupResponsiveCanvas', () => {
     document.dispatchEvent(new CustomEvent('game-tab-activated'));
 
     expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
+  });
+});
+
+describe('TinyRPGApplication.setupTabs extra branches', () => {
+  afterEach(() => {
+    setTinyRpgApi(null);
+    document.body.innerHTML = '';
+  });
+
+  it('dispatches initial game activation when game tab starts active', () => {
+    document.body.innerHTML = `
+      <button class="tab-button" data-tab="editor" aria-selected="false">Editor</button>
+      <button class="tab-button active" data-tab="game" aria-selected="true">Game</button>
+      <section id="tab-editor" class="tab-content"></section>
+      <section id="tab-game" class="tab-content active"></section>
+    `;
+    let detail: { initial?: boolean } | null = null;
+    document.addEventListener('game-tab-activated', (ev) => {
+      detail = (ev as CustomEvent<{ initial?: boolean }>).detail;
+    });
+
+    TinyRPGApplication.setupTabs();
+
+    expect(document.body.classList.contains('game-mode')).toBe(true);
+    expect((detail as unknown as { initial?: boolean }).initial).toBe(true);
+  });
+
+  it('ignores pointerdown on already-active tab', () => {
+    createTabMarkup();
+    TinyRPGApplication.setupTabs();
+    const editorButton = document.querySelector<HTMLButtonElement>('.tab-button[data-tab="editor"]');
+
+    editorButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true }));
+
+    expect(document.body.classList.contains('editor-mode')).toBe(true);
+    expect(document.querySelectorAll('.tab-button.active')).toHaveLength(1);
   });
 });
 

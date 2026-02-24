@@ -148,6 +148,19 @@ describe('CombatStateMachine', () => {
       expect(sm.transition(CombatState.ENEMY_WINDUP)).toBe(false);
       expect(sm.getState()).toBe(CombatState.PLAYER_DEATH);
     });
+
+    it('should include reason in invalid transition warning when provided', () => {
+      const sm = new CombatStateMachine();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      expect(sm.transition(CombatState.PLAYER_ATTACKING, 'skip windup')).toBe(false);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[CombatStateMachine] Invalid transition: IDLE â†’ PLAYER_ATTACKING',
+        '(skip windup)',
+      );
+      warnSpy.mockRestore();
+    });
   });
 
   describe('Idempotent Transitions', () => {
@@ -303,6 +316,19 @@ describe('CombatStateMachine', () => {
 
       expect(callback).toHaveBeenCalledWith(CombatState.IDLE, CombatState.ENEMY_DEATH);
     });
+
+    it('should log force transition without reason', () => {
+      const sm = new CombatStateMachine();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      sm.forceTransition(CombatState.ENEMY_ATTACKING);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[CombatStateMachine] Force transition: IDLE â†’ ENEMY_ATTACKING',
+        '',
+      );
+      warnSpy.mockRestore();
+    });
   });
 
   describe('Full Combat Flow', () => {
@@ -376,6 +402,41 @@ describe('CombatStateMachine', () => {
     it('should describe current state when no argument', () => {
       const sm = new CombatStateMachine({ initialState: CombatState.PLAYER_ATTACKING });
       expect(sm.getStateDescription()).toBe('Player attacking');
+    });
+
+    it('should fall back to unknown for unsupported state values', () => {
+      const sm = new CombatStateMachine();
+      expect(sm.getStateDescription('NOPE' as unknown as CombatState)).toBe('Unknown state');
+    });
+  });
+
+  describe('Debug Output', () => {
+    it('prints grouped debug information with recent history', () => {
+      const sm = new CombatStateMachine();
+      const groupSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
+      const groupEndSpy = vi.spyOn(console, 'groupEnd').mockImplementation(() => {});
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      sm.updateContext({ enemyId: 'e1', damage: 2 });
+      sm.transition(CombatState.PLAYER_WINDUP);
+      sm.transition(CombatState.PLAYER_ATTACKING);
+      sm.transition(CombatState.IDLE);
+      sm.debug();
+
+      expect(groupSpy).toHaveBeenCalledWith('[CombatStateMachine] Debug Info');
+      expect(logSpy).toHaveBeenCalledWith(
+        'Current State:',
+        CombatState.IDLE,
+        '(No combat)',
+      );
+      expect(logSpy).toHaveBeenCalledWith('Context:', expect.objectContaining({ enemyId: 'e1', damage: 2 }));
+      expect(logSpy).toHaveBeenCalledWith('Recent History (last 5):');
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('IDLE â†’ PLAYER_WINDUP'));
+      expect(groupEndSpy).toHaveBeenCalled();
+
+      groupSpy.mockRestore();
+      groupEndSpy.mockRestore();
+      logSpy.mockRestore();
     });
   });
 });
