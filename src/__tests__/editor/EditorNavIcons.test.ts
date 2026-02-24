@@ -245,13 +245,15 @@ describe('EditorNavIcons', () => {
   });
 
   it('drawSprite skips null pixels and paints colored pixels only', () => {
-    const canvas = makeCanvas('sword');
-    document.body.appendChild(canvas);
-    const ctx = canvas.getContext('2d');
-    expect(ctx).not.toBeNull();
-    if (!ctx) return;
-
-    const fillRectSpy = vi.spyOn(ctx, 'fillRect');
+    const fillRectSpy = vi.fn();
+    const fakeCanvas = document.createElement('canvas');
+    fakeCanvas.width = 16;
+    fakeCanvas.height = 16;
+    const ctx = {
+      canvas: fakeCanvas,
+      fillStyle: '',
+      fillRect: fillRectSpy,
+    } as unknown as CanvasRenderingContext2D;
     const engine = makeGameEngine();
     const icons = new EditorNavIcons(asNavIconsGameEngine(engine));
     const sprite: SpriteMatrix = [
@@ -262,7 +264,6 @@ describe('EditorNavIcons', () => {
     icons['drawSprite'](ctx, sprite);
 
     expect(fillRectSpy).toHaveBeenCalledTimes(2);
-    canvas.remove();
   });
 });
 

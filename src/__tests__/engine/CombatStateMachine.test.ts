@@ -152,11 +152,12 @@ describe('CombatStateMachine', () => {
     it('should include reason in invalid transition warning when provided', () => {
       const sm = new CombatStateMachine();
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      warnSpy.mockClear();
 
       expect(sm.transition(CombatState.PLAYER_ATTACKING, 'skip windup')).toBe(false);
 
       expect(warnSpy).toHaveBeenCalledWith(
-        '[CombatStateMachine] Invalid transition: IDLE â†’ PLAYER_ATTACKING',
+        '[CombatStateMachine] Invalid transition: IDLE → PLAYER_ATTACKING',
         '(skip windup)',
       );
       warnSpy.mockRestore();
@@ -320,11 +321,12 @@ describe('CombatStateMachine', () => {
     it('should log force transition without reason', () => {
       const sm = new CombatStateMachine();
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      warnSpy.mockClear();
 
       sm.forceTransition(CombatState.ENEMY_ATTACKING);
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        '[CombatStateMachine] Force transition: IDLE â†’ ENEMY_ATTACKING',
+      expect(warnSpy).toHaveBeenLastCalledWith(
+        '[CombatStateMachine] Force transition: IDLE → ENEMY_ATTACKING',
         '',
       );
       warnSpy.mockRestore();
@@ -416,6 +418,9 @@ describe('CombatStateMachine', () => {
       const groupSpy = vi.spyOn(console, 'group').mockImplementation(() => {});
       const groupEndSpy = vi.spyOn(console, 'groupEnd').mockImplementation(() => {});
       const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      groupSpy.mockClear();
+      groupEndSpy.mockClear();
+      logSpy.mockClear();
 
       sm.updateContext({ enemyId: 'e1', damage: 2 });
       sm.transition(CombatState.PLAYER_WINDUP);
@@ -431,7 +436,7 @@ describe('CombatStateMachine', () => {
       );
       expect(logSpy).toHaveBeenCalledWith('Context:', expect.objectContaining({ enemyId: 'e1', damage: 2 }));
       expect(logSpy).toHaveBeenCalledWith('Recent History (last 5):');
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('IDLE â†’ PLAYER_WINDUP'));
+      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('IDLE → PLAYER_WINDUP'));
       expect(groupEndSpy).toHaveBeenCalled();
 
       groupSpy.mockRestore();
