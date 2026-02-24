@@ -9,6 +9,8 @@ type GameExportData = {
 
 class EditorExportService {
     btn: HTMLElement | null;
+    importBtn: HTMLElement | null;
+    importFileInput: HTMLInputElement | null;
 
     constructor() {
         this.btn = typeof document !== 'undefined' ? document.getElementById('btn-generate-html') : null;
@@ -16,6 +18,77 @@ class EditorExportService {
             this.btn.addEventListener('click', (_ev) => {
                 setTimeout(() => this.exportProjectAsHtml(), 0);
             });
+        }
+
+        this.importBtn = typeof document !== 'undefined' ? document.getElementById('btn-import-html') : null;
+        this.importFileInput = null;
+        if (this.importBtn) {
+            this.importFileInput = document.createElement('input');
+            this.importFileInput.type = 'file';
+            this.importFileInput.accept = '.html';
+            this.importFileInput.style.display = 'none';
+            document.body.appendChild(this.importFileInput);
+
+            this.importBtn.addEventListener('click', () => {
+                this.importFileInput?.click();
+            });
+            this.importFileInput.addEventListener('change', () => {
+                const file = this.importFileInput?.files?.[0];
+                if (file) {
+                    void this.importFromHtml(file);
+                }
+                if (this.importFileInput) {
+                    this.importFileInput.value = '';
+                }
+            });
+        }
+    }
+
+    async importFromHtml(file: File): Promise<void> {
+        try {
+            const html = await file.text();
+            const match = html.match(/__TINY_RPG_SHARED_CODE\s*=\s*([^;]+);/);
+            if (!match) {
+                alert(TextResources.get('alerts.importHTML.notFound', 'Arquivo HTML inválido: nenhum dado de jogo encontrado.') as string);
+                return;
+            }
+            let code: string;
+            try {
+                code = JSON.parse(match[1].trim()) as string;
+            } catch {
+                alert(TextResources.get('alerts.importHTML.notFound', 'Arquivo HTML inválido: nenhum dado de jogo encontrado.') as string);
+                return;
+            }
+            const gameData = ShareUtils.decode(code);
+            if (!gameData) {
+                alert(TextResources.get('alerts.importHTML.decodeError', 'Não foi possível decodificar os dados do jogo.') as string);
+                return;
+            }
+            const api = getTinyRpgApi();
+            if (!api) {
+                alert('Unable to import: engine API is not available.');
+                return;
+            }
+            api.importGameData(gameData);
+            api.draw();
+            api.renderAll?.();
+
+            const shareUrl = ShareUtils.buildShareUrl(gameData);
+            if (shareUrl) {
+                try {
+                    const hashStart = shareUrl.indexOf('#');
+                    if (hashStart !== -1) {
+                        location.hash = shareUrl.slice(hashStart + 1);
+                    }
+                } catch { /* skip in environments without location */ }
+                const urlInput = document.getElementById('project-share-url') as HTMLInputElement | null;
+                if (urlInput) {
+                    urlInput.value = shareUrl;
+                }
+            }
+        } catch (error) {
+            console.error('Import failed', error);
+            alert(TextResources.get('alerts.importHTML.decodeError', 'Não foi possível decodificar os dados do jogo.') as string);
         }
     }
 
