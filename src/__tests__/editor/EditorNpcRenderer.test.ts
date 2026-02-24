@@ -1,6 +1,19 @@
-/* eslint-disable */
+
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorNpcRenderer } from '../../editor/modules/renderers/EditorNpcRenderer';
+
+type NpcRendererService = ConstructorParameters<typeof EditorNpcRenderer>[0];
+type NpcSpriteEntry = Parameters<EditorNpcRenderer['getNpcDialogueText']>[0] extends infer T ? NonNullable<T> : never;
+type NpcDefinitionInput = Parameters<EditorNpcRenderer['drawNpcPreview']>[1];
+type TestService = ReturnType<typeof makeService>;
+
+function asNpcRendererService(service: TestService): NpcRendererService {
+  return service as unknown as NpcRendererService;
+}
+
+function asCanvasElement(value: unknown): HTMLCanvasElement {
+  return value as HTMLCanvasElement;
+}
 
 function makeService(managerOverrides: Record<string, unknown> = {}, domOverrides: Record<string, unknown> = {}) {
   const npcsList = document.createElement('ul');
@@ -49,7 +62,7 @@ function makeService(managerOverrides: Record<string, unknown> = {}, domOverride
           { type: 'beast', name: 'Beast', variant: 'beast' },
         ]),
       },
-      getSprites: vi.fn((): any[] => []),
+      getSprites: vi.fn((): NpcSpriteEntry[] => []),
       renderer: {
         npcSprites: {
           default: [['#FF0000', '#FF0000']],
@@ -66,7 +79,7 @@ function makeService(managerOverrides: Record<string, unknown> = {}, domOverride
       };
       return map[key] ?? fallback;
     }),
-    tf: vi.fn((_key: string, _params = {}, fallback = '') => fallback),
+    tf: vi.fn((_key: string, _params: Record<string, unknown> = {}, fallback = ''): string => fallback),
   };
 
   return service;
@@ -79,14 +92,14 @@ describe('EditorNpcRenderer', () => {
 
   it('returns early when npcsList is null', () => {
     const svc = makeService({}, { npcsList: null });
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     expect(() => renderer.renderNpcs()).not.toThrow();
     expect(svc.gameEngine.npcManager.ensureDefaultNPCs).not.toHaveBeenCalled();
   });
 
   it('calls ensureDefaultNPCs on render', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     expect(svc.gameEngine.npcManager.ensureDefaultNPCs).toHaveBeenCalled();
   });
@@ -94,7 +107,7 @@ describe('EditorNpcRenderer', () => {
   it('renders only npcs matching current variant filter', () => {
     const svc = makeService();
     svc.state.npcVariantFilter = 'human';
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const cards = svc.dom.npcsList.querySelectorAll('.npc-card');
     // Should render hero and mage (human), not beast
@@ -104,7 +117,7 @@ describe('EditorNpcRenderer', () => {
   it('renders beast variant when filter is "beast"', () => {
     const svc = makeService();
     svc.state.npcVariantFilter = 'beast';
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const cards = svc.dom.npcsList.querySelectorAll('.npc-card');
     expect(cards.length).toBe(1);
@@ -116,7 +129,7 @@ describe('EditorNpcRenderer', () => {
     svc.gameEngine.getSprites.mockReturnValue([
       { type: 'hero', roomIndex: 0, x: 2, y: 3, placed: true },
     ]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const card = svc.dom.npcsList.querySelector('.npc-card-placed');
     expect(card).toBeTruthy();
@@ -127,7 +140,7 @@ describe('EditorNpcRenderer', () => {
     svc.gameEngine.getSprites.mockReturnValue([
       { type: 'hero', roomIndex: 0, x: 0, y: 0, placed: false },
     ]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const card = svc.dom.npcsList.querySelector('.npc-card-created');
     expect(card).toBeTruthy();
@@ -136,7 +149,7 @@ describe('EditorNpcRenderer', () => {
   it('marks unavailable npc with npc-card-available class', () => {
     const svc = makeService();
     svc.gameEngine.getSprites.mockReturnValue([]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const card = svc.dom.npcsList.querySelector('.npc-card-available');
     expect(card).toBeTruthy();
@@ -145,7 +158,7 @@ describe('EditorNpcRenderer', () => {
   it('marks selected npc type with "selected" class', () => {
     const svc = makeService();
     svc.manager.selectedNpcType = 'hero';
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const selected = svc.dom.npcsList.querySelector('.npc-card.selected');
     expect(selected).toBeTruthy();
@@ -157,7 +170,7 @@ describe('EditorNpcRenderer', () => {
     svc.gameEngine.getSprites.mockReturnValue([
       { type: 'hero', roomIndex: 0, x: 3, y: 5, placed: true },
     ]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const posEl = svc.dom.npcsList.querySelector('.npc-position');
     expect(posEl?.textContent).toBe('(3, 5)');
@@ -166,7 +179,7 @@ describe('EditorNpcRenderer', () => {
   it('shows "Available" text when npc is not placed', () => {
     const svc = makeService();
     svc.gameEngine.getSprites.mockReturnValue([]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const posEl = svc.dom.npcsList.querySelector('.npc-position');
     expect(posEl?.textContent).toBe('Available');
@@ -180,21 +193,21 @@ describe('EditorNpcRenderer', () => {
       if (key === 'npc.hero.name') return 'The Hero';
       return fallback;
     });
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     const name = renderer.getNpcName({ type: 'hero', nameKey: 'npc.hero.name', name: 'Hero' });
     expect(name).toBe('The Hero');
   });
 
   it('getNpcName falls back to definition.name when no nameKey', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     const name = renderer.getNpcName({ type: 'hero', name: 'Hero' });
     expect(name).toBe('Hero');
   });
 
   it('getNpcName returns default when definition is null', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     const name = renderer.getNpcName(null);
     expect(name).toBe('NPC');
   });
@@ -203,13 +216,13 @@ describe('EditorNpcRenderer', () => {
 
   it('getNpcDialogueText returns empty string when npc is null', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     expect(renderer.getNpcDialogueText(null)).toBe('');
   });
 
   it('getNpcDialogueText returns npc.text when no textKey', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     const text = renderer.getNpcDialogueText({
       type: 'hero', roomIndex: 0, x: 0, y: 0, text: 'Hello!'
     });
@@ -222,7 +235,7 @@ describe('EditorNpcRenderer', () => {
       if (key === 'npc.hero.text') return 'Greetings traveler!';
       return fallback;
     });
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     const text = renderer.getNpcDialogueText({
       type: 'hero', roomIndex: 0, x: 0, y: 0, textKey: 'npc.hero.text', text: 'fallback'
     });
@@ -234,7 +247,7 @@ describe('EditorNpcRenderer', () => {
   it('updateVariantButtons activates matching button', () => {
     const svc = makeService();
     svc.state.npcVariantFilter = 'beast';
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateVariantButtons();
     const [humanBtn, beastBtn] = svc.dom.npcVariantButtons as HTMLButtonElement[];
     expect(humanBtn.classList.contains('active')).toBe(false);
@@ -245,7 +258,7 @@ describe('EditorNpcRenderer', () => {
 
   it('updateVariantButtons does nothing when no buttons present', () => {
     const svc = makeService({}, { npcVariantButtons: [] });
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     expect(() => renderer.updateVariantButtons()).not.toThrow();
   });
 
@@ -254,7 +267,7 @@ describe('EditorNpcRenderer', () => {
   it('hides npcEditor when no npc selected', () => {
     const svc = makeService();
     svc.manager.selectedNpcId = null;
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.dom.npcEditor.hidden).toBe(true);
   });
@@ -263,7 +276,7 @@ describe('EditorNpcRenderer', () => {
     const svc = makeService();
     svc.manager.selectedNpcId = 'npc-1';
     svc.gameEngine.getSprites.mockReturnValue([{ id: 'npc-1', type: 'hero', roomIndex: 0, x: 0, y: 0 }]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.dom.npcEditor.hidden).toBe(false);
   });
@@ -272,7 +285,7 @@ describe('EditorNpcRenderer', () => {
     const svc = makeService();
     svc.manager.selectedNpcId = 'nonexistent';
     svc.gameEngine.getSprites.mockReturnValue([]);
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.dom.npcText.disabled).toBe(true);
   });
@@ -280,7 +293,7 @@ describe('EditorNpcRenderer', () => {
   it('sets btnToggleNpcConditional text based on expansion state', () => {
     const svc = makeService();
     svc.state.conditionalDialogueExpanded = true;
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.dom.btnToggleNpcConditional.textContent).toBe('Hide');
   });
@@ -288,7 +301,7 @@ describe('EditorNpcRenderer', () => {
   it('shows/hides npcConditionalSection based on expansion state', () => {
     const svc = makeService();
     svc.state.conditionalDialogueExpanded = false;
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.dom.npcConditionalSection.hidden).toBe(true);
 
@@ -299,7 +312,7 @@ describe('EditorNpcRenderer', () => {
 
   it('calls populateVariableSelect three times per updateNpcForm', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.manager.npcService.populateVariableSelect).toHaveBeenCalledTimes(3);
   });
@@ -308,8 +321,8 @@ describe('EditorNpcRenderer', () => {
 
   it('drawNpcPreview returns early when canvas is not HTMLCanvasElement', () => {
     const svc = makeService();
-    const renderer = new EditorNpcRenderer(svc as any);
-    expect(() => renderer.drawNpcPreview({} as any, { type: 'hero' })).not.toThrow();
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
+    expect(() => renderer.drawNpcPreview(asCanvasElement({}), { type: 'hero' } as NpcDefinitionInput)).not.toThrow();
   });
 
   it('drawNpcPreview draws sprite pixels on canvas', () => {
@@ -317,7 +330,7 @@ describe('EditorNpcRenderer', () => {
     const canvas = document.createElement('canvas');
     canvas.width = 48;
     canvas.height = 48;
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     // Should not throw; uses npcSprites
     expect(() => renderer.drawNpcPreview(canvas, { type: 'hero' })).not.toThrow();
   });
@@ -327,7 +340,7 @@ describe('EditorNpcRenderer', () => {
     const canvas = document.createElement('canvas');
     canvas.width = 48;
     canvas.height = 48;
-    const renderer = new EditorNpcRenderer(svc as any);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     expect(() => renderer.drawNpcPreview(canvas, { type: 'unknown-npc' })).not.toThrow();
   });
 });
