@@ -118,9 +118,19 @@ class EditorExportService {
             // Collect CSS from all active non-external stylesheets.
             // Using document.styleSheets handles both prod mode (<link rel="stylesheet"> injected
             // by Vite build) and dev mode (<style> tags injected by Vite HMR).
+            const isCrossOriginStylesheet = (href: string): boolean => {
+                try {
+                    const stylesheetUrl = new URL(href, window.location.href);
+                    return stylesheetUrl.origin !== window.location.origin;
+                } catch {
+                    // If URL parsing fails, treat as local and let fetch/catch handle it.
+                    return false;
+                }
+            };
             for (const sheet of Array.from(document.styleSheets)) {
-                // Skip external stylesheets (Google Fonts, CDN resources, etc.)
-                if (sheet.href && (sheet.href.startsWith('http://') || sheet.href.startsWith('https://'))) {
+                // Skip only cross-origin stylesheets (Google Fonts, CDN, etc.).
+                // Same-origin http(s) stylesheets contain the app CSS and must be embedded in exports.
+                if (sheet.href && isCrossOriginStylesheet(sheet.href)) {
                     continue;
                 }
                 if (sheet.href) {
