@@ -37,13 +37,18 @@ class EditorExportService {
             const downloadError = 'Unable to download project assets. Please run Tiny RPG Studio from an HTTP/HTTPS server (not file://) to export HTML.';
 
             let cssText = '';
-            // Get all local CSS files (not external like Google Fonts)
-            const linkEls = Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'));
-            for (const linkEl of linkEls) {
-                const href = linkEl.getAttribute('href');
-                if (href && !href.startsWith('http://') && !href.startsWith('https://')) {
+            // Collect CSS from all active non-external stylesheets.
+            // Using document.styleSheets handles both prod mode (<link rel="stylesheet"> injected
+            // by Vite build) and dev mode (<style> tags injected by Vite HMR).
+            for (const sheet of Array.from(document.styleSheets)) {
+                // Skip external stylesheets (Google Fonts, CDN resources, etc.)
+                if (sheet.href && (sheet.href.startsWith('http://') || sheet.href.startsWith('https://'))) {
+                    continue;
+                }
+                if (sheet.href) {
+                    // Local <link rel="stylesheet"> — fetch the raw file content
                     try {
-                        const resp = await fetch(href as RequestInfo);
+                        const resp = await fetch(sheet.href as RequestInfo);
                         if (resp.ok) {
                             cssText += await resp.text() + '\n';
                         } else {
@@ -53,6 +58,13 @@ class EditorExportService {
                     } catch {
                         alert(downloadError);
                         return;
+                    }
+                } else {
+                    // Inline <style> tag (Vite dev mode injects CSS as style elements)
+                    try {
+                        cssText += Array.from(sheet.cssRules ?? []).map((r) => r.cssText).join('\n') + '\n';
+                    } catch {
+                        // Skip inaccessible stylesheets (cross-origin security restrictions)
                     }
                 }
             }
