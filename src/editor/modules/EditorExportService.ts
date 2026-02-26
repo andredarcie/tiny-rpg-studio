@@ -359,6 +359,13 @@ class EditorExportService {
                 </script>
                 </head>
                 <body class="game-mode">
+                <button id="btn-open-studio" style="position:absolute;top:10px;right:10px;z-index:9999;">Open Studio</button>
+                <script>
+                document.getElementById('btn-open-studio')?.addEventListener('click', function(){
+                    const url = 'https://andredarcie.github.io/tiny-rpg-studio/#' + (globalThis.__TINY_RPG_SHARED_CODE|| '');
+                    window.open(url, '_blank');
+                });
+                </script>
                 <div class="app">
                 <main>
                 <div class="tabs">
