@@ -181,6 +181,18 @@ class InputManager {
       this.touchStart = null;
       return;
     }
+    const dialog = this.gameEngine.gameState.getDialog();
+    if (dialog.active) {
+      ev.preventDefault();
+      if (dialog.page >= dialog.maxPages) {
+        this.gameEngine.closeDialog();
+      } else {
+        this.gameEngine.gameState.setDialogPage(dialog.page + 1);
+        this.gameEngine.renderer.draw();
+      }
+      this.touchStart = null;
+      return;
+    }
     const touch = ev.changedTouches.item(0);
     if (!touch) return;
     this.touchStart = {

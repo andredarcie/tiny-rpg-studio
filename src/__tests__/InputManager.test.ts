@@ -140,6 +140,45 @@ describe('InputManager', () => {
     expect(engine.tryMove).toHaveBeenCalledWith(-1, 0);
   });
 
+  it('handleTouchStart advances dialog page on tap', () => {
+    document.body.classList.add('game-mode');
+    const setDialogPage = vi.fn();
+    const draw = vi.fn();
+    const engine = createEngine({
+      gameState: {
+        getDialog: () => ({ active: true, page: 1, maxPages: 2 }),
+        setDialogPage,
+      },
+      renderer: { draw },
+    });
+    const manager = new InputManager(engine);
+    const ev = createTouchEvent(10, 20);
+
+    manager.handleTouchStart(ev);
+
+    expect(ev.preventDefault).toHaveBeenCalled();
+    expect(setDialogPage).toHaveBeenCalledWith(2);
+    expect(draw).toHaveBeenCalled();
+  });
+
+  it('handleTouchStart closes dialog on last page tap', () => {
+    document.body.classList.add('game-mode');
+    const engine = createEngine({
+      gameState: {
+        getDialog: () => ({ active: true, page: 2, maxPages: 2 }),
+        setDialogPage: vi.fn(),
+      },
+    });
+    const manager = new InputManager(engine);
+    const ev = createTouchEvent(10, 20);
+
+    manager.handleTouchStart(ev);
+
+    expect(ev.preventDefault).toHaveBeenCalled();
+    expect(engine.closeDialog).toHaveBeenCalled();
+    expect(engine.gameState.setDialogPage).not.toHaveBeenCalled();
+  });
+
   it('handleTouchStart tracks initial touch', () => {
     document.body.classList.add('game-mode');
     const engine = createEngine();
