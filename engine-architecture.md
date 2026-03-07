@@ -291,28 +291,3 @@ This design is solid, but there are predictable pressure points:
 - The editor depends deeply on runtime behavior. That is strategically good, but it means runtime API stability matters a lot for authoring velocity.
 
 These are not failures. They are the natural scaling constraints of the current architecture.
-
-## Senior-Level Reading of the Design
-
-From an architectural standpoint, the codebase is not organized as:
-
-- UI first
-- or rendering first
-- or editor first
-
-It is organized around a shared runtime core with surrounding adapters and tools.
-
-That is the correct center of gravity for this kind of product.
-
-If the project grows, the next architectural milestone should not be "more modules" in the abstract. It should be stricter enforcement of boundaries between:
-
-- orchestration
-- domain state mutation
-- presentation/rendering
-- serialization/integration
-
-The current design already points in that direction. The right next step is refinement, not reinvention.
-
-## Conclusion
-
-Tiny RPG Maker is best understood as a browser game engine with an integrated authoring surface built on top of a single runtime core. `GameEngine` orchestrates. `GameState` owns truth. The editor writes through the runtime. Rendering and sharing sit at the edges as adapters. That is the architectural story the codebase tells today, and it is a credible foundation for continued engine growth.
