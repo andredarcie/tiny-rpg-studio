@@ -1,141 +1,318 @@
-# Engine Architecture
+# Tiny RPG Maker Engine Architecture
 
-This document describes the Tiny RPG Maker engine as an architecture diagram rather than a class inventory.
+This document presents the engine as a runtime architecture, not as a flat list of classes. The goal is to explain how the system is structured, where responsibility lives, and why the current shape is strategically sound for a browser-based game engine with an integrated editor.
 
-## Architecture Overview
+## Executive Summary
+
+Tiny RPG Maker is architected as a browser-native game platform with a shared runtime core. The same runtime that executes the game is also the engine that the editor writes into. That is the most important architectural decision in the codebase.
+
+This produces four useful properties:
+
+- gameplay and authoring operate on the same rules and data model
+- rendering is isolated as a platform adapter around the core state
+- sharing and import/export remain infrastructure concerns instead of leaking into gameplay logic
+- the application can remain fully client-side while still supporting editing, previewing, and serialized distribution
+
+## Architectural Drivers
+
+The current structure strongly suggests these drivers:
+
+1. Single source of truth for game behavior
+2. Browser-first execution with no runtime backend dependency
+3. Tight feedback loop between editor and playable runtime
+4. Low-friction game sharing through URLs and exported data
+5. Modular rendering and gameplay services without duplicating the domain model
+
+## System Context
+
+```mermaid
+flowchart LR
+    Creator[Creator]
+    Player[Player]
+    Browser[Browser Application]
+    URL[Shared URL / Embedded Data]
+    Canvas[Canvas Output]
+    DOM[DOM and UI]
+
+    Creator --> Browser
+    Player --> Browser
+    Browser --> Canvas
+    Browser --> DOM
+    Browser <--> URL
+```
+
+At the highest level, this is a self-contained browser application used in two roles:
+
+- as a game runtime for players
+- as an authoring environment for creators
+
+## Container Architecture
 
 ```mermaid
 flowchart TB
-    User[Player / Creator]
-    Browser[Browser Runtime]
-
-    User --> Browser
-
-    subgraph AppShell[Application Shell]
+    subgraph Shell[Application Shell]
         Bootstrap[src/main.ts<br/>TinyRPGApplication]
-        PublicApi[TinyRpgApi]
+        Api[TinyRpgApi]
         Localization[TextResources]
     end
 
-    subgraph EditorLayer[Editor Layer]
-        EditorUI[Editor UI Controllers]
-        EditorServices[Editor Services<br/>tiles, NPCs, enemies, objects, world, palette, history, sharing]
+    subgraph Editor[Editor Container]
+        EditorManager[EditorManager]
+        EditorControllers[UI and Interaction Controllers]
+        EditorServices[Editing Services<br/>tiles, NPCs, enemies, objects, variables, world, palette, sharing, history]
         EditorState[EditorState]
     end
 
-    subgraph RuntimeLayer[Runtime Layer]
-        Engine[GameEngine<br/>runtime orchestration]
-        RuntimeServices[Runtime Services<br/>movement, interaction, combat, NPCs, tiles, dialog]
+    subgraph Runtime[Game Runtime Container]
+        Engine[GameEngine<br/>orchestration boundary]
+        RuntimeServices[Gameplay Services<br/>movement, interaction, combat, dialog, enemies, NPCs, tiles]
         Input[InputManager]
     end
 
-    subgraph DomainLayer[Domain and State Layer]
-        GameState[GameState]
-        DomainManagers[Domain Managers<br/>player, world, enemies, objects, variables, skills, items, dialog]
-        Definitions[Definitions and Entities<br/>tiles, enemies, NPCs, skills, items, sprites]
+    subgraph Domain[Domain Core]
+        State[GameState<br/>source of truth]
+        StateManagers[State Managers<br/>player, world, objects, enemies, variables, skills, items, dialog]
+        Definitions[Definitions and Entities]
         Config[GameConfig]
     end
 
-    subgraph AdapterLayer[Adapter Layer]
-        Renderer[Renderer<br/>canvas renderer]
-        RenderModules[Render Modules<br/>tiles, entities, HUD, overlays, dialogs, minimap, effects, transitions]
-        ShareInfra[Share Infrastructure<br/>encoder, decoder, URL helpers]
+    subgraph Adapters[Platform and Infrastructure Adapters]
+        Renderer[Renderer]
+        RenderModules[Render Modules<br/>tiles, entities, HUD, overlays, dialog, minimap, effects, transitions]
+        Share[Share Infrastructure<br/>encoder, decoder, URL helpers]
     end
 
-    subgraph Platform[Browser Platform]
-        DOM[DOM Events / HTML UI]
+    subgraph BrowserPlatform[Browser Platform]
+        DOM[DOM Events and HTML]
         Canvas[Canvas]
-        URL[Location / URL]
+        Location[Location and URL]
     end
 
     Bootstrap --> Engine
-    Bootstrap --> EditorUI
-    Bootstrap --> PublicApi
-    Bootstrap --> ShareInfra
+    Bootstrap --> EditorManager
+    Bootstrap --> Api
     Bootstrap --> Localization
+    Bootstrap --> Share
 
-    EditorUI --> EditorServices
-    EditorServices --> EditorState
+    EditorManager --> EditorControllers
+    EditorManager --> EditorServices
+    EditorManager --> EditorState
     EditorServices --> Engine
-    EditorUI --> DOM
+    EditorControllers --> DOM
 
-    PublicApi --> Engine
+    Api --> Engine
 
     Input --> DOM
     Engine --> Input
     Engine --> RuntimeServices
-    Engine --> GameState
+    Engine --> State
     Engine --> Renderer
     Engine --> Config
 
-    RuntimeServices --> GameState
+    RuntimeServices --> State
     RuntimeServices --> Renderer
 
-    GameState --> DomainManagers
-    GameState --> Definitions
-    GameState --> Config
+    State --> StateManagers
+    State --> Definitions
+    State --> Config
 
     Renderer --> RenderModules
     Renderer --> Canvas
-    Renderer --> GameState
+    Renderer --> State
 
-    ShareInfra --> URL
-    ShareInfra --> GameState
+    Share --> State
+    Share --> Location
 ```
 
-## Layer Responsibilities
+## Architectural Thesis
 
-### Application shell
+The architecture is intentionally centered around two core elements:
 
-- `src/main.ts` composes the application.
-- It wires the game runtime, editor, localization, and sharing entry points.
-- It also exposes `TinyRpgApi` as a thin integration surface.
+- `GameEngine` as the orchestration boundary
+- `GameState` as the domain and state boundary
 
-### Editor layer
+Everything else is either:
 
-- The editor is centered on `src/editor/EditorManager.ts`.
-- Its job is authoring and inspection, not core gameplay logic.
-- Editor services mutate game data through `GameEngine`, which keeps runtime behavior consistent between play mode and edit mode.
+- a client of the engine
+- a specialized service behind the engine
+- or an adapter translating state to browser-facing behavior
 
-### Runtime layer
+That separation is what keeps the system understandable.
 
-- `src/runtime/services/GameEngine.ts` is the orchestration boundary for live gameplay.
-- It coordinates input, movement, combat, dialog, NPC behavior, enemy loops, and redraws.
-- Runtime services contain gameplay workflows and call into state plus rendering.
+## Responsibilities by Layer
 
-### Domain and state layer
+### 1. Application shell
 
-- `src/runtime/domain/GameState.ts` is the central state boundary.
-- It owns the persistent game definition and the mutable runtime state.
-- Specialized state managers partition responsibilities for player state, world state, enemies, objects, variables, skills, items, and dialog.
+`src/main.ts` is composition code. It should not own business rules. Its role is to wire the system together:
 
-### Adapter layer
+- initialize the runtime
+- initialize the editor when applicable
+- bind browser events and tab switching
+- expose `TinyRpgApi` as a narrow integration surface
+- load shared game data from URL or embedded export payloads
 
-- `Renderer` is the visual adapter between engine state and the canvas.
-- Share infrastructure is the serialization adapter between game data and URLs/export formats.
-- These modules sit outside the core domain and translate state into platform-facing behavior.
+This is a good boundary. Bootstrapping is kept outside the core engine.
 
-## Architectural Reading
+### 2. Editor layer
 
-- The architecture is centered on `GameEngine` as the orchestrator and `GameState` as the source of truth.
-- The editor is not a separate engine. It is a client of the runtime.
-- Rendering and sharing are adapters around the domain, not the domain itself.
-- Configuration and static definitions feed both runtime behavior and editor tooling.
+The editor is centered on `src/editor/EditorManager.ts` and its service modules. Architecturally, the editor is a consumer of the runtime, not a parallel implementation of game rules.
 
-## Main Runtime Flow
+That is the right decision.
+
+Instead of inventing a second game model for authoring, the editor writes through the same engine and state model used during play. This reduces behavioral drift and avoids the classic failure mode where editor data looks valid but behaves differently at runtime.
+
+The editor layer therefore owns:
+
+- authoring workflows
+- selection and editing state
+- editor-focused rendering and UI
+- undo/redo and palette workflows
+- import/export actions from the authoring side
+
+It should not own gameplay rules.
+
+### 3. Runtime layer
+
+`src/runtime/services/GameEngine.ts` is the system coordinator. It sits between UI/input and the domain core.
+
+Its role is to:
+
+- receive high-level actions
+- delegate to gameplay services
+- trigger draw cycles
+- coordinate resets, intro flow, overlays, and enemy loop timing
+- expose coarse-grained operations to the editor and public API
+
+This is not the domain model. It is the orchestration layer around the domain model.
+
+That distinction matters. Orchestration can change frequently. Core state semantics should change much more carefully.
+
+### 4. Domain core
+
+`src/runtime/domain/GameState.ts` is the source of truth for both:
+
+- persistent game definition
+- mutable runtime state
+
+The decomposition into specialized state managers is the correct scaling move. It prevents `GameState` from collapsing into a single unmaintainable god object, even though it still acts as the aggregate root.
+
+The domain core owns:
+
+- player progression and runtime stats
+- room/world structure
+- enemies, objects, items, and variables
+- dialog and level-up overlays
+- import/export normalization
+- lifecycle transitions such as pause, resume, game over, and revive
+
+This layer should remain the most stable part of the architecture.
+
+### 5. Rendering and infrastructure adapters
+
+The adapter layer translates domain/runtime concepts into browser-facing implementation details.
+
+`Renderer` is a rendering facade over a set of specialized modules. That is a healthy shape for a growing engine because it allows visual complexity to increase without forcing the engine orchestration layer to absorb rendering detail.
+
+The share stack under `src/runtime/infra/share/` is also correctly placed. Serialization, compact encoding, and URL transport are infrastructure concerns. They should depend on the game model, not the other way around.
+
+## Dependency Rules
+
+The architecture works because dependency direction is mostly coherent. The intended rules are:
+
+1. The editor depends on the engine, not the inverse.
+2. The engine depends on domain state and adapters.
+3. Gameplay services depend on domain state and may request rendering side effects.
+4. Adapters depend on domain data but should not define domain rules.
+5. Configuration and static definitions are upstream inputs to both runtime and editor.
+
+If these rules are preserved, the codebase remains extensible.
+
+## Runtime Control Flow
 
 ```mermaid
 flowchart LR
-    A[DOM input or editor action] --> B[GameEngine]
-    B --> C[Runtime service]
-    C --> D[GameState]
-    D --> E[Renderer]
-    E --> F[Canvas output]
+    InputAction[DOM input or engine event]
+    Engine[GameEngine]
+    Service[Runtime service]
+    State[GameState]
+    Renderer[Renderer]
+    Output[Canvas frame]
+
+    InputAction --> Engine
+    Engine --> Service
+    Service --> State
+    Engine --> Renderer
+    State --> Renderer
+    Renderer --> Output
 ```
 
-## Why this is the architecture
+This is the dominant runtime loop:
 
-- It shows subsystem boundaries instead of every concrete class.
-- It makes the dependency direction explicit.
-- It separates orchestration, domain state, adapters, and authoring tooling.
-- It matches the current codebase structure in `src/main.ts`, `src/editor/`, `src/runtime/services/`, `src/runtime/domain/`, `src/runtime/adapters/`, and `src/runtime/infra/share/`.
+- an action enters through browser input or an internal engine event
+- `GameEngine` routes the action to the appropriate runtime service
+- the service mutates `GameState`
+- the renderer projects the updated state into a new frame
+
+## Authoring Control Flow
+
+```mermaid
+flowchart LR
+    EditorAction[Editor interaction]
+    EditorLayer[Editor services and controllers]
+    Engine[GameEngine]
+    State[GameState]
+    Share[Share or export pipeline]
+    View[Editor canvas and UI]
+
+    EditorAction --> EditorLayer
+    EditorLayer --> Engine
+    Engine --> State
+    State --> View
+    EditorLayer --> Share
+```
+
+This is the key architectural strength of the product: editor actions are not writing to a disconnected authoring model. They flow into the same runtime-backed representation.
+
+## Strengths of the Current Design
+
+- The editor and runtime share a single behavioral core.
+- `GameEngine` provides a clear operational entry point for the application.
+- `GameState` provides a stable aggregate root around which specialized managers are organized.
+- Rendering is sufficiently modular to scale visually without turning the engine into a canvas script blob.
+- Sharing/export logic is isolated in infrastructure modules rather than mixed into gameplay services.
+
+## Architectural Risks and Watchpoints
+
+This design is solid, but there are predictable pressure points:
+
+- `GameEngine` can become too wide if every new feature is added as another direct responsibility instead of through service boundaries.
+- `GameState` is still a central aggregate and can drift toward excessive surface area if manager boundaries are not enforced.
+- Some runtime services currently know about rendering side effects. That is acceptable in a small browser engine, but it should stay disciplined.
+- The editor depends deeply on runtime behavior. That is strategically good, but it means runtime API stability matters a lot for authoring velocity.
+
+These are not failures. They are the natural scaling constraints of the current architecture.
+
+## Senior-Level Reading of the Design
+
+From an architectural standpoint, the codebase is not organized as:
+
+- UI first
+- or rendering first
+- or editor first
+
+It is organized around a shared runtime core with surrounding adapters and tools.
+
+That is the correct center of gravity for this kind of product.
+
+If the project grows, the next architectural milestone should not be "more modules" in the abstract. It should be stricter enforcement of boundaries between:
+
+- orchestration
+- domain state mutation
+- presentation/rendering
+- serialization/integration
+
+The current design already points in that direction. The right next step is refinement, not reinvention.
+
+## Conclusion
+
+Tiny RPG Maker is best understood as a browser game engine with an integrated authoring surface built on top of a single runtime core. `GameEngine` orchestrates. `GameState` owns truth. The editor writes through the runtime. Rendering and sharing sit at the edges as adapters. That is the architectural story the codebase tells today, and it is a credible foundation for continued engine growth.
