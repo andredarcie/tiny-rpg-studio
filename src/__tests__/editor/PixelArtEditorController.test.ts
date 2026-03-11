@@ -134,13 +134,18 @@ describe('PixelArtEditorController', () => {
             controller.init(manager, dom);
 
             const opened = controller.open('tile', '2');
+            const frameBar = dom.paeFrameBar;
 
             expect(opened).toBe(true);
+            expect(frameBar).not.toBeNull();
             expect(controller.getCurrentFrames()).toHaveLength(2);
-            expect(dom.paeFrameBar!.hidden).toBe(false);
-            expect(dom.paeFrameBar!.querySelectorAll('.pae-frame-btn')).toHaveLength(2);
-            expect(dom.paeFrameBar!.textContent).toContain('Frame 0');
-            expect(dom.paeFrameBar!.textContent).toContain('Frame 1');
+            if (!frameBar) {
+                throw new Error('Expected frame bar to exist');
+            }
+            expect(frameBar.hidden).toBe(false);
+            expect(frameBar.querySelectorAll('.pae-frame-btn')).toHaveLength(2);
+            expect(frameBar.textContent).toContain('Frame 0');
+            expect(frameBar.textContent).toContain('Frame 1');
         });
 
         it('switches the active frame when clicking a frame button', () => {
@@ -149,10 +154,15 @@ describe('PixelArtEditorController', () => {
             const controller = new PixelArtEditorController();
             controller.init(manager, dom);
             controller.open('tile', '2');
+            const frameBar = dom.paeFrameBar;
+            expect(frameBar).not.toBeNull();
+            if (!frameBar) {
+                throw new Error('Expected frame bar to exist');
+            }
 
-            const frameButtons = dom.paeFrameBar!.querySelectorAll('.pae-frame-btn');
+            const frameButtons = frameBar.querySelectorAll('.pae-frame-btn');
             (frameButtons[1] as HTMLButtonElement).click();
-            const rerenderedButtons = dom.paeFrameBar!.querySelectorAll('.pae-frame-btn');
+            const rerenderedButtons = frameBar.querySelectorAll('.pae-frame-btn');
 
             expect((rerenderedButtons[1] as HTMLButtonElement).classList.contains('active')).toBe(true);
             expect(context2d.clearRect).toHaveBeenCalled();
@@ -161,7 +171,12 @@ describe('PixelArtEditorController', () => {
         it('localizes palette swatch titles', () => {
             const { manager } = makeManager();
             const { dom } = makeDom();
-            const appendChild = dom.paePalette!.appendChild as unknown as ReturnType<typeof vi.fn>;
+            const palette = dom.paePalette;
+            expect(palette).not.toBeNull();
+            if (!palette) {
+                throw new Error('Expected palette to exist');
+            }
+            const appendChild = palette.appendChild as unknown as ReturnType<typeof vi.fn>;
             const controller = new PixelArtEditorController();
             controller.init(manager, dom);
 
