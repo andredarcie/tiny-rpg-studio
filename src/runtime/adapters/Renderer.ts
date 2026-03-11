@@ -40,7 +40,7 @@ type TileManagerApi = {
 };
 
 /**
- * Renderer coordena módulos especializados para desenhar a cena.
+ * Renderer coordinates specialized modules to draw the scene.
  */
 class Renderer {
     canvas!: HTMLCanvasElement;
@@ -488,7 +488,7 @@ class Renderer {
         this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
     }
 
-    // Getters para compatibilidade com código existente que acessa sprites diretamente.
+    // Getters kept for compatibility with existing code that accesses sprites directly.
     get playerSprite(): SpriteMatrix | null {
         return this.spriteFactory.getPlayerSprite();
     }
@@ -509,7 +509,7 @@ class Renderer {
         return this.spriteFactory.getObjectSprites() as SpriteMap;
     }
 
-    // Métodos preservados para compatibilidade.
+    // Methods kept for compatibility.
     buildPlayerSprite() {
         return this.spriteFactory.getPlayerSprite();
     }

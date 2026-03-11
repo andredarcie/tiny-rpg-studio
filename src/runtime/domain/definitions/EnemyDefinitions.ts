@@ -5,7 +5,7 @@ import type { EnemyDefinition } from '../../../types/gameState';
 
 type EnemyTypeInput = string | null | undefined;
 /**
- * EnemyDefinitions concentra os inimigos disponiveis para o editor.
+ * EnemyDefinitions centralizes the enemies available in the editor.
  */
 class EnemyDefinitions {
     static ENEMY_DEFINITION_DATA: EnemyDefinitionData[] = [

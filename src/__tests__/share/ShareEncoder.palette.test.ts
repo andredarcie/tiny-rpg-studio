@@ -25,7 +25,7 @@ describe('ShareEncoder - Custom Palette', () => {
 
         const encoded = ShareEncoder.buildShareCode(gameData);
 
-        // Deve conter segmento 'P' em base64url (sem '#' e sem vírgulas)
+        // It should contain a base64url P segment, without '#' or commas.
         expect(encoded).toContain('P');
         expect(encoded).not.toContain('#');
         expect(encoded).not.toContain(',');
@@ -48,7 +48,7 @@ describe('ShareEncoder - Custom Palette', () => {
 
         const encoded = ShareEncoder.buildShareCode(gameData);
 
-        // Não deve ter segmento 'P'
+        // It should not contain a P segment.
         expect(encoded).not.toContain('.P');
     });
 

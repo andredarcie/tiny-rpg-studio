@@ -3,7 +3,7 @@ import { Tile } from '../entities/Tile';
 import type { TileDefinitionData, TileFrame } from '../entities/Tile';
 
 /**
- * TileDefinitions centraliza a paleta PICO-8 e os tiles padrão.
+ * TileDefinitions centralizes the PICO-8 palette and the default tiles.
  */
 class TileDefinitions {
     static PICO8_COLORS = Object.freeze([

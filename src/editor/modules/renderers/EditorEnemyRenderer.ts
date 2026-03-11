@@ -2,6 +2,8 @@
 import { EditorConstants } from '../EditorConstants';
 import { RendererConstants } from '../../../runtime/adapters/renderer/RendererConstants';
 import { EditorRendererBase } from './EditorRendererBase';
+import { CustomSpriteLookup } from '../../../runtime/domain/sprites/CustomSpriteLookup';
+import type { CustomSpriteEntry } from '../../../types/gameState';
 import type { EnemyDefinitionData } from '../../../runtime/domain/entities/Enemy';
 import type { EnemyDefinition } from '../../../types/gameState';
 
@@ -87,6 +89,8 @@ class EditorEnemyRenderer extends EditorRendererBase {
         if (!definitions.length) return;
 
         const selectedType = this.manager.selectedEnemyType;
+        const game = (this.gameEngine as unknown as { getGame?(): { customSprites?: CustomSpriteEntry[] } }).getGame?.();
+        const customSprites = game?.customSprites;
 
         this.renderEnemyCountProgress(container.parentElement || container, container);
 
@@ -142,7 +146,19 @@ class EditorEnemyRenderer extends EditorRendererBase {
             }
 
             meta.append(name, stats);
-            card.append(preview, meta);
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'sprite-edit-btn';
+            editBtn.dataset.editGroup = 'enemy';
+            editBtn.dataset.editKey = definition.type;
+            editBtn.textContent = '✎';
+            const isCustom = CustomSpriteLookup.find(customSprites, 'enemy', definition.type) !== null;
+            if (isCustom) {
+                editBtn.classList.add('is-custom');
+            }
+
+            card.append(preview, meta, editBtn);
             container.appendChild(card);
         });
     }

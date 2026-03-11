@@ -1,6 +1,7 @@
 import type { EditorManager } from '../EditorManager';
 import { EditorManagerModule } from './EditorManagerModule';
 import { DebugFlags } from '../../runtime/debug/DebugFlags';
+import type { CustomSpriteEntry, CustomSpriteVariant } from '../../types/gameState';
 
 class EditorEventBinder extends EditorManagerModule {
     declare manager: EditorManager;
@@ -117,6 +118,19 @@ class EditorEventBinder extends EditorManagerModule {
 
         tileList?.addEventListener('click', (ev: Event): void => {
             const target = ev.target as HTMLElement;
+
+            // Handle sprite edit button - must come before tile selection
+            const editBtn = target.closest('.sprite-edit-btn') as HTMLElement | null;
+            if (editBtn) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const group = editBtn.dataset.editGroup as CustomSpriteEntry['group'];
+                const key = editBtn.dataset.editKey || '';
+                const variant = (editBtn.dataset.editVariant as CustomSpriteVariant | undefined) || 'base';
+                manager.pixelArtEditorController.open(group, key, variant);
+                return;
+            }
+
             const button = target.closest('[data-tile-id]') as HTMLElement | null;
             if (!button) return;
             const tileId = Number(button.dataset.tileId);
@@ -134,6 +148,18 @@ class EditorEventBinder extends EditorManagerModule {
 
         npcsList?.addEventListener('click', (ev: Event) => {
             const target = ev.target as HTMLElement;
+
+            const editBtn = target.closest('.sprite-edit-btn') as HTMLElement | null;
+            if (editBtn) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const group = editBtn.dataset.editGroup as CustomSpriteEntry['group'];
+                const key = editBtn.dataset.editKey || '';
+                const variant = (editBtn.dataset.editVariant as CustomSpriteVariant | undefined) || 'base';
+                manager.pixelArtEditorController.open(group, key, variant);
+                return;
+            }
+
             const card = target.closest('.npc-card') as HTMLElement | null;
             if (!card) return;
             const type = card.dataset.type || null;
@@ -157,6 +183,18 @@ class EditorEventBinder extends EditorManagerModule {
 
         objectTypes?.addEventListener('click', (ev: Event) => {
             const target = ev.target as HTMLElement;
+
+            const editBtn = target.closest('.sprite-edit-btn') as HTMLElement | null;
+            if (editBtn) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const group = editBtn.dataset.editGroup as CustomSpriteEntry['group'];
+                const key = editBtn.dataset.editKey || '';
+                const variant = (editBtn.dataset.editVariant as CustomSpriteVariant | undefined) || 'base';
+                manager.pixelArtEditorController.open(group, key, variant);
+                return;
+            }
+
             const card = target.closest('.object-type-card') as HTMLElement | null;
             if (!card) return;
             const type = card.dataset.type || null;
@@ -180,6 +218,18 @@ class EditorEventBinder extends EditorManagerModule {
 
         enemyTypes?.addEventListener('click', (ev: Event) => {
             const target = ev.target as HTMLElement;
+
+            const editBtn = target.closest('.sprite-edit-btn') as HTMLElement | null;
+            if (editBtn) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const group = editBtn.dataset.editGroup as CustomSpriteEntry['group'];
+                const key = editBtn.dataset.editKey || '';
+                const variant = (editBtn.dataset.editVariant as CustomSpriteVariant | undefined) || 'base';
+                manager.pixelArtEditorController.open(group, key, variant);
+                return;
+            }
+
             const card = target.closest('.enemy-card') as HTMLElement | null;
             if (!card) return;
             const type = card.dataset.type || null;

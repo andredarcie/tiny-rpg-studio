@@ -3,7 +3,7 @@ import { SpriteMatrixRegistry } from '../sprites/SpriteMatrixRegistry';
 import { Npc } from '../entities/Npc';
 import type { NpcDefinitionData, NpcVariant } from '../entities/Npc';
 /**
- * NPCDefinitions centraliza os NPCs fixos disponiveis no editor.
+ * NPCDefinitions centralizes the fixed NPCs available in the editor.
  */
 class NPCDefinitions {
     static NPC_VARIANTS = ['human', 'elf', 'dwarf', 'fixed'] as const;

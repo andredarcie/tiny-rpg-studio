@@ -150,6 +150,17 @@ export type LevelUpResult = {
     levelsGained?: number;
 };
 
+export type CustomSpriteFrame = (number | null)[][];
+
+export type CustomSpriteVariant = 'base' | 'on';
+
+export type CustomSpriteEntry = {
+    group: 'tile' | 'npc' | 'enemy' | 'object';
+    key: string;
+    variant?: CustomSpriteVariant;
+    frames: CustomSpriteFrame[];
+};
+
 export type GameDefinition = {
     title: string;
     author: string;
@@ -166,6 +177,7 @@ export type GameDefinition = {
     variables: VariableDefinition[];
     exits: ExitState[];
     tileset: Tileset;
+    customSprites?: CustomSpriteEntry[];
 };
 
 export type RuntimeState = {

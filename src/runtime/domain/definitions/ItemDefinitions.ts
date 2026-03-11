@@ -5,7 +5,7 @@ import type { ItemDefinitionData } from '../entities/Item';
 import { ITEM_TYPES, type ItemType } from '../constants/itemTypes';
 
 /**
- * ItemDefinitions encapsula os itens interativos disponiveis no editor.
+ * ItemDefinitions encapsulates the interactive items available in the editor.
  */
 const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
     {

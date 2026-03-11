@@ -623,5 +623,54 @@ describe('EditorEnemyRenderer', () => {
   });
 });
 
+// sprite-edit-btn
+
+describe('EditorEnemyRenderer - sprite-edit-btn', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    vi.clearAllMocks();
+    mockData.enemyDefinitions = [];
+  });
+
+  function createFixtureWithCustomSprites(customSprites: unknown[] = []) {
+    const fixture = createFixture();
+    fixture.gameEngine.getGame.mockReturnValue({ world: { rows: 2, cols: 3 }, customSprites });
+    return fixture;
+  }
+
+  it('enemy cards render .sprite-edit-btn with data-edit-group="enemy"', () => {
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'goblin' })];
+    const fixture = createFixtureWithCustomSprites();
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
+    renderer.renderEnemyCatalog();
+    const editBtn = fixture.enemyTypes.querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).dataset.editGroup).toBe('enemy');
+    expect((editBtn as HTMLElement).dataset.editKey).toBe('goblin');
+  });
+
+  it('.sprite-edit-btn adds the is-custom class when the enemy has a customSprites entry', () => {
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'goblin' })];
+    const fixture = createFixtureWithCustomSprites([
+      { group: 'enemy', key: 'goblin', variant: 'base', frames: [[[0]]] },
+    ]);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
+    renderer.renderEnemyCatalog();
+    const editBtn = fixture.enemyTypes.querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).classList.contains('is-custom')).toBe(true);
+  });
+
+  it('.sprite-edit-btn does not add the is-custom class when the enemy has no custom entry', () => {
+    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'goblin' })];
+    const fixture = createFixtureWithCustomSprites([]);
+    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
+    renderer.renderEnemyCatalog();
+    const editBtn = fixture.enemyTypes.querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).classList.contains('is-custom')).toBe(false);
+  });
+});
+
 
 

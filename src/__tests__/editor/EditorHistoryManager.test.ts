@@ -87,3 +87,48 @@ describe('EditorHistoryManager', () => {
     consoleSpy.mockRestore();
   });
 });
+
+describe('EditorHistoryManager - customSprites', () => {
+  it('includes customSprites in the snapshot when exportGameData returns them', () => {
+    const customSprites = [
+      { group: 'npc', key: 'wizard', variant: 'base', frames: [[[ 0, 1 ]]] },
+    ];
+    const exportFn = vi.fn(() => ({ level: 1, customSprites }));
+    const restoreFn = vi.fn();
+    const manager = {
+      gameEngine: { exportGameData: exportFn },
+      restore: restoreFn,
+    } as unknown as EditorManager;
+
+    const history = new EditorHistoryManager(manager);
+    history.pushCurrentState();
+
+    expect(exportFn).toHaveBeenCalledTimes(1);
+    const parsed = JSON.parse(history.stack[0]) as Record<string, unknown>;
+    expect(parsed.customSprites).toEqual(customSprites);
+  });
+
+  it('restoreCurrent restores customSprites into the editor manager', () => {
+    const customSpritesA = [{ group: 'tile', key: 'rock', variant: 'base', frames: [[[3]]] }];
+    const customSpritesB = [{ group: 'enemy', key: 'goblin', variant: 'base', frames: [[[7]]] }];
+    const exportFn = vi.fn()
+      .mockReturnValueOnce({ level: 1, customSprites: customSpritesA })
+      .mockReturnValueOnce({ level: 2, customSprites: customSpritesB });
+    const restoreFn = vi.fn();
+    const manager = {
+      gameEngine: { exportGameData: exportFn },
+      restore: restoreFn,
+    } as unknown as EditorManager;
+
+    const history = new EditorHistoryManager(manager);
+    history.pushCurrentState(); // snapshot with customSpritesA
+    history.pushCurrentState(); // snapshot with customSpritesB
+
+    history.undo();
+
+    expect(restoreFn).toHaveBeenCalledWith(
+      expect.objectContaining({ customSprites: customSpritesA }),
+      { skipHistory: true }
+    );
+  });
+});

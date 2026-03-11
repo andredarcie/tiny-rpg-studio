@@ -1,6 +1,8 @@
 import type { GameStateApi, TileDefinition, TileFrame, TileId, TileMap, TileMapLayer } from '../domain/definitions/tileTypes';
 import { TILE_PRESETS_SOURCE } from '../domain/definitions/tilePresets';
 import { TileDefinitions } from '../domain/definitions/TileDefinitions';
+import { CustomSpriteLookup } from '../domain/sprites/CustomSpriteLookup';
+import type { CustomSpriteEntry } from '../../types/gameState';
 
 // TileManager owns tile preset loading, tileset initialization, and tile map mutation.
 // It keeps the game state wired with tiles and room maps, provides helpers
@@ -106,11 +108,29 @@ class TileManager {
   }
 
   getTiles(): TileDefinition[] {
-    return this.gameState.game.tileset.tiles;
+    return this.gameState.game.tileset.tiles.map((t) => this.getTile(t.id as TileId) ?? t);
   }
 
   getTile(tileId: TileId): TileDefinition | null {
-    return this.gameState.game.tileset.tiles.find((t) => t.id === tileId) || null;
+    const tile = this.gameState.game.tileset.tiles.find((t) => t.id === tileId) || null;
+    if (!tile) return null;
+
+    const customSprites = (this.gameState as unknown as { game: { customSprites?: CustomSpriteEntry[] } }).game.customSprites;
+    const custom = CustomSpriteLookup.find(customSprites, 'tile', String(tileId));
+    if (!custom || custom.frames.length === 0) return tile;
+    const game = (this.gameState as unknown as { game: { customPalette?: string[] } }).game;
+    const palette = Array.isArray(game.customPalette)
+      ? game.customPalette
+      : undefined;
+    const pixelFrames = custom.frames.map((frame) => TileDefinitions.toPixels(frame, palette));
+
+    return {
+      ...tile,
+      layouts: custom.frames.map((frame) => frame.map((row) => row.slice())),
+      frames: pixelFrames,
+      pixels: pixelFrames[0] as TileFrame,
+      animated: custom.frames.length > 1,
+    };
   }
 
   updateTile(tileId: TileId, data: Partial<TileDefinition>): void {

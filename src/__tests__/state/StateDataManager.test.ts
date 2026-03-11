@@ -144,3 +144,84 @@ describe('StateDataManager', () => {
     expect(variableManager.setGame).toHaveBeenCalledWith(game);
   });
 });
+
+describe('StateDataManager - customSprites', () => {
+  it('includes customSprites in exportGameData when present', () => {
+    const game = makeGame();
+    game.customSprites = [
+      { group: 'npc', key: 'wizard', frames: [[[1, 2], [3, 4]]] },
+    ];
+    const manager = new StateDataManager({
+      game,
+      worldManager: {} as StateWorldManager,
+      objectManager: {} as StateObjectManager,
+      variableManager: {} as StateVariableManager,
+    });
+
+    const exported = manager.exportGameData();
+    expect(exported.customSprites).toEqual(game.customSprites);
+  });
+
+  it('omits customSprites from exportGameData when absent', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {} as StateWorldManager,
+      objectManager: {} as StateObjectManager,
+      variableManager: {} as StateVariableManager,
+    });
+
+    const exported = manager.exportGameData();
+    expect(exported.customSprites).toBeUndefined();
+  });
+
+  const makeImportManagers = () => ({
+    worldManager: {
+      normalizeRooms: vi.fn(() => []),
+      normalizeTileMaps: vi.fn(() => [{ ground: [[null]], overlay: [[null]] }]),
+      clampCoordinate: vi.fn((v: number) => v),
+      clampRoomIndex: vi.fn((v: number) => v),
+      setGame: vi.fn(),
+    } as unknown as StateWorldManager,
+    objectManager: {
+      normalizeObjects: vi.fn(() => []),
+      setGame: vi.fn(),
+    } as unknown as StateObjectManager,
+    variableManager: {
+      normalizeVariables: vi.fn(() => []),
+      setGame: vi.fn(),
+    } as unknown as StateVariableManager,
+  });
+
+  it('accepts valid customSprites in importGameData', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({ game, ...makeImportManagers() });
+
+    const entries = [{ group: 'enemy' as const, key: 'slime', frames: [[[0]]] }];
+    manager.importGameData({ customSprites: entries as unknown[] });
+
+    expect(game.customSprites).toEqual(entries);
+  });
+
+  it('ignores non-array customSprites in importGameData', () => {
+    const game = makeGame();
+    game.customSprites = [{ group: 'npc', key: 'x', frames: [] }];
+    const manager = new StateDataManager({ game, ...makeImportManagers() });
+
+    manager.importGameData({ customSprites: 'invalido' as unknown as unknown[] });
+
+    // It should either preserve the old value or clear it, but it must not crash.
+    // It also must not accept a string as customSprites.
+    expect(game.customSprites).toBeUndefined();
+  });
+
+  it('clears the field when importGameData receives no customSprites', () => {
+    const game = makeGame();
+    game.customSprites = [{ group: 'npc', key: 'x', frames: [] }];
+    const manager = new StateDataManager({ game, ...makeImportManagers() });
+
+    manager.importGameData({});
+
+    expect(game.customSprites).toBeUndefined();
+  });
+});

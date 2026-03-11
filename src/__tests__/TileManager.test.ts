@@ -339,3 +339,88 @@ describe('TileManager business rules', () => {
 type GlobalWithCrypto = typeof globalThis & {
   crypto?: Crypto & { randomUUID?: () => string };
 };
+
+describe('TileManager - custom sprites', () => {
+  const makeCustomFrame = (value: number): number[][] =>
+    Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => value));
+
+  const makeTileManagerWithCustom = (
+    tiles: TileDefinition[],
+    customSprites: unknown[]
+  ) => {
+    const gameState = {
+      game: {
+        tileset: {
+          tiles,
+          maps: [],
+          map: { ground: [], overlay: [] }
+        },
+        roomSize: 8,
+        world: { rows: 1, cols: 1 },
+        customSprites,
+      },
+    } as unknown as GameStateApi;
+    return new TileManager(gameState);
+  };
+
+  beforeEach(() => {
+    presets = [];
+  });
+
+  it('getTile returns a clone with custom frames when a customSprites entry exists', () => {
+    const customFrames = [makeCustomFrame(9)];
+    const manager = makeTileManagerWithCustom(
+      [{ id: 1, name: 'Grass', pixels: makeFrame('green') }],
+      [{ group: 'tile', key: '1', variant: 'base', frames: customFrames }]
+    );
+
+    const tile = manager.getTile(1);
+    expect(tile).not.toBeNull();
+    expect(tile?.frames).toHaveLength(1);
+    expect(tile?.layouts?.[0]?.[0]?.[0]).toBe(9);
+    expect(tile?.frames?.[0]?.[0]?.[0]).toBe('#FFA300');
+  });
+
+  it('getTile returns the original tile when there is no custom override', () => {
+    const manager = makeTileManagerWithCustom(
+      [{ id: 1, name: 'Grass', pixels: makeFrame('green') }],
+      []
+    );
+
+    const tile = manager.getTile(1);
+    expect(tile?.frames).toBeUndefined();
+    expect(tile?.pixels?.[0]?.[0]).toBe('green');
+  });
+
+  it('getTiles returns all tiles with overrides applied', () => {
+    const customFrames = [makeCustomFrame(5)];
+    const manager = makeTileManagerWithCustom(
+      [
+        { id: 1, name: 'Grass', pixels: makeFrame('green') },
+        { id: 2, name: 'Wall', pixels: makeFrame('gray') },
+      ],
+      [{ group: 'tile', key: '1', variant: 'base', frames: customFrames }]
+    );
+
+    const tiles = manager.getTiles();
+    expect(tiles).toHaveLength(2);
+    expect(tiles[0]?.layouts?.[0]?.[0]?.[0]).toBe(5);
+    expect(tiles[0]?.frames?.[0]?.[0]?.[0]).toBe('#5F574F');
+    expect(tiles[1]?.frames).toBeUndefined();
+  });
+
+  it('refreshAnimationMetadata uses effective custom frames', () => {
+    const customFrames = [
+      makeCustomFrame(1),
+      makeCustomFrame(2),
+      makeCustomFrame(3),
+    ];
+    const manager = makeTileManagerWithCustom(
+      [{ id: 1, name: 'Grass', pixels: makeFrame('green') }],
+      [{ group: 'tile', key: '1', variant: 'base', frames: customFrames }]
+    );
+
+    manager.refreshAnimationMetadata();
+    expect(manager.maxAnimationFrames).toBe(3);
+  });
+});

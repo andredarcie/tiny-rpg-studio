@@ -3,7 +3,7 @@ import { ShareDecoder } from './ShareDecoder';
 import { ShareEncoder } from './ShareEncoder';
 import { ShareUrlHelper } from './ShareUrlHelper';
 /**
- * ShareUtils delega a serialização/compartilhamento para os codecs especializados.
+ * ShareUtils delegates serialization and sharing to the specialized codecs.
  */
 'use strict';
 

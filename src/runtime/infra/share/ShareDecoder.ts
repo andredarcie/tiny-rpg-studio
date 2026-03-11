@@ -7,10 +7,205 @@ import { ShareMatrixCodec } from './ShareMatrixCodec';
 import { SharePositionCodec } from './SharePositionCodec';
 import { ShareTextCodec } from './ShareTextCodec';
 import { ShareVariableCodec } from './ShareVariableCodec';
+import type { CustomSpriteEntry, CustomSpriteVariant } from '../../../types/gameState';
+import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
+import { ShareSpriteCatalog } from './ShareSpriteCatalog';
 
 type SharePayload = Record<string, string>;
 
 class ShareDecoder {
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION = 4;
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION_1 = 1;
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION_2 = 2;
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION_3 = 3;
+    private static readonly GROUPS: CustomSpriteEntry['group'][] = ['tile', 'npc', 'enemy', 'object'];
+
+    private static countMaskBits(maskBytes: Uint8Array | number[], bitCount: number): number {
+        let count = 0;
+        for (let bitIndex = 0; bitIndex < bitCount; bitIndex++) {
+            const mask = maskBytes[bitIndex >> 3] ?? 0;
+            if (((mask >> (bitIndex & 7)) & 1) === 1) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static resolveBaseFrame(group: CustomSpriteEntry['group'], key: string, variant: CustomSpriteVariant): (number | null)[][] | null {
+        if (group === 'tile') {
+            return null;
+        }
+
+        try {
+            if (group === 'object' && variant === 'on') {
+                return SpriteMatrixRegistry.get('object', `${key}--on`).map((row) => row.slice());
+            }
+            return SpriteMatrixRegistry.get(group, key).map((row) => row.slice());
+        } catch {
+            return null;
+        }
+    }
+
+    private static decodeCustomSprites(encoded: string): CustomSpriteEntry[] {
+        const binaryResult = this.decodeCustomSpritesBinary(encoded);
+        if (binaryResult) {
+            return binaryResult;
+        }
+
+        try {
+            const json = atob(encoded.replace(/-/g, '+').replace(/_/g, '/'));
+            const payload = JSON.parse(json) as Array<{ g: string; k: string; v: string; f: string[] }>;
+            return payload.map(item => ({
+                group: item.g as CustomSpriteEntry['group'],
+                key: item.k,
+                variant: (item.v || 'base') as CustomSpriteVariant,
+                frames: item.f.map(frameStr => {
+                    const pixels: (number | null)[] = [];
+                    for (const ch of frameStr) {
+                        pixels.push(ch === 'z' ? null : parseInt(ch, 16));
+                    }
+                    const size = Math.round(Math.sqrt(pixels.length));
+                    const frame: (number | null)[][] = [];
+                    for (let r = 0; r < size; r++) {
+                        frame.push(pixels.slice(r * size, (r + 1) * size));
+                    }
+                    return frame;
+                }),
+            }));
+        } catch {
+            return [];
+        }
+    }
+
+    private static decodeCustomSpritesBinary(encoded: string): CustomSpriteEntry[] | null {
+        const bytes = ShareBase64.fromBase64Url(encoded);
+        if (bytes.length < 2) {
+            return null;
+        }
+        if (
+            bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION &&
+            bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_3 &&
+            bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_2 &&
+            bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_1
+        ) {
+            return null;
+        }
+
+        try {
+            const decoder = new TextDecoder();
+            let offset = 1;
+            const entryCount = bytes[offset++] ?? 0;
+            const entries: CustomSpriteEntry[] = [];
+
+            for (let entryIndex = 0; entryIndex < entryCount; entryIndex++) {
+                const flags = bytes[offset++] ?? 0;
+                const group = this.GROUPS[flags & 0x03] ?? 'tile';
+                const variant = (((flags >> 2) & 0x01) === 1 ? 'on' : 'base') as CustomSpriteVariant;
+                const usesDelta = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_2 && (((flags >> 3) & 0x01) === 1);
+                const usesIndexedKey = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_3 && (((flags >> 4) & 0x01) === 1);
+                const usesFixed8x8Indexed = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION && (((flags >> 5) & 0x01) === 1);
+                let frameCount = 0;
+                let key = '';
+                if (bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_3) {
+                    frameCount = bytes[offset++] ?? 0;
+                }
+                if (usesIndexedKey) {
+                    const keyIndex = bytes[offset++] ?? 0;
+                    key = ShareSpriteCatalog.getKeyByIndex(group, keyIndex, variant) ?? '';
+                } else {
+                    const keyLength = bytes[offset++] ?? 0;
+                    if (bytes[0] < this.CUSTOM_SPRITE_BINARY_VERSION_3) {
+                        frameCount = bytes[offset++] ?? 0;
+                    }
+                    const keyBytes = bytes.slice(offset, offset + keyLength);
+                    offset += keyLength;
+                    key = decoder.decode(keyBytes);
+                }
+                const frames: CustomSpriteEntry['frames'] = [];
+                const baseFrame = usesDelta ? this.resolveBaseFrame(group, key, variant) : null;
+
+                for (let frameIndex = 0; frameIndex < frameCount; frameIndex++) {
+                    const rows = usesFixed8x8Indexed ? 8 : (bytes[offset++] ?? 0);
+                    const cols = usesFixed8x8Indexed ? 8 : (bytes[offset++] ?? 0);
+                    const pixelCount = rows * cols;
+
+                    if (usesDelta && baseFrame && baseFrame.length === rows && (baseFrame[0]?.length ?? 0) === cols) {
+                        const changedMaskLength = Math.ceil(pixelCount / 8);
+                        const changedMask = bytes.slice(offset, offset + changedMaskLength);
+                        offset += changedMaskLength;
+
+                        const changedCount = this.countMaskBits(changedMask, pixelCount);
+
+                        const stateMaskLength = Math.ceil(changedCount / 8);
+                        const stateMask = bytes.slice(offset, offset + stateMaskLength);
+                        offset += stateMaskLength;
+
+                        const opaqueChangedCount = this.countMaskBits(stateMask, changedCount);
+
+                        const colorByteLength = Math.ceil(opaqueChangedCount / 2);
+                        const colorBytes = bytes.slice(offset, offset + colorByteLength);
+                        offset += colorByteLength;
+
+                        const flat = baseFrame.flat().slice(0, pixelCount) as (number | null)[];
+                        let changedIndex = 0;
+                        let colorIndex = 0;
+                        for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
+                            const mask = changedMask[pixelIndex >> 3] ?? 0;
+                            if (((mask >> (pixelIndex & 7)) & 1) !== 1) continue;
+                            const state = stateMask[changedIndex >> 3] ?? 0;
+                            const isOpaque = ((state >> (changedIndex & 7)) & 1) === 1;
+                            if (!isOpaque) {
+                                flat[pixelIndex] = null;
+                            } else {
+                                const packed = colorBytes[colorIndex >> 1] ?? 0;
+                                flat[pixelIndex] = (colorIndex & 1) === 0 ? ((packed >> 4) & 0x0f) : (packed & 0x0f);
+                                colorIndex++;
+                            }
+                            changedIndex++;
+                        }
+
+                        const frame: (number | null)[][] = [];
+                        for (let row = 0; row < rows; row++) {
+                            frame.push(flat.slice(row * cols, (row + 1) * cols));
+                        }
+                        frames.push(frame);
+                    } else {
+                        const maskLength = Math.ceil(pixelCount / 8);
+                        const maskBytes = bytes.slice(offset, offset + maskLength);
+                        offset += maskLength;
+
+                        const opaqueCount = this.countMaskBits(maskBytes, pixelCount);
+                        const colorByteLength = Math.ceil(opaqueCount / 2);
+                        const colorBytes = bytes.slice(offset, offset + colorByteLength);
+                        offset += colorByteLength;
+
+                        const flat = Array.from({ length: pixelCount }, () => null as number | null);
+                        let colorIndex = 0;
+                        for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex++) {
+                            const mask = maskBytes[pixelIndex >> 3] ?? 0;
+                            if (((mask >> (pixelIndex & 7)) & 1) !== 1) continue;
+                            const packed = colorBytes[colorIndex >> 1] ?? 0;
+                            flat[pixelIndex] = (colorIndex & 1) === 0 ? ((packed >> 4) & 0x0f) : (packed & 0x0f);
+                            colorIndex++;
+                        }
+
+                        const frame: (number | null)[][] = [];
+                        for (let row = 0; row < rows; row++) {
+                            frame.push(flat.slice(row * cols, (row + 1) * cols));
+                        }
+                        frames.push(frame);
+                    }
+                }
+
+                entries.push({ group, key, variant, frames });
+            }
+
+            return entries;
+        } catch {
+            return [];
+        }
+    }
+
     private static decodeCustomPalette(segment: string): string[] | undefined {
         if (!segment || segment.length === 0) {
             return undefined;
@@ -19,13 +214,13 @@ class ShareDecoder {
         if (segment.includes(',')) {
             const colors = segment.split(',').map(c => `#${c.toUpperCase()}`);
 
-            // Validação: deve ter exatamente 16 cores
+            // Validation: it must contain exactly 16 colors.
             if (colors.length !== 16) {
                 console.warn('Invalid custom palette segment, expected 16 colors');
                 return undefined;
             }
 
-            // Validação: todas devem ser hex válidas
+            // Validation: every color must be a valid hex value.
             const hexRegex = /^#[0-9A-F]{6}$/;
             const allValid = colors.every(c => hexRegex.test(c));
 
@@ -247,6 +442,9 @@ class ShareDecoder {
         // Custom Palette
         const customPalette = payload.P ? this.decodeCustomPalette(payload.P) : undefined;
 
+        // Custom Sprites
+        const customSprites = payload.S ? this.decodeCustomSprites(payload.S) : undefined;
+
         const result: Record<string, unknown> = {
             title,
             author,
@@ -268,6 +466,10 @@ class ShareDecoder {
 
         if (customPalette) {
             result.customPalette = customPalette;
+        }
+
+        if (customSprites && customSprites.length > 0) {
+            result.customSprites = customSprites;
         }
 
         return result;

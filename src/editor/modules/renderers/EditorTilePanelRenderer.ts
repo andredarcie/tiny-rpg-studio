@@ -1,5 +1,7 @@
 
 import { EditorRendererBase } from './EditorRendererBase';
+import { CustomSpriteLookup } from '../../../runtime/domain/sprites/CustomSpriteLookup';
+import type { CustomSpriteEntry } from '../../../types/gameState';
 
 type TileDefinitionView = {
     id: number | string;
@@ -43,14 +45,20 @@ class EditorTilePanelRenderer extends EditorRendererBase {
         const grid = document.createElement('div');
         grid.className = 'tile-grid';
 
+        const game = (this.gameEngine as unknown as { getGame?(): { customSprites?: CustomSpriteEntry[] } }).getGame?.();
+        const customSprites = game?.customSprites;
+
         orderedTiles.forEach((tile: TileDefinitionView) => {
-            const card = document.createElement('button');
-            card.type = 'button';
+            const card = document.createElement('div');
             card.className = 'tile-card';
             card.dataset.tileId = String(tile.id);
             if (tile.id === this.manager.selectedTileId) {
                 card.classList.add('selected');
             }
+
+            const selectBtn = document.createElement('button');
+            selectBtn.type = 'button';
+            selectBtn.className = 'tile-card-select';
 
             const preview = document.createElement('canvas');
             preview.width = 64;
@@ -61,7 +69,21 @@ class EditorTilePanelRenderer extends EditorRendererBase {
                 this.gameEngine.renderer.drawTileOnCanvas(preview, tile);
             }
 
-            card.appendChild(preview);
+            selectBtn.appendChild(preview);
+            card.appendChild(selectBtn);
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'sprite-edit-btn';
+            editBtn.dataset.editGroup = 'tile';
+            editBtn.dataset.editKey = String(tile.id);
+            editBtn.textContent = '✎';
+            const isCustom = CustomSpriteLookup.find(customSprites, 'tile', String(tile.id)) !== null;
+            if (isCustom) {
+                editBtn.classList.add('is-custom');
+            }
+            card.appendChild(editBtn);
+
             grid.appendChild(card);
         });
 

@@ -313,3 +313,68 @@ describe('EditorExportService', () => {
     expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('expected a JavaScript asset but received HTML'));
   });
 });
+
+describe('EditorExportService - novos arquivos de custom sprites', () => {
+  let alertSpy: ReturnType<typeof vi.fn>;
+  let fetchSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    setupDom();
+
+    alertSpy = vi.fn();
+    vi.stubGlobal('alert', alertSpy);
+    fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+
+    mockState.api = makeApi();
+    mockState.shareEncode.mockReset();
+    mockState.shareDecode.mockReset();
+    mockState.shareBuildUrl.mockReset();
+    mockState.trGet.mockReset();
+    mockState.shareEncode.mockReturnValue('ENCODED');
+    mockState.shareDecode.mockReturnValue({ title: 'Imported' });
+    mockState.shareBuildUrl.mockReturnValue('https://x.test/#abc');
+    mockState.trGet.mockImplementation((_key, fallback = '') => fallback);
+    mockState.trLocale = 'en-US';
+    mockState.version = '9';
+
+    setStyleSheets([]);
+
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:test');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('includes CustomSpriteLookup.js in the script list', async () => {
+    // The bundle fails, legacyIndex fails, and fallbackScriptSrcs is used.
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse) // bundle fail
+      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse) // legacyIndex fail
+      .mockResolvedValue({ ok: true, text: () => Promise.resolve('console.log(1);') } as FakeResponse);
+
+    const svc = new EditorExportService();
+    await svc.exportProjectAsHtml();
+
+    const calledUrls = (fetchSpy.mock.calls as [string][]).map(([url]) => url);
+    expect(calledUrls.some(url => url.includes('CustomSpriteLookup.js'))).toBe(true);
+  });
+
+  it('includes PixelArtEditorController.js in the script list', async () => {
+    fetchSpy
+      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
+      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
+      .mockResolvedValue({ ok: true, text: () => Promise.resolve('console.log(1);') } as FakeResponse);
+
+    const svc = new EditorExportService();
+    await svc.exportProjectAsHtml();
+
+    const calledUrls = (fetchSpy.mock.calls as [string][]).map(([url]) => url);
+    expect(calledUrls.some(url => url.includes('PixelArtEditorController.js'))).toBe(true);
+  });
+});

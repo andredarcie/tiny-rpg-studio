@@ -2,9 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorTilePanelRenderer } from '../../editor/modules/renderers/EditorTilePanelRenderer';
 
 type TilePanelService = ConstructorParameters<typeof EditorTilePanelRenderer>[0];
-type TilePanelServiceFixture = ReturnType<typeof makeService>;
-
-function asTilePanelService(service: TilePanelServiceFixture): TilePanelService {
+function asTilePanelService(service: unknown): TilePanelService {
   return service as unknown as TilePanelService;
 }
 
@@ -160,11 +158,82 @@ describe('EditorTilePanelRenderer', () => {
 
   it('calls tf as fallback when tile has no name', () => {
     const svc = makeService({}, { selectedTileId: 5 });
-    // Add nameless tile
+    // Add a nameless tile
     vi.mocked(svc.gameEngine.getTiles).mockReturnValue([{ id: 5, name: '', category: '' }]);
     const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
     renderer.updateSelectedTilePreview();
     expect(svc.tf).toHaveBeenCalledWith('tiles.summaryFallback', { id: 5 }, '');
+  });
+});
+
+// sprite-edit-btn
+
+describe('EditorTilePanelRenderer - sprite-edit-btn', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  function makeServiceWithCustomSprites(customSprites: unknown[] = []) {
+    const tileList = document.createElement('div');
+    const tiles = [{ id: 1, name: 'Grass', category: 'Terreno' }];
+    const manager = {
+      selectedTileId: 1,
+      state: {},
+    };
+    const service = {
+      manager,
+      dom: { tileList },
+      state: manager.state,
+      gameEngine: {
+        getTiles: vi.fn(() => tiles),
+        getGame: vi.fn(() => ({ customSprites })),
+        renderer: { drawTileOnCanvas: vi.fn() },
+      },
+      t: vi.fn<(_key: string, fallback?: string) => string>((_key: string, fallback = ''): string => fallback),
+      tf: vi.fn<(_key: string, _params?: Record<string, unknown>, fallback?: string) => string>(
+        (_key: string, _params: Record<string, unknown> = {}, fallback = ''): string => fallback
+      ),
+    };
+    return service;
+  }
+
+  it('tile cards use a div wrapper instead of a button', () => {
+    const svc = makeServiceWithCustomSprites();
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
+    renderer.renderTileList();
+    const cards = (svc.dom.tileList as HTMLElement).querySelectorAll('.tile-card');
+    expect(cards.length).toBeGreaterThan(0);
+    cards.forEach((card) => {
+      expect(card.tagName.toLowerCase()).toBe('div');
+    });
+  });
+
+  it('tile cards render .sprite-edit-btn with data-edit-group="tile"', () => {
+    const svc = makeServiceWithCustomSprites();
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
+    renderer.renderTileList();
+    const editBtn = (svc.dom.tileList as HTMLElement).querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).dataset.editGroup).toBe('tile');
+    expect((editBtn as HTMLElement).dataset.editKey).toBe('1');
+  });
+
+  it('.sprite-edit-btn adds the is-custom class when the tile has a customSprites entry', () => {
+    const svc = makeServiceWithCustomSprites([
+      { group: 'tile', key: '1', variant: 'base', frames: [[[0]]] },
+    ]);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
+    renderer.renderTileList();
+    const editBtn = (svc.dom.tileList as HTMLElement).querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).classList.contains('is-custom')).toBe(true);
+  });
+
+  it('.sprite-edit-btn does not add the is-custom class when the tile has no custom entry', () => {
+    const svc = makeServiceWithCustomSprites([]);
+    const renderer = new EditorTilePanelRenderer(asTilePanelService(svc));
+    renderer.renderTileList();
+    const editBtn = (svc.dom.tileList as HTMLElement).querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).classList.contains('is-custom')).toBe(false);
   });
 });
 

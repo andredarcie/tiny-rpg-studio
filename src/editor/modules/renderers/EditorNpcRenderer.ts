@@ -1,5 +1,7 @@
 
 import { EditorRendererBase } from './EditorRendererBase';
+import { CustomSpriteLookup } from '../../../runtime/domain/sprites/CustomSpriteLookup';
+import type { CustomSpriteEntry } from '../../../types/gameState';
 
 type NpcDefinitionView = {
     type: string;
@@ -42,6 +44,9 @@ class EditorNpcRenderer extends EditorRendererBase {
         const npcs = this.gameEngine.getSprites() as EditorNpc[];
         const currentRoomIndex = this.manager.state.activeRoomIndex;
 
+        const game = (this.gameEngine as unknown as { getGame?(): { customSprites?: CustomSpriteEntry[] } }).getGame?.();
+        const customSprites = game?.customSprites;
+
         filteredDefinitions.forEach((def: NpcDefinitionView) => {
             const npc = npcs.find((entry) => entry.type === def.type && entry.roomIndex === currentRoomIndex);
             const card = document.createElement('div');
@@ -77,12 +82,21 @@ class EditorNpcRenderer extends EditorRendererBase {
             pos.className = 'npc-position';
             if (npc?.placed) {
                 pos.textContent = `(${npc.x}, ${npc.y})`;
-            } else {
-                pos.textContent = this.t('npc.status.available');
+            }
+
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'sprite-edit-btn';
+            editBtn.dataset.editGroup = 'npc';
+            editBtn.dataset.editKey = def.type;
+            editBtn.textContent = '✎';
+            const isCustom = CustomSpriteLookup.find(customSprites, 'npc', def.type) !== null;
+            if (isCustom) {
+                editBtn.classList.add('is-custom');
             }
 
             meta.append(name, pos);
-            card.append(preview, meta);
+            card.append(preview, meta, editBtn);
             list.appendChild(card);
         });
 

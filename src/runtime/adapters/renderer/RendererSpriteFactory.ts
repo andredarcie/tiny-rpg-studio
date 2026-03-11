@@ -1,5 +1,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
+import { CustomSpriteLookup } from '../../domain/sprites/CustomSpriteLookup';
+import type { CustomSpriteEntry } from '../../../types/gameState';
 import { RendererConstants, type EnemyDefinition, type NpcDefinition, type ObjectDefinition, type SpriteMatrix } from './RendererConstants';
 
 type Sprite = (string | null)[][];
@@ -91,9 +93,11 @@ class RendererSpriteFactory {
 
     buildNpcSprites(): SpriteMap {
         const activePalette = this.paletteManager.getActivePalette();
+        const customSprites = (this.gameState as { game?: { customSprites?: CustomSpriteEntry[] } }).game?.customSprites;
         const sprites: SpriteMap = {};
         for (const def of RendererConstants.NPC_DEFINITIONS as NpcDefinition[]) {
-            const matrix = def.sprite;
+            const customEntry = CustomSpriteLookup.find(customSprites, 'npc', def.type);
+            const matrix = customEntry?.frames[0] ?? def.sprite;
             sprites[def.type] = this.mapPixels(matrix, activePalette, () => this.buildDefaultNpcSprite(activePalette));
         }
         sprites.default = this.buildDefaultNpcSprite(activePalette);
@@ -102,12 +106,15 @@ class RendererSpriteFactory {
 
     buildObjectSprites(): SpriteMap {
         const activePalette = this.paletteManager.getActivePalette();
+        const customSprites = (this.gameState as { game?: { customSprites?: CustomSpriteEntry[] } }).game?.customSprites;
         const sprites: SpriteMap = {};
         for (const def of RendererConstants.OBJECT_DEFINITIONS as ObjectDefinition[]) {
             if (!Array.isArray(def.sprite)) continue;
-            sprites[def.type] = this.mapPixels(def.sprite, activePalette);
+            const baseEntry = CustomSpriteLookup.find(customSprites, 'object', def.type, 'base');
+            sprites[def.type] = this.mapPixels(baseEntry?.frames[0] ?? def.sprite, activePalette);
             if (Array.isArray(def.spriteOn)) {
-                sprites[`${def.type}--on`] = this.mapPixels(def.spriteOn, activePalette);
+                const onEntry = CustomSpriteLookup.find(customSprites, 'object', def.type, 'on');
+                sprites[`${def.type}--on`] = this.mapPixels(onEntry?.frames[0] ?? def.spriteOn, activePalette);
             }
         }
         return sprites;
@@ -115,13 +122,16 @@ class RendererSpriteFactory {
 
     buildEnemySprites(): SpriteMap {
         const activePalette = this.paletteManager.getActivePalette();
+        const customSprites = (this.gameState as { game?: { customSprites?: CustomSpriteEntry[] } }).game?.customSprites;
         const defaultSprite = this.buildDefaultEnemySprite(activePalette);
         const sprites: SpriteMap = { default: defaultSprite };
         const definitions = RendererConstants.ENEMY_DEFINITIONS as EnemyDefinition[];
         if (Array.isArray(definitions)) {
             for (const def of definitions) {
                 if (!Array.isArray(def.sprite)) continue;
-                const sprite = this.mapPixels(def.sprite, activePalette, () => defaultSprite);
+                const customEntry = CustomSpriteLookup.find(customSprites, 'enemy', def.type);
+                const matrix = customEntry?.frames[0] ?? def.sprite;
+                const sprite = this.mapPixels(matrix, activePalette, () => defaultSprite);
                 sprites[def.type] = sprite;
                 if (Array.isArray(def.aliases)) {
                     for (const alias of def.aliases) {

@@ -26,9 +26,13 @@ class ShareConstants {
     static get VERSION_17() { return 17; }
     static get VERSION_18() { return 18; }
     static get VERSION_19() { return 19; }
+    static get VERSION_20() { return 20; }
+    static get VERSION_21() { return 21; }
+    static get VERSION_22() { return 22; }
+    static get VERSION_23() { return 23; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_19;
+        return ShareConstants.VERSION_23;
     }
 
     static get LEGACY_VERSION() {
@@ -192,7 +196,11 @@ class ShareConstants {
                 ShareConstants.VERSION_16,
                 ShareConstants.VERSION_17,
                 ShareConstants.VERSION_18,
-                ShareConstants.VERSION_19
+                ShareConstants.VERSION_19,
+                ShareConstants.VERSION_20,
+                ShareConstants.VERSION_21,
+                ShareConstants.VERSION_22,
+                ShareConstants.VERSION_23
             ]);
         }
         return this._supportedVersions;

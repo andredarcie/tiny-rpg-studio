@@ -1,4 +1,4 @@
-import type { GameDefinition, RoomDefinition, VariableDefinition } from '../../../types/gameState';
+import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry } from '../../../types/gameState';
 import type { StateWorldManager } from './StateWorldManager';
 import type { StateObjectManager, ObjectEntry } from './StateObjectManager';
 import type { StateVariableManager } from './StateVariableManager';
@@ -30,6 +30,7 @@ type ImportData = {
         maps?: unknown;
         map?: unknown;
     };
+    customSprites?: unknown[];
 };
 
 class StateDataManager {
@@ -77,7 +78,10 @@ class StateDataManager {
             objects: this.game.objects,
             variables: this.game.variables,
             exits: this.game.exits,
-            tileset: this.game.tileset
+            tileset: this.game.tileset,
+            ...(Array.isArray(this.game.customSprites) && this.game.customSprites.length
+                ? { customSprites: this.game.customSprites }
+                : {}),
         };
     }
 
@@ -125,6 +129,12 @@ class StateDataManager {
         });
 
         this.game.tileset.map = this.game.tileset.maps[0];
+
+        if (Array.isArray(data.customSprites)) {
+            this.game.customSprites = data.customSprites as CustomSpriteEntry[];
+        } else {
+            this.game.customSprites = undefined;
+        }
 
         const start = {
             x: this.worldManager.clampCoordinate(data.start?.x ?? 1),

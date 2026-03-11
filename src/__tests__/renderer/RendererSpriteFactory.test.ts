@@ -5,6 +5,8 @@ const makeMatrix = (value: number) =>
   Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => value));
 
 let enemyDefinitions: Array<{ type: string; sprite: number[][]; aliases?: string[] }> = [];
+let npcDefinitions: Array<{ type: string; sprite: number[][] }> = [];
+let objectDefinitions: Array<{ type: string; sprite?: number[][]; spriteOn?: number[][] }> = [];
 let normalizeType = (type: string) => type;
 
 vi.mock('../../runtime/adapters/renderer/RendererConstants', () => ({
@@ -13,10 +15,10 @@ vi.mock('../../runtime/adapters/renderer/RendererConstants', () => ({
       return enemyDefinitions;
     },
     get NPC_DEFINITIONS() {
-      return [];
+      return npcDefinitions;
     },
     get OBJECT_DEFINITIONS() {
-      return [];
+      return objectDefinitions;
     }
   }
 }));
@@ -36,6 +38,8 @@ vi.mock('../../runtime/domain/sprites/SpriteMatrixRegistry', () => ({
 describe('RendererSpriteFactory', () => {
   beforeEach(() => {
     enemyDefinitions = [];
+    npcDefinitions = [];
+    objectDefinitions = [];
     normalizeType = (type: string) => type;
   });
 
@@ -73,5 +77,102 @@ describe('RendererSpriteFactory', () => {
       ['b', 'a'],
       ['d', 'c'],
     ]);
+  });
+});
+
+describe('RendererSpriteFactory - custom sprites', () => {
+  const makeCustomMatrix = () =>
+    Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 7));
+
+  const palette = Array.from({ length: 16 }, (_v, idx) => `#${String(idx).padStart(6, '0')}`);
+  const paletteManager = {
+    getActivePalette: () => palette,
+    getDefaultPalette: () => palette,
+  };
+
+  beforeEach(() => {
+    enemyDefinitions = [];
+    npcDefinitions = [];
+    objectDefinitions = [];
+    normalizeType = (type: string) => type;
+  });
+
+  it('uses a custom NPC sprite instead of RendererConstants', () => {
+    const customMatrix = makeCustomMatrix();
+    const gameState = {
+      game: {
+        customSprites: [
+          { group: 'npc', key: 'guard', variant: 'base', frames: [customMatrix] },
+        ],
+      },
+    };
+
+    npcDefinitions = [{ type: 'guard', sprite: makeMatrix(0) }];
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprites = factory.getNpcSprites();
+    expect(sprites['guard']?.[0]?.[0]).not.toBe(palette[0]);
+    expect(sprites['guard']?.[0]?.[0]).toBe(palette[7]);
+  });
+
+  it('uses a custom enemy sprite instead of RendererConstants', () => {
+    const customMatrix = makeCustomMatrix();
+    const gameState = {
+      game: {
+        customSprites: [
+          { group: 'enemy', key: 'slime', variant: 'base', frames: [customMatrix] },
+        ],
+      },
+    };
+
+    enemyDefinitions = [{ type: 'slime', sprite: makeMatrix(0) }];
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprites = factory.getEnemySprites();
+    expect(sprites['slime']?.[0]?.[0]).toBe(palette[7]);
+  });
+
+  it('uses a custom object sprite for the base variant', () => {
+    const customMatrix = makeCustomMatrix();
+    const gameState = {
+      game: {
+        customSprites: [
+          { group: 'object', key: 'switch', variant: 'base', frames: [customMatrix] },
+        ],
+      },
+    };
+
+    objectDefinitions = [{ type: 'switch', sprite: makeMatrix(0), spriteOn: makeMatrix(0) }];
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprites = factory.getObjectSprites();
+    expect(sprites['switch']?.[0]?.[0]).toBe(palette[7]);
+  });
+
+  it('uses a custom object sprite for the on variant', () => {
+    const customMatrix = makeCustomMatrix();
+    const gameState = {
+      game: {
+        customSprites: [
+          { group: 'object', key: 'switch', variant: 'on', frames: [customMatrix] },
+        ],
+      },
+    };
+
+    objectDefinitions = [{ type: 'switch', sprite: makeMatrix(0), spriteOn: makeMatrix(0) }];
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprites = factory.getObjectSprites();
+    expect(sprites['switch--on']?.[0]?.[0]).toBe(palette[7]);
+  });
+
+  it('uses the RendererConstants sprite when no custom sprite exists', () => {
+    const gameState = { game: { customSprites: [] } };
+
+    npcDefinitions = [{ type: 'merchant', sprite: makeMatrix(3) }];
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprites = factory.getNpcSprites();
+    expect(sprites['merchant']?.[0]?.[0]).toBe(palette[3]);
   });
 });

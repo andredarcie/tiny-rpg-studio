@@ -8,6 +8,15 @@ import { SharePositionCodec } from './SharePositionCodec';
 import { ShareTextCodec } from './ShareTextCodec';
 import { ShareVariableCodec } from './ShareVariableCodec';
 import { ShareBase64 } from './ShareBase64';
+import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
+import { ShareSpriteCatalog } from './ShareSpriteCatalog';
+
+type CustomSpriteEntryLike = {
+    group: string;
+    key: string;
+    variant?: string;
+    frames: ((number | null)[][])[];
+};
 
 type ShareGameData = {
     title?: unknown;
@@ -21,9 +30,209 @@ type ShareGameData = {
     tileset?: unknown;
     world?: unknown;
     customPalette?: string[];
+    customSprites?: CustomSpriteEntryLike[];
 };
 
 class ShareEncoder {
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION = 4;
+    private static readonly GROUP_TO_ID: Record<string, number> = {
+        tile: 0,
+        npc: 1,
+        enemy: 2,
+        object: 3
+    };
+
+    private static packNibblePair(values: number[], index: number): number {
+        const left = values[index] & 0x0f;
+        const right = index + 1 < values.length ? (values[index + 1] & 0x0f) : 0;
+        return (left << 4) | right;
+    }
+
+    private static resolveBaseFrame(entry: CustomSpriteEntryLike): (number | null)[][] | null {
+        if (entry.group === 'tile') {
+            return null;
+        }
+
+        try {
+            if (entry.group === 'object' && entry.variant === 'on') {
+                return SpriteMatrixRegistry.get('object', `${entry.key}--on`).map((row) => row.slice());
+            }
+            return SpriteMatrixRegistry.get(entry.group, entry.key).map((row) => row.slice());
+        } catch {
+            return null;
+        }
+    }
+
+    private static encodeFullFrame(bytes: number[], frame: (number | null)[][]): void {
+        const rows = Array.isArray(frame) ? frame.length : 0;
+        const cols = rows > 0 && Array.isArray(frame[0]) ? frame[0].length : 0;
+        bytes.push(rows & 0xff);
+        bytes.push(cols & 0xff);
+
+        const flat = frame.flat();
+        const pixelCount = rows * cols;
+        const maskBytes = new Uint8Array(Math.ceil(pixelCount / 8));
+        const colors: number[] = [];
+
+        for (let index = 0; index < pixelCount; index++) {
+            const px = flat[index];
+            if (px !== null) {
+                maskBytes[index >> 3] |= 1 << (index & 7);
+                colors.push(px & 0x0f);
+            }
+        }
+
+        bytes.push(...maskBytes);
+        for (let index = 0; index < colors.length; index += 2) {
+            bytes.push(ShareEncoder.packNibblePair(colors, index));
+        }
+    }
+
+    private static tryEncodeDeltaFrame(bytes: number[], frame: (number | null)[][], baseFrame: (number | null)[][]): boolean {
+        const rows = Array.isArray(frame) ? frame.length : 0;
+        const cols = rows > 0 && Array.isArray(frame[0]) ? frame[0].length : 0;
+        if (rows === 0 || cols === 0 || baseFrame.length !== rows || (baseFrame[0]?.length ?? 0) !== cols) {
+            return false;
+        }
+
+        const flat = frame.flat();
+        const baseFlat = baseFrame.flat();
+        const pixelCount = rows * cols;
+        const changedMask = new Uint8Array(Math.ceil(pixelCount / 8));
+        const changedStates: number[] = [];
+        const changedColors: number[] = [];
+        let changedCount = 0;
+
+        for (let index = 0; index < pixelCount; index++) {
+            const next = flat[index] ?? null;
+            const base = baseFlat[index] ?? null;
+            if (next === base) continue;
+            changedMask[index >> 3] |= 1 << (index & 7);
+            changedCount++;
+            if (next !== null) {
+                changedStates.push(1);
+                changedColors.push(next & 0x0f);
+            } else {
+                changedStates.push(0);
+            }
+        }
+
+        if (changedCount === 0) {
+            bytes.push(rows & 0xff);
+            bytes.push(cols & 0xff);
+            bytes.push(...new Uint8Array(Math.ceil(pixelCount / 8)));
+            bytes.push(0);
+            return true;
+        }
+
+        const changedStateMask = new Uint8Array(Math.ceil(changedCount / 8));
+        for (let index = 0; index < changedStates.length; index++) {
+            if (changedStates[index] === 1) {
+                changedStateMask[index >> 3] |= 1 << (index & 7);
+            }
+        }
+
+        const deltaSize = 2 + changedMask.length + changedStateMask.length + Math.ceil(changedColors.length / 2);
+        const fullOpaqueCount = flat.reduce((count: number, px) => count + (px !== null ? 1 : 0), 0);
+        const fullSize = 2 + Math.ceil(pixelCount / 8) + Math.ceil(fullOpaqueCount / 2);
+        if (deltaSize >= fullSize) {
+            return false;
+        }
+
+        bytes.push(rows & 0xff);
+        bytes.push(cols & 0xff);
+        bytes.push(...changedMask);
+        bytes.push(...changedStateMask);
+        for (let index = 0; index < changedColors.length; index += 2) {
+            bytes.push(ShareEncoder.packNibblePair(changedColors, index));
+        }
+        return true;
+    }
+
+    private static encodeIndexed8x8DeltaFrame(bytes: number[], frame: (number | null)[][], baseFrame: (number | null)[][]): void {
+        const flat = frame.flat();
+        const baseFlat = baseFrame.flat();
+        const pixelCount = 64;
+        const changedMask = new Uint8Array(8);
+        const changedStates: number[] = [];
+        const changedColors: number[] = [];
+        let changedCount = 0;
+
+        for (let index = 0; index < pixelCount; index++) {
+            const next = flat[index] ?? null;
+            const base = baseFlat[index] ?? null;
+            if (next === base) continue;
+            changedMask[index >> 3] |= 1 << (index & 7);
+            changedCount++;
+            if (next !== null) {
+                changedStates.push(1);
+                changedColors.push(next & 0x0f);
+            } else {
+                changedStates.push(0);
+            }
+        }
+
+        const changedStateMask = new Uint8Array(Math.ceil(changedCount / 8));
+        for (let index = 0; index < changedStates.length; index++) {
+            if (changedStates[index] === 1) {
+                changedStateMask[index >> 3] |= 1 << (index & 7);
+            }
+        }
+
+        bytes.push(...changedMask);
+        bytes.push(...changedStateMask);
+        for (let index = 0; index < changedColors.length; index += 2) {
+            bytes.push(ShareEncoder.packNibblePair(changedColors, index));
+        }
+    }
+
+    private static encodeCustomSprites(entries: CustomSpriteEntryLike[]): string {
+        const encoder = new TextEncoder();
+        const bytes: number[] = [ShareEncoder.CUSTOM_SPRITE_BINARY_VERSION, entries.length & 0xff];
+
+        for (const entry of entries) {
+            const keyBytes = encoder.encode(entry.key);
+            const groupId = ShareEncoder.GROUP_TO_ID[entry.group] ?? 0;
+            const variantId = entry.variant === 'on' ? 1 : 0;
+            const frames = entry.frames;
+            const baseFrame = ShareEncoder.resolveBaseFrame(entry);
+            const keyIndex = ShareSpriteCatalog.getKeyIndex(entry.group as 'tile' | 'npc' | 'enemy' | 'object', entry.key, (entry.variant ?? 'base') as 'base' | 'on');
+            const useIndexedKey = keyIndex >= 0 && keyIndex <= 0xff;
+            const isFixed8x8Indexed = useIndexedKey && frames.every((frame) =>
+                Array.isArray(frame) &&
+                frame.length === 8 &&
+                (frame[0]?.length ?? 0) === 8
+            );
+            const canUseDelta = baseFrame !== null && frames.every((frame) =>
+                Array.isArray(frame) &&
+                frame.length === baseFrame.length &&
+                (frame[0]?.length ?? 0) === (baseFrame[0]?.length ?? 0)
+            );
+            const flags = (groupId & 0x03) | ((variantId & 0x01) << 2) | ((canUseDelta ? 1 : 0) << 3) | ((useIndexedKey ? 1 : 0) << 4) | ((isFixed8x8Indexed ? 1 : 0) << 5);
+
+            bytes.push(flags);
+            bytes.push(frames.length & 0xff);
+            if (useIndexedKey) {
+                bytes.push(keyIndex & 0xff);
+            } else {
+                bytes.push(keyBytes.length & 0xff);
+                bytes.push(...keyBytes);
+            }
+
+            for (const frame of frames) {
+                if (isFixed8x8Indexed && canUseDelta) {
+                    ShareEncoder.encodeIndexed8x8DeltaFrame(bytes, frame, baseFrame);
+                    continue;
+                }
+                if (!(canUseDelta && ShareEncoder.tryEncodeDeltaFrame(bytes, frame, baseFrame))) {
+                    ShareEncoder.encodeFullFrame(bytes, frame);
+                }
+            }
+        }
+
+        return ShareBase64.toBase64Url(Uint8Array.from(bytes));
+    }
+
     static buildShareCode(gameData: ShareGameData | null | undefined) {
         const OT = ITEM_TYPES;
         const roomCount = ShareConstants.WORLD_ROOM_COUNT;
@@ -228,10 +437,15 @@ class ShareEncoder {
             parts.push('y' + ShareTextCodec.encodeText(author.slice(0, 60)));
         }
 
+        // Custom Sprites
+        if (Array.isArray(gameData?.customSprites) && gameData.customSprites.length > 0) {
+            parts.push('S' + ShareEncoder.encodeCustomSprites(gameData.customSprites));
+        }
+
         // Custom Palette
         const customPalette = Array.isArray(gameData?.customPalette) ? gameData.customPalette : undefined;
         if (customPalette && customPalette.length === 16) {
-            // Verifica se é igual ao padrão (não precisa serializar)
+            // Skip serialization when it matches the default palette.
             const isDefault = customPalette.every((color, index) =>
                 color.toUpperCase() === TileDefinitions.PICO8_COLORS[index].toUpperCase()
             );

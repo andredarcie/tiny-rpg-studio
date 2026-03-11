@@ -16,6 +16,20 @@ describe('GameStateDataFacade', () => {
     expect(dataManager.exportGameData).toHaveBeenCalledTimes(1);
   });
 
+  it('propaga customSprites ao exportar', () => {
+    const customSprites = [{ group: 'npc' as const, key: 'wizard', frames: [[[1, 2]]] }];
+    const dataManager = {
+      exportGameData: vi.fn(() => ({ ok: true, customSprites })),
+    } as unknown as StateDataManager;
+    const gameState = {} as GameState;
+
+    const facade = new GameStateDataFacade(gameState, dataManager);
+    const result = facade.exportGameData() as { customSprites: typeof customSprites };
+
+    expect(result.customSprites).toEqual(customSprites);
+    expect(dataManager.exportGameData).toHaveBeenCalledTimes(1);
+  });
+
   it('imports game data and refreshes managers/state', () => {
     const dataManager = {
       importGameData: vi.fn(),

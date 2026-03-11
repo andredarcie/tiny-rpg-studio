@@ -19,6 +19,7 @@ import { EditorWorldService } from './modules/EditorWorldService';
 import { EditorEventBinder } from './manager/EditorEventBinder';
 import { EditorInteractionController } from './manager/EditorInteractionController';
 import { EditorUIController } from './manager/EditorUIController';
+import { PixelArtEditorController } from './modules/PixelArtEditorController';
 
 class EditorManager {
     gameEngine: GameEngine;
@@ -39,6 +40,7 @@ class EditorManager {
     uiController: EditorUIController;
     eventBinder: EditorEventBinder;
     interactionController: EditorInteractionController;
+    pixelArtEditorController: PixelArtEditorController;
 
     constructor(gameEngine: GameEngine) {
         this.gameEngine = gameEngine;
@@ -64,6 +66,8 @@ class EditorManager {
         this.uiController = new EditorUIController(this);
         this.eventBinder = new EditorEventBinder(this);
         this.interactionController = new EditorInteractionController(this);
+        this.pixelArtEditorController = new PixelArtEditorController();
+        this.pixelArtEditorController.init(this, this.domCache);
 
         this.bindEvents();
         this.initialize();

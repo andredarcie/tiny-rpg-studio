@@ -221,6 +221,7 @@ class EditorExportService {
                 'js/runtime/infra/share/ShareMatrixCodec.js',
                 'js/runtime/infra/share/SharePositionCodec.js',
                 'js/runtime/infra/share/ShareDataNormalizer.js',
+                'js/runtime/infra/share/ShareSpriteCatalog.js',
                 'js/runtime/infra/share/ShareEncoder.js',
                 'js/runtime/infra/share/ShareDecoder.js',
                 'js/runtime/infra/share/ShareUrlHelper.js',
@@ -263,7 +264,9 @@ class EditorExportService {
                 'js/runtime/services/engine/MovementManager.js',
                 'js/runtime/services/GameEngine.js',
                 'js/main.js',
-                'js/editor/modules/EditorExportService.js'
+                'js/editor/modules/EditorExportService.js',
+                'js/runtime/domain/sprites/CustomSpriteLookup.js',
+                'js/editor/modules/PixelArtEditorController.js'
             ];
             const legacyScriptSrcs: (string | null)[] = [];
             if (!bundleSource) try {

@@ -63,6 +63,17 @@ class EditorDomCache {
     colorPreviewNew: HTMLElement | null;
     colorPickerIndex: HTMLElement | null;
     jsonArea?: HTMLTextAreaElement | null;
+    pixelArtEditorModal: HTMLElement | null = null;
+    paeCanvas: HTMLCanvasElement | null = null;
+    paePalette: HTMLElement | null = null;
+    paeSpriteMeta: HTMLElement | null = null;
+    paeVariantBar: HTMLElement | null = null;
+    paeFrameBar: HTMLElement | null = null;
+    paeSave: HTMLButtonElement | null = null;
+    paeReset: HTMLButtonElement | null = null;
+    paeClose: HTMLButtonElement | null = null;
+    paeToolPaint: HTMLButtonElement | null = null;
+    paeToolErase: HTMLButtonElement | null = null;
 
     constructor(root: Document | HTMLElement | null = typeof document !== 'undefined' ? document : null) {
         this.root = root || (null as unknown as Document); // fallback for strict mode if needed, though properties can be null
@@ -129,6 +140,17 @@ class EditorDomCache {
             this.colorPreviewNew = null;
             this.colorPickerIndex = null;
             this.jsonArea = null;
+            this.pixelArtEditorModal = null;
+            this.paeCanvas = null;
+            this.paePalette = null;
+            this.paeSpriteMeta = null;
+            this.paeVariantBar = null;
+            this.paeFrameBar = null;
+            this.paeSave = null;
+            this.paeReset = null;
+            this.paeClose = null;
+            this.paeToolPaint = null;
+            this.paeToolErase = null;
             return;
         }
 
@@ -194,6 +216,17 @@ class EditorDomCache {
         this.colorPreviewNew = root.querySelector('#color-preview-new .color-preview-swatch') as HTMLElement | null;
         this.colorPickerIndex = root.querySelector('#color-picker-index') as HTMLElement | null;
         this.jsonArea = root.querySelector('#json-area') as HTMLTextAreaElement | null;
+        this.pixelArtEditorModal = root.querySelector('#pixel-art-editor-modal') as HTMLElement | null;
+        this.paeCanvas = root.querySelector('#pae-canvas') as HTMLCanvasElement | null;
+        this.paePalette = root.querySelector('#pae-palette') as HTMLElement | null;
+        this.paeSpriteMeta = root.querySelector('#pae-sprite-meta') as HTMLElement | null;
+        this.paeVariantBar = root.querySelector('#pae-variant-bar') as HTMLElement | null;
+        this.paeFrameBar = root.querySelector('#pae-frame-bar') as HTMLElement | null;
+        this.paeSave = root.querySelector('#pae-save') as HTMLButtonElement | null;
+        this.paeReset = root.querySelector('#pae-reset') as HTMLButtonElement | null;
+        this.paeClose = root.querySelector('#pae-close') as HTMLButtonElement | null;
+        this.paeToolPaint = root.querySelector('#pae-tool-paint') as HTMLButtonElement | null;
+        this.paeToolErase = root.querySelector('#pae-tool-erase') as HTMLButtonElement | null;
     }
 }
 

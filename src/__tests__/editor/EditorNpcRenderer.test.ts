@@ -5,9 +5,7 @@ import { EditorNpcRenderer } from '../../editor/modules/renderers/EditorNpcRende
 type NpcRendererService = ConstructorParameters<typeof EditorNpcRenderer>[0];
 type NpcSpriteEntry = Parameters<EditorNpcRenderer['getNpcDialogueText']>[0] extends infer T ? NonNullable<T> : never;
 type NpcDefinitionInput = Parameters<EditorNpcRenderer['drawNpcPreview']>[1];
-type TestService = ReturnType<typeof makeService>;
-
-function asNpcRendererService(service: TestService): NpcRendererService {
+function asNpcRendererService(service: unknown): NpcRendererService {
   return service as unknown as NpcRendererService;
 }
 
@@ -72,7 +70,6 @@ function makeService(managerOverrides: Record<string, unknown> = {}, domOverride
     },
     t: vi.fn((key: string, fallback = ''): string => {
       const map: Record<string, string> = {
-        'npc.status.available': 'Available',
         'npc.defaultName': 'NPC',
         'npc.toggle.hide': 'Hide',
         'npc.toggle.create': 'Create',
@@ -178,13 +175,13 @@ describe('EditorNpcRenderer', () => {
     expect(posEl?.textContent).toBe('(3, 5)');
   });
 
-  it('shows "Available" text when npc is not placed', () => {
+  it('leaves position text empty when npc is not placed', () => {
     const svc = makeService();
     svc.gameEngine.getSprites.mockReturnValue([]);
     const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.renderNpcs();
     const posEl = svc.dom.npcsList.querySelector('.npc-position');
-    expect(posEl?.textContent).toBe('Available');
+    expect(posEl?.textContent).toBe('');
   });
 
   // ─── getNpcName ──────────────────────────────────────────────────────────
@@ -344,6 +341,87 @@ describe('EditorNpcRenderer', () => {
     canvas.height = 48;
     const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     expect(() => renderer.drawNpcPreview(canvas, { type: 'unknown-npc' })).not.toThrow();
+  });
+});
+
+// sprite-edit-btn
+
+describe('EditorNpcRenderer - sprite-edit-btn', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  function makeServiceWithCustomSprites(customSprites: unknown[] = []) {
+    const npcsList = document.createElement('ul');
+    const manager = {
+      selectedNpcType: null as string | null,
+      selectedNpcId: null as string | null,
+      state: { npcVariantFilter: 'human', activeRoomIndex: 0, conditionalDialogueExpanded: false },
+      npcService: { populateVariableSelect: vi.fn(), clearSelection: vi.fn() },
+    };
+    const service = {
+      manager,
+      dom: {
+        npcsList,
+        npcEditor: document.createElement('div'),
+        npcText: document.createElement('textarea'),
+        npcConditionalText: document.createElement('textarea'),
+        npcConditionalVariable: document.createElement('select'),
+        npcRewardVariable: document.createElement('select'),
+        npcConditionalRewardVariable: document.createElement('select'),
+        btnToggleNpcConditional: document.createElement('button'),
+        npcConditionalSection: document.createElement('div'),
+        btnNpcDelete: document.createElement('button'),
+        npcVariantButtons: [],
+      },
+      state: manager.state,
+      gameEngine: {
+        npcManager: {
+          ensureDefaultNPCs: vi.fn(),
+          getDefinitions: vi.fn(() => [
+            { type: 'hero', name: 'Hero', variant: 'human' },
+          ]),
+        },
+        getSprites: vi.fn(() => []),
+        getGame: vi.fn(() => ({ customSprites })),
+        renderer: {
+          npcSprites: { default: [['#FF0000']] },
+        },
+      },
+      t: vi.fn<(_key: string, fallback?: string) => string>((_key: string, fallback = ''): string => fallback),
+      tf: vi.fn<(_key: string, _params?: Record<string, unknown>, fallback?: string) => string>(
+        (_key: string, _params: Record<string, unknown> = {}, fallback = ''): string => fallback
+      ),
+    };
+    return service;
+  }
+
+  it('npc cards render .sprite-edit-btn with data-edit-group="npc"', () => {
+    const svc = makeServiceWithCustomSprites();
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
+    renderer.renderNpcs();
+    const editBtn = svc.dom.npcsList.querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).dataset.editGroup).toBe('npc');
+    expect((editBtn as HTMLElement).dataset.editKey).toBe('hero');
+  });
+
+  it('.sprite-edit-btn adds the is-custom class when the npc has a customSprites entry', () => {
+    const svc = makeServiceWithCustomSprites([
+      { group: 'npc', key: 'hero', variant: 'base', frames: [[[0]]] },
+    ]);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
+    renderer.renderNpcs();
+    const editBtn = svc.dom.npcsList.querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).classList.contains('is-custom')).toBe(true);
+  });
+
+  it('.sprite-edit-btn does not add the is-custom class when the npc has no custom entry', () => {
+    const svc = makeServiceWithCustomSprites([]);
+    const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
+    renderer.renderNpcs();
+    const editBtn = svc.dom.npcsList.querySelector('.sprite-edit-btn');
+    expect(editBtn).toBeTruthy();
+    expect((editBtn as HTMLElement).classList.contains('is-custom')).toBe(false);
   });
 });
 

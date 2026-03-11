@@ -18,3 +18,13 @@ describe('ShareConstants', () => {
     expect(palette).not.toBe(GameConfig.palette.colors);
   });
 });
+
+describe('ShareConstants - VERSION_20', () => {
+    it('VERSION_20 existe e vale 20', () => {
+        expect(ShareConstants.VERSION_20).toBe(20);
+    });
+
+    it('VERSION_20 esta em SUPPORTED_VERSIONS', () => {
+        expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_20)).toBe(true);
+    });
+});

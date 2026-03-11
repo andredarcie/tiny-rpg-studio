@@ -1,3 +1,4 @@
+
 :root {
     --bg: #0e0f13;
     --panel: #151821;
@@ -20,15 +21,19 @@ body {
     height: 100%;
 }
 
+hr {
+    border-top: 4px solid var(--border);
+}
+
 html {
     font-size: var(--base-font-size);
 }
 
 body {
     margin: 0;
-    font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+    font-family: "Press Start 2P", monospace;
     color: var(--text);
-    background: radial-gradient(1200px 600px at 50% -200px, #182036 0%, var(--bg) 60%);
+    background: var(--bg);
 }
 
 body * {
@@ -48,9 +53,8 @@ header {
     justify-content: space-between;
     gap: 12px;
     padding: 10px clamp(10px, 2.5vw, 20px);
-    border-bottom: 1px solid var(--border);
-    background: rgba(15, 19, 32, 0.82);
-    backdrop-filter: blur(8px);
+    border-bottom: 4px solid var(--border);
+    background: var(--panel);
     position: sticky;
     top: 0;
     z-index: 10;
@@ -86,9 +90,9 @@ main {
     flex-wrap: wrap;
     gap: 5px;
     padding: clamp(3px, 1.2vw, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 4px solid var(--border);
     border-radius: 14px;
-    background: rgba(10, 13, 22, 0.8);
+    background: var(--panel);
     width: 100%;
     max-width: 720px;
     margin: clamp(3px, 1.2vw, 8px) auto;
@@ -108,7 +112,7 @@ body.game-mode .tabs {
     font-size: clamp(0.75rem, 2vw, 0.9rem);
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.65);
+    color: var(--muted);
 }
 
 .tabs-links {
@@ -126,17 +130,14 @@ body.game-mode .tabs {
     align-items: center;
     justify-content: center;
     min-height: 28px;
-    padding: 5px 8px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    border: 4px solid var(--border);
     background: rgba(26, 32, 48, 0.9);
     color: #f2f5ff;
     cursor: pointer;
     font-weight: 600;
-    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
     white-space: nowrap;
     font-size: 0.95rem;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .tab-action-button {
@@ -145,16 +146,14 @@ body.game-mode .tabs {
     align-items: center;
     justify-content: center;
     min-height: 28px;
-    padding: 5px 8px;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 12px;
+    border: 4px solid var(--border);
     background: rgba(30, 35, 55, 0.88);
     color: #fff;
     font-size: 0.85rem;
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
-    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .tab-button.active {
@@ -221,10 +220,9 @@ body.game-mode .tabs {
 .tab-content {
     display: none;
     padding: clamp(10px, 2vw, 18px);
-    border: 1px solid var(--border);
+    border: 4px solid var(--border);
     border-radius: 14px;
-    background: rgba(10, 13, 22, 0.88);
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+    background: var(--panel);
 }
 
 .tab-content.active {
@@ -245,7 +243,7 @@ body.editor-mode #tab-editor.tab-content {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    background: rgba(10, 13, 22, 0.9);
+    background: var(--panel);
     padding: 0;
 }
 
@@ -277,7 +275,7 @@ body.game-mode header {
     border-bottom: 2px solid #2a2f3a;
     backdrop-filter: none;
     color: #ffffff;
-    font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+    font-family: "Press Start 2P", monospace;
 }
 
 body.game-mode header h1 {
@@ -346,10 +344,9 @@ body.game-mode #tab-game .game-controls {
     bottom: clamp(12px, 4vw, 28px);
     right: clamp(12px, 4vw, 32px);
     padding: 6px 8px;
-    background: rgba(10, 13, 22, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--panel);
+    border: 4px solid var(--border);
     border-radius: 8px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
     z-index: 3;
 }
 
@@ -366,7 +363,7 @@ body.editor-mode {
     --accent: #5bfa8e;
     --border: #2a2f3a;
     background: var(--bg);
-    font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+    font-family: "Press Start 2P", monospace;
 }
 
 body.editor-mode header {
@@ -493,11 +490,9 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     font-family: monospace;
     font-size: clamp(18px, 4vw, 24px);
     color: #ffffff;
-    background: rgba(0, 0, 0, 0.55);
+    background: var(--panel);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.12s ease-in-out;
-    will-change: opacity;
     z-index: 4;
 }
 
@@ -572,13 +567,11 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.25);
     background: rgba(10, 15, 25, 0.85);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
     z-index: 3;
 }
 
@@ -667,7 +660,6 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
 .editor-mobile-nav-button .nav-icon {
@@ -678,7 +670,6 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 .editor-mobile-nav-button.active {
     border-color: rgba(96, 165, 250, 0.9);
     background: rgba(96, 165, 250, 0.25);
-    transform: translateY(-1px);
 }
 
 .editor-mobile-nav-button:focus-visible {
@@ -877,10 +868,10 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 .editor-section {
     display: grid;
     gap: 16px;
-    padding: 16px 18px;
-    border: 1px solid var(--border);
+    padding: 16px;
+    border: 4px solid var(--border);
     border-radius: 12px;
-    background: rgba(15, 18, 29, 0.85);
+    background: var(--panel);
 }
 
 .editor-section h3 {
@@ -895,11 +886,8 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 
 .editor-section details {
     display: grid;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: rgba(8, 10, 16, 0.9);
+    gap: 16px;
+    background: var(--bg);
 }
 
 .editor-section details + details {
@@ -909,14 +897,11 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 .editor-section summary {
     cursor: pointer;
     font-weight: 600;
-    margin: -12px -14px 0;
-    padding: 12px 14px;
-    border-radius: 8px;
+    padding: 6px 0;
 }
 
 .editor-section details[open] summary {
-    margin-bottom: 12px;
-    background: rgba(21, 24, 33, 0.9);
+    margin-bottom: 8px;
 }
 
 
@@ -982,13 +967,11 @@ select,
 textarea,
 button {
     font: inherit;
-    padding: 8px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
+    padding: 10px 12px;
+    border: 4px solid var(--border);
     background: #0f1422;
     color: var(--text);
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 input:focus,
@@ -996,7 +979,6 @@ select:focus,
 textarea:focus,
 button:focus-visible {
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.15);
 }
 
 button {
@@ -1041,15 +1023,14 @@ textarea {
     gap: 10px;
     padding: 8px 10px;
     background: var(--panel);
-    border: 1px solid var(--border);
+    border: 4px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    position: relative;
 }
 
 .object-type-card:hover {
     border-color: rgba(100, 181, 246, 0.6);
-    transform: translateY(-1px);
 }
 
 .object-types::-webkit-scrollbar {
@@ -1148,7 +1129,7 @@ textarea {
     padding: 8px 12px;
     border: 1px dashed var(--border);
     border-radius: 8px;
-    background: rgba(18, 22, 34, 0.6);
+    background: var(--panel);
 }
 
 .object-preview,
@@ -1411,7 +1392,6 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
 }
 
 .project-variables__header {
@@ -1425,9 +1405,9 @@ body.game-mode .tabs {
     border: 2px solid #2a2f3a;
     border-radius: 0;
     box-shadow: none;
-    background: #11151d;
+    background: var(--panel);
     background-image: none;
-    font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+    font-family: "Press Start 2P", monospace;
 }
 
 body.game-mode .tabs-title {
@@ -1446,7 +1426,7 @@ body.game-mode .tab-action-button {
     color: #ffffff;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+    font-family: "Press Start 2P", monospace;
 }
 
 body.game-mode .tab-button.active {
@@ -1477,7 +1457,7 @@ body.game-mode .tab-button.active {
     background: rgba(255, 255, 255, 0.06);
     color: var(--text);
     cursor: pointer;
-    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+    transition: background 120ms ease, border-color 120ms ease;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1487,7 +1467,6 @@ body.game-mode .tab-button.active {
 }
 
 .project-variables__toggle:hover {
-    transform: translateY(-1px);
     background: rgba(255, 255, 255, 0.1);
     border-color: rgba(255, 255, 255, 0.16);
 }
@@ -1510,7 +1489,7 @@ body.game-mode .tab-button.active {
     padding: 10px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(12, 14, 22, 0.4);
+    background: var(--panel);
 }
 
 .project-variable-color {
@@ -1577,7 +1556,7 @@ body.game-mode .tab-button.active {
     padding: 10px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(12, 14, 22, 0.4);
+    background: var(--panel);
 }
 
 .project-skill-icon {
@@ -1618,7 +1597,7 @@ body.game-mode .tab-button.active {
     padding: 10px 12px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(12, 14, 22, 0.4);
+    background: var(--panel);
 }
 
 .project-test__field select {
@@ -1660,7 +1639,7 @@ body.game-mode .tab-button.active {
     padding: 8px 10px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(12, 14, 22, 0.35);
+    background: var(--panel);
 }
 
 .project-test__skill input {
@@ -1766,7 +1745,6 @@ body.game-mode .tab-button.active {
     padding: 0;
     cursor: pointer;
     pointer-events: auto;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .enemy-overlay-remove:hover {
@@ -1789,11 +1767,11 @@ body.game-mode .tab-button.active {
     gap: 10px;
     padding: 10px 12px;
     background: var(--panel);
-    border: 1px solid var(--border);
+    border: 4px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
     min-width: 0;
+    position: relative;
 }
 
 .enemy-card.boss {
@@ -1803,7 +1781,6 @@ body.game-mode .tab-button.active {
 
 .enemy-card:hover {
     border-color: rgba(100, 181, 246, 0.6);
-    transform: translateY(-1px);
 }
 
 .enemy-card.selected {
@@ -1822,7 +1799,7 @@ body.game-mode .tab-button.active {
 
 .enemy-meta {
     display: grid;
-    gap: 4px;
+    gap: 8px;
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -2014,21 +1991,20 @@ body.game-mode .tab-button.active {
     align-items: center;
     justify-content: center;
     padding: 8px;
-    width: 80px;
+    width: 92px;
     aspect-ratio: 1 / 1;
     appearance: none;
     -webkit-appearance: none;
     background: var(--panel);
-    border: 1px solid var(--border);
+    border: 4px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
     min-height: 72px;
+    position: relative;
 }
 
 .tile-card:hover {
     border-color: rgba(100, 181, 246, 0.6);
-    transform: translateY(-1px);
 }
 
 .tile-card:focus-visible {
@@ -2042,10 +2018,10 @@ body.game-mode .tab-button.active {
     gap: 10px;
     padding: 8px 10px;
     background: var(--panel);
-    border: 1px solid var(--border);
+    border: 4px solid var(--border);
     border-radius: 8px;
     cursor: pointer;
-    transition: border-color 0.2s ease, transform 0.2s ease;
+    position: relative;
 }
 
 
@@ -2054,9 +2030,29 @@ body.game-mode .tab-button.active {
     background: rgba(100, 181, 246, 0.08);
     box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.15);
 }
+
+.tile-card-select {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0 !important;
+    background: transparent;
+    color: inherit;
+}
+
+.tile-card-select:hover,
+.tile-card-select:focus,
+.tile-card-select:focus-visible {
+    border: 0 !important;
+    background: transparent !important;
+    outline: none;
+    box-shadow: none !important;
+}
+
 .tile-card canvas {
-    border: 1px solid var(--border);
-    border-radius: 4px;
     width: 64px;
     height: 64px;
 }
@@ -2064,7 +2060,7 @@ body.game-mode .tab-button.active {
 .npc-card .meta {
     flex: 1;
     display: grid;
-    gap: 4px;
+    gap: 8px;
 }
 .tile-name {
     font-size: 0.85rem;
@@ -2093,6 +2089,16 @@ body.game-mode .tab-button.active {
     border-color: var(--accent);
     background: rgba(100, 181, 246, 0.1);
     box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.15);
+}
+
+.npc-card.npc-card-placed {
+    border-color: rgba(71, 196, 134, 0.7) !important;
+    box-shadow: 0 0 0 1px rgba(71, 196, 134, 0.18);
+}
+
+.npc-card.npc-card-placed.selected {
+    border-color: rgba(71, 196, 134, 0.82) !important;
+    box-shadow: 0 0 0 1px rgba(71, 196, 134, 0.24), 0 0 0 3px rgba(71, 196, 134, 0.08);
 }
 
 .npc-card .npc-preview {
@@ -2130,12 +2136,11 @@ body.game-mode .tab-button.active {
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .world-cell:hover {
     border-color: var(--accent);
-    transform: translateY(-1px);
 }
 
 .world-cell.active {
@@ -2210,13 +2215,12 @@ body.game-mode .tab-button.active {
     background: var(--panel);
     color: var(--text);
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .npc-variant-button:hover,
 .npc-variant-button:focus-visible {
     border-color: var(--accent);
-    transform: translateY(-1px);
     outline: none;
 }
 
@@ -2246,13 +2250,12 @@ body.game-mode .tab-button.active {
     background: var(--panel);
     color: var(--text);
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    transition: border-color 0.2s ease, background 0.2s ease;
 }
 
 .object-category-button:hover,
 .object-category-button:focus-visible {
     border-color: var(--accent);
-    transform: translateY(-1px);
     outline: none;
 }
 
@@ -2471,7 +2474,6 @@ body.game-mode .tab-button.active {
     border-radius: 10px;
     background: rgba(10, 13, 22, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
     pointer-events: none;
     z-index: 3;
 }
@@ -2512,8 +2514,8 @@ body.game-mode .tab-button.active {
 
 .tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, max-content));
-    gap: 2px;
+    grid-template-columns: repeat(auto-fit, minmax(92px, max-content));
+    gap: 8px;
     justify-content: flex-start;
 }
 
@@ -2627,7 +2629,6 @@ body.game-mode .tab-button.active {
     padding: 10px;
     width: 100%;
     max-width: 460px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     display: block;
 }
 
@@ -2642,7 +2643,6 @@ body.game-mode .tab-button.active {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .color-picker-header {
@@ -2806,4 +2806,176 @@ body.game-mode .tab-button.active {
         width: 100%;
         max-width: none;
     }
+}
+
+/* ── Pixel Art Editor ──────────────────────────────────────── */
+
+.tile-card,
+.npc-card,
+.enemy-card,
+.object-type-card {
+    position: relative;
+}
+
+.sprite-edit-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    cursor: pointer;
+    opacity: 0;
+    z-index: 10;
+    font-size: 11px;
+    line-height: 1;
+    text-align: center;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+    transition: opacity 0.1s, background 0.1s, border-color 0.1s;
+}
+
+.tile-card.selected .sprite-edit-btn,
+.npc-card.selected .sprite-edit-btn,
+.enemy-card.selected .sprite-edit-btn,
+.object-type-card.selected .sprite-edit-btn {
+    opacity: 1;
+}
+
+.pixel-art-editor-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.pixel-art-editor-modal[hidden] {
+    display: none;
+}
+
+.pixel-art-editor {
+    background: var(--panel, #1a1c2c);
+    border: 2px solid var(--border, #333);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 320px;
+}
+
+.pae-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pae-title {
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.pae-close {
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 14px;
+    padding: 2px 6px;
+}
+
+.pae-editor-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+#pae-canvas {
+    display: block;
+    cursor: crosshair;
+    image-rendering: pixelated;
+}
+
+.pae-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+
+.pae-frame-bar {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.pae-frame-bar[hidden] {
+    display: none;
+}
+
+.pae-frame-btn {
+    cursor: pointer;
+    padding: 4px 8px;
+    border: 2px solid var(--border, #333);
+    background: var(--panel, #1a1c2c);
+    color: inherit;
+    font-size: 11px;
+}
+
+.pae-frame-btn.active {
+    background: var(--accent, #29adff);
+    color: #000;
+}
+
+.pae-palette-swatch {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.pae-palette-swatch.active {
+    border-color: #fff;
+}
+
+.pae-tools {
+    display: flex;
+    gap: 4px;
+}
+
+.pae-tool {
+    cursor: pointer;
+    padding: 4px 8px;
+    border: 2px solid var(--border, #333);
+    background: var(--panel, #1a1c2c);
+    color: inherit;
+    font-size: 11px;
+}
+
+.pae-tool.active {
+    background: var(--accent, #29adff);
+    color: #000;
+}
+
+.pae-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.pae-save-btn {
+    background: var(--accent, #29adff);
+    color: #000;
+    border: none;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-weight: bold;
 }

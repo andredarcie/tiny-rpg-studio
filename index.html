@@ -471,6 +471,30 @@
 
     <input type="file" id="file-input" accept=".json" style="display: none;">
 
+    <div id="pixel-art-editor-modal" class="pixel-art-editor-modal" hidden>
+        <div class="pixel-art-editor">
+            <div class="pae-header">
+                <span class="pae-title" data-text-key="pixelArtEditor.title">PIXEL ART EDITOR</span>
+                <button type="button" class="pae-close" id="pae-close" data-aria-label-key="pixelArtEditor.closeAria">X</button>
+            </div>
+            <div class="pae-sprite-meta" id="pae-sprite-meta"></div>
+            <div class="pae-variant-bar" id="pae-variant-bar" hidden></div>
+            <div class="pae-frame-bar" id="pae-frame-bar" hidden></div>
+            <div class="pae-editor-area">
+                <canvas id="pae-canvas" width="256" height="256"></canvas>
+            </div>
+            <div class="pae-palette" id="pae-palette"></div>
+            <div class="pae-tools">
+                <button type="button" class="pae-tool active" data-tool="paint" id="pae-tool-paint" data-text-key="pixelArtEditor.paint">Pintar</button>
+                <button type="button" class="pae-tool" data-tool="erase" id="pae-tool-erase" data-text-key="pixelArtEditor.erase">Apagar</button>
+            </div>
+            <div class="pae-actions">
+                <button type="button" id="pae-reset" data-text-key="pixelArtEditor.reset">Restaurar padrao</button>
+                <button type="button" id="pae-save" class="pae-save-btn" data-text-key="pixelArtEditor.save">Salvar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Carregar módulos na ordem correta -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
