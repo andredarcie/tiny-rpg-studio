@@ -324,7 +324,7 @@ export class PixelArtEditorController {
 
     private tf(
         key: string,
-        params: Record<string, string | number | boolean | null | undefined>,
+        params: Record<string, string | number | boolean>,
         fallback = ''
     ): string {
         return (TextResources.format(key, params, fallback) as string) || fallback || key;

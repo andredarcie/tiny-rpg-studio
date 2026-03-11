@@ -62,24 +62,25 @@ const makeManager = (customSprites: CustomSpriteEntry[] = []) => {
 
 // Minimal DOM stub
 const makeDom = () => {
+    const context2d = {
+        clearRect: vi.fn(),
+        fillRect: vi.fn(),
+        beginPath: vi.fn(),
+        moveTo: vi.fn(),
+        lineTo: vi.fn(),
+        stroke: vi.fn(),
+        fillStyle: '',
+        strokeStyle: '',
+        lineWidth: 0,
+    };
     const canvas = {
-        getContext: vi.fn().mockReturnValue({
-            clearRect: vi.fn(),
-            fillRect: vi.fn(),
-            beginPath: vi.fn(),
-            moveTo: vi.fn(),
-            lineTo: vi.fn(),
-            stroke: vi.fn(),
-            fillStyle: '',
-            strokeStyle: '',
-            lineWidth: 0,
-        }),
+        getContext: vi.fn().mockReturnValue(context2d),
         addEventListener: vi.fn(),
         getBoundingClientRect: vi.fn().mockReturnValue({ left: 0, top: 0, width: 256, height: 256 }),
         width: 256,
         height: 256,
     } as unknown as HTMLCanvasElement;
-    return {
+    const dom = {
         pixelArtEditorModal: { removeAttribute: vi.fn(), setAttribute: vi.fn(), hidden: true },
         paeCanvas: canvas,
         paePalette: { innerHTML: '', appendChild: vi.fn(), addEventListener: vi.fn() },
@@ -92,6 +93,7 @@ const makeDom = () => {
         paeToolPaint: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
         paeToolErase: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
     } as unknown as PixelArtEditorDom;
+    return { dom, context2d };
 };
 
 describe('PixelArtEditorController', () => {
@@ -107,7 +109,7 @@ describe('PixelArtEditorController', () => {
                 { group: 'npc', key: 'wizard', variant: 'base', frames: customFrames },
             ]);
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
 
             controller.open('npc', 'wizard', 'base');
 
@@ -117,7 +119,7 @@ describe('PixelArtEditorController', () => {
         it('loads a tile from numeric layouts when opening the tile editor', () => {
             const { manager } = makeManager();
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
 
             controller.open('tile', '1');
 
@@ -127,7 +129,7 @@ describe('PixelArtEditorController', () => {
 
         it('loads animated tile frames and renders frame buttons', () => {
             const { manager } = makeManager();
-            const dom = makeDom();
+            const { dom } = makeDom();
             const controller = new PixelArtEditorController();
             controller.init(manager, dom);
 
@@ -135,32 +137,31 @@ describe('PixelArtEditorController', () => {
 
             expect(opened).toBe(true);
             expect(controller.getCurrentFrames()).toHaveLength(2);
-            expect(dom.paeFrameBar.hidden).toBe(false);
-            expect(dom.paeFrameBar.querySelectorAll('.pae-frame-btn')).toHaveLength(2);
-            expect(dom.paeFrameBar.textContent).toContain('Frame 0');
-            expect(dom.paeFrameBar.textContent).toContain('Frame 1');
+            expect(dom.paeFrameBar!.hidden).toBe(false);
+            expect(dom.paeFrameBar!.querySelectorAll('.pae-frame-btn')).toHaveLength(2);
+            expect(dom.paeFrameBar!.textContent).toContain('Frame 0');
+            expect(dom.paeFrameBar!.textContent).toContain('Frame 1');
         });
 
         it('switches the active frame when clicking a frame button', () => {
             const { manager } = makeManager();
-            const dom = makeDom();
-            const canvasContext = dom.paeCanvas.getContext('2d') as ReturnType<typeof vi.fn>;
+            const { dom, context2d } = makeDom();
             const controller = new PixelArtEditorController();
             controller.init(manager, dom);
             controller.open('tile', '2');
 
-            const frameButtons = dom.paeFrameBar.querySelectorAll('.pae-frame-btn');
+            const frameButtons = dom.paeFrameBar!.querySelectorAll('.pae-frame-btn');
             (frameButtons[1] as HTMLButtonElement).click();
-            const rerenderedButtons = dom.paeFrameBar.querySelectorAll('.pae-frame-btn');
+            const rerenderedButtons = dom.paeFrameBar!.querySelectorAll('.pae-frame-btn');
 
             expect((rerenderedButtons[1] as HTMLButtonElement).classList.contains('active')).toBe(true);
-            expect(canvasContext.clearRect).toHaveBeenCalled();
+            expect(context2d.clearRect).toHaveBeenCalled();
         });
 
         it('localizes palette swatch titles', () => {
             const { manager } = makeManager();
-            const dom = makeDom();
-            const appendChild = dom.paePalette.appendChild as unknown as ReturnType<typeof vi.fn>;
+            const { dom } = makeDom();
+            const appendChild = dom.paePalette!.appendChild as unknown as ReturnType<typeof vi.fn>;
             const controller = new PixelArtEditorController();
             controller.init(manager, dom);
 
@@ -176,7 +177,7 @@ describe('PixelArtEditorController', () => {
         it('upserts into game.customSprites', () => {
             const { manager, game } = makeManager();
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
             controller.open('npc', 'wizard', 'base');
             controller.setFrames([[[3, 3]]]);
 
@@ -190,7 +191,7 @@ describe('PixelArtEditorController', () => {
         it('calls invalidate on the renderer', () => {
             const { manager, invalidate } = makeManager();
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
             controller.open('npc', 'wizard', 'base');
             controller.save();
 
@@ -200,7 +201,7 @@ describe('PixelArtEditorController', () => {
         it('calls renderAll and pushCurrentState', () => {
             const { manager, renderAll, pushCurrentState } = makeManager();
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
             controller.open('npc', 'wizard', 'base');
             controller.save();
 
@@ -215,7 +216,7 @@ describe('PixelArtEditorController', () => {
                 { group: 'npc', key: 'wizard', variant: 'base', frames: [[[9, 9]]] },
             ]);
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
             controller.open('npc', 'wizard', 'base');
             // Manually edit one pixel.
             controller.setFrames([[[7, 7]]]);
@@ -231,7 +232,7 @@ describe('PixelArtEditorController', () => {
                 { group: 'npc', key: 'wizard', variant: 'base', frames: [[[0]]] },
             ]);
             const controller = new PixelArtEditorController();
-            controller.init(manager, makeDom());
+            controller.init(manager, makeDom().dom);
             controller.open('npc', 'wizard', 'base');
 
             controller.resetToDefault();
