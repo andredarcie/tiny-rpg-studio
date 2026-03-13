@@ -125,7 +125,8 @@ class Renderer {
     }
 
     private shouldHideHud(): boolean {
-        return Boolean(this.gameState.getGame?.()?.hideHud);
+        const game = this.gameState.getGame ? this.gameState.getGame() : null;
+        return Boolean(game?.hideHud);
     }
 
     private applyCanvasLayout(): void {
