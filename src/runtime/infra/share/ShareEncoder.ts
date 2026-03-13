@@ -10,6 +10,7 @@ import { ShareVariableCodec } from './ShareVariableCodec';
 import { ShareBase64 } from './ShareBase64';
 import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
 import { ShareSpriteCatalog } from './ShareSpriteCatalog';
+import type { CustomSpriteEntry } from '../../../types/gameState';
 
 type CustomSpriteEntryLike = {
     group: string;
@@ -21,6 +22,7 @@ type CustomSpriteEntryLike = {
 type ShareGameData = {
     title?: unknown;
     author?: unknown;
+    hideHud?: unknown;
     start?: unknown;
     sprites?: unknown[];
     enemies?: unknown[];
@@ -34,12 +36,13 @@ type ShareGameData = {
 };
 
 class ShareEncoder {
-    private static readonly CUSTOM_SPRITE_BINARY_VERSION = 4;
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION = 5;
     private static readonly GROUP_TO_ID: Record<string, number> = {
         tile: 0,
         npc: 1,
         enemy: 2,
-        object: 3
+        object: 3,
+        player: 4
     };
 
     private static packNibblePair(values: number[], index: number): number {
@@ -196,7 +199,7 @@ class ShareEncoder {
             const variantId = entry.variant === 'on' ? 1 : 0;
             const frames = entry.frames;
             const baseFrame = ShareEncoder.resolveBaseFrame(entry);
-            const keyIndex = ShareSpriteCatalog.getKeyIndex(entry.group as 'tile' | 'npc' | 'enemy' | 'object', entry.key, (entry.variant ?? 'base') as 'base' | 'on');
+            const keyIndex = ShareSpriteCatalog.getKeyIndex(entry.group as CustomSpriteEntry['group'], entry.key, (entry.variant ?? 'base') as 'base' | 'on');
             const useIndexedKey = keyIndex >= 0 && keyIndex <= 0xff;
             const isFixed8x8Indexed = useIndexedKey && frames.every((frame) =>
                 Array.isArray(frame) &&
@@ -208,7 +211,8 @@ class ShareEncoder {
                 frame.length === baseFrame.length &&
                 (frame[0]?.length ?? 0) === (baseFrame[0]?.length ?? 0)
             );
-            const flags = (groupId & 0x03) | ((variantId & 0x01) << 2) | ((canUseDelta ? 1 : 0) << 3) | ((useIndexedKey ? 1 : 0) << 4) | ((isFixed8x8Indexed ? 1 : 0) << 5);
+            // Binary version 5+: groupId uses 3 bits (0-2), remaining flags shift up by 1.
+            const flags = (groupId & 0x07) | ((variantId & 0x01) << 3) | ((canUseDelta ? 1 : 0) << 4) | ((useIndexedKey ? 1 : 0) << 5) | ((isFixed8x8Indexed ? 1 : 0) << 6);
 
             bytes.push(flags);
             bytes.push(frames.length & 0xff);
@@ -435,6 +439,10 @@ class ShareEncoder {
         const author = typeof gameData?.author === 'string' ? gameData.author.trim() : '';
         if (author) {
             parts.push('y' + ShareTextCodec.encodeText(author.slice(0, 60)));
+        }
+
+        if (gameData?.hideHud) {
+            parts.push('H1');
         }
 
         // Custom Sprites

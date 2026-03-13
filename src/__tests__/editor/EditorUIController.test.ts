@@ -28,6 +28,8 @@ function makeController(manager: UIManagerFixture): EditorUIController {
 function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const titleInput = makeInput('');
   const authorInput = makeInput('');
+  const projectHideHud = document.createElement('input');
+  projectHideHud.type = 'checkbox';
   const jsonArea = document.createElement('textarea');
 
   const state: Record<string, unknown> = {
@@ -40,6 +42,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     domCache: {
       titleInput,
       authorInput,
+      projectHideHud,
       jsonArea,
       mobileNavButtons: [] as HTMLButtonElement[],
       mobilePanels: [] as HTMLElement[],
@@ -50,12 +53,13 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       updateNpcForm: vi.fn(),
     },
     gameEngine: {
-      getGame: vi.fn(() => ({ title: 'Test Title', author: 'Test Author' })),
+      getGame: vi.fn(() => ({ title: 'Test Title', author: 'Test Author', hideHud: false })),
       syncDocumentTitle: vi.fn(),
       refreshIntroScreen: vi.fn(),
       exportGameData: vi.fn(() => ({ title: 'Test', author: '' })),
       getMaxPlayerLevel: vi.fn(() => 20),
       updateTestSettings: vi.fn(),
+      setHideHud: vi.fn(),
       getSprites: vi.fn(() => []),
       npcManager: { getDefinitions: vi.fn(() => []) },
       gameState: { variableManager: { refreshPresetNames: vi.fn() } },
@@ -110,7 +114,7 @@ describe('EditorUIController', () => {
     const mgr = makeManager();
     mgr.domCache.titleInput.value = 'My Game';
     mgr.domCache.authorInput.value = 'André';
-    const game = { title: '', author: '' };
+    const game = { title: '', author: '', hideHud: false };
     mgr.gameEngine.getGame.mockReturnValue(game);
     const ctrl = makeController(mgr);
     ctrl.updateGameMetadata();
@@ -208,15 +212,24 @@ describe('EditorUIController', () => {
     expect(mgr.gameEngine.updateTestSettings).toHaveBeenCalledWith({ godMode: false });
   });
 
+  it('setHideHud updates engine state and JSON', () => {
+    const mgr = makeManager();
+    const ctrl = makeController(mgr);
+    ctrl.setHideHud(true);
+    expect(mgr.gameEngine.setHideHud).toHaveBeenCalledWith(true);
+    expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
+  });
+
   // ─── syncUI ──────────────────────────────────────────────────────────
 
   it('syncUI sets title/author inputs from game and calls updateJSON', () => {
     const mgr = makeManager();
-    mgr.gameEngine.getGame.mockReturnValue({ title: 'My RPG', author: 'Dev' });
+    mgr.gameEngine.getGame.mockReturnValue({ title: 'My RPG', author: 'Dev', hideHud: true });
     const ctrl = makeController(mgr);
     ctrl.syncUI();
     expect(mgr.domCache.titleInput.value).toBe('My RPG');
     expect(mgr.domCache.authorInput.value).toBe('Dev');
+    expect(mgr.domCache.projectHideHud.checked).toBe(true);
     // updateJSON is a real method on the controller; verify its side effects
     expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
   });

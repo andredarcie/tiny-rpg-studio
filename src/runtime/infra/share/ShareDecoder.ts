@@ -14,11 +14,12 @@ import { ShareSpriteCatalog } from './ShareSpriteCatalog';
 type SharePayload = Record<string, string>;
 
 class ShareDecoder {
-    private static readonly CUSTOM_SPRITE_BINARY_VERSION = 4;
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION = 5;
+    private static readonly CUSTOM_SPRITE_BINARY_VERSION_4 = 4;
     private static readonly CUSTOM_SPRITE_BINARY_VERSION_1 = 1;
     private static readonly CUSTOM_SPRITE_BINARY_VERSION_2 = 2;
     private static readonly CUSTOM_SPRITE_BINARY_VERSION_3 = 3;
-    private static readonly GROUPS: CustomSpriteEntry['group'][] = ['tile', 'npc', 'enemy', 'object'];
+    private static readonly GROUPS: CustomSpriteEntry['group'][] = ['tile', 'npc', 'enemy', 'object', 'player'];
 
     private static countMaskBits(maskBytes: Uint8Array | number[], bitCount: number): number {
         let count = 0;
@@ -84,6 +85,7 @@ class ShareDecoder {
         }
         if (
             bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION &&
+            bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_4 &&
             bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_3 &&
             bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_2 &&
             bytes[0] !== this.CUSTOM_SPRITE_BINARY_VERSION_1
@@ -99,11 +101,14 @@ class ShareDecoder {
 
             for (let entryIndex = 0; entryIndex < entryCount; entryIndex++) {
                 const flags = bytes[offset++] ?? 0;
-                const group = this.GROUPS[flags & 0x03] ?? 'tile';
-                const variant = (((flags >> 2) & 0x01) === 1 ? 'on' : 'base') as CustomSpriteVariant;
-                const usesDelta = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_2 && (((flags >> 3) & 0x01) === 1);
-                const usesIndexedKey = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_3 && (((flags >> 4) & 0x01) === 1);
-                const usesFixed8x8Indexed = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION && (((flags >> 5) & 0x01) === 1);
+                // Binary version 5+: groupId occupies 3 bits (0-2); flags for variant/delta/key shift up.
+                // Binary version 1-4: groupId occupies 2 bits (0-1); legacy layout.
+                const isV5 = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION;
+                const group = this.GROUPS[isV5 ? (flags & 0x07) : (flags & 0x03)] ?? 'tile';
+                const variant = (((flags >> (isV5 ? 3 : 2)) & 0x01) === 1 ? 'on' : 'base') as CustomSpriteVariant;
+                const usesDelta = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_2 && (((flags >> (isV5 ? 4 : 3)) & 0x01) === 1);
+                const usesIndexedKey = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_3 && (((flags >> (isV5 ? 5 : 4)) & 0x01) === 1);
+                const usesFixed8x8Indexed = bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_4 && (((flags >> (isV5 ? 6 : 5)) & 0x01) === 1);
                 let frameCount = 0;
                 let key = '';
                 if (bytes[0] >= this.CUSTOM_SPRITE_BINARY_VERSION_3) {
@@ -335,6 +340,7 @@ class ShareDecoder {
             : [];
         const title = (ShareTextCodec.decodeText(payload.n, ShareConstants.DEFAULT_TITLE) || ShareConstants.DEFAULT_TITLE).slice(0, 18);
         const author = (ShareTextCodec.decodeText(payload.y, '') || '').slice(0, 18);
+        const hideHud = version >= ShareConstants.HIDE_HUD_VERSION && payload.H === '1';
         const buildNpcId = (index: number) => `npc-${index + 1}`;
 
         const defs = ShareConstants.NPC_DEFINITIONS as Array<{
@@ -448,6 +454,7 @@ class ShareDecoder {
         const result: Record<string, unknown> = {
             title,
             author,
+            hideHud,
             start: startPosition,
             sprites,
             enemies,

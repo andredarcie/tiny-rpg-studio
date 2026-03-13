@@ -30,9 +30,11 @@ class ShareConstants {
     static get VERSION_21() { return 21; }
     static get VERSION_22() { return 22; }
     static get VERSION_23() { return 23; }
+    static get VERSION_24() { return 24; }
+    static get VERSION_25() { return 25; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_23;
+        return ShareConstants.VERSION_25;
     }
 
     static get LEGACY_VERSION() {
@@ -105,6 +107,10 @@ class ShareConstants {
 
     static get TIERED_SWORD_VERSION() {
         return ShareConstants.VERSION_19;
+    }
+
+    static get HIDE_HUD_VERSION() {
+        return ShareConstants.VERSION_25;
     }
 
     static get MATRIX_SIZE() {
@@ -200,7 +206,9 @@ class ShareConstants {
                 ShareConstants.VERSION_20,
                 ShareConstants.VERSION_21,
                 ShareConstants.VERSION_22,
-                ShareConstants.VERSION_23
+                ShareConstants.VERSION_23,
+                ShareConstants.VERSION_24,
+                ShareConstants.VERSION_25
             ]);
         }
         return this._supportedVersions;

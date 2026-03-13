@@ -35,6 +35,7 @@ type EnemyInput = {
 type GameData = {
   title?: string;
   author?: string;
+  hideHud?: boolean;
   rooms?: unknown[];
 };
 
@@ -306,6 +307,12 @@ export class GameEngine {
     this.renderer.spriteFactory.invalidate();
 
     // Force complete re-render (triggers lazy rebuilding of sprites via getters)
+    this.draw();
+  }
+
+  setHideHud(active = false): void {
+    const game = this.gameState.getGame();
+    game.hideHud = Boolean(active);
     this.draw();
   }
 

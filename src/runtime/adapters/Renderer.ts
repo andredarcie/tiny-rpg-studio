@@ -24,6 +24,7 @@ type RendererGameState = {
     isPickupOverlayActive?: () => boolean;
     isLevelUpCelebrationActive?: () => boolean;
     isLevelUpOverlayActive?: () => boolean;
+    getGame?: () => { hideHud?: boolean };
     getPlayer?: () => { roomIndex: number; x: number; y: number };
     getEnemies?: () => { id?: string; roomIndex: number; x: number; y: number; lastX: number; lastY?: number }[];
     isGameOver: () => boolean;
@@ -84,39 +85,17 @@ class Renderer {
         gameEngine: RendererEngine | null = null
     ) {
         this.canvas = canvas;
-        const tilePixelSize = Math.max(
-            GameConfig.canvas.minTileSize,
-            Math.floor(this.canvas.width / GameConfig.world.roomSize)
-        );
-        this.hudBarHeight = Math.max(
-            GameConfig.canvas.minHudHeight,
-            Math.round(tilePixelSize * GameConfig.canvas.hudHeightMultiplier)
-        );
-        this.inventoryBarHeight = Math.max(
-            GameConfig.canvas.minInventoryHeight,
-            Math.round(tilePixelSize * GameConfig.canvas.inventoryHeightMultiplier)
-        );
-        this.totalHudHeight = this.hudBarHeight + this.inventoryBarHeight;
-        this.gameplayHeight = tilePixelSize * GameConfig.world.roomSize;
-        const desiredHeight = this.gameplayHeight + this.totalHudHeight;
-        if (this.canvas.height !== desiredHeight) {
-            this.canvas.height = desiredHeight;
-        }
-        this.ctx = canvas.getContext("2d");
-        if (this.ctx) {
-            this.ctx.imageSmoothingEnabled = false;
-        }
-        this.gameplayOffsetY = this.hudBarHeight;
-        this.inventoryOffsetY = this.hudBarHeight + this.gameplayHeight;
-        this.gameplayCanvasBounds = {
-            width: this.canvas.width,
-            height: this.gameplayHeight
-        };
-
         this.gameState = gameState;
         this.gameEngine = gameEngine;
         this.tileManager = tileManager;
         this.npcManager = npcManager;
+
+        this.applyCanvasLayout();
+        this.ctx = canvas.getContext("2d");
+        if (this.ctx) {
+            this.ctx.imageSmoothingEnabled = false;
+        }
+        this.applyCanvasLayout();
 
         this.paletteManager = new RendererPalette(gameState as never);
         this.spriteFactory = new RendererSpriteFactory(this.paletteManager, gameState as never);
@@ -143,6 +122,42 @@ class Renderer {
         this.tileAnimationInterval = GameConfig.animation.tileInterval;
         this.tileAnimationTimer = null;
         this.startTileAnimationLoop();
+    }
+
+    private shouldHideHud(): boolean {
+        return Boolean(this.gameState.getGame?.()?.hideHud);
+    }
+
+    private applyCanvasLayout(): void {
+        const tilePixelSize = Math.max(
+            GameConfig.canvas.minTileSize,
+            Math.floor(this.canvas.width / GameConfig.world.roomSize)
+        );
+        const hideHud = this.shouldHideHud();
+        this.hudBarHeight = hideHud
+            ? 0
+            : Math.max(
+                GameConfig.canvas.minHudHeight,
+                Math.round(tilePixelSize * GameConfig.canvas.hudHeightMultiplier)
+            );
+        this.inventoryBarHeight = hideHud
+            ? 0
+            : Math.max(
+                GameConfig.canvas.minInventoryHeight,
+                Math.round(tilePixelSize * GameConfig.canvas.inventoryHeightMultiplier)
+            );
+        this.totalHudHeight = this.hudBarHeight + this.inventoryBarHeight;
+        this.gameplayHeight = tilePixelSize * GameConfig.world.roomSize;
+        const desiredHeight = this.gameplayHeight + this.totalHudHeight;
+        if (this.canvas.height !== desiredHeight) {
+            this.canvas.height = desiredHeight;
+        }
+        this.gameplayOffsetY = this.hudBarHeight;
+        this.inventoryOffsetY = this.hudBarHeight + this.gameplayHeight;
+        this.gameplayCanvasBounds = {
+            width: this.canvas.width,
+            height: this.gameplayHeight
+        };
     }
 
     /**
@@ -229,6 +244,9 @@ class Renderer {
     draw() {
         const ctx = this.ctx;
         if (!ctx) return;
+        this.applyCanvasLayout();
+        ctx.imageSmoothingEnabled = false;
+        this.entityRenderer.setViewportOffset(this.gameplayOffsetY);
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         const gameplayCanvas = this.gameplayCanvasBounds;
@@ -292,13 +310,13 @@ class Renderer {
             height: this.inventoryBarHeight
         };
 
-        if (introActive) {
+        if (introActive && !this.shouldHideHud()) {
             ctx.save();
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, topHudArea.width, topHudArea.height);
             ctx.fillRect(bottomHudArea.x, bottomHudArea.y, bottomHudArea.width, bottomHudArea.height);
             ctx.restore();
-        } else if (!levelUpOverlayActive) {
+        } else if (!levelUpOverlayActive && !this.shouldHideHud()) {
             this.hudRenderer.drawHUD(ctx, topHudArea);
             this.hudRenderer.drawInventory(ctx, bottomHudArea);
         }

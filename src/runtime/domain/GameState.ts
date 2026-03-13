@@ -80,6 +80,7 @@ class GameState {
             title: "My Tiny RPG Game",
             author: "",
             palette: ['#000000', '#1D2B53', '#FFF1E8'],
+            hideHud: false,
             roomSize,
             world: {
                 rows: worldRows,

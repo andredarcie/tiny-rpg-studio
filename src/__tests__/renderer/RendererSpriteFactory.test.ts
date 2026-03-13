@@ -176,3 +176,62 @@ describe('RendererSpriteFactory - custom sprites', () => {
     expect(sprites['merchant']?.[0]?.[0]).toBe(palette[3]);
   });
 });
+
+describe('RendererSpriteFactory - custom player sprite', () => {
+  // SpriteMatrixRegistry is mocked at the top of this file to return makeMatrix(0).
+  // That serves as the "default" player sprite fallback.
+
+  const palette = Array.from({ length: 16 }, (_v, idx) => `#${String(idx).padStart(6, '0')}`);
+  const paletteManager = {
+    getActivePalette: () => palette,
+    getDefaultPalette: () => palette,
+  };
+
+  beforeEach(() => {
+    enemyDefinitions = [];
+    npcDefinitions = [];
+    objectDefinitions = [];
+  });
+
+  it('uses the custom player sprite from customSprites when present', () => {
+    const customMatrix = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 9));
+    const gameState = {
+      game: {
+        customSprites: [
+          { group: 'player', key: 'default', variant: 'base', frames: [customMatrix] },
+        ],
+      },
+    };
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprite = factory.getPlayerSprite();
+
+    // palette[9] is the expected colour (palette index 9 from the custom matrix)
+    expect(sprite?.[0]?.[0]).toBe(palette[9]);
+  });
+
+  it('falls back to the default player sprite when no customSprites entry exists', () => {
+    // SpriteMatrixRegistry mock returns makeMatrix(0), so palette[0] is expected.
+    const gameState = { game: { customSprites: [] } };
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprite = factory.getPlayerSprite();
+
+    expect(sprite?.[0]?.[0]).toBe(palette[0]);
+  });
+
+  it('falls back when customSprites has entries for other groups but not player', () => {
+    const gameState = {
+      game: {
+        customSprites: [
+          { group: 'npc', key: 'guard', variant: 'base', frames: [Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 7))] },
+        ],
+      },
+    };
+
+    const factory = new RendererSpriteFactory(paletteManager, gameState);
+    const sprite = factory.getPlayerSprite();
+
+    expect(sprite?.[0]?.[0]).toBe(palette[0]);
+  });
+});

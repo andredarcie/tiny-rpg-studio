@@ -155,7 +155,7 @@ export type CustomSpriteFrame = (number | null)[][];
 export type CustomSpriteVariant = 'base' | 'on';
 
 export type CustomSpriteEntry = {
-    group: 'tile' | 'npc' | 'enemy' | 'object';
+    group: 'tile' | 'npc' | 'enemy' | 'object' | 'player';
     key: string;
     variant?: CustomSpriteVariant;
     frames: CustomSpriteFrame[];
@@ -166,6 +166,7 @@ export type GameDefinition = {
     author: string;
     palette: string[];
     customPalette?: string[];
+    hideHud?: boolean;
     roomSize: number;
     world: { rows: number; cols: number };
     rooms: RoomDefinition[];

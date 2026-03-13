@@ -257,3 +257,52 @@ describe('PixelArtEditorController', () => {
         });
     });
 });
+
+describe('PixelArtEditorController - player sprite group', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        TextResources.setLocale('en-US', { silent: true });
+    });
+
+    it('opens successfully for group player and loads 8x8 base frames', () => {
+        // loadBaseFrames('player', 'default') must call SpriteMatrixRegistry.get('player', 'default')
+        // and return the 8x8 default player matrix — not fall through to the tile branch.
+        const { manager } = makeManager();
+        const controller = new PixelArtEditorController();
+        controller.init(manager, makeDom().dom);
+
+        const opened = controller.open('player' as unknown as Parameters<typeof controller.open>[0], 'default');
+
+        expect(opened).toBe(true);
+        expect(controller.getCurrentFrames()).toHaveLength(1);
+        expect(controller.getCurrentFrames()[0]?.length).toBe(8);
+        expect(controller.getCurrentFrames()[0]?.[0]?.length).toBe(8);
+    });
+
+    it('loads the existing custom player sprite when a customSprites entry exists', () => {
+        const customFrames = [Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 5))];
+        const { manager } = makeManager([
+            { group: 'player' as unknown as 'npc', key: 'default', variant: 'base', frames: customFrames },
+        ]);
+        const controller = new PixelArtEditorController();
+        controller.init(manager, makeDom().dom);
+
+        controller.open('player' as unknown as Parameters<typeof controller.open>[0], 'default');
+
+        expect(controller.getCurrentFrames()).toEqual(customFrames);
+    });
+
+    it('saves the edited player sprite into game.customSprites with group player', () => {
+        const { manager, game } = makeManager();
+        const controller = new PixelArtEditorController();
+        controller.init(manager, makeDom().dom);
+        controller.open('player' as unknown as Parameters<typeof controller.open>[0], 'default');
+        controller.setFrames([Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 3))]);
+
+        controller.save();
+
+        expect(game.customSprites).toHaveLength(1);
+        expect(game.customSprites[0]?.group).toBe('player');
+        expect(game.customSprites[0]?.key).toBe('default');
+    });
+});

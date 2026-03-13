@@ -39,6 +39,7 @@ class EditorEventBinder extends EditorManagerModule {
             projectTestSkillList,
             projectTestGodMode,
             projectTestDebugVision,
+            projectHideHud,
             shareUrlInput
         } = this.dom;
 
@@ -77,6 +78,10 @@ class EditorEventBinder extends EditorManagerModule {
         projectTestDebugVision?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             DebugFlags.setEnemyVision(target.checked);
+        });
+        projectHideHud?.addEventListener('change', (ev: Event) => {
+            const target = ev.target as HTMLInputElement;
+            manager.setHideHud(target.checked);
         });
         shareUrlInput?.addEventListener('focus', () => shareUrlInput.select());
         shareUrlInput?.addEventListener('click', () => shareUrlInput.select());
@@ -206,6 +211,18 @@ class EditorEventBinder extends EditorManagerModule {
 
         objectsList?.addEventListener('click', (ev: Event) => {
             const target = ev.target as HTMLElement;
+
+            const editBtn = target.closest('.sprite-edit-btn') as HTMLElement | null;
+            if (editBtn) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const group = editBtn.dataset.editGroup as CustomSpriteEntry['group'];
+                const key = editBtn.dataset.editKey || '';
+                const variant = (editBtn.dataset.editVariant as CustomSpriteVariant | undefined) || 'base';
+                manager.pixelArtEditorController.open(group, key, variant);
+                return;
+            }
+
             const button = target.closest('.object-remove') as HTMLElement | null;
             if (!button) return;
             const card = button.closest('.object-card') as HTMLElement | null;

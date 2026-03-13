@@ -3,6 +3,7 @@ import { CustomSpriteLookup } from '../../runtime/domain/sprites/CustomSpriteLoo
 import { RendererConstants } from '../../runtime/adapters/renderer/RendererConstants';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
+import { SpriteMatrixRegistry } from '../../runtime/domain/sprites/SpriteMatrixRegistry';
 
 type ManagerDeps = {
     gameEngine: {
@@ -337,7 +338,10 @@ export class PixelArtEditorController {
     ): CustomSpriteFrame[] {
         if (!this.manager) return [];
 
-        if (group === 'npc') {
+        if (group === 'player') {
+            const matrix = SpriteMatrixRegistry.get('player', key) as CustomSpriteFrame | null;
+            return this.cloneFrames(matrix ? [matrix] : []);
+        } else if (group === 'npc') {
             const def = RendererConstants.NPC_DEFINITIONS.find((d: { type: string }) => d.type === key) as { sprite?: CustomSpriteFrame } | undefined;
             return this.cloneFrames(def?.sprite ? [def.sprite] : []);
         } else if (group === 'enemy') {

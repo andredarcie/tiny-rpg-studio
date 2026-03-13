@@ -15,6 +15,7 @@ type ImportData = {
     author?: string;
     palette?: string[];
     customPalette?: string[];
+    hideHud?: boolean;
     roomSize?: number;
     world?: { rows?: number; cols?: number };
     rooms?: RoomDefinition[];
@@ -68,6 +69,7 @@ class StateDataManager {
             author: this.game.author,
             palette: this.game.palette,
             customPalette: this.game.customPalette,
+            hideHud: Boolean(this.game.hideHud),
             roomSize: this.game.roomSize,
             world: this.game.world,
             rooms: this.game.rooms,
@@ -112,6 +114,7 @@ class StateDataManager {
             author: typeof data.author === 'string' ? data.author.slice(0, 18) : "",
             palette: Array.isArray(data.palette) && data.palette.length >= 3 ? data.palette.slice(0, 3) : ['#000000', '#1D2B53', '#FFF1E8'],
             customPalette,
+            hideHud: Boolean(data.hideHud),
             roomSize: 8,
             world: { rows: worldRows, cols: worldCols },
             rooms: normalizedRooms,

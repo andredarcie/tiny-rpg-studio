@@ -55,6 +55,7 @@ class EditorDomCache {
     paletteResetButton: HTMLButtonElement | null;
     paletteImportButton: HTMLButtonElement | null;
     paletteExportButton: HTMLButtonElement | null;
+    projectHideHud: HTMLInputElement | null;
     colorPickerModal: HTMLElement | null;
     colorPickerInput: HTMLInputElement | null;
     colorPickerConfirm: HTMLButtonElement | null;
@@ -132,6 +133,7 @@ class EditorDomCache {
             this.paletteResetButton = null;
             this.paletteImportButton = null;
             this.paletteExportButton = null;
+            this.projectHideHud = null;
             this.colorPickerModal = null;
             this.colorPickerInput = null;
             this.colorPickerConfirm = null;
@@ -208,6 +210,7 @@ class EditorDomCache {
         this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
         this.paletteImportButton = root.querySelector('#palette-import-button') as HTMLButtonElement | null;
         this.paletteExportButton = root.querySelector('#palette-export-button') as HTMLButtonElement | null;
+        this.projectHideHud = root.querySelector('#project-hide-hud') as HTMLInputElement | null;
         this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;
         this.colorPickerInput = root.querySelector('#color-picker-input') as HTMLInputElement | null;
         this.colorPickerConfirm = root.querySelector('#color-picker-confirm') as HTMLButtonElement | null;

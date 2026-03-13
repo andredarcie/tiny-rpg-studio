@@ -1615,6 +1615,10 @@ body.game-mode .tab-button.active {
     height: 18px;
 }
 
+.project-appearance__checkbox {
+    margin-top: 10px;
+}
+
 .project-test__skills {
     display: flex;
     flex-direction: column;

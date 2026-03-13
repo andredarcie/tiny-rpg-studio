@@ -107,7 +107,9 @@ function createFixture() {
     setObjectVariable: vi.fn(),
     isVariableOn: vi.fn(() => false),
     renderer: {
-      drawObjectSprite: vi.fn()
+      drawObjectSprite: vi.fn(),
+      spriteFactory: { getPlayerSprite: vi.fn(() => null) },
+      canvasHelper: { drawSprite: vi.fn() }
     }
   };
 

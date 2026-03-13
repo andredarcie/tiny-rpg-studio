@@ -54,6 +54,9 @@ class EditorObjectRenderer extends EditorRendererBase {
 
         const selectedType = this.manager.selectedObjectType;
         const placedObjects = (this.gameEngine.getObjectsForRoom(this.state.activeRoomIndex) || []) as EditorObject[];
+        // Global-unique objects (e.g. player-start) must be detected across all rooms.
+        const allObjects = ((this.gameEngine as unknown as { getObjects?(): EditorObject[] }).getObjects?.() || []) as EditorObject[];
+        const allPlacedTypes = new Set(allObjects.map((o) => o.type));
         const placedTypes = new Set(placedObjects.map((object) => object.type));
         const game = (this.gameEngine as unknown as { getGame?(): { customSprites?: CustomSpriteEntry[] } }).getGame?.();
         const customSprites = game?.customSprites;
@@ -65,7 +68,11 @@ class EditorObjectRenderer extends EditorRendererBase {
             if (definition.type === selectedType) {
                 card.classList.add('selected');
             }
-            if (placedTypes.has(definition.type)) {
+            // Use allPlacedTypes for global-unique objects so they appear as placed
+            // even when the current room is different from the room they're in.
+            const isGlobalUnique = definition.type === EditorObjectTypes.PLAYER_START;
+            const isPlaced = isGlobalUnique ? allPlacedTypes.has(definition.type) : placedTypes.has(definition.type);
+            if (isPlaced) {
                 card.classList.add('placed');
             }
 
@@ -84,9 +91,11 @@ class EditorObjectRenderer extends EditorRendererBase {
 
             const info = document.createElement('div');
             info.className = 'object-type-info';
-            info.textContent = placedTypes.has(definition.type)
-                ? this.t('objects.info.placed')
-                : this.t('objects.info.available');
+            const infoPlacedKey = isGlobalUnique ? 'objects.info.placed.global' : 'objects.info.placed';
+            const infoAvailableKey = isGlobalUnique ? 'objects.info.available.global' : 'objects.info.available';
+            info.textContent = isPlaced
+                ? this.t(infoPlacedKey)
+                : this.t(infoAvailableKey);
 
             meta.append(name, info);
 
@@ -125,25 +134,29 @@ class EditorObjectRenderer extends EditorRendererBase {
                 }
             }
 
-            // Sprite edit button for base variant
+            // Sprite edit button for base variant.
+            // For player-start, the button edits the player sprite (group 'player', key 'default').
+            const isPlayerStart = definition.type === EditorObjectTypes.PLAYER_START;
             const editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.className = 'sprite-edit-btn';
-            editBtn.dataset.editGroup = 'object';
-            editBtn.dataset.editKey = definition.type;
+            editBtn.dataset.editGroup = isPlayerStart ? 'player' : 'object';
+            editBtn.dataset.editKey = isPlayerStart ? 'default' : definition.type;
             editBtn.dataset.editVariant = 'base';
             editBtn.textContent = '✎';
-            const isCustomBase = CustomSpriteLookup.find(customSprites, 'object', definition.type, 'base') !== null;
+            const isCustomBase = isPlayerStart
+                ? CustomSpriteLookup.find(customSprites, 'player', 'default', 'base') !== null
+                : CustomSpriteLookup.find(customSprites, 'object', definition.type, 'base') !== null;
             if (isCustomBase) {
                 editBtn.classList.add('is-custom');
             }
             card.append(preview, meta, editBtn);
 
-            // Sprite edit button for 'on' variant if spriteOn exists in RendererConstants
+            // Sprite edit button for 'on' variant (only for non-player-start objects).
             const rendererDefs = Array.isArray(RendererConstants.OBJECT_DEFINITIONS)
                 ? RendererConstants.OBJECT_DEFINITIONS
                 : [];
-            const rendererDef = rendererDefs.find((d) => d.type === definition.type);
+            const rendererDef = !isPlayerStart && rendererDefs.find((d) => d.type === definition.type);
             if (rendererDef && rendererDef.spriteOn) {
                 const editBtnOn = document.createElement('button');
                 editBtnOn.type = 'button';
@@ -324,6 +337,19 @@ class EditorObjectRenderer extends EditorRendererBase {
                 badge.className = 'object-status';
                 badge.textContent = this.t('objects.status.startMarker');
                 body.appendChild(badge);
+
+                const game = (this.gameEngine as unknown as { getGame?(): { customSprites?: CustomSpriteEntry[] } }).getGame?.();
+                const editBtn = document.createElement('button');
+                editBtn.type = 'button';
+                editBtn.className = 'sprite-edit-btn';
+                editBtn.dataset.editGroup = 'player';
+                editBtn.dataset.editKey = 'default';
+                editBtn.dataset.editVariant = 'base';
+                editBtn.textContent = '✎';
+                if (CustomSpriteLookup.find(game?.customSprites, 'player', 'default', 'base') !== null) {
+                    editBtn.classList.add('is-custom');
+                }
+                body.appendChild(editBtn);
             }
 
             card.append(preview, body);
@@ -342,6 +368,13 @@ class EditorObjectRenderer extends EditorRendererBase {
 
         const renderer = this.gameEngine.renderer;
         const step = canvas.width / 8;
+
+        if (type === EditorObjectTypes.PLAYER_START) {
+            const sprite = renderer.spriteFactory.getPlayerSprite();
+            if (sprite) renderer.canvasHelper.drawSprite(ctx, sprite, 0, 0, step);
+            return;
+        }
+
         renderer.drawObjectSprite(ctx, type, 0, 0, step);
     }
 

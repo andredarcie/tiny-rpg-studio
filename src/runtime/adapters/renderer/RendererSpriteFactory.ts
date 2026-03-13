@@ -87,7 +87,9 @@ class RendererSpriteFactory {
 
     buildPlayerSprite(): SpriteOrNull {
         const activePalette = this.paletteManager.getActivePalette();
-        const pixels = SpriteMatrixRegistry.get('player');
+        const customSprites = (this.gameState as { game?: { customSprites?: CustomSpriteEntry[] } }).game?.customSprites;
+        const customEntry = CustomSpriteLookup.find(customSprites, 'player', 'default');
+        const pixels = customEntry?.frames[0] ?? SpriteMatrixRegistry.get('player');
         return this.mapPixels(pixels, activePalette);
     }
 

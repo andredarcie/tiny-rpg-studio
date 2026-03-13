@@ -67,6 +67,11 @@ class EditorUIController extends EditorManagerModule {
         this.renderService.renderTestTools();
     }
 
+    setHideHud(active: boolean = false) {
+        this.gameEngine.setHideHud(Boolean(active));
+        this.updateJSON();
+    }
+
     syncUI() {
         const game = this.gameEngine.getGame();
         if (this.dom.titleInput) {
@@ -74,6 +79,9 @@ class EditorUIController extends EditorManagerModule {
         }
         if (this.dom.authorInput) {
             this.dom.authorInput.value = game.author || '';
+        }
+        if (this.dom.projectHideHud) {
+            this.dom.projectHideHud.checked = Boolean(game.hideHud);
         }
         this.updateJSON();
     }

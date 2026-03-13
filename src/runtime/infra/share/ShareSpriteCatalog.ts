@@ -9,7 +9,8 @@ class ShareSpriteCatalog {
     private static readonly KNOWN_KEYS: Record<KnownSpriteGroup, string[]> = {
         npc: NPCDefinitions.definitions.map((entry) => entry.type),
         enemy: EnemyDefinitions.definitions.map((entry) => entry.type),
-        object: ItemDefinitions.definitions.map((entry) => entry.type)
+        object: ItemDefinitions.definitions.map((entry) => entry.type),
+        player: ['default']
     };
 
     static getKeyIndex(group: CustomSpriteEntry['group'], key: string, _variant: CustomSpriteVariant): number {

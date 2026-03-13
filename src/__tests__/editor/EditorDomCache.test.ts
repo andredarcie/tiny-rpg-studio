@@ -67,6 +67,7 @@ describe('EditorDomCache', () => {
       <div id="project-test-skill-list"></div>
       <input id="project-test-god-mode" />
       <input id="project-test-debug-vision" />
+      <input id="project-hide-hud" />
       <textarea id="json-area"></textarea>
     `;
 
@@ -85,6 +86,7 @@ describe('EditorDomCache', () => {
     expect(cache.projectTestStartLevel).toBeInstanceOf(HTMLSelectElement);
     expect(cache.projectTestGodMode).toBeInstanceOf(HTMLInputElement);
     expect(cache.projectTestDebugVision).toBeInstanceOf(HTMLInputElement);
+    expect(cache.projectHideHud).toBeInstanceOf(HTMLInputElement);
     expect(cache.jsonArea).toBeInstanceOf(HTMLTextAreaElement);
   });
 });

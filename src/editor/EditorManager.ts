@@ -280,6 +280,10 @@ class EditorManager {
         this.uiController.setGodMode(active);
     }
 
+    setHideHud(active: boolean) {
+        this.uiController.setHideHud(active);
+    }
+
     setActiveMobilePanel(panel: string) {
         this.uiController.setActiveMobilePanel(panel);
     }

@@ -1,5 +1,6 @@
 
 import { EditorRendererBase } from './EditorRendererBase';
+import { ITEM_TYPES } from '../../../runtime/domain/constants/itemTypes';
 
 type CanvasObject = { type: string; roomIndex: number; x: number; y: number; variableId?: string | null };
 type CanvasNpc = {
@@ -76,13 +77,18 @@ class EditorCanvasRenderer extends EditorRendererBase {
         const objects = (this.gameEngine.getObjectsForRoom(roomIndex) ||
             []) as CanvasObject[];
         for (const object of objects) {
-            this.gameEngine.renderer.drawObjectSprite(
-                ctx,
-                object.type,
-                object.x * tileSize,
-                object.y * tileSize,
-                step
-            );
+            if (object.type === ITEM_TYPES.PLAYER_START) {
+                const sprite = this.gameEngine.renderer.spriteFactory.getPlayerSprite();
+                if (sprite) this.gameEngine.renderer.canvasHelper.drawSprite(ctx, sprite, object.x * tileSize, object.y * tileSize, step);
+            } else {
+                this.gameEngine.renderer.drawObjectSprite(
+                    ctx,
+                    object.type,
+                    object.x * tileSize,
+                    object.y * tileSize,
+                    step
+                );
+            }
             // Draw variable indicator outline
             if (object.variableId) {
                 this.drawVariableOutline(ctx, object.x * tileSize, object.y * tileSize, tileSize, [object.variableId]);

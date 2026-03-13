@@ -108,6 +108,40 @@ vi.mock('../../runtime/adapters/renderer/RendererOverlayRenderer', () => ({
 }));
 
 describe('Renderer', () => {
+  it('removes reserved HUD space when hideHud is enabled', () => {
+    const ctx = {
+      imageSmoothingEnabled: true,
+      clearRect: vi.fn(),
+      save: vi.fn(),
+      translate: vi.fn(),
+      fillRect: vi.fn(),
+      restore: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+
+    const canvas = {
+      width: 64,
+      height: 132,
+      getContext: () => ctx,
+    } as unknown as HTMLCanvasElement;
+
+    const startLoopSpy = vi.spyOn(Renderer.prototype, 'startTileAnimationLoop').mockImplementation(() => {});
+
+    try {
+      const renderer = new Renderer(canvas, {
+        isGameOver: () => false,
+        getGame: () => ({ hideHud: true }),
+      }, {
+        getAnimationFrameCount: vi.fn(() => 1),
+        advanceAnimationFrame: vi.fn(() => 0),
+      }, {});
+
+      expect(renderer.canvas.height).toBe(64);
+      expect(renderer.gameplayOffsetY).toBe(0);
+    } finally {
+      startLoopSpy.mockRestore();
+    }
+  });
+
   it('advances tile animations and dispatches events', () => {
     vi.useFakeTimers();
 

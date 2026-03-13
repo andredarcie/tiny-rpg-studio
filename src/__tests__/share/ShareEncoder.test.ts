@@ -47,6 +47,14 @@ describe('ShareEncoder', () => {
     expect(code).toContain('n');
     expect(code).toContain('y');
   });
+
+  it('preserves hideHud through an encode/decode round trip', () => {
+    const code = ShareEncoder.buildShareCode({ hideHud: true });
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ hideHud?: boolean } | null);
+
+    expect(code.split('.').some((segment) => segment === 'H1')).toBe(true);
+    expect(decoded?.hideHud).toBe(true);
+  });
 });
 
 describe('ShareEncoder - customSprites', () => {
@@ -207,5 +215,54 @@ describe('ShareEncoder - customSprites', () => {
 
     expect(encodedSegment.length).toBeLessThan(legacyBinaryV1.length);
     expect(encodedSegment).not.toContain('b2xkLW1hZ2U');
+  });
+});
+
+describe('ShareEncoder/ShareDecoder - player sprite roundtrip', () => {
+  beforeAll(() => {
+    setupShareGlobals({
+      objectTypes: {
+        DOOR: 'door',
+        KEY: 'key',
+        LIFE_POTION: 'life-potion',
+        XP_SCROLL: 'xp-scroll',
+        SWORD: 'sword',
+        SWORD_BRONZE: 'sword-bronze',
+        SWORD_WOOD: 'sword-wood',
+        PLAYER_END: 'player-end',
+        SWITCH: 'switch',
+        DOOR_VARIABLE: 'door-variable'
+      },
+      enemyNormalize: (type) => (typeof type === 'string' && type ? type : 'slime')
+    });
+  });
+
+  it('preserves a player sprite through an encode/decode round trip', () => {
+    const playerMatrix = Array.from({ length: 8 }, (_, r) =>
+      Array.from({ length: 8 }, (_, c) => (r + c) % 16)
+    );
+    const customSprites = [
+      { group: 'player', key: 'default', variant: 'base' as const, frames: [playerMatrix] },
+    ] as unknown as CustomSpriteEntry[];
+
+    const code = ShareEncoder.buildShareCode({ customSprites });
+    const decoded = ShareDecoder.decodeShareCode(code) as ShareDecodeResult | null;
+
+    expect(decoded?.customSprites).toHaveLength(1);
+    expect(decoded?.customSprites?.[0]?.group).toBe('player');
+    expect(decoded?.customSprites?.[0]?.key).toBe('default');
+    expect(decoded?.customSprites?.[0]?.frames[0]?.[0]?.[0]).toBe(0);
+    expect(decoded?.customSprites?.[0]?.frames[0]?.[1]?.[1]).toBe(2);
+  });
+
+  it('generates an S segment for a player customSprite', () => {
+    const playerMatrix = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 5));
+    const customSprites = [
+      { group: 'player', key: 'default', variant: 'base' as const, frames: [playerMatrix] },
+    ] as unknown as CustomSpriteEntry[];
+
+    const code = ShareEncoder.buildShareCode({ customSprites });
+    const hasS = code.split('.').some(s => s.startsWith('S'));
+    expect(hasS).toBe(true);
   });
 });

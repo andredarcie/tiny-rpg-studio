@@ -11,6 +11,7 @@ const makeGame = (): GameDefinition => ({
   title: 'Old',
   author: 'Author',
   palette: ['#000000', '#111111', '#222222'],
+  hideHud: false,
   roomSize: 8,
   world: { rows: 1, cols: 1 },
   rooms: [
@@ -48,6 +49,7 @@ describe('StateDataManager', () => {
       title: game.title,
       author: game.author,
       palette: game.palette,
+      hideHud: false,
       roomSize: game.roomSize,
       world: game.world,
       rooms: game.rooms,
@@ -133,6 +135,7 @@ describe('StateDataManager', () => {
     expect(game.title.length).toBeLessThanOrEqual(18);
     expect(game.author.length).toBeLessThanOrEqual(18);
     expect(game.palette).toEqual(['#000', '#111', '#222']);
+    expect(game.hideHud).toBe(false);
     expect(game.rooms).toBe(rooms);
     expect(game.tileset.maps).toBe(maps);
     expect(game.tileset.map).toBe(maps[0]);
@@ -142,6 +145,32 @@ describe('StateDataManager', () => {
     expect(worldManager.normalizeTileMaps).toHaveBeenCalledWith([], 9);
     expect(objectManager.setGame).toHaveBeenCalledWith(game);
     expect(variableManager.setGame).toHaveBeenCalledWith(game);
+  });
+
+  it('imports hideHud when present', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {
+        normalizeRooms: vi.fn(() => []),
+        normalizeTileMaps: vi.fn(() => [{ ground: [[null]], overlay: [[null]] }]),
+        clampCoordinate: vi.fn((v: number) => v),
+        clampRoomIndex: vi.fn((v: number) => v),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: {
+        normalizeObjects: vi.fn(() => []),
+        setGame: vi.fn(),
+      } as unknown as StateObjectManager,
+      variableManager: {
+        normalizeVariables: vi.fn(() => []),
+        setGame: vi.fn(),
+      } as unknown as StateVariableManager,
+    });
+
+    manager.importGameData({ hideHud: true });
+
+    expect(game.hideHud).toBe(true);
   });
 });
 
