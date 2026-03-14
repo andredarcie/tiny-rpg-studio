@@ -1,0 +1,13 @@
+{
+  "name": "tiny-rpg-hello-world",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Hello World example for tiny-rpg-studio-sdk",
+  "scripts": {
+    "start": "node hello-world.mjs",
+    "start:browser": "node generate-url.mjs"
+  },
+  "dependencies": {
+    "tiny-rpg-studio-sdk": "file:../.."
+  }
+}

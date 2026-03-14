@@ -1,13 +1,21 @@
 {
-  "name": "tiny-rpg-maker",
-  "private": true,
-  "version": "0.0.0",
+  "name": "tiny-rpg-studio-sdk",
+  "version": "1.0.0",
   "type": "module",
+  "files": ["dist/sdk/index.js", "dist/sdk/index.cjs", "dist/sdk/sdk"],
+  "exports": {
+    ".": {
+      "types": "./dist/sdk/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js",
+      "require": "./dist/sdk/index.cjs"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "npm run build:export && vite build",
     "build:check": "tsc --noEmit && npm run build",
     "build:export": "vite build -c vite.export.config.ts",
+    "build:sdk": "vite build -c vite.sdk.config.ts && tsc -p tsconfig.sdk.json",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest",

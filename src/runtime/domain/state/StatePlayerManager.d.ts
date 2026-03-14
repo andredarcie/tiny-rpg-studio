@@ -1,0 +1,84 @@
+import type { PlayerRuntimeState, RuntimeState } from '../../../types/gameState';
+type WorldManagerApi = {
+    clampCoordinate: (value: number) => number;
+    clampRoomIndex: (value: number) => number;
+};
+type SkillManagerApi = {
+    hasSkill?: (skillId: string) => boolean;
+    attemptRevive?: (player: PlayerRuntimeState) => void;
+    getBonusMaxLives?: () => number;
+    getXpBoost?: () => number;
+};
+declare class StatePlayerManager {
+    state: RuntimeState | null;
+    worldManager: WorldManagerApi;
+    skillManager: SkillManagerApi | null;
+    maxLevel: number;
+    baseMaxLives: number;
+    experienceBase: number;
+    experienceGrowth: number;
+    maxKeys: number;
+    roomChangeDamageCooldown: number;
+    attackCooldown: number;
+    constructor(state: RuntimeState | null, worldManager: WorldManagerApi, skillManager?: SkillManagerApi | null);
+    setState(state: RuntimeState | null): void;
+    setWorldManager(worldManager: WorldManagerApi): void;
+    setSkillManager(skillManager: SkillManagerApi | null): void;
+    get player(): PlayerRuntimeState | null;
+    getPlayer(): PlayerRuntimeState | null;
+    setPosition(x: number, y: number, roomIndex?: number | null): void;
+    reset(start: {
+        x: number;
+        y: number;
+        roomIndex: number;
+    } | null): void;
+    setLevel(level?: number): number;
+    setGodMode(active?: boolean): boolean;
+    isGodMode(): boolean;
+    addKeys(amount?: number): number;
+    consumeKey(): boolean;
+    getKeys(): number;
+    getMaxKeys(): number;
+    damage(amount?: number): number;
+    isOnDamageCooldown(): boolean;
+    isOnAttackCooldown(): boolean;
+    addDamageShield(amount?: number, swordType?: string | null): number;
+    getDamageShield(): number;
+    getDamageShieldMax(): number;
+    getSwordType(): string | null;
+    setSwordType(swordType: string | null): void;
+    getSwordDurability(): number;
+    setSwordDurability(durability: number): void;
+    consumeSwordDurability(): boolean;
+    consumeLastDamageReduction(): number;
+    gainLives(amount?: number): number;
+    getLives(): number;
+    getMaxLives(): number;
+    getLevel(): number;
+    calculateMaxLives(level: number): number;
+    clampLevel(level: number): number;
+    ensurePlayerStats(): void;
+    healToFull(): number;
+    getExperience(): number;
+    getExperienceForNextLevel(level: number): number;
+    getExperienceToNext(): number;
+    addExperience(amount?: number): {
+        leveledUp: boolean;
+        levelsGained: number;
+        level: number;
+        experience: number;
+        experienceToNext: number;
+        currentLives: number;
+        maxLives: number;
+    };
+    handleEnemyDefeated(experienceReward?: number): {
+        leveledUp: boolean;
+        levelsGained: number;
+        level: number;
+        experience: number;
+        experienceToNext: number;
+        currentLives: number;
+        maxLives: number;
+    };
+}
+export { StatePlayerManager };
