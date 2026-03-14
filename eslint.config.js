@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'public/**', 'legacy/**', 'coverage/**', 'docs/**'],
+    ignores: ['dist/**', 'node_modules/**', 'public/**', 'legacy/**', 'coverage/**', 'docs/**', 'examples/**'],
   },
   {
     files: ['src/**/*.{ts,tsx}'],
@@ -64,7 +64,7 @@ export default [
     },
   },
   {
-    files: ['playwright.config.ts', 'vite.config.ts', 'vite.export.config.ts', 'tests/e2e/**/*.ts'],
+    files: ['playwright.config.ts', 'vite.config.ts', 'vite.export.config.ts', 'vite.sdk.config.ts', 'tests/e2e/**/*.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {

@@ -62,10 +62,12 @@ class TinyRPGBuilder {
         if (!Number.isInteger(index) || index < 0 || index > max) {
             throw new Error(`room index must be between 0 and ${max}, got ${index}`);
         }
-        if (!this._rooms.has(index)) {
-            this._rooms.set(index, new RoomBuilder());
+        let room = this._rooms.get(index);
+        if (!room) {
+            room = new RoomBuilder();
+            this._rooms.set(index, room);
         }
-        return this._rooms.get(index)!;
+        return room;
     }
 
     toSharePayload(): SdkSharePayload {

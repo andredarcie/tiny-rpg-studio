@@ -15,5 +15,5 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src/sdk/**/*"]
+  "include": ["src/sdk/**/*", "src/runtime/**/*", "src/config/**/*", "src/types/**/*"]
 }

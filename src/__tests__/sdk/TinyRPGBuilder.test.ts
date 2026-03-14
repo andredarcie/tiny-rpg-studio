@@ -50,8 +50,8 @@ describe('TinyRPGBuilder', () => {
         });
 
         it('room(0).ground is set correctly, other rooms are {}', () => {
-            const matrix = Array.from({ length: ShareConstants.MATRIX_SIZE }, () =>
-                Array(ShareConstants.MATRIX_SIZE).fill(0)
+            const matrix: number[][] = Array.from({ length: ShareConstants.MATRIX_SIZE }, () =>
+                Array<number>(ShareConstants.MATRIX_SIZE).fill(0)
             );
             const game = new TinyRPG();
             game.room(0).ground(matrix);
@@ -172,7 +172,7 @@ describe('TinyRPGBuilder', () => {
         });
 
         it('setPalette with invalid color format throws Error', () => {
-            const colors = Array(16).fill('#FF0000');
+            const colors: string[] = Array<string>(16).fill('#FF0000');
             colors[0] = 'red';
             expect(() => new TinyRPG().setPalette(colors)).toThrow(/Palette must have exactly 16/);
         });
