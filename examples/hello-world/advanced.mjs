@@ -101,7 +101,7 @@ const url = game.buildURL();
 const payload = game.toSharePayload();
 
 console.log('\n🎮 tiny-rpg-studio-sdk — Advanced Example\n');
-console.log('Abra a URL abaixo no navegador para jogar:\n');
+console.log('Open the URL below in a browser to play:\n');
 console.log(url);
 console.log('\n');
 
@@ -109,7 +109,7 @@ console.log('── Payload summary ──────────────�
 console.log(`Title    : ${payload.title}`);
 console.log(`Author   : ${payload.author}`);
 const nonEmptyRooms = payload.tileset?.maps.filter(m => Object.keys(m).length > 0).length ?? 0;
-console.log(`Rooms    : ${payload.tileset?.maps.length} total, ${nonEmptyRooms} com conteudo`);
+console.log(`Rooms    : ${payload.tileset?.maps.length} total, ${nonEmptyRooms} with content`);
 console.log(`Enemies  : ${payload.enemies?.length} (${[...new Set(payload.enemies?.map(e => e.type))].join(', ')})`);
 console.log(`NPCs     : ${payload.sprites?.length}`);
 console.log(`Objects  : ${payload.objects?.length} (${payload.objects?.map(o => o.type).join(', ')})`);

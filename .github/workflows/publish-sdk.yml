@@ -41,6 +41,9 @@ jobs:
       - name: Verify package contents
         run: npm pack --dry-run
 
+      - name: Use SDK README for npm package
+        run: cp SDK_README.md README.md
+
       - name: Publish to npm
         run: npm publish --provenance --access public
         env:

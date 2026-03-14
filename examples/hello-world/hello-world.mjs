@@ -34,7 +34,7 @@ const game = new TinyRPG()
 // Room 0 — starting room
 game.room(0)
   .ground(WALLS_ONLY)
-  .addNPC({ type: 'villager-man', x: 2, y: 2, text: 'Bem-vindo! Pegue a chave e chegue ao fim.' })
+  .addNPC({ type: 'villager-man', x: 2, y: 2, text: 'Welcome! Grab the key and reach the end.' })
   .addEnemy({ type: 'skeleton', x: 5, y: 5 })
   .addKey({ x: 6, y: 6 });
 
@@ -42,13 +42,13 @@ game.room(0)
 game.room(8)
   .ground(WALLS_ONLY)
   .addDoor({ x: 1, y: 4 })
-  .addEnd({ x: 6, y: 4, message: 'Parabens! Voce completou o Hello World RPG!' });
+  .addEnd({ x: 6, y: 4, message: 'Congratulations! You completed the Hello World RPG!' });
 
 // ─── Output ─────────────────────────────────────────────────────────────────
 const url = game.buildURL();
 
 console.log('\n🎮 tiny-rpg-studio-sdk — Hello World\n');
-console.log('Abra a URL abaixo no navegador para jogar:\n');
+console.log('Open the URL below in a browser to play:\n');
 console.log(url);
 console.log('\n');
 
@@ -58,7 +58,7 @@ console.log('── Payload summary ──────────────�
 console.log(`Title  : ${payload.title}`);
 console.log(`Author : ${payload.author}`);
 const nonEmptyRooms = payload.tileset?.maps.filter(m => Object.keys(m).length > 0).length ?? 0;
-console.log(`Rooms  : ${payload.tileset?.maps.length} total, ${nonEmptyRooms} com conteudo`);
+console.log(`Rooms  : ${payload.tileset?.maps.length} total, ${nonEmptyRooms} with content`);
 console.log(`Enemies: ${payload.enemies?.length}`);
 console.log(`NPCs   : ${payload.sprites?.length}`);
 console.log(`Objects: ${payload.objects?.length} (${payload.objects?.map(o => o.type).join(', ')})`);
