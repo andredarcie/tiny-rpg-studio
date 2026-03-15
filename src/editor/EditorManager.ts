@@ -77,7 +77,11 @@ class EditorManager {
             // Initialize project save manager and UI
             try {
                 const psm = new ProjectSaveManager();
-                psm.initialize();
+                psm.initialize(() => {
+                    const shareUrl = this.shareService.buildShareUrl();
+                    const title = this.dom.titleInput?.value ?? '';
+                    return shareUrl ? { shareUrl, title } : null;
+                });
                 // pass getters instead of relying on globals
                 // title getter falls back to empty string
                 /* eslint-disable @typescript-eslint/no-non-null-assertion */

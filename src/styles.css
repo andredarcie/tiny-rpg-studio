@@ -288,21 +288,31 @@ body.game-mode .tabs {
 }
 
 .history-item {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
     width: 100%;
     padding: 10px 12px;
     cursor: pointer;
     border: none;
     border-bottom: 1px solid var(--border);
     transition: background 0.15s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     background: transparent;
     color: var(--text);
     text-align: left;
     font-family: "Press Start 2P", monospace;
     font-size: 0.8rem;
+}
+
+.history-item-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.history-item-timestamp {
+    font-size: 0.6rem;
+    opacity: 0.6;
 }
 
 @media (hover: hover) {

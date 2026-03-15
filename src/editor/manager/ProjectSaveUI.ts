@@ -113,8 +113,18 @@ export class ProjectSaveUI {
       const item = document.createElement('button');
       item.className = 'history-item';
       item.setAttribute('role', 'menuitem');
-      item.textContent = p.title || p.shareUrl;
       item.dataset.projectId = p.id;
+
+      const titleEl = document.createElement('span');
+      titleEl.className = 'history-item-title';
+      titleEl.textContent = p.title || p.shareUrl;
+
+      const tsEl = document.createElement('span');
+      tsEl.className = 'history-item-timestamp';
+      tsEl.textContent = new Date(p.savedAt).toLocaleString();
+
+      item.appendChild(titleEl);
+      item.appendChild(tsEl);
       item.addEventListener('click', () => this.handleLoadProject(p.id));
       this.historyContainer?.appendChild(item);
     });

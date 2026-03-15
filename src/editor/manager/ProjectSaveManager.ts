@@ -28,16 +28,20 @@ export class ProjectSaveManager {
   }
 
   /**
-   * Initialize the manager and start auto-save interval
+   * Initialize the manager and start auto-save interval.
+   * @param getAutoSaveData - called on each interval tick to get the current share URL and title.
+   *   If omitted or returns null, the interval fires but no save occurs.
    */
-  initialize(): void {
+  initialize(getAutoSaveData?: () => { shareUrl: string; title?: string } | null): void {
     // Load existing history from storage on startup
     this.loadFromStorage();
 
     // Start the auto-save interval
     this.autoSaveInterval = setInterval(() => {
-      // Auto-save is triggered by external calls, interval keeps it alive
-      // The interval manager itself doesn't call autoSave automatically
+      const data = getAutoSaveData?.();
+      if (data?.shareUrl) {
+        this.autoSave(data.shareUrl, data.title);
+      }
     }, this.autoSaveIntervalMs);
   }
 

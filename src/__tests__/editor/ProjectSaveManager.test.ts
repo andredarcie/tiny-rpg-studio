@@ -796,22 +796,18 @@ describe('ProjectSaveManager', () => {
         autoSaveIntervalMs: 2000, // 2 seconds for testing
       };
       const mgr = new ProjectSaveManager(options);
-      mgr.initialize();
-
       const autoSaveSpy = vi.spyOn(mgr, 'autoSave');
 
-      // Initial save
-      mgr.autoSave(mockShareUrl, mockProjectTitle);
+      mgr.initialize(() => ({ shareUrl: mockShareUrl, title: mockProjectTitle }));
 
-      // Advance time but not to next interval
+      // Advance time but not to next interval — should not have fired yet
       vi.advanceTimersByTime(1000);
+      expect(autoSaveSpy).not.toHaveBeenCalled();
 
-      // Advance to trigger next interval
-      vi.advanceTimersByTime(2000);
-
-      // autoSave should have been called by the interval
-      // (This depends on implementation details of the timer)
-      expect(autoSaveSpy).toHaveBeenCalled();
+      // Advance to trigger first interval tick
+      vi.advanceTimersByTime(1000);
+      expect(autoSaveSpy).toHaveBeenCalledTimes(1);
+      expect(autoSaveSpy).toHaveBeenCalledWith(mockShareUrl, mockProjectTitle);
     });
 
     it('should use custom storage key when provided', () => {

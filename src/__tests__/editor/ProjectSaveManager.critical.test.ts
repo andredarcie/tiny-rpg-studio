@@ -55,16 +55,18 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
         autoSaveIntervalMs: 2000,
       };
       const mgr = new ProjectSaveManager(options);
-      mgr.initialize();
-
       const autoSaveSpy = vi.spyOn(mgr, 'autoSave');
 
-      // Simulate interval ticking
-      vi.advanceTimersByTime(2000);
+      mgr.initialize(() => ({ shareUrl: mockShareUrl, title: mockProjectTitle }));
 
-      // Verify that auto-save was called (depends on implementation)
-      expect(mgr).toBeDefined();
-      expect(autoSaveSpy).toBeDefined();
+      // Should not fire before interval elapses
+      vi.advanceTimersByTime(1999);
+      expect(autoSaveSpy).not.toHaveBeenCalled();
+
+      // Should fire exactly once after one interval
+      vi.advanceTimersByTime(1);
+      expect(autoSaveSpy).toHaveBeenCalledTimes(1);
+      expect(autoSaveSpy).toHaveBeenCalledWith(mockShareUrl, mockProjectTitle);
     });
 
     it('should respect 2-minute default interval', () => {
