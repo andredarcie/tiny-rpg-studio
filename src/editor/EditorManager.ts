@@ -20,6 +20,8 @@ import { EditorEventBinder } from './manager/EditorEventBinder';
 import { EditorInteractionController } from './manager/EditorInteractionController';
 import { EditorUIController } from './manager/EditorUIController';
 import { PixelArtEditorController } from './modules/PixelArtEditorController';
+import { ProjectSaveManager } from './manager/ProjectSaveManager';
+import { ProjectSaveUI } from './manager/ProjectSaveUI';
 
 class EditorManager {
     gameEngine: GameEngine;
@@ -69,10 +71,40 @@ class EditorManager {
         this.pixelArtEditorController = new PixelArtEditorController();
         this.pixelArtEditorController.init(this, this.domCache);
 
-        this.bindEvents();
-        this.initialize();
+            this.bindEvents();
+            this.initialize();
+
+            // Initialize project save manager and UI
+            try {
+                const psm = new ProjectSaveManager();
+                psm.initialize();
+                // pass getters instead of relying on globals
+                // title getter falls back to empty string
+                /* eslint-disable @typescript-eslint/no-non-null-assertion */
+                const getShare = () => this.dom.shareUrlInput?.value ?? null;
+                const getTitle = () => this.dom.titleInput?.value ?? '';
+                const onLoadProject = (shareUrl: string) => {
+                    // Navigate to the shared URL to load the project
+                    if (typeof window !== 'undefined' && shareUrl) {
+                        window.location.href = shareUrl;
+                        window.location.reload();
+                    }
+                };
+                const psu = new ProjectSaveUI(psm, getShare, getTitle, onLoadProject);
+                // store references for cleanup if needed
+                (this as unknown as { projectSaveManager?: ProjectSaveManager }).projectSaveManager = psm;
+                (this as unknown as { projectSaveUI?: ProjectSaveUI }).projectSaveUI = psu;
+                /* eslint-enable @typescript-eslint/no-non-null-assertion */
+            } catch (err) {
+                // Do not break editor initialization if save components fail
+                // eslint-disable-next-line no-console
+                console.warn('[EditorManager] ProjectSave components failed to initialize', err);
+            }
         if (typeof document !== 'undefined') {
             document.addEventListener('language-changed', () => this.handleLanguageChange());
+            document.addEventListener('request-share-url', () => {
+                this.generateShareableUrl();
+            });
         }
     }
 

@@ -217,6 +217,109 @@ body.game-mode .tabs {
     outline-offset: 2px;
 }
 
+/* Project Save Controls */
+.project-save-controls {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 9999;
+    display: flex;
+    gap: 8px;
+}
+
+.history-dropdown-wrapper {
+    position: relative;
+}
+
+.btn-manual-save,
+.btn-history-dropdown {
+    padding: 8px 12px;
+    background: rgba(26, 32, 48, 0.9);
+    border: 4px solid var(--border);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    min-height: 28px;
+    font-family: "Press Start 2P", monospace;
+    transition: all 0.2s;
+}
+
+@media (hover: hover) {
+    .btn-manual-save:hover,
+    .btn-history-dropdown:hover {
+        background: rgba(100, 181, 246, 0.2);
+        border-color: rgba(100, 181, 246, 0.45);
+    }
+}
+
+.btn-manual-save:focus-visible,
+.btn-history-dropdown:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.btn-manual-save:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.history-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 5px;
+    background: var(--panel);
+    border: 4px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 200px;
+    max-width: 300px;
+    z-index: 1000;
+}
+
+.history-dropdown-menu[hidden] {
+    display: none;
+}
+
+.history-items-container {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.history-item {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    cursor: pointer;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.8rem;
+}
+
+@media (hover: hover) {
+    .history-item:hover {
+        background: rgba(100, 181, 246, 0.1);
+    }
+}
+
+.history-item:last-child {
+    border-bottom: none;
+}
+
+.history-item:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+
 .tab-content {
     display: none;
     padding: clamp(10px, 2vw, 18px);
