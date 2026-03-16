@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 import { ProjectSaveUI } from '../../editor/manager/ProjectSaveUI';
+import type { ProjectSaveManager } from '../../editor/manager/ProjectSaveManager';
 import type { SaveResult } from '../../editor/manager/ProjectSaveManager.types';
 
 function setupDom() {
@@ -24,10 +25,10 @@ describe('ProjectSaveUI', () => {
     const manualSaveMock = vi.fn((): SaveResult => ({ ok: true }));
     const getHistoryMock = vi.fn(() => []);
 
-    const saveManager: any = {
+    const saveManager = {
       manualSave: manualSaveMock,
       getHistory: getHistoryMock,
-    };
+    } as unknown as ProjectSaveManager;
 
     const ui = new ProjectSaveUI(saveManager, () => 'https://share', () => 'title');
 
@@ -35,7 +36,8 @@ describe('ProjectSaveUI', () => {
     expect(btn).toBeDefined();
 
     btn.click();
-    // allow microtasks and macrotask to run
+    // handleManualSave now always waits for 'share-url-ready' — dispatch it
+    document.dispatchEvent(new CustomEvent('share-url-ready'));
     await new Promise((r) => setTimeout(r, 0));
 
     expect(manualSaveMock).toHaveBeenCalledTimes(1);
@@ -43,7 +45,7 @@ describe('ProjectSaveUI', () => {
   });
 
   it('opens and closes history menu when toggled', async () => {
-    const saveManager: any = { manualSave: vi.fn(() => ({ ok: true })), getHistory: vi.fn(() => [{ id: '1', shareUrl: 'u', title: 't', savedAt: Date.now() }]) };
+    const saveManager = { manualSave: vi.fn(() => ({ ok: true })), getHistory: vi.fn(() => [{ id: '1', shareUrl: 'u', title: 't', savedAt: Date.now() }]) } as unknown as ProjectSaveManager;
     const ui = new ProjectSaveUI(saveManager, () => 'u', () => 't');
 
     const toggle = document.getElementById('btn-history-dropdown') as HTMLButtonElement;
@@ -66,7 +68,7 @@ describe('ProjectSaveUI', () => {
 
   it('renders history items into container', async () => {
     const sample = { id: 'abc', shareUrl: 'u', title: 'My Project', savedAt: Date.now() };
-    const saveManager: any = { manualSave: vi.fn(() => ({ ok: true })), getHistory: vi.fn(() => [sample]) };
+    const saveManager = { manualSave: vi.fn(() => ({ ok: true })), getHistory: vi.fn(() => [sample]) } as unknown as ProjectSaveManager;
     const ui = new ProjectSaveUI(saveManager, () => 'u', () => 't');
 
     const container = document.getElementById('history-items-container') as HTMLElement;
@@ -83,11 +85,11 @@ describe('ProjectSaveUI', () => {
 
   it('calls onLoadProject callback with shareUrl when history item clicked', async () => {
     const sample = { id: 'abc', shareUrl: 'https://example.com/share/xyz', title: 'My Project', savedAt: Date.now() };
-    const saveManager: any = {
+    const saveManager = {
       manualSave: vi.fn(() => ({ ok: true })),
       getHistory: vi.fn(() => [sample]),
       loadProject: vi.fn((id) => (id === 'abc' ? sample : null)),
-    };
+    } as unknown as ProjectSaveManager;
 
     const onLoadProjectMock = vi.fn();
     const ui = new ProjectSaveUI(saveManager, () => 'u', () => 't', onLoadProjectMock);
@@ -105,11 +107,11 @@ describe('ProjectSaveUI', () => {
   });
 
   it('does not call onLoadProject if project not found', async () => {
-    const saveManager: any = {
+    const saveManager = {
       manualSave: vi.fn(() => ({ ok: true })),
       getHistory: vi.fn(() => []),
       loadProject: vi.fn(() => null),
-    };
+    } as unknown as ProjectSaveManager;
 
     const onLoadProjectMock = vi.fn();
     const ui = new ProjectSaveUI(saveManager, () => 'u', () => 't', onLoadProjectMock);

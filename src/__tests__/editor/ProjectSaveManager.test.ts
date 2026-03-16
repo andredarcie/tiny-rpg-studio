@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ProjectSaveManager } from '../../editor/manager/ProjectSaveManager';
-import type { SavedProject, ProjectHistory, ProjectSaveManagerOptions } from '../../editor/manager/ProjectSaveManager.types';
+import type { ProjectHistory, ProjectSaveManagerOptions } from '../../editor/manager/ProjectSaveManager.types';
 
 describe('ProjectSaveManager', () => {
   const defaultStorageKey = 'tiny-rpg-projects-history';
@@ -43,7 +43,7 @@ describe('ProjectSaveManager', () => {
     vi.clearAllMocks();
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
-    manager.destroy?.();
+    manager.destroy();
   });
 
   // ─── Constructor e Initialize ──────────────────────────────────────────────
@@ -217,7 +217,7 @@ describe('ProjectSaveManager', () => {
       expect(stored).toBeDefined();
       expect(stored).not.toBeNull();
 
-      const parsed = JSON.parse(stored!) as ProjectHistory;
+      const parsed = JSON.parse(stored as string) as ProjectHistory;
       expect(parsed.projects).toHaveLength(1);
     });
 
@@ -485,7 +485,7 @@ describe('ProjectSaveManager', () => {
       manager.removeProject(projectId);
 
       const stored = localStorage.getItem(defaultStorageKey);
-      const parsed = JSON.parse(stored!) as ProjectHistory;
+      const parsed = JSON.parse(stored as string) as ProjectHistory;
       expect(parsed.projects).toHaveLength(1);
     });
 
@@ -532,9 +532,7 @@ describe('ProjectSaveManager', () => {
     });
 
     it('should update lastAutoSaveTime', () => {
-      const beforeTime = Date.now();
       manager.autoSave(mockShareUrl, mockProjectTitle);
-      const afterTime = Date.now();
 
       // Usar getLastAutoSaveTime se disponível, ou verificar indiretamente
       const history = manager.getHistory();
@@ -543,7 +541,6 @@ describe('ProjectSaveManager', () => {
 
     it('should validate if URL changed since last save', () => {
       const url1 = 'https://example.com/url1';
-      const url2 = 'https://example.com/url2';
 
       manager.autoSave(url1, 'Project 1');
       vi.advanceTimersByTime(1000);
@@ -633,18 +630,17 @@ describe('ProjectSaveManager', () => {
       expect(project.title).toBe('');
     });
 
-    it('should move duplicate to top on manual save', () => {
+    it('should always create a new entry on manual save (no deduplication)', () => {
       const url = 'https://example.com/dup-url';
       manager.manualSave(url, 'Original');
       manager.manualSave('https://example.com/other', 'Other');
-
-      const idBefore = manager.getHistory()[1].id;
-
       manager.manualSave(url, 'Updated');
 
       const history = manager.getHistory();
+      // manual save never deduplicates — 3 entries expected
+      expect(history).toHaveLength(3);
       expect(history[0].shareUrl).toBe(url);
-      expect(history[0].id).toBe(idBefore);
+      expect(history[0].title).toBe('Updated');
     });
 
     it('should not throw when shareUrl is empty', () => {
@@ -684,7 +680,7 @@ describe('ProjectSaveManager', () => {
       manager.initialize();
       const timerCountBefore = vi.getTimerCount();
 
-      manager.destroy?.();
+      manager.destroy();
 
       // Se destroy foi chamado corretamente, os timers devem ser limpos
       // Caso destroy não exista ou não limpe, este teste pode passar mesmo assim
@@ -854,7 +850,7 @@ describe('ProjectSaveManager', () => {
           },
           {
             id: '',
-            shareUrl: null as any,
+            shareUrl: null as unknown as string,
             title: 'Invalid',
             savedAt: Date.now(),
           },
@@ -918,7 +914,7 @@ describe('ProjectSaveManager', () => {
 
       // Verify it persists
       const stored = localStorage.getItem(defaultStorageKey);
-      const parsed = JSON.parse(stored!) as ProjectHistory;
+      const parsed = JSON.parse(stored as string) as ProjectHistory;
       expect(parsed.projects[0].thumbnail).toBe(largeDataUri);
     });
 
@@ -933,7 +929,7 @@ describe('ProjectSaveManager', () => {
 
       // Verify round-trip through storage
       const stored = localStorage.getItem(defaultStorageKey);
-      const parsed = JSON.parse(stored!) as ProjectHistory;
+      const parsed = JSON.parse(stored as string) as ProjectHistory;
       expect(parsed.projects[0].shareUrl).toBe(complexUrl);
     });
 
@@ -947,7 +943,7 @@ describe('ProjectSaveManager', () => {
       expect(project.title).toBe(specialTitle);
 
       const stored = localStorage.getItem(defaultStorageKey);
-      const parsed = JSON.parse(stored!) as ProjectHistory;
+      const parsed = JSON.parse(stored as string) as ProjectHistory;
       expect(parsed.projects[0].title).toBe(specialTitle);
     });
   });

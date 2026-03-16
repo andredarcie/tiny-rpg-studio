@@ -199,6 +199,17 @@ body.game-mode .tabs {
         font-size: 0.8rem;
     }
 
+    .project-save-controls {
+        gap: 3px;
+    }
+
+    .btn-manual-save,
+    .btn-history-dropdown {
+        padding: 4px 7px;
+        font-size: 0.8rem;
+        min-height: 26px;
+    }
+
     body.game-mode #game-container {
         justify-content: flex-start;
         padding-top: 4px;
@@ -219,12 +230,12 @@ body.game-mode .tabs {
 
 /* Project Save Controls */
 .project-save-controls {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 9999;
     display: flex;
     gap: 8px;
+    justify-content: center;
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto clamp(3px, 1.2vw, 8px);
 }
 
 .history-dropdown-wrapper {
@@ -3095,4 +3106,34 @@ body.game-mode .tab-button.active {
     padding: 4px 12px;
     cursor: pointer;
     font-weight: bold;
+}
+
+/* ─── Project Save Toast Notifications ─────────────────────────────────── */
+
+.project-save-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 10px 18px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    z-index: 9999;
+    pointer-events: none;
+    animation: toast-in 0.2s ease, toast-out 0.3s ease 2.7s forwards;
+}
+
+.project-save-toast--success { background: #1a6b3c; }
+.project-save-toast--error   { background: #8b1a1a; }
+.project-save-toast--info    { background: #1a3a6b; }
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
 }

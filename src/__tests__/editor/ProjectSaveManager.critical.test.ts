@@ -7,7 +7,6 @@ import type { ProjectSaveManagerOptions } from '../../editor/manager/ProjectSave
  * Tests auto-save interval, edge cases, and deduplication logic
  */
 describe('ProjectSaveManager - Critical Auto-Save', () => {
-  const defaultStorageKey = 'tiny-rpg-projects-history';
   const mockShareUrl = 'https://example.com/share/critical-test';
   const mockProjectTitle = 'Critical Test Project';
 
@@ -44,7 +43,7 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
     vi.clearAllMocks();
     vi.runOnlyPendingTimers();
     vi.useRealTimers();
-    manager.destroy?.();
+    manager.destroy();
   });
 
   // ─── Auto-Save Interval Behavior ───────────────────────────────────────────
@@ -81,7 +80,6 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
       manager.initialize();
 
       const result1 = manager.autoSave(mockShareUrl, mockProjectTitle);
-      const historyLength1 = manager.getHistory().length;
 
       // Try to save same URL again
       const result2 = manager.autoSave(mockShareUrl, mockProjectTitle);
@@ -218,7 +216,7 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
       expect(history[0].id).toBe(project3Id);
     });
 
-    it('should handle interleaved manual and auto-saves with deduplication', () => {
+    it('should handle interleaved manual and auto-saves correctly', () => {
       manager.initialize();
 
       const url1 = 'https://example.com/share/interleaved1';
@@ -226,13 +224,16 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
 
       manager.manualSave(url1, 'Manual Save 1');
       manager.autoSave(url2, 'Auto Save 1');
+      // manual save with same URL creates new entry; auto-save with same URL deduplicates
       manager.manualSave(url1, 'Manual Save 1 Updated');
       manager.autoSave(url2, 'Auto Save 1 Updated');
 
       const history = manager.getHistory();
-      expect(history).toHaveLength(2);
-      expect(history[0].shareUrl).toBe(url2);
-      expect(history[1].shareUrl).toBe(url1);
+      // 2 manual saves (url1 x2, no dedup) + 1 auto-save (url2, deduped) = 3
+      expect(history).toHaveLength(3);
+      expect(history[0].shareUrl).toBe(url2); // last auto-save deduplicated → top
+      expect(history[1].shareUrl).toBe(url1); // second manual save
+      expect(history[2].shareUrl).toBe(url1); // first manual save
     });
 
     it('should preserve project ID during deduplication', () => {
@@ -512,7 +513,7 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
 
       const timerCountBefore = vi.getTimerCount();
 
-      mgr.destroy?.();
+      mgr.destroy();
 
       // Timers should be cleaned up
       // Count may be 0 or same depending on other timers
@@ -523,7 +524,7 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
       for (let i = 0; i < 10; i++) {
         const mgr = new ProjectSaveManager();
         mgr.initialize();
-        mgr.destroy?.();
+        mgr.destroy();
       }
 
       // Should reach this point without errors
@@ -534,7 +535,7 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
       const mgr = new ProjectSaveManager();
 
       expect(() => {
-        mgr.destroy?.();
+        mgr.destroy();
       }).not.toThrow();
     });
 
@@ -543,7 +544,7 @@ describe('ProjectSaveManager - Critical Auto-Save', () => {
       mgr.initialize();
 
       mgr.addToHistory('https://example.com/share/before', 'Before Destroy');
-      mgr.destroy?.();
+      mgr.destroy();
 
       mgr.initialize();
 

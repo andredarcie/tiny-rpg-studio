@@ -56,6 +56,8 @@ class EditorShareService {
             const clipboard = navigatorApi?.clipboard;
             if (clipboard) {
                 await clipboard.writeText(url);
+            } else {
+                prompt(this.t('alerts.share.copyUrl'), url);
             }
 
             void this.trackShareUrl(url);

@@ -22,6 +22,7 @@ import { EditorUIController } from './manager/EditorUIController';
 import { PixelArtEditorController } from './modules/PixelArtEditorController';
 import { ProjectSaveManager } from './manager/ProjectSaveManager';
 import { ProjectSaveUI } from './manager/ProjectSaveUI';
+import { ShareUtils } from '../runtime/infra/share/ShareUtils';
 
 class EditorManager {
     gameEngine: GameEngine;
@@ -43,6 +44,8 @@ class EditorManager {
     eventBinder: EditorEventBinder;
     interactionController: EditorInteractionController;
     pixelArtEditorController: PixelArtEditorController;
+    private projectSaveManager?: ProjectSaveManager;
+    private projectSaveUI?: ProjectSaveUI;
 
     constructor(gameEngine: GameEngine) {
         this.gameEngine = gameEngine;
@@ -84,30 +87,35 @@ class EditorManager {
                 });
                 // pass getters instead of relying on globals
                 // title getter falls back to empty string
-                /* eslint-disable @typescript-eslint/no-non-null-assertion */
                 const getShare = () => this.dom.shareUrlInput?.value ?? null;
                 const getTitle = () => this.dom.titleInput?.value ?? '';
                 const onLoadProject = (shareUrl: string) => {
-                    // Navigate to the shared URL to load the project
-                    if (typeof window !== 'undefined' && shareUrl) {
+                    if (!shareUrl) return;
+                    const hashIndex = shareUrl.indexOf('#');
+                    const hash = hashIndex >= 0 ? shareUrl.slice(hashIndex) : '';
+                    const gameData = ShareUtils.extractGameDataFromLocation({ hash });
+                    if (gameData) {
+                        this.restore(gameData as Record<string, unknown>);
+                        if (typeof window !== 'undefined') {
+                            window.location.hash = hash.startsWith('#') ? hash.slice(1) : hash;
+                        }
+                    } else if (typeof window !== 'undefined') {
                         window.location.href = shareUrl;
-                        window.location.reload();
                     }
                 };
                 const psu = new ProjectSaveUI(psm, getShare, getTitle, onLoadProject);
-                // store references for cleanup if needed
-                (this as unknown as { projectSaveManager?: ProjectSaveManager }).projectSaveManager = psm;
-                (this as unknown as { projectSaveUI?: ProjectSaveUI }).projectSaveUI = psu;
-                /* eslint-enable @typescript-eslint/no-non-null-assertion */
+                this.projectSaveManager = psm;
+                this.projectSaveUI = psu;
             } catch (err) {
                 // Do not break editor initialization if save components fail
-                // eslint-disable-next-line no-console
                 console.warn('[EditorManager] ProjectSave components failed to initialize', err);
             }
         if (typeof document !== 'undefined') {
             document.addEventListener('language-changed', () => this.handleLanguageChange());
             document.addEventListener('request-share-url', () => {
-                this.generateShareableUrl();
+                void this.generateShareableUrl().then(() => {
+                    document.dispatchEvent(new CustomEvent('share-url-ready'));
+                });
             });
         }
     }
@@ -499,6 +507,11 @@ class EditorManager {
 
     handleKey(ev: KeyboardEvent) {
         this.interactionController.handleKey(ev);
+    }
+
+    destroy(): void {
+        this.projectSaveUI?.destroy();
+        this.projectSaveManager?.destroy();
     }
 
     createNewGame() {

@@ -46,7 +46,7 @@ export class ProjectSaveManager {
   }
 
   /**
-   * Automatically save a project
+   * Automatically save a project (deduplicates by URL — no duplicate auto-saves)
    */
   autoSave(shareUrl: string, projectTitle?: string): SaveResult {
     if (this.inProgress) {
@@ -54,14 +54,14 @@ export class ProjectSaveManager {
     }
     try {
       this.inProgress = true;
-      return this.addToHistory(shareUrl, projectTitle);
+      return this.addToHistory(shareUrl, projectTitle, undefined, true);
     } finally {
       this.inProgress = false;
     }
   }
 
   /**
-   * Manually save a project
+   * Manually save a project (always creates a new entry)
    */
   manualSave(shareUrl: string, projectTitle?: string): SaveResult {
     if (this.inProgress) {
@@ -69,7 +69,7 @@ export class ProjectSaveManager {
     }
     try {
       this.inProgress = true;
-      return this.addToHistory(shareUrl, projectTitle);
+      return this.addToHistory(shareUrl, projectTitle, undefined, false);
     } finally {
       this.inProgress = false;
     }
@@ -87,24 +87,24 @@ export class ProjectSaveManager {
 
       try {
         const parsed = JSON.parse(stored) as ProjectHistory;
-        if (!parsed.projects || !Array.isArray(parsed.projects)) {
+        if (!Array.isArray(parsed.projects)) {
           return [];
         }
         return parsed.projects;
-      } catch (innerErr) {
+      } catch {
         // Attempt a lightweight salvage: look for a projects array substring
         try {
           const match = stored.match(/\"projects\"\s*:\s*(\[.*\])/s);
           if (match && match[1]) {
-            const arr = JSON.parse(match[1]);
+            const arr: unknown = JSON.parse(match[1]);
             if (Array.isArray(arr)) return arr as SavedProject[];
           }
-        } catch (_e) {
+        } catch {
           // fallthrough to empty
         }
         return [];
       }
-    } catch (error) {
+    } catch {
       return [];
     }
   }
@@ -116,7 +116,7 @@ export class ProjectSaveManager {
     try {
       const history = this.getHistory();
       return history.find((p) => p.id === projectId) || null;
-    } catch (error) {
+    } catch {
       return null;
     }
   }
@@ -124,13 +124,14 @@ export class ProjectSaveManager {
   /**
    * Add a project to history
    */
-  addToHistory(shareUrl: string, projectTitle?: string, thumbnail?: string): SaveResult {
+  addToHistory(shareUrl: string, projectTitle?: string, thumbnail?: string, deduplicate = true): SaveResult {
     try {
       const history = this.getHistory();
       const title = projectTitle ?? '';
 
-      // Check if project with this URL already exists
-      const existingIndex = history.findIndex((p) => p.shareUrl === shareUrl);
+      const existingIndex = deduplicate
+        ? history.findIndex((p) => p.shareUrl === shareUrl)
+        : -1;
 
       if (existingIndex !== -1) {
         const existing = history.splice(existingIndex, 1)[0];
@@ -156,10 +157,10 @@ export class ProjectSaveManager {
       const saved = this.saveToStorage(history);
       if (!saved.ok) return saved;
       return { ok: true, reason: undefined };
-    } catch (error) {
+    } catch (storageError) {
       return {
         ok: false,
-        reason: `storage: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        reason: `storage: ${storageError instanceof Error ? storageError.message : 'Unknown error'}`,
       };
     }
   }
@@ -170,7 +171,7 @@ export class ProjectSaveManager {
   clearHistory(): void {
     try {
       localStorage.removeItem(this.storageKey);
-    } catch (error) {
+    } catch {
       // ignore
     }
   }
@@ -190,7 +191,7 @@ export class ProjectSaveManager {
       history.splice(index, 1);
       this.saveToStorage(history);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -214,11 +215,11 @@ export class ProjectSaveManager {
       if (!stored) return;
       try {
         JSON.parse(stored);
-      } catch (_err) {
+      } catch {
         // Attempt to salvage or simply ignore corrupted storage
         // We'll not overwrite here to avoid data loss
       }
-    } catch (_error) {
+    } catch {
       // ignore
     }
   }
@@ -243,7 +244,7 @@ export class ProjectSaveManager {
         const slimData: ProjectHistory = { projects: slimHistory, lastAutoSaveTime: Date.now() };
         localStorage.setItem(this.storageKey, JSON.stringify(slimData));
         return { ok: true, reason: undefined };
-      } catch (_e) {
+      } catch {
         const msg = error instanceof Error ? error.message || error.name || String(error) : String(error);
         return { ok: false, reason: `storage: ${msg}` };
       }

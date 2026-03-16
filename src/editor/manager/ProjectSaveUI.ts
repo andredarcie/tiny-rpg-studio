@@ -70,21 +70,18 @@ export class ProjectSaveUI {
   async handleManualSave(): Promise<void> {
     if (!this.manualSaveBtn) return;
     let shareUrl = this.getShareUrl();
-    const title = this.getProjectTitle() ?? '';
+    const title = this.getProjectTitle();
 
     this.manualSaveBtn.disabled = true;
     try {
-      // If no share URL exists, we need to generate one first
-      if (!shareUrl) {
-        // Trigger share URL generation by dispatching a custom event
-        // The EditorManager should listen for this and generate the URL
-        const event = new CustomEvent('request-share-url', { detail: {} });
-        document.dispatchEvent(event);
-        
-        // Give a small delay for the event handler to generate the URL
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        shareUrl = this.getShareUrl();
-      }
+      // Always regenerate the URL to capture the current game state
+      await new Promise<void>((resolve) => {
+        const handler = () => resolve();
+        document.addEventListener('share-url-ready', handler, { once: true });
+        setTimeout(resolve, 2000);
+        document.dispatchEvent(new CustomEvent('request-share-url'));
+      });
+      shareUrl = this.getShareUrl();
 
       if (!shareUrl) {
         this.showNotification('Unable to generate share URL', 'error');
@@ -92,20 +89,20 @@ export class ProjectSaveUI {
       }
 
       const result = await Promise.resolve(this.saveManager.manualSave(shareUrl, title));
-      if (result && result.ok) {
+      if (result.ok) {
         this.showNotification('Project saved', 'success');
-        await this.refreshHistoryUI();
+        this.refreshHistoryUI();
       } else {
-        this.showNotification(result?.reason || 'Save failed', 'error');
+        this.showNotification(result.reason || 'Save failed', 'error');
       }
-    } catch (err) {
+    } catch {
       this.showNotification('Unexpected error during save', 'error');
     } finally {
       this.manualSaveBtn.disabled = false;
     }
   }
 
-  private async refreshHistoryUI(): Promise<void> {
+  private refreshHistoryUI(): void {
     if (!this.historyContainer) return;
     this.historyContainer.innerHTML = '';
     const history = this.saveManager.getHistory();
@@ -136,13 +133,13 @@ export class ProjectSaveUI {
       if (project && project.shareUrl) {
         this.closeHistoryMenu();
         if (this.onLoadProject) {
-          console.log(project)
           this.onLoadProject(project.shareUrl);
+          this.showNotification('Game reloaded from save', 'success');
         }
       } else {
         this.showNotification('Project not found', 'error');
       }
-    } catch (err) {
+    } catch {
       this.showNotification('Failed to load project', 'error');
     }
   }
@@ -159,6 +156,7 @@ export class ProjectSaveUI {
 
   private openHistoryMenu(): void {
     if (!this.historyMenu || !this.historyToggleBtn) return;
+    this.refreshHistoryUI();
     this.historyMenu.removeAttribute('hidden');
     this.historyMenu.setAttribute('aria-hidden', 'false');
     this.historyToggleBtn.setAttribute('aria-expanded', 'true');
@@ -197,10 +195,12 @@ export class ProjectSaveUI {
     }
   }
 
-  private showNotification(_message: string, _type: 'success' | 'error' | 'info' = 'info'): void {
-    // Minimal hook: could integrate toasts later. For now use console to avoid silent failures in tests
-    // eslint-disable-next-line no-console
-    console.log('[ProjectSaveUI]', _type, _message);
+  private showNotification(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+    const toast = document.createElement('div');
+    toast.className = `project-save-toast project-save-toast--${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   }
 
   destroy(): void {
