@@ -117,6 +117,15 @@
                     <button id="btn-reset" class="tab-action-button" type="button" data-text-key="buttons.reset" data-aria-label-key="aria.reset"></button>
                 </div>
             </div>
+            <div class="project-save-controls">
+                <button id="btn-manual-save" class="btn-manual-save" type="button" title="Manual Save" aria-label="Save project manually">Save</button>
+                <div class="history-dropdown-wrapper">
+                    <button id="btn-history-dropdown" class="btn-history-dropdown" type="button" title="Project History" aria-label="Open project history" aria-expanded="false" aria-haspopup="listbox">Load</button>
+                    <div id="history-dropdown-menu" class="history-dropdown-menu" role="listbox" aria-label="Project history" hidden>
+                        <div id="history-items-container" class="history-items-container"></div>
+                    </div>
+                </div>
+            </div>
 
             <div class="tab-content active" id="tab-game" role="tabpanel" aria-labelledby="tab-game">
                 <div class="game-container" id="game-container">
