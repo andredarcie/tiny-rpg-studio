@@ -154,6 +154,11 @@ class InputManager {
       this.touchStart = null;
       return;
     }
+    const target = ev.target as HTMLElement | null;
+    if (target?.closest('.pad-button[data-direction]')) {
+      this.touchStart = null;
+      return;
+    }
     if (this.gameEngine.isGameOver?.()) {
       ev.preventDefault();
       this.gameEngine.handleGameOverInteraction?.();

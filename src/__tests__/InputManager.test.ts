@@ -296,4 +296,54 @@ describe('InputManager', () => {
 
     expect(paint).toHaveBeenCalledTimes(2);
   });
+
+  describe('Mobile arrow button dialog bug', () => {
+    it('handleTouchStart should NOT advance dialog when tryMove just activated it in the same event cycle', () => {
+      // Simulates the race condition on mobile:
+      // 1. Arrow button touchstart fires → tryMove() → NPC collision → dialog becomes active (page 1)
+      // 2. document touchstart fires (InputManager) → sees dialog active → advances to page 2
+      // Expected: first dialog page should remain visible (setDialogPage must NOT be called)
+
+      let dialogActive = false;
+      const setDialogPage = vi.fn();
+
+      const engine = createEngine({
+        gameState: {
+          getDialog: () =>
+            dialogActive
+              ? { active: true, page: 1, maxPages: 2 }
+              : { active: false, page: 1, maxPages: 2 },
+          setDialogPage,
+        },
+        tryMove: vi.fn(() => {
+          // Simulates NPC collision inside tryMove activating the dialog
+          dialogActive = true;
+        }),
+      });
+
+      document.body.classList.add('game-mode');
+      const manager = new InputManager(engine);
+
+      // Step 1: arrow button handler calls tryMove (activates dialog)
+      engine.tryMove(0, 1);
+
+      // Step 2: document touchstart handler fires for the same event,
+      // with target being the pad button (as happens in the real browser)
+      const padButton = document.createElement('button');
+      padButton.className = 'pad-button';
+      padButton.dataset.direction = 'down';
+      document.body.appendChild(padButton);
+
+      const touchEv = {
+        ...createTouchEvent(100, 100),
+        target: padButton,
+      } as unknown as TouchEvent;
+      manager.handleTouchStart(touchEv);
+
+      padButton.remove();
+
+      // The first dialog page must not have been skipped
+      expect(setDialogPage).not.toHaveBeenCalled();
+    });
+  });
 });
