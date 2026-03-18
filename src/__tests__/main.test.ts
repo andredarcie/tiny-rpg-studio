@@ -17,6 +17,12 @@ class MockGameEngine {
 
 class MockTouchGameEngine {
   tryMove = vi.fn();
+  gameState = {
+    getDialog: vi.fn(() => ({ active: false, page: 1, maxPages: 1 })),
+    setDialogPage: vi.fn(),
+  };
+  closeDialog = vi.fn();
+  renderer = { draw: vi.fn() };
 }
 
 class MockSharedLoadEngine {

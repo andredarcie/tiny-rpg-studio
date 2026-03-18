@@ -163,6 +163,16 @@ class TinyRPGApplication {
         'touchstart',
         (ev) => {
           ev.preventDefault();
+          const dialog = gameEngine.gameState.getDialog();
+          if (dialog.active) {
+            if (dialog.page >= dialog.maxPages) {
+              gameEngine.closeDialog();
+            } else {
+              gameEngine.gameState.setDialogPage(dialog.page + 1);
+              gameEngine.renderer.draw();
+            }
+            return;
+          }
           const dir = btn.dataset.direction as Direction | undefined;
           if (!dir) return;
           const delta = directionMap[dir];
