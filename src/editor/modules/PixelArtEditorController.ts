@@ -249,6 +249,10 @@ export class PixelArtEditorController {
         this.dom?.paePalette?.addEventListener('click', (e) => {
             const swatch = (e.target as Element).closest('.pae-palette-swatch') as HTMLElement | null;
             if (!swatch) return;
+
+            this.tool = 'paint';
+            this.syncToolButtons();
+
             const idxStr = swatch.dataset.paletteIndex;
             this.selectedColor = idxStr === 'null' ? null : parseInt(idxStr ?? '0');
             this.renderPalette();
@@ -263,12 +267,21 @@ export class PixelArtEditorController {
             canvas.addEventListener('mousemove', (e) => {
                 if (this.isPainting) this.paintAt(e);
             });
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.isPainting = true;
+                this.paintAt(e);
+            });
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (this.isPainting) this.paintAt(e);
+            });
             canvas.addEventListener('mouseup', () => { this.isPainting = false; });
             canvas.addEventListener('mouseleave', () => { this.isPainting = false; });
         }
     }
 
-    private paintAt(e: MouseEvent): void {
+    private paintAt(e: MouseEvent | TouchEvent): void {
         const canvas = this.dom?.paeCanvas;
         if (!canvas) return;
         const frame = this.frames[this.activeFrameIndex];
@@ -278,8 +291,11 @@ export class PixelArtEditorController {
         const cols = frame[0]?.length ?? 0;
         if (rows === 0 || cols === 0) return;
 
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
         const c = Math.floor((x / rect.width) * cols);
         const r = Math.floor((y / rect.height) * rows);
 
