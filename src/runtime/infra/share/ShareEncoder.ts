@@ -1,6 +1,7 @@
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { TileDefinitions } from '../../domain/definitions/TileDefinitions';
+import { SkillDefinitions } from '../../domain/definitions/SkillDefinitions';
 import { ShareConstants } from './ShareConstants';
 import { ShareDataNormalizer } from './ShareDataNormalizer';
 import { ShareMatrixCodec } from './ShareMatrixCodec';
@@ -33,6 +34,7 @@ type ShareGameData = {
     world?: unknown;
     customPalette?: string[];
     customSprites?: CustomSpriteEntryLike[];
+    skillOrder?: string[];
 };
 
 class ShareEncoder {
@@ -443,6 +445,21 @@ class ShareEncoder {
 
         if (gameData?.hideHud) {
             parts.push('H1');
+        }
+
+        // Skill Order
+        const skillOrder = Array.isArray(gameData?.skillOrder) ? gameData.skillOrder : [];
+        if (skillOrder.length > 0) {
+            const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
+            const isDefault = skillOrder.length === defaultOrder.length &&
+                skillOrder.every((id, i) => id === defaultOrder[i]);
+            if (!isDefault) {
+                const encoded = skillOrder.map((id) => {
+                    const idx = SkillDefinitions.SKILL_DEFINITION_DATA.findIndex((s) => s.id === id);
+                    return (idx >= 0 ? idx : 0).toString(16);
+                }).join('');
+                parts.push('Q' + encoded);
+            }
         }
 
         // Custom Sprites

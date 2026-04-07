@@ -316,6 +316,12 @@ export class GameEngine {
     this.draw();
   }
 
+  setSkillOrder(order: string[] | undefined): void {
+    const game = this.gameState.getGame();
+    game.skillOrder = Array.isArray(order) && order.length ? order : undefined;
+    this.gameState.skillManager.setSkillOrder(game.skillOrder);
+  }
+
   getCustomPalette(): string[] | undefined {
     const game = this.gameState.getGame();
     return game.customPalette;

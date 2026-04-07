@@ -58,6 +58,15 @@ const mocks = vi.hoisted(() => {
 
   const skillDefinitions = {
     getAll: vi.fn<() => unknown[]>(),
+    getById: vi.fn<(id: string) => unknown | null>((id) => ({ id })),
+    getDefaultSkillOrder: vi.fn<() => string[]>(() => []),
+    DEFAULT_LEVEL_SLOTS: [
+      { level: 2, count: 2 },
+      { level: 4, count: 1 },
+      { level: 6, count: 1 },
+      { level: 8, count: 1 },
+      { level: 10, count: 1 },
+    ],
     LEVEL_SKILLS: {} as Record<string, unknown>
   };
 
@@ -514,31 +523,29 @@ describe('EditorRenderService', () => {
     expect(fixture.domCache.projectSkillsList.textContent).toContain('Nenhuma');
   });
 
-  it('renders grouped skill list with translated and fallback labels', () => {
+  it('renders flat reorderable skill list with drag handles and level badges', () => {
     const fixture = createManagerFixture();
-    mocks.skillDefinitions.getAll.mockReturnValue([
-      { id: 'heal', icon: '', nameKey: 'skill.heal', name: 'Heal', descriptionKey: 'skill.heal.desc', description: 'desc' },
-      { id: 'translated-id-only', nameKey: 'skill.id.only', name: '', descriptionKey: 'skill.id.only.desc', description: '' },
-      { id: '', nameKey: 'skill.empty', name: '', descriptionKey: 'skill.empty.desc', description: '' },
-      { id: 'plain-id', name: '' },
-      { id: '', name: '' },
-      { id: 'mystery', name: 'Mystery' }
-    ]);
-    mocks.skillDefinitions.LEVEL_SKILLS = { '2': ['heal'] };
+    const healSkill = { id: 'heal', icon: '❤️', nameKey: 'skill.heal', descriptionKey: 'skill.heal.desc' };
+    const mysterySkill = { id: 'mystery', icon: '✨', nameKey: 'skill.mystery', descriptionKey: 'skill.mystery.desc' };
+    mocks.skillDefinitions.getAll.mockReturnValue([healSkill, mysterySkill]);
+    mocks.skillDefinitions.getById.mockImplementation((id: string) =>
+      id === 'heal' ? healSkill : id === 'mystery' ? mysterySkill : null
+    );
+    mocks.skillDefinitions.getDefaultSkillOrder.mockReturnValue(['heal', 'mystery']);
+    mocks.skillDefinitions.DEFAULT_LEVEL_SLOTS = [{ level: 2, count: 2 }];
     mocks.textGet.mockImplementation((key, fallback) => `T:${key}:${fallback}`);
     mocks.textFormat.mockImplementation((key, params, fallback) => `F:${key}:${params.value}:${fallback}`);
     const { service } = createService(fixture);
 
     service.renderSkillList();
 
-    const groups = fixture.domCache.projectSkillsList.querySelectorAll('.project-skill-group');
-    expect(groups).toHaveLength(2);
-    expect(groups[0].querySelector('.project-skill-group-title')?.textContent).toContain('2');
-    expect(groups[1].querySelector('.project-skill-group-title')?.textContent).toContain('project.skills.level');
-    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal:Heal');
-    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal.desc:desc');
-    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.id.only:translated-id-only');
-    expect(fixture.domCache.projectSkillsList.textContent).toContain('Mystery');
+    const items = fixture.domCache.projectSkillsList.querySelectorAll('.project-skill-item[data-skill-id]');
+    expect(items).toHaveLength(2);
+    expect(items[0].querySelector('.project-skill-drag-handle')).not.toBeNull();
+    expect(items[0].querySelector('.project-skill-level-badge')?.textContent).toContain('2');
+    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal:heal');
+    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal.desc:');
+    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.mystery:mystery');
   });
 
   it('returns early in renderTestTools when required nodes are missing', () => {

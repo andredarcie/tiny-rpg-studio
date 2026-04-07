@@ -21,6 +21,7 @@ class GameStateDataFacade {
         this.gameState.objectManager.setGame(this.gameState.game);
         this.gameState.variableManager.setGame(this.gameState.game);
         this.gameState.ensureDefaultVariables();
+        this.gameState.skillManager.setSkillOrder(this.gameState.game.skillOrder);
         this.gameState.resetGame();
     }
 }

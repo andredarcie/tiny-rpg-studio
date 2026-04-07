@@ -231,9 +231,6 @@ class EditorRenderService {
         const toggle = this.dom.projectSkillsToggle;
         list.innerHTML = '';
 
-        const skills = SkillDefinitions.getAll();
-        const levelMap = this.buildSkillLevelMap();
-        const grouped = this.groupSkillsByLevel(skills, levelMap);
         const collapsed = Boolean(this.state.skillPanelCollapsed);
         if (toggle) {
             const actionText = collapsed
@@ -249,7 +246,8 @@ class EditorRenderService {
             return;
         }
 
-        if (!skills.length) {
+        const allSkills = SkillDefinitions.getAll();
+        if (!allSkills.length) {
             const empty = document.createElement('div');
             empty.className = 'project-skill-item';
             const text = document.createElement('span');
@@ -260,45 +258,123 @@ class EditorRenderService {
             return;
         }
 
-        grouped.forEach(({ level, items }) => {
-            const group = document.createElement('div');
-            group.className = 'project-skill-group';
+        // Build ordered list: use custom skillOrder if set, else default level order
+        const game = this.gameEngine.getGame() as { skillOrder?: string[] };
+        const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
+        const rawOrder: string[] = Array.isArray(game.skillOrder) && game.skillOrder.length
+            ? game.skillOrder
+            : defaultOrder;
+        // Ensure all skill IDs are present (add missing at end, remove unknowns)
+        const knownIds = new Set(allSkills.map((s) => s.id));
+        const ordered = rawOrder.filter((id) => knownIds.has(id));
+        allSkills.forEach((s) => { if (!ordered.includes(s.id)) ordered.push(s.id); });
 
-            const title = document.createElement('div');
-            title.className = 'project-skill-group-title';
-            const label = Number.isFinite(level)
-                ? this.tf('project.skills.level', { value: level as number }, `Nível ${level}`)
-                : this.t('project.skills.level', 'Nível -');
-            title.textContent = label;
-            group.appendChild(title);
+        // Level label per position using DEFAULT_LEVEL_SLOTS
+        const levelAtPosition: number[] = [];
+        for (const slot of SkillDefinitions.DEFAULT_LEVEL_SLOTS) {
+            for (let i = 0; i < slot.count; i++) levelAtPosition.push(slot.level);
+        }
 
-            items.forEach((skill: SkillData) => {
-                const item = document.createElement('div');
-                item.className = 'project-skill-item';
+        ordered.forEach((skillId, index) => {
+            const skill = SkillDefinitions.getById(skillId);
+            if (!skill) return;
+            const item = document.createElement('div');
+            item.className = 'project-skill-item';
+            item.dataset.skillId = skillId;
+            item.dataset.index = String(index);
 
-                const icon = document.createElement('span');
-                icon.className = 'project-skill-icon';
-                icon.textContent = skill.icon || '✨';
+            const handle = document.createElement('span');
+            handle.className = 'project-skill-drag-handle';
+            handle.textContent = '☰';
+            handle.title = this.t('project.skills.drag', 'Arrastar para reordenar');
 
-                const name = document.createElement('div');
-                name.className = 'project-skill-name';
-                const nameText = skill.nameKey
-                    ? this.t(skill.nameKey, skill.name || skill.id || '')
-                    : (skill.name || skill.id || '');
-                name.textContent = nameText || skill.id || '';
+            const icon = document.createElement('span');
+            icon.className = 'project-skill-icon';
+            icon.textContent = skill.icon || '✨';
 
-                const desc = document.createElement('div');
-                desc.className = 'project-skill-desc';
-                const descText = skill.descriptionKey
-                    ? this.t(skill.descriptionKey, skill.description || '')
-                    : (skill.description || '');
-                desc.textContent = descText;
+            const nameEl = document.createElement('div');
+            nameEl.className = 'project-skill-name';
+            nameEl.textContent = skill.nameKey ? this.t(skill.nameKey, skill.id) : skill.id;
 
-                item.append(icon, name, desc);
-                group.appendChild(item);
+            const levelLabel = levelAtPosition[index];
+            const badge = document.createElement('span');
+            badge.className = 'project-skill-level-badge';
+            badge.textContent = levelLabel
+                ? this.tf('project.skills.level', { value: levelLabel }, `Nível ${levelLabel}`)
+                : '';
+
+            const desc = document.createElement('div');
+            desc.className = 'project-skill-desc';
+            desc.textContent = skill.descriptionKey ? this.t(skill.descriptionKey, '') : '';
+
+            item.append(handle, icon, nameEl, badge, desc);
+            list.appendChild(item);
+        });
+
+        this.attachSkillDragHandlers(list, ordered);
+    }
+
+    private attachSkillDragHandlers(listEl: HTMLElement, skillOrder: string[]) {
+        const getItems = () => Array.from(listEl.querySelectorAll<HTMLElement>('.project-skill-item[data-skill-id]'));
+        const clearDragClasses = () => {
+            getItems().forEach((el) => {
+                el.classList.remove('is-dragging', 'is-drag-over-above', 'is-drag-over-below');
             });
+        };
 
-            list.appendChild(group);
+        getItems().forEach((item, fromIndex) => {
+            const handle = item.querySelector<HTMLElement>('.project-skill-drag-handle');
+            if (!handle) return;
+
+            let toIndex = fromIndex;
+
+            const onMove = (e: PointerEvent) => {
+                const items = getItems();
+                let newIndex = items.length - 1;
+                for (let i = 0; i < items.length; i++) {
+                    const rect = items[i].getBoundingClientRect();
+                    if (e.clientY < rect.top + rect.height / 2) {
+                        newIndex = i;
+                        break;
+                    }
+                }
+                if (newIndex !== toIndex) {
+                    toIndex = newIndex;
+                    clearDragClasses();
+                    item.classList.add('is-dragging');
+                    if (toIndex !== fromIndex) {
+                        const target = items[toIndex];
+                        if (target) {
+                            target.classList.add(toIndex < fromIndex ? 'is-drag-over-above' : 'is-drag-over-below');
+                        }
+                    }
+                }
+            };
+
+            const onUp = () => {
+                handle.removeEventListener('pointermove', onMove);
+                handle.removeEventListener('pointerup', onUp);
+                handle.removeEventListener('pointercancel', onUp);
+                clearDragClasses();
+
+                if (toIndex !== fromIndex) {
+                    const newOrder = skillOrder.slice();
+                    const [moved] = newOrder.splice(fromIndex, 1);
+                    newOrder.splice(toIndex, 0, moved);
+                    this.manager.uiController.setSkillOrder(newOrder);
+                }
+            };
+
+            handle.addEventListener('pointerdown', (e: PointerEvent) => {
+                e.preventDefault();
+                toIndex = fromIndex;
+                try { handle.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+                clearDragClasses();
+                item.classList.add('is-dragging');
+                handle.addEventListener('pointermove', onMove);
+                handle.addEventListener('pointerup', onUp);
+                handle.addEventListener('pointercancel', onUp);
+            });
         });
     }
 

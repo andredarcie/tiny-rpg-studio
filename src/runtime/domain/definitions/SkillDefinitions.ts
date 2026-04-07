@@ -55,8 +55,41 @@ class SkillDefinitions {
         10: ['keyless-doors']
     };
 
+    // Level slot structure: how many skills appear at each level milestone.
+    static DEFAULT_LEVEL_SLOTS: Array<{ level: number; count: number }> = [
+        { level: 2, count: 2 },
+        { level: 4, count: 1 },
+        { level: 6, count: 1 },
+        { level: 8, count: 1 },
+        { level: 10, count: 1 },
+    ];
+
     static getAll(): Skill[] {
         return this.SKILLS;
+    }
+
+    /** Returns the default flat skill order derived from LEVEL_SKILLS and DEFAULT_LEVEL_SLOTS. */
+    static getDefaultSkillOrder(): string[] {
+        const flat: string[] = [];
+        for (const slot of this.DEFAULT_LEVEL_SLOTS) {
+            const ids = (this.LEVEL_SKILLS[slot.level] || []) as string[];
+            flat.push(...ids);
+        }
+        return flat;
+    }
+
+    /** Remaps skills to level slots according to a custom order. */
+    static getLevelSkillsForOrder(skillOrder: string[]): Partial<Record<number, string[]>> {
+        const result: Partial<Record<number, string[]>> = {};
+        let index = 0;
+        for (const slot of this.DEFAULT_LEVEL_SLOTS) {
+            const ids = skillOrder.slice(index, index + slot.count).filter((id) => !!this.getById(id));
+            if (ids.length) {
+                result[slot.level] = ids;
+            }
+            index += slot.count;
+        }
+        return result;
     }
 
     static getById(id: string | null | undefined): Skill | null {
@@ -79,10 +112,18 @@ class SkillDefinitions {
         return unique;
     }
 
-    static buildQueueForLevel(level: number, carryover: string[] = [], owned: string[] = []): string[] {
+    static buildQueueForLevel(level: number, carryover: string[] = [], owned: string[] = [], skillOrder?: string[]): string[] {
         const normalizedCarry = Array.isArray(carryover) ? carryover : [];
         const ownedSet = new Set(Array.isArray(owned) ? owned : []);
-        const base = this.getSkillsForLevel(level);
+        const levelSkillMap = skillOrder ? this.getLevelSkillsForOrder(skillOrder) : this.LEVEL_SKILLS;
+        const numeric = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
+        const list = levelSkillMap[numeric] || [];
+        const base: string[] = [];
+        (Array.isArray(list) ? list : []).forEach((id) => {
+            if (typeof id !== 'string' || !id) return;
+            if (!this.getById(id)) return;
+            if (!base.includes(id)) base.push(id);
+        });
         const queue: string[] = [];
         [...normalizedCarry, ...base].forEach((id) => {
             if (typeof id !== 'string' || !id) return;
@@ -93,10 +134,11 @@ class SkillDefinitions {
             }
         });
         if (!queue.length) {
-            this.getAll().forEach((skill) => {
-                if (!ownedSet.has(skill.id) && !queue.includes(skill.id)) {
-                    queue.push(skill.id);
-                }
+            const fallback = skillOrder
+                ? skillOrder.filter((id) => this.getById(id) && !ownedSet.has(id))
+                : this.getAll().filter((skill) => !ownedSet.has(skill.id)).map((s) => s.id);
+            fallback.forEach((id) => {
+                if (!queue.includes(id)) queue.push(id);
             });
         }
         return queue;

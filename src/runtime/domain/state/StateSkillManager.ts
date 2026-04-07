@@ -6,10 +6,15 @@ type PlayerLevelState = { level?: number };
 
 class StateSkillManager {
     state: RuntimeState | null;
+    private skillOrder?: string[];
 
     constructor(state: RuntimeState | null) {
         this.state = state;
         this.resetRuntime();
+    }
+
+    setSkillOrder(order: string[] | undefined) {
+        this.skillOrder = Array.isArray(order) && order.length ? order : undefined;
     }
 
     setState(state: RuntimeState | null) {
@@ -263,7 +268,7 @@ class StateSkillManager {
             : typeof (this.state?.player as PlayerLevelState | undefined)?.level === 'number'
             ? Math.max(1, Math.floor((this.state?.player as PlayerLevelState).level ?? 1))
             : 1;
-        const queue = SkillDefinitions.buildQueueForLevel(playerLevel, runtime.carryoverSkills, runtime.owned);
+        const queue = SkillDefinitions.buildQueueForLevel(playerLevel, runtime.carryoverSkills, runtime.owned, this.skillOrder);
         runtime.currentChoicePool = queue;
         if (!queue.length) {
             runtime.carryoverSkills = [];

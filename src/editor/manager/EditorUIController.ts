@@ -67,6 +67,12 @@ class EditorUIController extends EditorManagerModule {
         this.renderService.renderTestTools();
     }
 
+    setSkillOrder(order: string[]) {
+        const normalized = Array.isArray(order) ? order.filter((id) => typeof id === 'string' && !!id) : [];
+        this.gameEngine.setSkillOrder(normalized.length ? normalized : undefined);
+        this.updateJSON();
+    }
+
     setHideHud(active: boolean = false) {
         this.gameEngine.setHideHud(Boolean(active));
         this.updateJSON();

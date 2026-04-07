@@ -1,5 +1,6 @@
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
+import { SkillDefinitions } from '../../domain/definitions/SkillDefinitions';
 import { ShareConstants } from './ShareConstants';
 import { ShareDataNormalizer } from './ShareDataNormalizer';
 import { ShareBase64 } from './ShareBase64';
@@ -451,6 +452,9 @@ class ShareDecoder {
         // Custom Sprites
         const customSprites = payload.S ? this.decodeCustomSprites(payload.S) : undefined;
 
+        // Skill Order
+        const skillOrder = payload.Q ? this.decodeSkillOrder(payload.Q) : undefined;
+
         const result: Record<string, unknown> = {
             title,
             author,
@@ -479,7 +483,24 @@ class ShareDecoder {
             result.customSprites = customSprites;
         }
 
+        if (skillOrder && skillOrder.length > 0) {
+            result.skillOrder = skillOrder;
+        }
+
         return result;
+    }
+
+    private static decodeSkillOrder(encoded: string): string[] | null {
+        try {
+            const data = SkillDefinitions.SKILL_DEFINITION_DATA;
+            const ids = encoded.split('').map((ch) => {
+                const idx = parseInt(ch, 16);
+                return (Number.isFinite(idx) && idx >= 0 && idx < data.length) ? data[idx].id : null;
+            }).filter((id): id is string => id !== null);
+            return ids.length === data.length ? ids : null;
+        } catch {
+            return null;
+        }
     }
 }
 

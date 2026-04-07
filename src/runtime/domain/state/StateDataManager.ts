@@ -32,6 +32,7 @@ type ImportData = {
         map?: unknown;
     };
     customSprites?: unknown[];
+    skillOrder?: string[];
 };
 
 class StateDataManager {
@@ -83,6 +84,9 @@ class StateDataManager {
             tileset: this.game.tileset,
             ...(Array.isArray(this.game.customSprites) && this.game.customSprites.length
                 ? { customSprites: this.game.customSprites }
+                : {}),
+            ...(Array.isArray(this.game.skillOrder) && this.game.skillOrder.length
+                ? { skillOrder: this.game.skillOrder }
                 : {}),
         };
     }
@@ -137,6 +141,12 @@ class StateDataManager {
             this.game.customSprites = data.customSprites as CustomSpriteEntry[];
         } else {
             this.game.customSprites = undefined;
+        }
+
+        if (Array.isArray(data.skillOrder) && data.skillOrder.length) {
+            this.game.skillOrder = data.skillOrder.filter((id) => typeof id === 'string' && !!id);
+        } else {
+            this.game.skillOrder = undefined;
         }
 
         const start = {

@@ -40,12 +40,15 @@ describe('GameStateDataFacade', () => {
     const objectManager = { setGame: vi.fn() };
     const variableManager = { setGame: vi.fn() };
 
+    const skillManager = { setSkillOrder: vi.fn() };
+
     const gameState = {
       game: { title: 'Game' },
       enemyManager,
       itemManager,
       objectManager,
       variableManager,
+      skillManager,
       ensureDefaultVariables: vi.fn(),
       resetGame: vi.fn(),
     } as unknown as GameState;

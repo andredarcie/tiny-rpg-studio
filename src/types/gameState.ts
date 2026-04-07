@@ -179,6 +179,7 @@ export type GameDefinition = {
     exits: ExitState[];
     tileset: Tileset;
     customSprites?: CustomSpriteEntry[];
+    skillOrder?: string[];
 };
 
 export type RuntimeState = {
