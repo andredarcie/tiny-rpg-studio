@@ -255,12 +255,13 @@ class RendererOverlayRenderer extends RendererModuleBase {
             ctx.textAlign = 'left';
         }
 
-        ctx.font = `${Math.max(7, Math.floor(height / 22))}px monospace`;
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        const descFont = Math.max(10, Math.floor(height / 17));
+        ctx.font = `${descFont}px "VT323", monospace`;
+        ctx.fillStyle = '#FFFFFF';
         const descTopGap = Math.max(5, Math.floor(height * 0.06));
         const textY = y + padding + nameFont + descTopGap;
-        const lineHeight = Math.max(8, Math.floor(height / 20));
-        this.drawWrappedText(ctx, description, x + padding, textY, width - padding * 2, lineHeight, 2);
+        const lineHeight = Math.max(descFont + 2, Math.floor(height / 17));
+        this.drawWrappedText(ctx, description, x + padding, textY, width - padding * 2, lineHeight, 3);
 
         ctx.restore();
     }
