@@ -343,10 +343,7 @@ class EditorRenderService {
                     clearDragClasses();
                     item.classList.add('is-dragging');
                     if (toIndex !== fromIndex) {
-                        const target = items[toIndex];
-                        if (target) {
-                            target.classList.add(toIndex < fromIndex ? 'is-drag-over-above' : 'is-drag-over-below');
-                        }
+                        items[toIndex].classList.add(toIndex < fromIndex ? 'is-drag-over-above' : 'is-drag-over-below');
                     }
                 }
             };
