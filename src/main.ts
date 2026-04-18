@@ -70,6 +70,7 @@ class TinyRPGApplication {
     new EditorExportService();
     this.bindResetButton(gameEngine);
     this.bindTouchPad(gameEngine);
+    this.bindFullscreenButton();
     this.bindLanguageSelector();
 
     console.log(getTextResource('log.engineReady'));
@@ -240,6 +241,66 @@ class TinyRPGApplication {
     updateToggleState();
   }
 
+  static bindFullscreenButton(): void {
+    const gameContainer = document.getElementById('game-container');
+    if (!(gameContainer instanceof HTMLElement)) return;
+
+    const desktopQuery = typeof globalThis.matchMedia === 'function'
+      ? globalThis.matchMedia('(hover: hover) and (pointer: fine)')
+      : null;
+    const button = document.createElement('button');
+    button.id = 'game-fullscreen-toggle';
+    button.type = 'button';
+    button.className = 'game-fullscreen-button';
+    button.hidden = true;
+    gameContainer.appendChild(button);
+
+    const isFullscreenActive = () => document.fullscreenElement === gameContainer;
+
+    const syncButtonState = () => {
+      const active = isFullscreenActive();
+      button.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+      button.setAttribute('title', active ? 'Exit fullscreen' : 'Enter fullscreen');
+      button.dataset.state = active ? 'exit' : 'enter';
+      button.classList.toggle('is-active', active);
+    };
+
+    const updateVisibility = () => {
+      const isDesktop = desktopQuery?.matches ?? false;
+      const isGameMode = document.body.classList.contains('game-mode');
+      button.hidden = !isDesktop || !isGameMode;
+    };
+
+    button.addEventListener('click', async () => {
+      if (isFullscreenActive()) {
+        await document.exitFullscreen?.();
+        return;
+      }
+      await gameContainer.requestFullscreen?.();
+    });
+
+    const handleEditorActivation = () => {
+      updateVisibility();
+      if (isFullscreenActive()) {
+        void document.exitFullscreen?.();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', syncButtonState);
+    document.addEventListener('fullscreenchange', updateVisibility);
+    document.addEventListener('game-tab-activated', updateVisibility);
+    document.addEventListener('editor-tab-activated', handleEditorActivation);
+
+    if (desktopQuery) {
+      const onViewportChange = () => updateVisibility();
+      desktopQuery.addEventListener('change', onViewportChange);
+    }
+
+    syncButtonState();
+    updateVisibility();
+  }
+
   static bindLanguageSelector(): void {
     const select = document.getElementById('language-select');
     if (!(select instanceof HTMLSelectElement)) return;
@@ -391,6 +452,7 @@ class TinyRPGApplication {
 
     globalThis.addEventListener('resize', scheduleResize);
     document.addEventListener('game-tab-activated', scheduleResize);
+    document.addEventListener('fullscreenchange', scheduleResize);
 
     scheduleResize();
   }
