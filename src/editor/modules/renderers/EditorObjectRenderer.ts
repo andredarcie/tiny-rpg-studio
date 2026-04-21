@@ -60,6 +60,7 @@ class EditorObjectRenderer extends EditorRendererBase {
         const placedTypes = new Set(placedObjects.map((object) => object.type));
         const game = (this.gameEngine as unknown as { getGame?(): { customSprites?: CustomSpriteEntry[] } }).getGame?.();
         const customSprites = game?.customSprites;
+        const rendererDefs = (RendererConstants.OBJECT_DEFINITIONS as Array<{ type: string; spriteOn?: unknown }> | undefined) ?? [];
 
         filteredDefinitions.forEach((definition) => {
             const card = document.createElement('div');
@@ -134,9 +135,10 @@ class EditorObjectRenderer extends EditorRendererBase {
                 }
             }
 
-            // Sprite edit button for base variant.
-            // For player-start, the button edits the player sprite (group 'player', key 'default').
             const isPlayerStart = definition.type === EditorObjectTypes.PLAYER_START;
+            const rendererDef = !isPlayerStart && rendererDefs.find((d) => d.type === definition.type);
+            const hasSpriteOn = Boolean(rendererDef?.spriteOn);
+
             const editBtn = document.createElement('button');
             editBtn.type = 'button';
             editBtn.className = 'sprite-edit-btn';
@@ -144,33 +146,13 @@ class EditorObjectRenderer extends EditorRendererBase {
             editBtn.dataset.editKey = isPlayerStart ? 'default' : definition.type;
             editBtn.dataset.editVariant = 'base';
             editBtn.textContent = '✎';
-            const isCustomBase = isPlayerStart
-                ? CustomSpriteLookup.find(customSprites, 'player', 'default', 'base') !== null
-                : CustomSpriteLookup.find(customSprites, 'object', definition.type, 'base') !== null;
-            if (isCustomBase) {
-                editBtn.classList.add('is-custom');
-            }
-            card.append(preview, meta, editBtn);
 
-            // Sprite edit button for 'on' variant (only for non-player-start objects).
-            const rendererDefs = Array.isArray(RendererConstants.OBJECT_DEFINITIONS)
-                ? RendererConstants.OBJECT_DEFINITIONS
-                : [];
-            const rendererDef = !isPlayerStart && rendererDefs.find((d) => d.type === definition.type);
-            if (rendererDef && rendererDef.spriteOn) {
-                const editBtnOn = document.createElement('button');
-                editBtnOn.type = 'button';
-                editBtnOn.className = 'sprite-edit-btn';
-                editBtnOn.dataset.editGroup = 'object';
-                editBtnOn.dataset.editKey = definition.type;
-                editBtnOn.dataset.editVariant = 'on';
-                editBtnOn.textContent = '✎';
-                const isCustomOn = CustomSpriteLookup.find(customSprites, 'object', definition.type, 'on') !== null;
-                if (isCustomOn) {
-                    editBtnOn.classList.add('is-custom');
-                }
-                card.appendChild(editBtnOn);
-            }
+            const isCustom = isPlayerStart
+                ? CustomSpriteLookup.find(customSprites, 'player', 'default', 'base') !== null
+                : this.hasCustomSprite(customSprites, definition.type, hasSpriteOn);
+            if (isCustom) editBtn.classList.add('is-custom');
+
+            card.append(preview, meta, editBtn);
 
             container.appendChild(card);
         });
@@ -410,6 +392,16 @@ class EditorObjectRenderer extends EditorRendererBase {
             default:
                 return type;
         }
+    }
+
+    private hasCustomSprite(
+        customSprites: CustomSpriteEntry[] | undefined,
+        type: string,
+        checkOnVariant: boolean
+    ): boolean {
+        if (CustomSpriteLookup.find(customSprites, 'object', type, 'base') !== null) return true;
+        if (checkOnVariant && CustomSpriteLookup.find(customSprites, 'object', type, 'on') !== null) return true;
+        return false;
     }
 }
 

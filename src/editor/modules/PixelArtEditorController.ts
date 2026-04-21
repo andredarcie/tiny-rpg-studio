@@ -22,6 +22,8 @@ type ManagerDeps = {
     history: { pushCurrentState(): void };
 };
 
+type ObjectDef = { type: string; sprite?: CustomSpriteFrame; spriteOn?: CustomSpriteFrame };
+
 type DomDeps = {
     pixelArtEditorModal: HTMLElement | null;
     paeCanvas: HTMLCanvasElement | null;
@@ -68,11 +70,14 @@ export class PixelArtEditorController {
         this.selectedColor = 0;
 
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
-        const custom = CustomSpriteLookup.find(game.customSprites, group, key, variant);
-        if (custom) {
-            this.frames = custom.frames.map((f) => f.map((row) => row.slice()));
+
+        const objectDef = group === 'object' ? this.findObjectDef(key) : undefined;
+
+        if (objectDef?.spriteOn) {
+            this.frames = this.loadDualStateFrames(key, objectDef, game.customSprites);
         } else {
-            this.frames = this.loadBaseFrames(group, key, variant);
+            const custom = CustomSpriteLookup.find(game.customSprites, group, key, variant);
+            this.frames = custom ? this.cloneFrames(custom.frames) : this.loadBaseFrames(group, key, variant);
         }
 
         this.dom?.pixelArtEditorModal?.removeAttribute('hidden');
@@ -91,6 +96,21 @@ export class PixelArtEditorController {
     save(): void {
         if (!this.manager || !this.group) return;
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
+
+        const objectDef = this.group === 'object' ? this.findObjectDef(this.key) : undefined;
+
+        if (objectDef?.spriteOn) {
+            game.customSprites = CustomSpriteLookup.upsert(game.customSprites ?? [], {
+                group: 'object', key: this.key, variant: 'base', frames: [this.frames[0]]
+            });
+            game.customSprites = CustomSpriteLookup.upsert(game.customSprites ?? [], {
+                group: 'object', key: this.key, variant: 'on', frames: [this.frames[1]]
+            });
+            this.invalidateAndRefresh();
+            this.close();
+            return;
+        }
+
         const entry: CustomSpriteEntry = {
             group: this.group,
             key: this.key,
@@ -364,10 +384,12 @@ export class PixelArtEditorController {
             const def = RendererConstants.ENEMY_DEFINITIONS.find((d: { type: string }) => d.type === key) as { sprite?: CustomSpriteFrame } | undefined;
             return this.cloneFrames(def?.sprite ? [def.sprite] : []);
         } else if (group === 'object') {
-            const def = RendererConstants.OBJECT_DEFINITIONS.find((d: { type: string }) => d.type === key) as { sprite?: CustomSpriteFrame; spriteOn?: CustomSpriteFrame } | undefined;
-            const raw = variant === 'on'
-                ? def?.spriteOn
-                : def?.sprite;
+            const def = this.findObjectDef(key);
+            if (def?.spriteOn) {
+                const frames = [def.sprite, def.spriteOn].filter((f): f is CustomSpriteFrame => f !== undefined);
+                return this.cloneFrames(frames);
+            }
+            const raw = variant === 'on' ? def?.spriteOn : def?.sprite;
             return this.cloneFrames(raw ? [raw] : []);
         } else {
             // Tiles use numeric layouts as the canonical source for the pixel art editor.
@@ -401,6 +423,23 @@ export class PixelArtEditorController {
         }
 
         return [];
+    }
+
+    private findObjectDef(key: string): ObjectDef | undefined {
+        return (RendererConstants.OBJECT_DEFINITIONS as ObjectDef[]).find((d) => d.type === key);
+    }
+
+    private loadDualStateFrames(
+        key: string,
+        def: ObjectDef & { spriteOn: CustomSpriteFrame },
+        customSprites: CustomSpriteEntry[] | undefined
+    ): CustomSpriteFrame[] {
+        const customBase = CustomSpriteLookup.find(customSprites, 'object', key, 'base');
+        const customOn = CustomSpriteLookup.find(customSprites, 'object', key, 'on');
+        const frameOff = customBase?.frames[0] ?? def.sprite;
+        const frameOn = customOn?.frames[0] ?? def.spriteOn;
+        const frames = [frameOff, frameOn].filter((f): f is CustomSpriteFrame => f !== undefined);
+        return this.cloneFrames(frames);
     }
 
     private cloneFrames(frames: CustomSpriteFrame[]): CustomSpriteFrame[] {
