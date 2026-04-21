@@ -55,6 +55,14 @@ describe('ShareEncoder', () => {
     expect(code.split('.').some((segment) => segment === 'H1')).toBe(true);
     expect(decoded?.hideHud).toBe(true);
   });
+
+  it('preserves disableSkills through an encode/decode round trip', () => {
+    const code = ShareEncoder.buildShareCode({ disableSkills: true });
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ disableSkills?: boolean } | null);
+
+    expect(code.split('.').some((segment) => segment === 'R1')).toBe(true);
+    expect(decoded?.disableSkills).toBe(true);
+  });
 });
 
 describe('ShareEncoder - customSprites', () => {

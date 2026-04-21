@@ -78,6 +78,11 @@ class EditorUIController extends EditorManagerModule {
         this.updateJSON();
     }
 
+    setDisableSkills(active: boolean = false) {
+        this.gameEngine.setDisableSkills(Boolean(active));
+        this.updateJSON();
+    }
+
     syncUI() {
         const game = this.gameEngine.getGame();
         if (this.dom.titleInput) {
@@ -88,6 +93,9 @@ class EditorUIController extends EditorManagerModule {
         }
         if (this.dom.projectHideHud) {
             this.dom.projectHideHud.checked = Boolean(game.hideHud);
+        }
+        if (this.dom.projectDisableSkills) {
+            this.dom.projectDisableSkills.checked = Boolean(game.disableSkills);
         }
         this.updateJSON();
     }

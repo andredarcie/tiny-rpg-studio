@@ -229,6 +229,7 @@ class EditorRenderService {
         if (!list) return;
         const container = this.dom.projectSkillsContainer;
         const toggle = this.dom.projectSkillsToggle;
+        const game = this.gameEngine.getGame() as { skillOrder?: string[]; disableSkills?: boolean };
         list.innerHTML = '';
 
         const collapsed = Boolean(this.state.skillPanelCollapsed);
@@ -245,6 +246,16 @@ class EditorRenderService {
         if (collapsed) {
             return;
         }
+        if (game.disableSkills) {
+            const empty = document.createElement('div');
+            empty.className = 'project-skill-item';
+            const text = document.createElement('span');
+            text.className = 'project-skill-name';
+            text.textContent = this.t('project.skills.disabled', 'Sistema de skills desativado');
+            empty.appendChild(text);
+            list.appendChild(empty);
+            return;
+        }
 
         const allSkills = SkillDefinitions.getAll();
         if (!allSkills.length) {
@@ -259,7 +270,6 @@ class EditorRenderService {
         }
 
         // Build ordered list: use custom skillOrder if set, else default level order
-        const game = this.gameEngine.getGame() as { skillOrder?: string[] };
         const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
         const rawOrder: string[] = Array.isArray(game.skillOrder) && game.skillOrder.length
             ? game.skillOrder
@@ -462,6 +472,7 @@ class EditorRenderService {
         const startLevelSelect = this.dom.projectTestStartLevel;
         const skillList = this.dom.projectTestSkillList;
         const godModeInput = this.dom.projectTestGodMode;
+        const game = this.gameEngine.getGame() as { disableSkills?: boolean };
         if (!container || !toggle || !panel) return;
 
         const collapsed = Boolean(this.state.testPanelCollapsed);
@@ -506,6 +517,13 @@ class EditorRenderService {
 
         if (skillList) {
             skillList.innerHTML = '';
+            if (game.disableSkills) {
+                const empty = document.createElement('div');
+                empty.className = 'project-test__skill';
+                empty.textContent = this.t('project.test.skillsDisabled', 'Skills desativadas para este jogo.');
+                skillList.appendChild(empty);
+                return;
+            }
             const skills = SkillDefinitions.getAll();
             const selected = new Set(Array.isArray(settings.skills) ? settings.skills : []);
 

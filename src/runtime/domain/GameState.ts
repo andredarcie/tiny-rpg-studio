@@ -81,6 +81,7 @@ class GameState {
             author: "",
             palette: ['#000000', '#1D2B53', '#FFF1E8'],
             hideHud: false,
+            disableSkills: false,
             roomSize,
             world: {
                 rows: worldRows,
@@ -217,14 +218,23 @@ class GameState {
     }
 
     getSkills(): string[] {
+        if (this.areSkillsDisabled()) {
+            return [];
+        }
         return this.skillManager.getOwnedSkills();
     }
 
     hasSkill(skillId: string): boolean {
+        if (this.areSkillsDisabled()) {
+            return false;
+        }
         return this.skillManager.hasSkill(skillId);
     }
 
     getPendingLevelUpChoices(): number {
+        if (this.areSkillsDisabled()) {
+            return 0;
+        }
         return this.skillManager.getPendingSelections();
     }
 
@@ -233,14 +243,27 @@ class GameState {
     }
 
     isLevelUpOverlayActive(): boolean {
+        if (this.areSkillsDisabled()) {
+            return false;
+        }
         return this.skillManager.isOverlayActive();
     }
 
     getLevelUpOverlay(): LevelUpOverlayState {
+        if (this.areSkillsDisabled()) {
+            return {
+                active: false,
+                choices: [],
+                cursor: 0
+            };
+        }
         return this.skillManager.getOverlay();
     }
 
     startLevelUpSelectionIfNeeded(): void {
+        if (this.areSkillsDisabled()) {
+            return;
+        }
         if (this.isLevelUpCelebrationActive()) {
             return;
         }
@@ -253,17 +276,26 @@ class GameState {
     }
 
     queueLevelUpChoices(count = 1, latestLevel: number | null = null): number {
+        if (this.areSkillsDisabled()) {
+            return 0;
+        }
         this.skillManager.queueLevelUps(count, latestLevel);
         this.startLevelUpSelectionIfNeeded();
         return this.skillManager.getPendingSelections();
     }
 
     moveLevelUpCursor(delta = 0): number {
+        if (this.areSkillsDisabled()) {
+            return 0;
+        }
         const cursor = this.skillManager.moveCursor(delta);
         return cursor;
     }
 
     selectLevelUpSkill(index: number | null = null): LevelUpChoice | null {
+        if (this.areSkillsDisabled()) {
+            return null;
+        }
         if (!this.skillManager.isOverlayActive()) {
             return null;
         }
@@ -326,7 +358,9 @@ class GameState {
             startLevel: Number.isFinite(this.testSettings.startLevel)
                 ? Math.floor(this.testSettings.startLevel)
                 : 1,
-            skills: Array.isArray(this.testSettings.skills) ? this.testSettings.skills.slice() : [],
+            skills: this.areSkillsDisabled()
+                ? []
+                : (Array.isArray(this.testSettings.skills) ? this.testSettings.skills.slice() : []),
             godMode: Boolean(this.testSettings.godMode)
         };
     }
@@ -348,7 +382,9 @@ class GameState {
                 .map((id) => (typeof id === 'string' ? id : null))
                 .filter((id): id is string => typeof id === 'string' && validSkillIds.has(id))
             : current.skills;
-        const skills = Array.from(new Set<string>(requestedSkills));
+        const skills = this.areSkillsDisabled()
+            ? []
+            : Array.from(new Set<string>(requestedSkills));
         const godMode = settings.godMode !== undefined ? Boolean(settings.godMode) : current.godMode;
 
         this.testSettings = { startLevel, skills, godMode };
@@ -359,7 +395,7 @@ class GameState {
         const settings = this.getTestSettings();
         const startLevel = Number.isFinite(settings.startLevel) ? settings.startLevel : 1;
         this.playerManager.setLevel(startLevel);
-        if (Array.isArray(settings.skills) && settings.skills.length) {
+        if (!this.areSkillsDisabled() && Array.isArray(settings.skills) && settings.skills.length) {
             settings.skills.forEach((id) => this.skillManager.addSkill(id));
         }
         this.playerManager.ensurePlayerStats();
@@ -667,13 +703,19 @@ class GameState {
     processLevelUpResult(result: LevelUpResult | null = null): LevelUpResult | null {
         if (result?.leveledUp) {
             this.showLevelUpCelebration(result.level ?? null);
-            const levelCount =
-                typeof result.levelsGained === 'number' && Number.isFinite(result.levelsGained)
-                    ? Math.max(1, Math.floor(result.levelsGained))
-                    : 1;
-            this.queueLevelUpChoices(levelCount, result.level ?? null);
+            if (!this.areSkillsDisabled()) {
+                const levelCount =
+                    typeof result.levelsGained === 'number' && Number.isFinite(result.levelsGained)
+                        ? Math.max(1, Math.floor(result.levelsGained))
+                        : 1;
+                this.queueLevelUpChoices(levelCount, result.level ?? null);
+            }
         }
         return result;
+    }
+
+    areSkillsDisabled(): boolean {
+        return Boolean(this.game.disableSkills);
     }
 
     getPickupOverlay(): PickupOverlayState {

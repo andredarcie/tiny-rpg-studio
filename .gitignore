@@ -30,6 +30,7 @@ playwright-report/
 .env.*
 !.env.example
 .claude/settings.local.json
+.tools/butler/
 
 # Editor / OS files
 .vscode/*

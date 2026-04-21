@@ -40,6 +40,7 @@ class EditorEventBinder extends EditorManagerModule {
             projectTestGodMode,
             projectTestDebugVision,
             projectHideHud,
+            projectDisableSkills,
             shareUrlInput
         } = this.dom;
 
@@ -82,6 +83,10 @@ class EditorEventBinder extends EditorManagerModule {
         projectHideHud?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setHideHud(target.checked);
+        });
+        projectDisableSkills?.addEventListener('change', (ev: Event) => {
+            const target = ev.target as HTMLInputElement;
+            manager.setDisableSkills(target.checked);
         });
         shareUrlInput?.addEventListener('focus', () => shareUrlInput.select());
         shareUrlInput?.addEventListener('click', () => shareUrlInput.select());

@@ -36,6 +36,7 @@ type GameData = {
   title?: string;
   author?: string;
   hideHud?: boolean;
+  disableSkills?: boolean;
   rooms?: unknown[];
 };
 
@@ -313,6 +314,13 @@ export class GameEngine {
   setHideHud(active = false): void {
     const game = this.gameState.getGame();
     game.hideHud = Boolean(active);
+    this.draw();
+  }
+
+  setDisableSkills(active = false): void {
+    const game = this.gameState.getGame();
+    game.disableSkills = Boolean(active);
+    this.gameState.resetGame();
     this.draw();
   }
 

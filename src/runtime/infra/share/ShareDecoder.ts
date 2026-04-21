@@ -342,6 +342,7 @@ class ShareDecoder {
         const title = (ShareTextCodec.decodeText(payload.n, ShareConstants.DEFAULT_TITLE) || ShareConstants.DEFAULT_TITLE).slice(0, 18);
         const author = (ShareTextCodec.decodeText(payload.y, '') || '').slice(0, 18);
         const hideHud = version >= ShareConstants.HIDE_HUD_VERSION && payload.H === '1';
+        const disableSkills = version >= ShareConstants.DISABLE_SKILLS_VERSION && payload.R === '1';
         const buildNpcId = (index: number) => `npc-${index + 1}`;
 
         const defs = ShareConstants.NPC_DEFINITIONS as Array<{
@@ -459,6 +460,7 @@ class ShareDecoder {
             title,
             author,
             hideHud,
+            disableSkills,
             start: startPosition,
             sprites,
             enemies,

@@ -15,6 +15,8 @@ type GameVariableUsageMock = {
   sprites?: Array<Record<string, unknown>> | unknown;
   enemies?: Array<Record<string, unknown>> | unknown;
   objects?: Array<Record<string, unknown>> | unknown;
+  skillOrder?: string[];
+  disableSkills?: boolean;
 };
 type DomFixture = {
   projectVariableList: HTMLDivElement;
@@ -548,6 +550,18 @@ describe('EditorRenderService', () => {
     expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.mystery:mystery');
   });
 
+  it('renders disabled message instead of skills when skill system is off', () => {
+    const fixture = createManagerFixture();
+    fixture.gameEngine.getGame.mockReturnValue({ disableSkills: true });
+    mocks.skillDefinitions.getAll.mockReturnValue([{ id: 'heal' }]);
+    const { service } = createService(fixture);
+
+    service.renderSkillList();
+
+    expect(fixture.domCache.projectSkillsList.textContent).toContain('desativado');
+    expect(fixture.domCache.projectSkillsList.querySelectorAll('[data-skill-id]')).toHaveLength(0);
+  });
+
   it('returns early in renderTestTools when required nodes are missing', () => {
     const fixture = createManagerFixture();
     fixture.domCache.projectTestContainer = null as unknown as HTMLDivElement;
@@ -588,6 +602,17 @@ describe('EditorRenderService', () => {
     const { service } = createService(fixture);
 
     expect(() => service.renderTestTools()).not.toThrow();
+  });
+
+  it('renders disabled message in test tools when skill system is off', () => {
+    const fixture = createManagerFixture();
+    fixture.gameEngine.getGame.mockReturnValue({ disableSkills: true });
+    const { service } = createService(fixture);
+
+    service.renderTestTools();
+
+    expect(fixture.domCache.projectTestSkillList.textContent).toContain('desativadas');
+    expect(fixture.domCache.projectTestSkillList.querySelectorAll('input[type="checkbox"]')).toHaveLength(0);
   });
 
   it('renders test tools skill checklist and handles missing optional controls', () => {

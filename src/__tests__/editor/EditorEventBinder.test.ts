@@ -90,6 +90,10 @@ function makeDom() {
     projectTestGodMode.type = 'checkbox';
     const projectTestDebugVision = document.createElement('input');
     projectTestDebugVision.type = 'checkbox';
+    const projectHideHud = document.createElement('input');
+    projectHideHud.type = 'checkbox';
+    const projectDisableSkills = document.createElement('input');
+    projectDisableSkills.type = 'checkbox';
 
     const shareUrlInput = document.createElement('input');
     shareUrlInput.select = vi.fn();
@@ -127,6 +131,8 @@ function makeDom() {
         projectTestSkillList,
         projectTestGodMode,
         projectTestDebugVision,
+        projectHideHud,
+        projectDisableSkills,
         shareUrlInput,
     };
 }
@@ -218,6 +224,8 @@ function makeManager() {
         updateGameMetadata: vi.fn(),
         setTestStartLevel: vi.fn(),
         setGodMode: vi.fn(),
+        setHideHud: vi.fn(),
+        setDisableSkills: vi.fn(),
         setTestSkills: vi.fn(),
         desselectAllAndRender: vi.fn(),
         handleKey: vi.fn(),

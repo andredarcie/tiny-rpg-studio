@@ -331,6 +331,10 @@ class EditorManager {
         this.uiController.setHideHud(active);
     }
 
+    setDisableSkills(active: boolean) {
+        this.uiController.setDisableSkills(active);
+    }
+
     setActiveMobilePanel(panel: string) {
         this.uiController.setActiveMobilePanel(panel);
     }

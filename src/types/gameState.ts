@@ -167,6 +167,7 @@ export type GameDefinition = {
     palette: string[];
     customPalette?: string[];
     hideHud?: boolean;
+    disableSkills?: boolean;
     roomSize: number;
     world: { rows: number; cols: number };
     rooms: RoomDefinition[];

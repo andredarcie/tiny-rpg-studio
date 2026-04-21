@@ -101,6 +101,23 @@ describe('GameState - Critical Path Tests', () => {
       expect(state.getPendingLevelUpChoices()).toBe(2);
     });
 
+    it('keeps leveling but disables the skill system when configured', () => {
+      const state = new GameState();
+      state.game.disableSkills = true;
+
+      state.processLevelUpResult({
+        leveledUp: true,
+        levelsGained: 2,
+        level: 3,
+      });
+
+      expect(state.isLevelUpCelebrationActive()).toBe(true);
+      expect(state.getPendingLevelUpChoices()).toBe(0);
+      expect(state.isLevelUpOverlayActive()).toBe(false);
+      expect(state.getSkills()).toEqual([]);
+      expect(state.hasSkill('stealth')).toBe(false);
+    });
+
     it('heals player to full when max-life skill is selected', () => {
       const state = new GameState();
 
