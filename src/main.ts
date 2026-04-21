@@ -272,18 +272,18 @@ class TinyRPGApplication {
       button.hidden = !isDesktop || !isGameMode;
     };
 
-    button.addEventListener('click', async () => {
+    button.addEventListener('click', () => {
       if (isFullscreenActive()) {
-        await document.exitFullscreen?.();
+        void document.exitFullscreen();
         return;
       }
-      await gameContainer.requestFullscreen?.();
+      void gameContainer.requestFullscreen();
     });
 
     const handleEditorActivation = () => {
       updateVisibility();
       if (isFullscreenActive()) {
-        void document.exitFullscreen?.();
+        void document.exitFullscreen();
       }
     };
 

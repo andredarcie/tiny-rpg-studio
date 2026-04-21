@@ -473,11 +473,13 @@ describe('TinyRPGApplication.bindFullscreenButton', () => {
     document.body.innerHTML = `<div id="game-container"></div>`;
     document.body.classList.add('game-mode');
     gameContainer = document.getElementById('game-container') as HTMLElement;
-    requestFullscreenSpy = vi.fn(async () => {
+    requestFullscreenSpy = vi.fn(() => {
       fullscreenElementValue = gameContainer;
+      return Promise.resolve();
     });
-    exitFullscreenSpy = vi.fn(async () => {
+    exitFullscreenSpy = vi.fn(() => {
       fullscreenElementValue = null;
+      return Promise.resolve();
     });
     fullscreenElementValue = null;
 
