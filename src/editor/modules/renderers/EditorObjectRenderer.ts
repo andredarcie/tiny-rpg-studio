@@ -136,7 +136,9 @@ class EditorObjectRenderer extends EditorRendererBase {
             }
 
             const isPlayerStart = definition.type === EditorObjectTypes.PLAYER_START;
-            const rendererDef = !isPlayerStart && rendererDefs.find((d) => d.type === definition.type);
+            const rendererDef = isPlayerStart
+                ? undefined
+                : rendererDefs.find((d) => d.type === definition.type);
             const hasSpriteOn = Boolean(rendererDef?.spriteOn);
 
             const editBtn = document.createElement('button');

@@ -23,6 +23,7 @@ type ManagerDeps = {
 };
 
 type ObjectDef = { type: string; sprite?: CustomSpriteFrame; spriteOn?: CustomSpriteFrame };
+type DualStateObjectDef = ObjectDef & { spriteOn: CustomSpriteFrame };
 
 type DomDeps = {
     pixelArtEditorModal: HTMLElement | null;
@@ -73,7 +74,7 @@ export class PixelArtEditorController {
 
         const objectDef = group === 'object' ? this.findObjectDef(key) : undefined;
 
-        if (objectDef?.spriteOn) {
+        if (this.hasDualStateSprite(objectDef)) {
             this.frames = this.loadDualStateFrames(key, objectDef, game.customSprites);
         } else {
             const custom = CustomSpriteLookup.find(game.customSprites, group, key, variant);
@@ -99,7 +100,7 @@ export class PixelArtEditorController {
 
         const objectDef = this.group === 'object' ? this.findObjectDef(this.key) : undefined;
 
-        if (objectDef?.spriteOn) {
+        if (this.hasDualStateSprite(objectDef)) {
             game.customSprites = CustomSpriteLookup.upsert(game.customSprites ?? [], {
                 group: 'object', key: this.key, variant: 'base', frames: [this.frames[0]]
             });
@@ -385,7 +386,7 @@ export class PixelArtEditorController {
             return this.cloneFrames(def?.sprite ? [def.sprite] : []);
         } else if (group === 'object') {
             const def = this.findObjectDef(key);
-            if (def?.spriteOn) {
+            if (this.hasDualStateSprite(def)) {
                 const frames = [def.sprite, def.spriteOn].filter((f): f is CustomSpriteFrame => f !== undefined);
                 return this.cloneFrames(frames);
             }
@@ -429,9 +430,13 @@ export class PixelArtEditorController {
         return (RendererConstants.OBJECT_DEFINITIONS as ObjectDef[]).find((d) => d.type === key);
     }
 
+    private hasDualStateSprite(def: ObjectDef | undefined): def is DualStateObjectDef {
+        return Array.isArray(def?.spriteOn);
+    }
+
     private loadDualStateFrames(
         key: string,
-        def: ObjectDef & { spriteOn: CustomSpriteFrame },
+        def: DualStateObjectDef,
         customSprites: CustomSpriteEntry[] | undefined
     ): CustomSpriteFrame[] {
         const customBase = CustomSpriteLookup.find(customSprites, 'object', key, 'base');

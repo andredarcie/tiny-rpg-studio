@@ -38,9 +38,13 @@ export class ProjectSaveManager {
 
     // Start the auto-save interval
     this.autoSaveInterval = setInterval(() => {
-      const data = getAutoSaveData?.();
-      if (data?.shareUrl) {
-        this.autoSave(data.shareUrl, data.title);
+      try {
+        const data = getAutoSaveData?.();
+        if (data?.shareUrl) {
+          this.autoSave(data.shareUrl, data.title);
+        }
+      } catch (error) {
+        console.warn('[ProjectSaveManager] Auto-save tick failed.', error);
       }
     }, this.autoSaveIntervalMs);
   }

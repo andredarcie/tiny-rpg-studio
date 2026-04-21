@@ -72,6 +72,7 @@ vi.mock('../../editor/manager/EditorInteractionController', () => ({
 }));
 
 import { EditorManager } from '../../editor/EditorManager';
+import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
 
 type EditorManagerGameEngine = ConstructorParameters<typeof EditorManager>[0];
 type GameEngineFixture = ReturnType<typeof makeGameEngine>;
@@ -137,6 +138,25 @@ describe('EditorManager', () => {
   it('calls history.pushCurrentState during initialize', () => {
     const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     expect(mgr.history.pushCurrentState).toHaveBeenCalledTimes(1);
+  });
+
+  it('builds auto-save urls without mutating browser history', () => {
+    vi.useFakeTimers();
+    const shareSpy = vi.spyOn(ShareUtils, 'buildShareUrl').mockReturnValue('https://example.com#autosave');
+    const replaceStateSpy = vi.spyOn(window.history, 'replaceState');
+    const exportSpy = vi.fn(() => ({ title: 'Autosave Game' }));
+    gameEngine = makeGameEngine({ exportGameData: exportSpy });
+
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
+
+    vi.advanceTimersByTime(120000);
+
+    expect(exportSpy).toHaveBeenCalled();
+    expect(shareSpy).toHaveBeenCalledWith({ title: 'Autosave Game' });
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+
+    mgr.destroy();
+    vi.useRealTimers();
   });
 
   it('sets selectedTileId from first tile returned by getTiles', () => {

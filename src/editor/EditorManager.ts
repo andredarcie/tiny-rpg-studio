@@ -81,7 +81,10 @@ class EditorManager {
             try {
                 const psm = new ProjectSaveManager();
                 psm.initialize(() => {
-                    const shareUrl = this.shareService.buildShareUrl();
+                    // Auto-save only needs a stable serialized URL for persistence.
+                    // Avoid mutating window history on a background timer.
+                    const gameData = this.gameEngine.exportGameData();
+                    const shareUrl = ShareUtils.buildShareUrl(gameData as Record<string, unknown> | null | undefined);
                     const title = this.dom.titleInput?.value ?? '';
                     return shareUrl ? { shareUrl, title } : null;
                 });

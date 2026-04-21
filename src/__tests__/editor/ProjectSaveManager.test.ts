@@ -110,6 +110,26 @@ describe('ProjectSaveManager', () => {
       expect(history).toHaveLength(1);
       expect(history[0].title).toBe('Saved Project');
     });
+
+    it('should swallow errors thrown by auto-save getter callbacks', () => {
+      const options: ProjectSaveManagerOptions = {
+        autoSaveIntervalMs: 1000,
+      };
+      const mgr = new ProjectSaveManager(options);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      mgr.initialize(() => {
+        throw new Error('getter failed');
+      });
+
+      expect(() => {
+        vi.advanceTimersByTime(1000);
+      }).not.toThrow();
+      expect(warnSpy).toHaveBeenCalledWith('[ProjectSaveManager] Auto-save tick failed.', expect.any(Error));
+
+      mgr.destroy();
+      warnSpy.mockRestore();
+    });
   });
 
   // ─── addToHistory ──────────────────────────────────────────────────────────
