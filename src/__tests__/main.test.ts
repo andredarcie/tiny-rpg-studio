@@ -461,6 +461,117 @@ describe('TinyRPGApplication.bindTouchPad', () => {
   });
 });
 
+describe('TinyRPGApplication.bindFullscreenButton', () => {
+  let originalMatchMedia: typeof globalThis.matchMedia | undefined;
+  let fullscreenElementValue: Element | null;
+  let desktopMatches = true;
+  let gameContainer: HTMLElement;
+  let requestFullscreenSpy: ReturnType<typeof vi.fn>;
+  let exitFullscreenSpy: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    document.body.innerHTML = `<div id="game-container"></div>`;
+    document.body.classList.add('game-mode');
+    gameContainer = document.getElementById('game-container') as HTMLElement;
+    requestFullscreenSpy = vi.fn(async () => {
+      fullscreenElementValue = gameContainer;
+    });
+    exitFullscreenSpy = vi.fn(async () => {
+      fullscreenElementValue = null;
+    });
+    fullscreenElementValue = null;
+
+    Object.defineProperty(gameContainer, 'requestFullscreen', {
+      configurable: true,
+      value: requestFullscreenSpy,
+    });
+    Object.defineProperty(document, 'exitFullscreen', {
+      configurable: true,
+      value: exitFullscreenSpy,
+    });
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => fullscreenElementValue,
+    });
+
+    originalMatchMedia = globalThis.matchMedia;
+    globalThis.matchMedia = vi.fn(() => ({
+      matches: desktopMatches,
+      media: '(hover: hover) and (pointer: fine)',
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof globalThis.matchMedia;
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+    document.body.className = '';
+    vi.restoreAllMocks();
+    if (originalMatchMedia) {
+      globalThis.matchMedia = originalMatchMedia;
+    } else {
+      // @ts-expect-error test cleanup for optional global
+      delete globalThis.matchMedia;
+    }
+  });
+
+  it('shows the button on desktop game mode and toggles fullscreen', async () => {
+    TinyRPGApplication.bindFullscreenButton();
+    const button = document.getElementById('game-fullscreen-toggle') as HTMLButtonElement;
+
+    expect(button.hidden).toBe(false);
+    expect(button.textContent).toBe('');
+    expect(button.getAttribute('aria-label')).toBe('Enter fullscreen');
+    expect(button.dataset.state).toBe('enter');
+
+    button.click();
+    await Promise.resolve();
+    expect(requestFullscreenSpy).toHaveBeenCalledTimes(1);
+
+    document.dispatchEvent(new Event('fullscreenchange'));
+    expect(button.getAttribute('aria-label')).toBe('Exit fullscreen');
+    expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(button.dataset.state).toBe('exit');
+
+    button.click();
+    await Promise.resolve();
+    expect(exitFullscreenSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the button hidden outside desktop game mode', () => {
+    desktopMatches = false;
+    TinyRPGApplication.bindFullscreenButton();
+    const button = document.getElementById('game-fullscreen-toggle') as HTMLButtonElement;
+
+    expect(button.hidden).toBe(true);
+
+    document.body.classList.remove('game-mode');
+    document.body.classList.add('editor-mode');
+    desktopMatches = true;
+    document.dispatchEvent(new CustomEvent('game-tab-activated'));
+    expect(button.hidden).toBe(true);
+  });
+
+  it('exits fullscreen when switching back to editor', async () => {
+    TinyRPGApplication.bindFullscreenButton();
+    const button = document.getElementById('game-fullscreen-toggle') as HTMLButtonElement;
+
+    button.click();
+    await Promise.resolve();
+    document.dispatchEvent(new Event('fullscreenchange'));
+
+    document.body.classList.remove('game-mode');
+    document.body.classList.add('editor-mode');
+    document.dispatchEvent(new CustomEvent('editor-tab-activated'));
+    await Promise.resolve();
+
+    expect(exitFullscreenSpy).toHaveBeenCalledTimes(1);
+    expect(button.hidden).toBe(true);
+  });
+});
+
 describe('TinyRPGApplication.bindLanguageSelector', () => {
   beforeEach(() => {
     document.body.innerHTML = `<select id="language-select"><option value="en-US">EN</option><option value="pt-BR">PT</option></select>`;
