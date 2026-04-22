@@ -2,8 +2,8 @@ name: Release Desktop App
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -39,8 +39,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Tiny RPG Studio ${{ github.ref_name }}'
+          tagName: desktop-${{ github.sha }}
+          releaseName: 'Tiny RPG Studio desktop-${{ github.sha }}'
           releaseBody: |
             ## Tiny RPG Studio — Desktop (Windows)
 
