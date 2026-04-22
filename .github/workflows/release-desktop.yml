@@ -53,3 +53,17 @@ jobs:
             > Requires Windows 10 or later (WebView2 is pre-installed by default).
           releaseDraft: false
           prerelease: false
+
+      - name: Install butler
+        shell: bash
+        run: |
+          curl --fail --location --retry 5 --retry-delay 2 --retry-all-errors -o butler.zip https://broth.itch.zone/butler/windows-amd64/LATEST/archive/default
+          unzip butler.zip
+
+      - name: Upload to itch.io (windows channel)
+        shell: bash
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+        run: |
+          EXE=$(find src-tauri/target/release/bundle/nsis -name "*-setup.exe" | head -1)
+          ./butler push "$EXE" andredarcie/tiny-rpg-studio:windows
