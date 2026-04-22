@@ -17,6 +17,8 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:export && vite build",
+    "build:desktop": "npm run build && tauri build",
+    "tauri": "tauri",
     "build:check": "tsc --noEmit && npm run build",
     "build:export": "vite build -c vite.export.config.ts",
     "build:sdk": "vite build -c vite.sdk.config.ts && tsc -p tsconfig.sdk.json",
@@ -38,6 +40,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "@tauri-apps/cli": "^2"
   }
 }

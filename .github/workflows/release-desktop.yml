@@ -1,0 +1,55 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate app icons
+        run: npx @tauri-apps/cli icon public/icons/icon-128.png --output src-tauri/icons
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Tiny RPG Studio ${{ github.ref_name }}'
+          releaseBody: |
+            ## Tiny RPG Studio — Desktop (Windows)
+
+            Download the installer below to run Tiny RPG Studio offline on Windows, no browser required.
+
+            **Files:**
+            - `Tiny.RPG.Studio_*_x64-setup.exe` — NSIS installer (recommended)
+            - `Tiny.RPG.Studio_*_x64_en-US.msi` — MSI installer
+
+            > Requires Windows 10 or later (WebView2 is pre-installed by default).
+          releaseDraft: false
+          prerelease: false
