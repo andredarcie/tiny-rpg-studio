@@ -316,28 +316,29 @@
                                 <div class="project-actions">
                                     <!-- Grupo: Desenvolvimento -->
                                     <div class="project-group project-group--development">
-                                        <h4 class="project-group__title" data-text-key="project.group.development">Desenvolvimento</h4>
+                                        <h2 class="project-group__title" data-text-key="project.group.development">Desenvolvimento</h2>
                                         <div id="project-variables-container" class="project-variables">
-                                            <button id="project-variables-toggle" class="project-variables__toggle" type="button"></button>
+                                            <button id="project-variables-toggle" class="project-variables__toggle" type="button" aria-expanded="false" aria-controls="project-variable-usage-list"></button>
                                             <div id="project-variable-usage-list" class="project-variables__list"></div>
                                         </div>
                                         <div id="project-skills-container" class="project-variables project-variables--skills">
-                                            <button id="project-skills-toggle" class="project-variables__toggle" type="button"></button>
-                                            <div id="project-skills-list" class="project-variables__list project-skills__list"></div>
-                                            <label class="project-test__field project-test__checkbox">
+                                            <button id="project-skills-toggle" class="project-variables__toggle" type="button" aria-expanded="false" aria-controls="project-skills-list"></button>
+                                            <ol id="project-skills-list" class="project-variables__list project-skills__list"></ol>
+                                            <button id="project-skills-reset-order" class="project-skills-reset-btn" type="button" data-text-key="project.skills.resetOrder" hidden></button>
+                                            <label class="project-variables__field project-variables__checkbox">
                                                 <input type="checkbox" id="project-disable-skills">
                                                 <span data-text-key="project.disableSkills"></span>
                                             </label>
                                         </div>
                                     </div>
 
-                                    <div class="project-separator"></div>
+                                    <hr class="project-separator">
 
                                     <!-- Grupo: Testes -->
                                     <div class="project-group project-group--testing">
-                                        <h4 class="project-group__title" data-text-key="project.group.testing">Testes</h4>
+                                        <h2 class="project-group__title" data-text-key="project.group.testing">Testes</h2>
                                         <div id="project-test-container" class="project-variables project-test">
-                                            <button id="project-test-toggle" class="project-variables__toggle project-test__toggle" type="button"></button>
+                                            <button id="project-test-toggle" class="project-variables__toggle project-test__toggle" type="button" aria-expanded="false" aria-controls="project-test-panel"></button>
                                             <div id="project-test-panel" class="project-test__panel">
                                                 <p class="project-test__hint" data-text-key="project.test.hint"></p>
                                                 <label class="project-test__field">
@@ -352,19 +353,19 @@
                                                     <input type="checkbox" id="project-test-debug-vision">
                                                     <span data-text-key="project.test.debugVision"></span>
                                                 </label>
-                                                <div class="project-test__skills">
-                                                    <div class="project-test__skills-title" data-text-key="project.test.skills"></div>
-                                                    <div id="project-test-skill-list" class="project-test__skill-list"></div>
+                                                <div class="project-test__skills" role="group" aria-labelledby="project-test-skills-title">
+                                                    <div id="project-test-skills-title" class="project-test__skills-title" data-text-key="project.test.skills"></div>
+                                                    <ul id="project-test-skill-list" class="project-test__skill-list"></ul>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="project-separator"></div>
+                                    <hr class="project-separator">
 
                                     <!-- Grupo: Aparência -->
                                     <div class="project-group project-group--appearance">
-                                        <h4 class="project-group__title" data-text-key="project.group.appearance">Aparência</h4>
+                                        <h2 class="project-group__title" data-text-key="project.group.appearance">Aparência</h2>
                                         <div id="project-palette-container" class="project-variables project-palette">
                                             <button id="project-palette-toggle" class="project-variables__toggle project-palette__toggle" type="button"></button>
                                             <div id="project-palette-panel" class="project-palette__panel" hidden>
@@ -441,11 +442,11 @@
                                         </div>
                                     </div>
 
-                                    <div class="project-separator"></div>
+                                    <hr class="project-separator">
 
                                     <!-- Grupo: Informações -->
                                     <div class="project-group project-group--info">
-                                        <h4 class="project-group__title" data-text-key="project.group.info">Informações</h4>
+                                        <h2 class="project-group__title" data-text-key="project.group.info">Informações</h2>
                                         <label class="project-field">
                                             <span data-text-key="project.titleLabel"></span>
                                             <input type="text" id="game-title" data-placeholder-key="project.titlePlaceholder" maxlength="18">
@@ -463,11 +464,11 @@
                                         </label>
                                     </div>
 
-                                    <div class="project-separator"></div>
+                                    <hr class="project-separator">
 
                                     <!-- Grupo: Exportação -->
                                     <div class="project-group project-group--export">
-                                        <h4 class="project-group__title" data-text-key="project.group.export">Exportação</h4>
+                                        <h2 class="project-group__title" data-text-key="project.group.export">Exportação</h2>
                                         <p class="project-share-hint" data-text-key="project.shareHint"></p>
                                         <button id="btn-generate-url" data-text-key="project.generateUrl"></button>
                                         <label class="project-field project-field--share-url">

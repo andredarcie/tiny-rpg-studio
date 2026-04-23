@@ -55,6 +55,7 @@ class EditorDomCache {
     paletteResetButton: HTMLButtonElement | null;
     paletteImportButton: HTMLButtonElement | null;
     paletteExportButton: HTMLButtonElement | null;
+    projectSkillsResetOrder: HTMLButtonElement | null;
     projectHideHud: HTMLInputElement | null;
     projectDisableSkills: HTMLInputElement | null;
     colorPickerModal: HTMLElement | null;
@@ -134,6 +135,7 @@ class EditorDomCache {
             this.paletteResetButton = null;
             this.paletteImportButton = null;
             this.paletteExportButton = null;
+            this.projectSkillsResetOrder = null;
             this.projectHideHud = null;
             this.projectDisableSkills = null;
             this.colorPickerModal = null;
@@ -212,6 +214,7 @@ class EditorDomCache {
         this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
         this.paletteImportButton = root.querySelector('#palette-import-button') as HTMLButtonElement | null;
         this.paletteExportButton = root.querySelector('#palette-export-button') as HTMLButtonElement | null;
+        this.projectSkillsResetOrder = root.querySelector('#project-skills-reset-order') as HTMLButtonElement | null;
         this.projectHideHud = root.querySelector('#project-hide-hud') as HTMLInputElement | null;
         this.projectDisableSkills = root.querySelector('#project-disable-skills') as HTMLInputElement | null;
         this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;

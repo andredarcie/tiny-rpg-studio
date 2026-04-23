@@ -1556,6 +1556,7 @@ textarea {
 .project-separator {
     flex: 1 1 100%;
     height: 1px;
+    border: none;
     background: linear-gradient(
         90deg,
         transparent 0%,
@@ -1667,6 +1668,9 @@ body.game-mode .tab-button.active {
 }
 
 .project-variables__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1726,6 +1730,28 @@ body.game-mode .tab-button.active {
     gap: 10px;
 }
 
+.project-skills-reset-btn {
+    align-self: stretch;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+    text-align: center;
+    opacity: 0.8;
+    transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+}
+
+@media (hover: hover) {
+    .project-skills-reset-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.15);
+        opacity: 1;
+    }
+}
+
 .project-skill-group {
     display: flex;
     flex-direction: column;
@@ -1742,26 +1768,40 @@ body.game-mode .tab-button.active {
     display: grid;
     grid-template-columns: auto auto 1fr auto;
     grid-template-rows: auto auto;
-    gap: 3px 10px;
-    padding: 10px;
+    gap: 5px 12px;
+    padding: 12px 14px;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     background: var(--panel);
-    transition: opacity 0.15s;
+    transition: opacity 0.15s, background 120ms ease, border-color 120ms ease;
     user-select: none;
     touch-action: none;
+}
+
+@media (hover: hover) {
+    .project-skill-item:not(.is-dragging):hover {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.13);
+    }
 }
 
 .project-skill-drag-handle {
     grid-column: 1;
     grid-row: 1 / span 2;
     align-self: center;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: var(--muted);
     cursor: grab;
     padding: 0 4px;
-    opacity: 0.5;
+    opacity: 0.35;
     line-height: 1;
+    transition: opacity 100ms ease;
+}
+
+@media (hover: hover) {
+    .project-skill-drag-handle:hover {
+        opacity: 0.75;
+    }
 }
 
 .project-skill-drag-handle:active {
@@ -1773,35 +1813,60 @@ body.game-mode .tab-button.active {
     grid-column: 2;
     grid-row: 1 / span 2;
     align-self: center;
-    font-size: 1.1rem;
+    font-size: 1.5rem;
+    line-height: 1;
 }
 
 .project-skill-name {
     grid-column: 3;
     grid-row: 1;
     font-weight: 700;
+    font-size: 0.95rem;
     letter-spacing: 0.2px;
+    align-self: end;
 }
 
 .project-skill-level-badge {
     grid-column: 4;
     grid-row: 1;
-    font-size: 0.78rem;
-    color: var(--muted);
-    align-self: center;
+    align-self: end;
     white-space: nowrap;
-    padding-left: 4px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(91, 250, 142, 0.1);
+    color: var(--accent);
+    border: 1px solid rgba(91, 250, 142, 0.22);
 }
 
 .project-skill-desc {
     grid-column: 3 / span 2;
     grid-row: 2;
     color: var(--muted);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    margin: 0;
+    align-self: start;
+    opacity: 0.7;
 }
 
 .project-skill-item.is-dragging {
-    opacity: 0.45;
+    opacity: 0.25;
+    border-style: dashed;
+    border-color: rgba(255, 255, 255, 0.1);
+    background: transparent;
+}
+
+.project-skill-item.is-drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.95;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.25);
+    transform: scale(1.03) rotate(0.75deg);
+    cursor: grabbing;
 }
 
 .project-skill-item.is-drag-over-above {
@@ -1843,14 +1908,26 @@ body.game-mode .tab-button.active {
     max-width: 160px;
 }
 
-.project-test__checkbox {
+.project-test__checkbox,
+.project-variables__checkbox {
     cursor: pointer;
     user-select: none;
 }
 
-.project-test__checkbox input {
+.project-test__checkbox input,
+.project-variables__checkbox input {
     width: 18px;
     height: 18px;
+}
+
+.project-variables__field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--panel);
 }
 
 .project-appearance__checkbox {
@@ -1869,6 +1946,9 @@ body.game-mode .tab-button.active {
 }
 
 .project-test__skill-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     gap: 8px;

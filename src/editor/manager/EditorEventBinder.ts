@@ -63,6 +63,7 @@ class EditorEventBinder extends EditorManagerModule {
         btnRedo?.addEventListener('click', () => manager.redo());
         projectVariablesToggle?.addEventListener('click', () => manager.toggleVariablePanel());
         projectSkillsToggle?.addEventListener('click', () => manager.toggleSkillPanel());
+        this.dom.projectSkillsResetOrder?.addEventListener('click', () => manager.resetSkillOrder());
         projectTestToggle?.addEventListener('click', () => manager.toggleTestPanel());
 
         titleInput?.addEventListener('input', () => manager.updateGameMetadata());

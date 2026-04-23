@@ -311,6 +311,10 @@ class EditorManager {
         this.uiController.toggleSkillPanel();
     }
 
+    resetSkillOrder() {
+        this.uiController.setSkillOrder([]);
+    }
+
     toggleTestPanel() {
         this.uiController.toggleTestPanel();
     }

@@ -180,6 +180,8 @@ class EditorRenderService {
 
         const collapsed = Boolean(this.state.variablePanelCollapsed);
         if (toggle) {
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-controls', 'project-variable-usage-list');
             const actionText = collapsed
                 ? this.t('project.variables.toggle.show', 'Mostrar variáveis')
                 : this.t('project.variables.toggle.hide', 'Esconder variáveis');
@@ -233,21 +235,33 @@ class EditorRenderService {
         list.innerHTML = '';
 
         const collapsed = Boolean(this.state.skillPanelCollapsed);
+        const title = this.t('project.skills.title', 'Skills do jogo');
         if (toggle) {
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            toggle.setAttribute('aria-controls', 'project-skills-list');
             const actionText = collapsed
                 ? this.t('project.skills.toggle.show', 'Mostrar skills')
                 : this.t('project.skills.toggle.hide', 'Esconder skills');
-            const title = this.t('project.skills.title', 'Skills do jogo');
             toggle.textContent = `${title} · ${actionText}`;
         }
+        list.setAttribute('aria-label', title);
         if (container) {
             container.classList.toggle('is-collapsed', collapsed);
         }
+
+        const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
+        const hasCustomOrder = Array.isArray(game.skillOrder) && game.skillOrder.length > 0 &&
+            !(game.skillOrder.length === defaultOrder.length &&
+              game.skillOrder.every((id, i) => id === (defaultOrder as string[])[i]));
+        if (this.dom.projectSkillsResetOrder) {
+            this.dom.projectSkillsResetOrder.hidden = !hasCustomOrder;
+        }
+
         if (collapsed) {
             return;
         }
         if (game.disableSkills) {
-            const empty = document.createElement('div');
+            const empty = document.createElement('li');
             empty.className = 'project-skill-item';
             const text = document.createElement('span');
             text.className = 'project-skill-name';
@@ -259,7 +273,7 @@ class EditorRenderService {
 
         const allSkills = SkillDefinitions.getAll();
         if (!allSkills.length) {
-            const empty = document.createElement('div');
+            const empty = document.createElement('li');
             empty.className = 'project-skill-item';
             const text = document.createElement('span');
             text.className = 'project-skill-name';
@@ -270,7 +284,6 @@ class EditorRenderService {
         }
 
         // Build ordered list: use custom skillOrder if set, else default level order
-        const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
         const rawOrder: string[] = Array.isArray(game.skillOrder) && game.skillOrder.length
             ? game.skillOrder
             : defaultOrder;
@@ -288,7 +301,7 @@ class EditorRenderService {
         ordered.forEach((skillId, index) => {
             const skill = SkillDefinitions.getById(skillId);
             if (!skill) return;
-            const item = document.createElement('div');
+            const item = document.createElement('li');
             item.className = 'project-skill-item';
             item.dataset.skillId = skillId;
             item.dataset.index = String(index);
@@ -297,12 +310,14 @@ class EditorRenderService {
             handle.className = 'project-skill-drag-handle';
             handle.textContent = '☰';
             handle.title = this.t('project.skills.drag', 'Arrastar para reordenar');
+            handle.setAttribute('aria-hidden', 'true');
 
             const icon = document.createElement('span');
             icon.className = 'project-skill-icon';
             icon.textContent = skill.icon || '✨';
+            icon.setAttribute('aria-hidden', 'true');
 
-            const nameEl = document.createElement('div');
+            const nameEl = document.createElement('strong');
             nameEl.className = 'project-skill-name';
             nameEl.textContent = skill.nameKey ? this.t(skill.nameKey, skill.id) : skill.id;
 
@@ -313,7 +328,7 @@ class EditorRenderService {
                 ? this.tf('project.skills.level', { value: levelLabel }, `Nível ${levelLabel}`)
                 : '';
 
-            const desc = document.createElement('div');
+            const desc = document.createElement('p');
             desc.className = 'project-skill-desc';
             desc.textContent = skill.descriptionKey ? this.t(skill.descriptionKey, '') : '';
 
@@ -337,8 +352,16 @@ class EditorRenderService {
             if (!handle) return;
 
             let toIndex = fromIndex;
+            let ghost: HTMLElement | null = null;
+            let offsetX = 0;
+            let offsetY = 0;
 
             const onMove = (e: PointerEvent) => {
+                if (ghost) {
+                    ghost.style.left = `${e.clientX - offsetX}px`;
+                    ghost.style.top = `${e.clientY - offsetY}px`;
+                }
+
                 const items = getItems();
                 let newIndex = items.length - 1;
                 for (let i = 0; i < items.length; i++) {
@@ -362,6 +385,8 @@ class EditorRenderService {
                 handle.removeEventListener('pointermove', onMove);
                 handle.removeEventListener('pointerup', onUp);
                 handle.removeEventListener('pointercancel', onUp);
+                ghost?.remove();
+                ghost = null;
                 clearDragClasses();
 
                 if (toIndex !== fromIndex) {
@@ -376,6 +401,19 @@ class EditorRenderService {
                 e.preventDefault();
                 toIndex = fromIndex;
                 try { handle.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+
+                const rect = item.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+
+                ghost = item.cloneNode(true) as HTMLElement;
+                ghost.classList.remove('is-dragging');
+                ghost.classList.add('is-drag-ghost');
+                ghost.style.width = `${rect.width}px`;
+                ghost.style.left = `${rect.left}px`;
+                ghost.style.top = `${rect.top}px`;
+                document.body.appendChild(ghost);
+
                 clearDragClasses();
                 item.classList.add('is-dragging');
                 handle.addEventListener('pointermove', onMove);
@@ -480,6 +518,8 @@ class EditorRenderService {
         const actionText = collapsed
             ? this.t('project.test.toggle.show', 'Mostrar')
             : this.t('project.test.toggle.hide', 'Esconder');
+        toggle.setAttribute('aria-expanded', String(!collapsed));
+        toggle.setAttribute('aria-controls', 'project-test-panel');
         toggle.textContent = `${title} · ${actionText}`;
         container.classList.toggle('is-collapsed', collapsed);
 
@@ -518,24 +558,26 @@ class EditorRenderService {
         if (skillList) {
             skillList.innerHTML = '';
             if (game.disableSkills) {
-                const empty = document.createElement('div');
-                empty.className = 'project-test__skill';
-                empty.textContent = this.t('project.test.skillsDisabled', 'Skills desativadas para este jogo.');
-                skillList.appendChild(empty);
+                const li = document.createElement('li');
+                li.className = 'project-test__skill';
+                li.textContent = this.t('project.test.skillsDisabled', 'Skills desativadas para este jogo.');
+                skillList.appendChild(li);
                 return;
             }
             const skills = SkillDefinitions.getAll();
             const selected = new Set(Array.isArray(settings.skills) ? settings.skills : []);
 
             if (!skills.length) {
-                const empty = document.createElement('div');
-                empty.className = 'project-test__skill';
-                empty.textContent = this.t('variables.none', 'Nenhuma');
-                skillList.appendChild(empty);
+                const li = document.createElement('li');
+                li.className = 'project-test__skill';
+                li.textContent = this.t('variables.none', 'Nenhuma');
+                skillList.appendChild(li);
                 return;
             }
 
             skills.forEach((skill: SkillData) => {
+                const li = document.createElement('li');
+
                 const wrapper = document.createElement('label');
                 wrapper.className = 'project-test__skill';
 
@@ -549,6 +591,7 @@ class EditorRenderService {
                 const icon = document.createElement('span');
                 icon.className = 'project-test__skill-icon';
                 icon.textContent = skill.icon || '✨';
+                icon.setAttribute('aria-hidden', 'true');
                 const name = document.createElement('span');
                 name.textContent = skill.nameKey
                     ? this.t(skill.nameKey, skill.name || skill.id || '')
@@ -556,7 +599,8 @@ class EditorRenderService {
 
                 label.append(icon, name);
                 wrapper.append(checkbox, label);
-                skillList.appendChild(wrapper);
+                li.appendChild(wrapper);
+                skillList.appendChild(li);
             });
         }
     }
