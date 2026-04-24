@@ -13,7 +13,7 @@ export class StubGameState {
   canResetAfterGameOver = true
   necromancerReady = false
   reviveResult = false
-  levelUpOverlay = { active: false, cursor: 0, choices: [] as Array<{ id: string; nameKey?: string }> }
+  levelUpOverlay = { active: false, cursor: 0, choices: [] as Array<{ id: string; nameKey?: string; resolvedName?: string }> }
   pendingLevelUpChoices = 0
   selectedLevelUpIndex: number | null = null
   testSettings = { startLevel: 1, skills: [] as string[], godMode: false }
@@ -31,6 +31,8 @@ export class StubGameState {
   getState() {
     return this.state
   }
+
+  setLevelUpOverlayPresentationSync() {}
 
   resetGame() {
     this.resetCalled = true

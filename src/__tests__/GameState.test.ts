@@ -87,5 +87,31 @@ describe('GameState', () => {
 
       expect(state.playing).toBe(true);
     });
+
+    it('runs the level-up presentation hook when an overlay starts directly', () => {
+      const state = new GameState();
+      const sync = vi.fn();
+      state.setLevelUpOverlayPresentationSync(sync);
+
+      state.queueLevelUpChoices(1, 2);
+
+      expect(sync).toHaveBeenCalledTimes(1);
+      expect(state.isLevelUpOverlayActive()).toBe(true);
+    });
+
+    it('runs the level-up presentation hook after celebration resumes selection', () => {
+      const state = new GameState();
+      const sync = vi.fn();
+      state.setLevelUpOverlayPresentationSync(sync);
+
+      state.showLevelUpCelebration(2, { durationMs: 1000 });
+      state.queueLevelUpChoices(1, 2);
+      expect(sync).not.toHaveBeenCalled();
+
+      state.hideLevelUpCelebration();
+
+      expect(sync).toHaveBeenCalledTimes(1);
+      expect(state.isLevelUpOverlayActive()).toBe(true);
+    });
   });
 });

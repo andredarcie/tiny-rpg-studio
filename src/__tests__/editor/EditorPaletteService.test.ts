@@ -523,6 +523,7 @@ describe('EditorPaletteService', () => {
         const origCreate = URL.createObjectURL;
         URL.createObjectURL = vi.fn(() => 'blob:test-export');
         URL.revokeObjectURL = vi.fn();
+        const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
         const exportBtn = document.createElement('button');
         const manager = createManager();
         manager.dom.paletteExportButton = exportBtn;
@@ -530,6 +531,8 @@ describe('EditorPaletteService', () => {
         service.initialize();
         exportBtn.click();
         expect(URL.createObjectURL).toHaveBeenCalled();
+        expect(anchorClickSpy).toHaveBeenCalled();
+        anchorClickSpy.mockRestore();
         URL.createObjectURL = origCreate;
     });
 });

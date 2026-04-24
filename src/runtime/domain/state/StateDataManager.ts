@@ -1,7 +1,8 @@
-import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry } from '../../../types/gameState';
+import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry, SkillCustomizationMap } from '../../../types/gameState';
 import type { StateWorldManager } from './StateWorldManager';
 import type { StateObjectManager, ObjectEntry } from './StateObjectManager';
 import type { StateVariableManager } from './StateVariableManager';
+import { SkillDefinitions } from '../definitions/SkillDefinitions';
 
 type StateDataManagerOptions = {
     game: GameDefinition;
@@ -34,6 +35,7 @@ type ImportData = {
     };
     customSprites?: unknown[];
     skillOrder?: string[];
+    skillCustomizations?: SkillCustomizationMap;
 };
 
 class StateDataManager {
@@ -89,6 +91,9 @@ class StateDataManager {
                 : {}),
             ...(Array.isArray(this.game.skillOrder) && this.game.skillOrder.length
                 ? { skillOrder: this.game.skillOrder }
+                : {}),
+            ...(this.game.skillCustomizations
+                ? { skillCustomizations: this.game.skillCustomizations }
                 : {}),
         };
     }
@@ -151,6 +156,8 @@ class StateDataManager {
         } else {
             this.game.skillOrder = undefined;
         }
+
+        this.game.skillCustomizations = SkillDefinitions.sanitizeCustomizationMap(data.skillCustomizations);
 
         const start = {
             x: this.worldManager.clampCoordinate(data.start?.x ?? 1),

@@ -456,6 +456,9 @@ class ShareDecoder {
         // Skill Order
         const skillOrder = payload.Q ? this.decodeSkillOrder(payload.Q) : undefined;
 
+        // Skill Customizations
+        const skillCustomizations = payload.C ? this.decodeSkillCustomizations(payload.C) : undefined;
+
         const result: Record<string, unknown> = {
             title,
             author,
@@ -489,7 +492,21 @@ class ShareDecoder {
             result.skillOrder = skillOrder;
         }
 
+        if (skillCustomizations) {
+            result.skillCustomizations = skillCustomizations;
+        }
+
         return result;
+    }
+
+    private static decodeSkillCustomizations(encoded: string) {
+        try {
+            const json = ShareTextCodec.decodeText(encoded, '');
+            const parsed = JSON.parse(json) as unknown;
+            return SkillDefinitions.sanitizeCustomizationMap(parsed);
+        } catch {
+            return undefined;
+        }
     }
 
     private static decodeSkillOrder(encoded: string): string[] | null {

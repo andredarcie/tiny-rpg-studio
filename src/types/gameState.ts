@@ -120,6 +120,8 @@ export type LevelUpChoice = {
     nameKey?: string;
     descriptionKey?: string;
     icon?: string;
+    resolvedName?: string;
+    resolvedDescription?: string;
 };
 
 export type LevelUpOverlayState = {
@@ -161,6 +163,12 @@ export type CustomSpriteEntry = {
     frames: CustomSpriteFrame[];
 };
 
+export type SkillCustomizationMap = Record<string, {
+    name?: string;
+    description?: string;
+    icon?: string;
+}>;
+
 export type GameDefinition = {
     title: string;
     author: string;
@@ -181,6 +189,7 @@ export type GameDefinition = {
     tileset: Tileset;
     customSprites?: CustomSpriteEntry[];
     skillOrder?: string[];
+    skillCustomizations?: SkillCustomizationMap;
 };
 
 export type RuntimeState = {

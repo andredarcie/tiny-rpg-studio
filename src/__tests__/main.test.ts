@@ -188,6 +188,7 @@ describe('TinyRPGApplication.bindResetButton', () => {
     // Mock window.open
     originalOpen = globalThis.open;
     globalThis.open = vi.fn(() => null) as unknown as typeof window.open; // Mock window.open to return null
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 
     // Mock globalThis.location
     originalLocation = globalThis.location;

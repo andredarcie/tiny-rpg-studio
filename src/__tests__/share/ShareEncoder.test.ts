@@ -63,6 +63,26 @@ describe('ShareEncoder', () => {
     expect(code.split('.').some((segment) => segment === 'R1')).toBe(true);
     expect(decoded?.disableSkills).toBe(true);
   });
+
+  it('preserves skill customizations through an encode/decode round trip', () => {
+    const code = ShareEncoder.buildShareCode({
+      skillCustomizations: {
+        necromancer: {
+          name: 'Second Wind',
+          description: 'Revive once.'
+        }
+      }
+    });
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ skillCustomizations?: Record<string, { name?: string; description?: string }> } | null);
+
+    expect(code.split('.').some((segment) => segment.startsWith('C'))).toBe(true);
+    expect(decoded?.skillCustomizations).toEqual({
+      necromancer: {
+        name: 'Second Wind',
+        description: 'Revive once.'
+      }
+    });
+  });
 });
 
 describe('ShareEncoder - customSprites', () => {

@@ -60,6 +60,7 @@ class GameState {
     reviveSnapshot: ReviveSnapshot | null;
     lastKillerEnemyId: string | null;
     editorMode: boolean;
+    levelUpOverlayPresentationSync: (() => void) | null;
 
     constructor() {
         const worldRows = GameConfig.world.rows;
@@ -174,6 +175,7 @@ class GameState {
         this.lifecycle = new GameStateLifecycle(this, this.screenManager, {
             timeToResetAfterGameOver: GameConfig.timing.resetAfterGameOver
         });
+        this.levelUpOverlayPresentationSync = null;
         this.ensureDefaultVariables();
         this.resetGame();
         this.reviveSnapshot = null;
@@ -185,6 +187,14 @@ class GameState {
         document.addEventListener('editor-tab-activated', () => {
             this.setEditorMode(true);
         });
+    }
+
+    setLevelUpOverlayPresentationSync(callback: (() => void) | null): void {
+        this.levelUpOverlayPresentationSync = typeof callback === 'function' ? callback : null;
+    }
+
+    private syncLevelUpOverlayPresentation(): void {
+        this.levelUpOverlayPresentationSync?.();
     }
 
     createEmptyRoom(size: number, index = 0, cols = 1): RoomDefinition {
@@ -270,6 +280,7 @@ class GameState {
         if (this.skillManager.hasPendingSelections() && !this.skillManager.isOverlayActive()) {
             const started = this.skillManager.startLevelSelection();
             if (started) {
+                this.syncLevelUpOverlayPresentation();
                 this.pauseGame('level-up');
             }
         }
@@ -309,6 +320,7 @@ class GameState {
         if (this.skillManager.hasPendingSelections()) {
             const started = this.skillManager.startLevelSelection();
             if (started) {
+                this.syncLevelUpOverlayPresentation();
                 this.pauseGame('level-up');
             }
         } else {

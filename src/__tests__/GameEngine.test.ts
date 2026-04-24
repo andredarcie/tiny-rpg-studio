@@ -65,7 +65,7 @@ type GameEngineApi = {
     canResetAfterGameOver: boolean;
     necromancerReady: boolean;
     reviveResult: boolean;
-    levelUpOverlay: { active: boolean; cursor: number; choices: Array<{ id: string; nameKey?: string }> };
+    levelUpOverlay: { active: boolean; cursor: number; choices: Array<{ id: string; nameKey?: string; resolvedName?: string }> };
     selectedLevelUpIndex: number | null;
     testSettings: { startLevel: number; skills: string[]; godMode: boolean };
   };
@@ -300,6 +300,16 @@ describe('GameEngine business rules (legacy)', () => {
 
     expect(engine.dialogManager.lastMessage).toContain('pickup:')
     expect(engine.renderer.draw.mock.calls.length).toBeGreaterThan(drawsBefore)
+  })
+
+  it('uses resolved skill name in level up pickup dialog', () => {
+    const engine = createEngine()
+    engine.gameState.levelUpOverlay.active = true
+    engine.gameState.levelUpOverlay.choices = [{ id: 'skill-1', nameKey: 'skills.skill1', resolvedName: 'Custom Skill' }]
+
+    engine.chooseLevelUpSkill(0)
+
+    expect(engine.dialogManager.lastMessage).toContain('Custom Skill')
   })
 
   it('moves and confirms level-up selections when overlay is active', () => {

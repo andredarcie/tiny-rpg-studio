@@ -11,7 +11,9 @@ import { TextResources } from '../adapters/TextResources';
 import { TileManager } from './TileManager';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { TileDefinitions } from '../domain/definitions/TileDefinitions';
+import { SkillDefinitions } from '../domain/definitions/SkillDefinitions';
 import { GameConfig } from '../../config/GameConfig';
+import type { SkillCustomizationMap } from '../../types/gameState';
 
 type IntroData = { title: string; author: string };
 
@@ -37,6 +39,7 @@ type GameData = {
   author?: string;
   hideHud?: boolean;
   disableSkills?: boolean;
+  skillCustomizations?: SkillCustomizationMap;
   rooms?: unknown[];
 };
 
@@ -97,6 +100,7 @@ export class GameEngine {
     this.introData = { title: 'Tiny RPG Studio', author: '' };
     this.canDismissIntroScreen = false;
     this.timeToResetAfterIntro = GameConfig.timing.resetAfterIntro;
+    this.gameState.setLevelUpOverlayPresentationSync(() => this.syncLevelUpOverlayPresentation());
     this.setupIntroScreen();
 
     // Ensure there is at least a ground layer
@@ -180,8 +184,9 @@ export class GameEngine {
     this.renderer.draw();
   }
 
-  getSkillDisplayName(choice: { nameKey?: string; id?: string } | null = null): string {
+  getSkillDisplayName(choice: { resolvedName?: string; nameKey?: string; id?: string } | null = null): string {
     if (!choice) return 'skill';
+    if (choice.resolvedName) return choice.resolvedName;
     if (choice.nameKey) {
       const localized = TextResources.get(choice.nameKey, choice.id || 'skill') as string;
       if (localized) return localized;
@@ -322,6 +327,42 @@ export class GameEngine {
     game.disableSkills = Boolean(active);
     this.gameState.resetGame();
     this.draw();
+  }
+
+  setSkillCustomizations(customizations: SkillCustomizationMap | undefined): void {
+    const game = this.gameState.getGame();
+    game.skillCustomizations = SkillDefinitions.sanitizeCustomizationMap(customizations);
+    this.draw();
+  }
+
+  private syncLevelUpOverlayPresentation(): void {
+    if (!this.gameState.isLevelUpOverlayActive()) return;
+    this.enrichLevelUpChoices();
+  }
+
+  private enrichLevelUpChoices(): void {
+    const overlay = this.gameState.getLevelUpOverlay();
+    if (!overlay.choices.length) return;
+    const customizations = this.gameState.getGame().skillCustomizations;
+
+    overlay.choices = overlay.choices.map((choice) => {
+      const skill = SkillDefinitions.getById(choice.id);
+      if (!skill) return choice;
+      return {
+        ...choice,
+        resolvedName: SkillDefinitions.getDisplayName(
+          skill,
+          customizations,
+          (key) => TextResources.get(key, '') as string,
+        ),
+        resolvedDescription: SkillDefinitions.getDisplayDescription(
+          skill,
+          customizations,
+          (key) => TextResources.get(key, '') as string,
+        ),
+        icon: SkillDefinitions.getDisplayIcon(skill, customizations),
+      };
+    });
   }
 
   setSkillOrder(order: string[] | undefined): void {

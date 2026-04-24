@@ -77,6 +77,16 @@ class EditorDomCache {
     paeClose: HTMLButtonElement | null = null;
     paeToolPaint: HTMLButtonElement | null = null;
     paeToolErase: HTMLButtonElement | null = null;
+    skillEditModal: HTMLElement | null = null;
+    skillEditIconInput: HTMLInputElement | null = null;
+    skillEditIconPreview: HTMLElement | null = null;
+    skillEditNameInput: HTMLInputElement | null = null;
+    skillEditNameCounter: HTMLElement | null = null;
+    skillEditDescInput: HTMLTextAreaElement | null = null;
+    skillEditDescCounter: HTMLElement | null = null;
+    skillEditSaveBtn: HTMLButtonElement | null = null;
+    skillEditCancelBtn: HTMLButtonElement | null = null;
+    skillEditRestoreBtn: HTMLButtonElement | null = null;
 
     constructor(root: Document | HTMLElement | null = typeof document !== 'undefined' ? document : null) {
         this.root = root || (null as unknown as Document); // fallback for strict mode if needed, though properties can be null
@@ -236,6 +246,16 @@ class EditorDomCache {
         this.paeClose = root.querySelector('#pae-close') as HTMLButtonElement | null;
         this.paeToolPaint = root.querySelector('#pae-tool-paint') as HTMLButtonElement | null;
         this.paeToolErase = root.querySelector('#pae-tool-erase') as HTMLButtonElement | null;
+        this.skillEditModal = root.querySelector('#skill-edit-modal') as HTMLElement | null;
+        this.skillEditIconInput = root.querySelector('#skill-edit-icon') as HTMLInputElement | null;
+        this.skillEditIconPreview = root.querySelector('#skill-edit-icon-preview') as HTMLElement | null;
+        this.skillEditNameInput = root.querySelector('#skill-edit-name') as HTMLInputElement | null;
+        this.skillEditNameCounter = root.querySelector('#skill-edit-name-counter') as HTMLElement | null;
+        this.skillEditDescInput = root.querySelector('#skill-edit-desc') as HTMLTextAreaElement | null;
+        this.skillEditDescCounter = root.querySelector('#skill-edit-desc-counter') as HTMLElement | null;
+        this.skillEditSaveBtn = root.querySelector('#skill-edit-save') as HTMLButtonElement | null;
+        this.skillEditCancelBtn = root.querySelector('#skill-edit-cancel') as HTMLButtonElement | null;
+        this.skillEditRestoreBtn = root.querySelector('#skill-edit-restore') as HTMLButtonElement | null;
     }
 }
 

@@ -9,7 +9,7 @@ import { EditorObjectRenderer } from './renderers/EditorObjectRenderer';
 import { EditorTilePanelRenderer } from './renderers/EditorTilePanelRenderer';
 import { EditorWorldRenderer } from './renderers/EditorWorldRenderer';
 import type { EditorManager } from '../EditorManager';
-import type { VariableDefinition } from '../../types/gameState';
+import type { SkillCustomizationMap, VariableDefinition } from '../../types/gameState';
 import type { SkillDefinitionData } from '../../runtime/domain/entities/Skill';
 
 type VariableEntry = VariableDefinition & { name?: string; color?: string };
@@ -47,6 +47,7 @@ class EditorRenderService {
     worldRenderer: EditorWorldRenderer;
     objectRenderer: EditorObjectRenderer;
     handleTileAnimationFrame: () => void;
+    private _skillEditModalSkillId: string | null = null;
 
     constructor(editorManager: EditorManager) {
         this.manager = editorManager;
@@ -229,9 +230,16 @@ class EditorRenderService {
     renderSkillList() {
         const list = this.dom.projectSkillsList;
         if (!list) return;
+        if (list.querySelector('.project-skill-item--editing')) {
+            return;
+        }
         const container = this.dom.projectSkillsContainer;
         const toggle = this.dom.projectSkillsToggle;
-        const game = this.gameEngine.getGame() as { skillOrder?: string[]; disableSkills?: boolean };
+        const game = this.gameEngine.getGame() as {
+            skillOrder?: string[];
+            disableSkills?: boolean;
+            skillCustomizations?: SkillCustomizationMap;
+        };
         list.innerHTML = '';
 
         const collapsed = Boolean(this.state.skillPanelCollapsed);
@@ -312,14 +320,26 @@ class EditorRenderService {
             handle.title = this.t('project.skills.drag', 'Arrastar para reordenar');
             handle.setAttribute('aria-hidden', 'true');
 
-            const icon = document.createElement('span');
-            icon.className = 'project-skill-icon';
-            icon.textContent = skill.icon || '✨';
-            icon.setAttribute('aria-hidden', 'true');
+            const customizations = game.skillCustomizations;
+            const customEntry = customizations?.[skill.id];
+            const hasCustomName = Boolean(customEntry?.name);
+            const hasCustomDescription = Boolean(customEntry?.description);
+            const displayName = SkillDefinitions.getDisplayName(skill, customizations, (key) => this.t(key, ''));
+            const displayDescription = SkillDefinitions.getDisplayDescription(skill, customizations, (key) => this.t(key, ''));
+            const displayIcon = SkillDefinitions.getDisplayIcon(skill, customizations);
+
+            const iconEl = document.createElement('span');
+            iconEl.className = 'project-skill-icon';
+            iconEl.textContent = displayIcon || '✨';
+            iconEl.setAttribute('aria-hidden', 'true');
 
             const nameEl = document.createElement('strong');
             nameEl.className = 'project-skill-name';
-            nameEl.textContent = skill.nameKey ? this.t(skill.nameKey, skill.id) : skill.id;
+            this.renderSkillFieldContent({
+                container: nameEl,
+                value: displayName,
+                hasCustomValue: hasCustomName
+            });
 
             const levelLabel = levelAtPosition[index];
             const badge = document.createElement('span');
@@ -330,13 +350,199 @@ class EditorRenderService {
 
             const desc = document.createElement('p');
             desc.className = 'project-skill-desc';
-            desc.textContent = skill.descriptionKey ? this.t(skill.descriptionKey, '') : '';
+            this.renderSkillFieldContent({
+                container: desc,
+                value: displayDescription,
+                hasCustomValue: hasCustomDescription
+            });
 
-            item.append(handle, icon, nameEl, badge, desc);
+            const editControls = document.createElement('div');
+            editControls.className = 'project-skill-edit-controls';
+            const editBtn = document.createElement('button');
+            editBtn.className = 'project-skill-edit-btn';
+            editBtn.type = 'button';
+            editBtn.setAttribute('aria-label', this.t('skills.edit.openModal', 'Editar skill'));
+            editBtn.title = editBtn.getAttribute('aria-label') || '';
+            editBtn.appendChild(this.createSkillActionIcon('edit'));
+            editBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.openSkillEditModal(skillId);
+            });
+            editControls.appendChild(editBtn);
+
+            item.append(handle, iconEl, nameEl, badge, editControls, desc);
             list.appendChild(item);
         });
 
         this.attachSkillDragHandlers(list, ordered);
+    }
+
+    private renderSkillFieldContent({
+        container,
+        value,
+        hasCustomValue
+    }: {
+        container: HTMLElement;
+        value: string;
+        hasCustomValue: boolean;
+    }): void {
+        container.textContent = '';
+        if (hasCustomValue) {
+            const dot = document.createElement('span');
+            dot.className = 'project-skill-custom-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            dot.textContent = '●';
+            container.appendChild(dot);
+        }
+        const text = document.createElement('span');
+        text.className = 'project-skill-field-text';
+        text.textContent = value;
+        container.appendChild(text);
+    }
+
+    initSkillEditModal(): void {
+        const { skillEditSaveBtn, skillEditCancelBtn, skillEditRestoreBtn, skillEditIconInput, skillEditIconPreview, skillEditModal } = this.dom;
+
+        skillEditSaveBtn?.addEventListener('click', () => this._saveSkillEditModal());
+        skillEditCancelBtn?.addEventListener('click', () => this.closeSkillEditModal());
+        skillEditRestoreBtn?.addEventListener('click', () => this._restoreSkillDefaults());
+
+        skillEditIconInput?.addEventListener('input', () => {
+            if (skillEditIconPreview) skillEditIconPreview.textContent = skillEditIconInput.value || '';
+        });
+        this.dom.skillEditNameInput?.addEventListener('input', () => this._updateSkillEditCounter('name'));
+        this.dom.skillEditDescInput?.addEventListener('input', () => this._updateSkillEditCounter('desc'));
+
+        skillEditModal?.addEventListener('click', (event) => {
+            if (event.target === skillEditModal) this.closeSkillEditModal();
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && skillEditModal && !skillEditModal.hidden) {
+                event.preventDefault();
+                this.closeSkillEditModal();
+            }
+        });
+    }
+
+    private _updateSkillEditCounter(field: 'name' | 'desc'): void {
+        const isName = field === 'name';
+        const input = isName ? this.dom.skillEditNameInput : this.dom.skillEditDescInput;
+        const counter = isName ? this.dom.skillEditNameCounter : this.dom.skillEditDescCounter;
+        const maxLen = isName ? SkillDefinitions.NAME_MAX_LENGTH : SkillDefinitions.DESCRIPTION_MAX_LENGTH;
+        if (!input || !counter) return;
+        const len = input.value.length;
+        counter.textContent = `${len} / ${maxLen}`;
+        counter.classList.toggle('skill-edit-modal__counter--near-limit', len >= maxLen * 0.9);
+    }
+
+    openSkillEditModal(skillId: string): void {
+        const skill = SkillDefinitions.getById(skillId);
+        if (!skill) return;
+        this._skillEditModalSkillId = skillId;
+
+        const game = this.gameEngine.getGame() as { skillCustomizations?: SkillCustomizationMap };
+        const customizations = game.skillCustomizations;
+        const customEntry = customizations?.[skillId];
+        const displayIcon = SkillDefinitions.getDisplayIcon(skill, customizations);
+
+        const { skillEditNameInput, skillEditDescInput, skillEditIconInput, skillEditIconPreview, skillEditModal } = this.dom;
+        if (skillEditNameInput) {
+            skillEditNameInput.value = customEntry?.name || '';
+            skillEditNameInput.placeholder = skill.nameKey ? this.t(skill.nameKey, skill.id) : skill.id;
+            skillEditNameInput.maxLength = SkillDefinitions.NAME_MAX_LENGTH;
+        }
+        if (skillEditDescInput) {
+            skillEditDescInput.value = customEntry?.description || '';
+            skillEditDescInput.placeholder = skill.descriptionKey ? this.t(skill.descriptionKey, '') : '';
+            skillEditDescInput.maxLength = SkillDefinitions.DESCRIPTION_MAX_LENGTH;
+        }
+        if (skillEditIconInput) {
+            skillEditIconInput.value = customEntry?.icon || '';
+            skillEditIconInput.placeholder = skill.icon || '✨';
+        }
+        if (skillEditIconPreview) skillEditIconPreview.textContent = displayIcon || '✨';
+
+        this._updateSkillEditCounter('name');
+        this._updateSkillEditCounter('desc');
+
+        if (skillEditModal) {
+            skillEditModal.hidden = false;
+            skillEditNameInput?.focus();
+        }
+    }
+
+    closeSkillEditModal(): void {
+        if (this.dom.skillEditModal) this.dom.skillEditModal.hidden = true;
+        this._skillEditModalSkillId = null;
+    }
+
+    private _saveSkillEditModal(): void {
+        const skillId = this._skillEditModalSkillId;
+        if (!skillId) return;
+
+        const { skillEditNameInput, skillEditDescInput, skillEditIconInput } = this.dom;
+        const name = skillEditNameInput?.value.trim() || '';
+        const description = skillEditDescInput?.value.trim() || '';
+        const icon = skillEditIconInput?.value.trim() || '';
+
+        const game = this.gameEngine.getGame() as { skillCustomizations?: SkillCustomizationMap };
+        const customizations: SkillCustomizationMap = { ...(game.skillCustomizations ?? {}) };
+        const entry: { name?: string; description?: string; icon?: string } = { ...(customizations[skillId] ?? {}) };
+
+        if (name) { entry.name = name; } else { delete entry.name; }
+        if (description) { entry.description = description; } else { delete entry.description; }
+        if (icon) { entry.icon = icon; } else { delete entry.icon; }
+
+        if (Object.keys(entry).length) {
+            customizations[skillId] = entry;
+        } else {
+            delete customizations[skillId];
+        }
+
+        this.gameEngine.setSkillCustomizations(customizations);
+        this.manager.updateJSON();
+        this.renderSkillList();
+        this.closeSkillEditModal();
+    }
+
+    private _restoreSkillDefaults(): void {
+        const skillId = this._skillEditModalSkillId;
+        if (!skillId) return;
+
+        const game = this.gameEngine.getGame() as { skillCustomizations?: SkillCustomizationMap };
+        const customizations: SkillCustomizationMap = { ...(game.skillCustomizations ?? {}) };
+        delete customizations[skillId];
+
+        this.gameEngine.setSkillCustomizations(customizations);
+        this.manager.updateJSON();
+        this.renderSkillList();
+        this.closeSkillEditModal();
+    }
+
+    private createSkillActionIcon(type: 'edit' | 'reset'): SVGSVGElement {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('class', 'project-skill-action-icon');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+
+        if (type === 'edit') {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', 'M5 16.5V19h2.5L17.9 8.6l-2.5-2.5L5 16.5Zm12.2-12 2.3 2.3c.4.4.4 1 0 1.4l-.6.6-3.7-3.7.6-.6c.4-.4 1-.4 1.4 0Z');
+            path.setAttribute('fill', 'currentColor');
+            svg.appendChild(path);
+            return svg;
+        }
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', 'M12 5a7 7 0 1 1-6.3 4H3l3.6-3.6L10.2 9H7.8A4.9 4.9 0 1 0 12 7V5Z');
+        path.setAttribute('fill', 'currentColor');
+        svg.appendChild(path);
+        return svg;
     }
 
     private attachSkillDragHandlers(listEl: HTMLElement, skillOrder: string[]) {

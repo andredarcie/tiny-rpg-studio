@@ -1,11 +1,16 @@
 
 import { Skill } from '../entities/Skill';
 import type { SkillDefinitionData } from '../entities/Skill';
+import type { SkillCustomizationMap } from '../../../types/gameState';
 
 /**
  * SkillDefinitions centralizes the available level-up skills.
  */
 class SkillDefinitions {
+    static readonly NAME_MAX_LENGTH = 19;
+    static readonly DESCRIPTION_MAX_LENGTH = 46;
+    static readonly ICON_MAX_LENGTH = 8;
+
     static SKILL_DEFINITION_DATA: SkillDefinitionData[] = [
         {
             id: 'keyless-doors',
@@ -95,6 +100,66 @@ class SkillDefinitions {
     static getById(id: string | null | undefined): Skill | null {
         if (typeof id !== 'string' || !id) return null;
         return this.SKILLS.find((skill) => skill.id === id) || null;
+    }
+
+    static getDisplayName(
+        skill: Skill,
+        customizations: SkillCustomizationMap | undefined,
+        getText: (key: string) => string
+    ): string {
+        const custom = customizations?.[skill.id]?.name;
+        if (custom && custom.trim()) return custom.trim();
+        return getText(skill.nameKey) || skill.id;
+    }
+
+    static getDisplayDescription(
+        skill: Skill,
+        customizations: SkillCustomizationMap | undefined,
+        getText: (key: string) => string
+    ): string {
+        const custom = customizations?.[skill.id]?.description;
+        if (custom && custom.trim()) return custom.trim();
+        return getText(skill.descriptionKey) || '';
+    }
+
+    static getDisplayIcon(
+        skill: Skill,
+        customizations: SkillCustomizationMap | undefined
+    ): string {
+        const custom = customizations?.[skill.id]?.icon;
+        if (custom && custom.trim()) return custom.trim();
+        return skill.icon || '';
+    }
+
+    static sanitizeCustomizationMap(customizations: unknown): SkillCustomizationMap | undefined {
+        if (!customizations || typeof customizations !== 'object' || Array.isArray(customizations)) {
+            return undefined;
+        }
+
+        const result: SkillCustomizationMap = {};
+        Object.entries(customizations as Record<string, unknown>).forEach(([skillId, value]) => {
+            if (!this.getById(skillId)) return;
+            if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+            const entry = value as Record<string, unknown>;
+            const sanitized: { name?: string; description?: string; icon?: string } = {};
+            if (typeof entry.name === 'string') {
+                const name = entry.name.trim().slice(0, this.NAME_MAX_LENGTH).trim();
+                if (name) sanitized.name = name;
+            }
+            if (typeof entry.description === 'string') {
+                const description = entry.description.trim().slice(0, this.DESCRIPTION_MAX_LENGTH).trim();
+                if (description) sanitized.description = description;
+            }
+            if (typeof entry.icon === 'string') {
+                const icon = entry.icon.trim().slice(0, this.ICON_MAX_LENGTH).trim();
+                if (icon) sanitized.icon = icon;
+            }
+            if (Object.keys(sanitized).length) {
+                result[skillId] = sanitized;
+            }
+        });
+
+        return Object.keys(result).length ? result : undefined;
     }
 
     static getSkillsForLevel(level: number): string[] {

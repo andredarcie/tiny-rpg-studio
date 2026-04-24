@@ -179,6 +179,7 @@ describe('EnemyManager', () => {
     });
 
     it('returns false when enemy has no id (fires immediately, no windup timer)', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const enemyNoId: MockEnemyData = {
         id: '', type: 'rat', roomIndex: 0, x: 2, y: 3, lastX: 2, lastY: 4, lives: 1,
       };
@@ -193,6 +194,7 @@ describe('EnemyManager', () => {
 
       // No id → collision fires immediately (no setTimeout) → windupTimers stays empty
       expect(manager.isInCombat()).toBe(false);
+      errorSpy.mockRestore();
     });
   });
 

@@ -11,6 +11,7 @@ vi.mock('../../editor/modules/EditorRenderService', () => ({
     renderTileList = vi.fn(); renderWorldGrid = vi.fn(); renderNpcs = vi.fn();
     renderEnemyCatalog = vi.fn(); renderEnemies = vi.fn(); renderObjectCatalog = vi.fn();
     renderObjects = vi.fn(); renderEditor = vi.fn(); updateSelectedTilePreview = vi.fn();
+    initSkillEditModal = vi.fn();
   }
 }));
 vi.mock('../../editor/modules/EditorPaletteService', () => ({

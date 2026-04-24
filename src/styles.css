@@ -1766,9 +1766,9 @@ body.game-mode .tab-button.active {
 
 .project-skill-item {
     display: grid;
-    grid-template-columns: auto auto 1fr auto;
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
     grid-template-rows: auto auto;
-    gap: 5px 12px;
+    gap: 5px 8px;
     padding: 12px 14px;
     border-radius: 10px;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1820,10 +1820,13 @@ body.game-mode .tab-button.active {
 .project-skill-name {
     grid-column: 3;
     grid-row: 1;
+    display: flex;
+    align-items: center;
     font-weight: 700;
     font-size: 0.95rem;
     letter-spacing: 0.2px;
     align-self: end;
+    min-width: 0;
 }
 
 .project-skill-level-badge {
@@ -1844,12 +1847,306 @@ body.game-mode .tab-button.active {
 .project-skill-desc {
     grid-column: 3 / span 2;
     grid-row: 2;
+    display: flex;
+    align-items: flex-start;
     color: var(--muted);
     font-size: 0.85rem;
     line-height: 1.45;
     margin: 0;
     align-self: start;
     opacity: 0.7;
+    min-width: 0;
+}
+
+.project-skill-field-text {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.project-skill-name .project-skill-field-text {
+    overflow: hidden;
+    overflow-wrap: normal;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.project-skill-field-controls {
+    display: inline-flex;
+    grid-column: 5;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 32px;
+}
+
+.project-skill-field-controls--name {
+    grid-row: 1;
+    align-self: center;
+}
+
+.project-skill-field-controls--description {
+    grid-row: 2;
+    align-self: start;
+}
+
+.project-skill-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.055);
+    color: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
+    line-height: 1;
+    opacity: 1;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.project-skill-action-icon {
+    display: block;
+    width: 15px;
+    height: 15px;
+    pointer-events: none;
+}
+
+@media (hover: hover) {
+    .project-skill-edit-btn:hover,
+    .project-skill-reset-field-btn:hover {
+        color: var(--accent);
+        border-color: rgba(91, 250, 142, 0.32);
+        background: rgba(91, 250, 142, 0.1);
+        transform: translateY(-1px);
+    }
+}
+
+@media (pointer: coarse) {
+    .project-skill-edit-btn {
+        display: inline-flex;
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0;
+        font-size: 1rem;
+    }
+}
+
+@media (pointer: coarse) {
+    /* 3-row layout: name row / badge row / desc row */
+    .project-skill-drag-handle,
+    .project-skill-icon {
+        grid-row: 1 / span 3;
+    }
+
+    .project-skill-name {
+        grid-column: 3 / span 2;
+        grid-row: 1;
+        align-self: end;
+    }
+
+    .project-skill-name .project-skill-field-text {
+        white-space: normal;
+        overflow: visible;
+        overflow-wrap: break-word;
+        text-overflow: clip;
+    }
+
+    .project-skill-level-badge {
+        grid-column: 3;
+        grid-row: 2;
+        align-self: center;
+        justify-self: start;
+    }
+
+    .project-skill-desc {
+        grid-column: 3 / span 2;
+        grid-row: 3;
+    }
+
+    .project-skill-edit-controls {
+        grid-row: 1 / span 3;
+    }
+}
+
+.project-skill-custom-dot {
+    flex-shrink: 0;
+    margin-right: 5px;
+    color: var(--accent);
+    font-size: 0.5rem;
+    line-height: 1;
+}
+
+.project-skill-reset-field-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.055);
+    color: rgba(255, 255, 255, 0.78);
+    cursor: pointer;
+    line-height: 1;
+    opacity: 1;
+    transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+@media (pointer: coarse) {
+    .project-skill-reset-field-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0;
+        font-size: 1.1rem;
+    }
+}
+
+.project-skill-edit-btn:focus-visible,
+.project-skill-reset-field-btn:focus-visible,
+.project-skill-confirm-btn:focus-visible,
+.project-skill-cancel-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.project-skill-item--editing {
+    border-left: 2px solid var(--accent);
+    touch-action: auto;
+}
+
+.project-skill-item--editing .project-skill-drag-handle {
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+.project-skill-item--editing .project-skill-field-controls {
+    visibility: hidden;
+}
+
+.project-skill-field-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+.project-skill-field-editor--name {
+    grid-column: 3 / span 2;
+    grid-row: 1;
+    align-self: end;
+}
+
+.project-skill-field-editor--description {
+    grid-column: 3 / span 2;
+    grid-row: 2;
+    align-self: start;
+}
+
+.project-skill-field-input {
+    width: 100%;
+    padding: 0 0 3px;
+    border: 0;
+    border-bottom: 1.5px solid var(--accent);
+    border-radius: 0;
+    outline: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    caret-color: var(--accent);
+    -webkit-appearance: none;
+}
+
+.project-skill-field-input::placeholder {
+    color: var(--muted);
+    opacity: 0.55;
+}
+
+@media (pointer: coarse) {
+    .project-skill-field-input {
+        font-size: max(1rem, 16px);
+    }
+}
+
+.project-skill-field-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.project-skill-char-counter {
+    color: var(--muted);
+    font-size: 0.62rem;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
+.project-skill-char-counter--near-limit {
+    color: var(--accent);
+}
+
+.project-skill-confirm-btn,
+.project-skill-cancel-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding: 2px 7px;
+    border: 0;
+    border-radius: 3px;
+    background: none;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.project-skill-confirm-btn {
+    color: var(--accent);
+}
+
+.project-skill-cancel-btn {
+    color: var(--muted);
+}
+
+@media (hover: hover) {
+    .project-skill-confirm-btn:hover {
+        background: rgba(91, 250, 142, 0.12);
+    }
+
+    .project-skill-cancel-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--fg);
+    }
+}
+
+@media (pointer: coarse) {
+    .project-skill-confirm-btn,
+    .project-skill-cancel-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0 12px;
+        border-radius: 6px;
+        font-size: 1rem;
+    }
+
+    .project-skill-confirm-btn {
+        border: 1px solid rgba(91, 250, 142, 0.3);
+        background: rgba(91, 250, 142, 0.12);
+    }
+
+    .project-skill-cancel-btn {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--fg);
+    }
 }
 
 .project-skill-item.is-dragging {
@@ -2925,6 +3222,204 @@ body.game-mode .tab-button.active {
     transform: translateX(-50%);
     font-size: 9px;
     color: #666;
+}
+
+/* Skill Edit Modal */
+#skill-edit-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+}
+
+#skill-edit-modal[hidden] {
+    display: none;
+}
+
+#skill-edit-modal .skill-edit-modal__content {
+    background: rgba(10, 13, 22, 0.95);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    width: 100%;
+    max-width: 420px;
+    display: block;
+}
+
+.skill-edit-modal__panel {
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    background: var(--panel);
+    padding: 14px;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.skill-edit-modal__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.skill-edit-modal__header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.skill-edit-modal__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.skill-edit-modal__field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.skill-edit-modal__field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.skill-edit-modal__input {
+    width: 100%;
+    padding: 7px 10px;
+    background: rgba(12, 14, 24, 0.75);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+}
+
+.skill-edit-modal__input:focus {
+    border-color: var(--accent);
+    background: rgba(15, 18, 29, 0.9);
+}
+
+.skill-edit-modal__input::placeholder {
+    color: var(--muted);
+    opacity: 0.5;
+}
+
+.skill-edit-modal__icon-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.skill-edit-modal__icon-preview {
+    font-size: 1.8rem;
+    line-height: 1;
+    min-width: 2.2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.skill-edit-modal__input--icon {
+    width: 100px;
+    text-align: center;
+    font-size: 1.1rem;
+    flex: none;
+}
+
+.skill-edit-modal__input--desc {
+    resize: none;
+    line-height: 1.5;
+    min-height: 4.5em;
+    overflow-y: auto;
+}
+
+.skill-edit-modal__counter {
+    font-size: 0.62rem;
+    color: var(--muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+    line-height: 1;
+}
+
+.skill-edit-modal__counter--near-limit {
+    color: var(--accent);
+}
+
+.skill-edit-modal__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+}
+
+.skill-edit-modal__actions-right {
+    display: flex;
+    gap: 8px;
+}
+
+.skill-edit-modal__actions-right button {
+    flex: 1;
+}
+
+#skill-edit-restore {
+    width: 100%;
+}
+
+.skill-edit-modal__actions button {
+    min-height: 40px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+@media (max-width: 768px) {
+    #skill-edit-modal .skill-edit-modal__content {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+@media (pointer: coarse) {
+    .skill-edit-modal__input {
+        font-size: max(1rem, 16px);
+    }
+
+    .skill-edit-modal__actions button {
+        min-height: 44px;
+    }
+}
+
+.project-skill-edit-controls {
+    grid-column: 5;
+    grid-row: 1 / span 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Modal de Color Picker */

@@ -395,6 +395,43 @@
                                         </label>
                                     </div>
 
+                                    <!-- Skill Edit Modal -->
+                                    <div id="skill-edit-modal" class="skill-edit-modal" hidden>
+                                        <div class="skill-edit-modal__content">
+                                            <div class="skill-edit-modal__panel">
+                                                <div class="skill-edit-modal__header">
+                                                    <h3 data-text-key="skills.edit.modalTitle">Editar Skill</h3>
+                                                </div>
+                                                <div class="skill-edit-modal__fields">
+                                                    <div class="skill-edit-modal__field">
+                                                        <label for="skill-edit-icon" data-text-key="skills.edit.iconLabel">Ícone</label>
+                                                        <div class="skill-edit-modal__icon-row">
+                                                            <span id="skill-edit-icon-preview" class="skill-edit-modal__icon-preview" aria-hidden="true"></span>
+                                                            <input type="text" id="skill-edit-icon" class="skill-edit-modal__input skill-edit-modal__input--icon" autocomplete="off" data-aria-label-key="skills.edit.iconAriaLabel" />
+                                                        </div>
+                                                    </div>
+                                                    <div class="skill-edit-modal__field">
+                                                        <label for="skill-edit-name" data-text-key="skills.edit.nameLabel">Nome</label>
+                                                        <input type="text" id="skill-edit-name" class="skill-edit-modal__input" autocomplete="off" data-aria-label-key="skills.edit.nameAriaLabel" />
+                                                        <span id="skill-edit-name-counter" class="skill-edit-modal__counter" aria-live="polite"></span>
+                                                    </div>
+                                                    <div class="skill-edit-modal__field">
+                                                        <label for="skill-edit-desc" data-text-key="skills.edit.descLabel">Descrição</label>
+                                                        <textarea id="skill-edit-desc" class="skill-edit-modal__input skill-edit-modal__input--desc" autocomplete="off" rows="3" spellcheck="true" data-aria-label-key="skills.edit.descAriaLabel"></textarea>
+                                                        <span id="skill-edit-desc-counter" class="skill-edit-modal__counter" aria-live="polite"></span>
+                                                    </div>
+                                                </div>
+                                                <div class="skill-edit-modal__actions">
+                                                    <button id="skill-edit-restore" type="button" class="btn-secondary" data-text-key="skills.edit.restoreDefaults">Restaurar padrão</button>
+                                                    <div class="skill-edit-modal__actions-right">
+                                                        <button id="skill-edit-cancel" type="button" class="btn-secondary" data-text-key="skills.edit.cancel">Cancelar</button>
+                                                        <button id="skill-edit-save" type="button" class="btn-primary" data-text-key="skills.edit.save">Salvar</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Color Picker Modal -->
                                     <div id="color-picker-modal" class="color-picker-modal" hidden>
                                         <div class="color-picker-content">

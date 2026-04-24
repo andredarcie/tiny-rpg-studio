@@ -17,6 +17,7 @@ type GameVariableUsageMock = {
   objects?: Array<Record<string, unknown>> | unknown;
   skillOrder?: string[];
   disableSkills?: boolean;
+  skillCustomizations?: Record<string, { name?: string; description?: string; icon?: string }>;
 };
 type DomFixture = {
   projectVariableList: HTMLDivElement;
@@ -31,6 +32,16 @@ type DomFixture = {
   projectTestStartLevel: HTMLSelectElement;
   projectTestSkillList: HTMLDivElement;
   projectTestGodMode: HTMLInputElement;
+  skillEditModal: HTMLDivElement;
+  skillEditIconInput: HTMLInputElement;
+  skillEditIconPreview: HTMLSpanElement;
+  skillEditNameInput: HTMLInputElement;
+  skillEditNameCounter: HTMLSpanElement;
+  skillEditDescInput: HTMLTextAreaElement;
+  skillEditDescCounter: HTMLSpanElement;
+  skillEditSaveBtn: HTMLButtonElement;
+  skillEditCancelBtn: HTMLButtonElement;
+  skillEditRestoreBtn: HTMLButtonElement;
 };
 type TestState = {
   variablePanelCollapsed: boolean;
@@ -44,8 +55,10 @@ type ManagerFixture = {
     getGame: ReturnType<typeof vi.fn<() => GameVariableUsageMock>>;
     getTestSettings: ReturnType<typeof vi.fn<() => { startLevel: number; godMode: boolean; skills: unknown }>>;
     getMaxPlayerLevel: ReturnType<typeof vi.fn<() => number>>;
+    setSkillCustomizations: ReturnType<typeof vi.fn<(customizations: Record<string, { name?: string; description?: string; icon?: string }>) => void>>;
   };
   state: TestState;
+  updateJSON: ReturnType<typeof vi.fn>;
 };
 type BucketMapHack = Map<unknown, unknown> & { __editorRenderBuckets?: boolean };
 
@@ -62,6 +75,23 @@ const mocks = vi.hoisted(() => {
     getAll: vi.fn<() => unknown[]>(),
     getById: vi.fn<(id: string) => unknown | null>((id) => ({ id })),
     getDefaultSkillOrder: vi.fn<() => string[]>(() => []),
+    getDisplayName: vi.fn<(skill: unknown, customizations: unknown, getText: (key: string) => string) => string>(
+      (skill, _c, getText) => {
+        const s = skill as { nameKey?: string; id?: string };
+        return s.nameKey ? getText(s.nameKey) || s.id || '' : s.id || '';
+      }
+    ),
+    getDisplayDescription: vi.fn<(skill: unknown, customizations: unknown, getText: (key: string) => string) => string>(
+      (skill, _c, getText) => {
+        const s = skill as { descriptionKey?: string };
+        return s.descriptionKey ? getText(s.descriptionKey) || '' : '';
+      }
+    ),
+    getDisplayIcon: vi.fn<(skill: unknown, customizations: unknown) => string>(
+      (skill) => (skill as { icon?: string }).icon || ''
+    ),
+    NAME_MAX_LENGTH: 19,
+    DESCRIPTION_MAX_LENGTH: 46,
     DEFAULT_LEVEL_SLOTS: [
       { level: 2, count: 2 },
       { level: 4, count: 1 },
@@ -194,6 +224,18 @@ function createDomFixture(): DomFixture {
   const projectTestGodMode = document.createElement('input');
   projectTestGodMode.type = 'checkbox';
 
+  const skillEditModal = document.createElement('div');
+  skillEditModal.hidden = true;
+  const skillEditIconInput = document.createElement('input');
+  const skillEditIconPreview = document.createElement('span');
+  const skillEditNameInput = document.createElement('input');
+  const skillEditNameCounter = document.createElement('span');
+  const skillEditDescInput = document.createElement('textarea');
+  const skillEditDescCounter = document.createElement('span');
+  const skillEditSaveBtn = document.createElement('button');
+  const skillEditCancelBtn = document.createElement('button');
+  const skillEditRestoreBtn = document.createElement('button');
+
   return {
     projectVariableList,
     projectVariablesContainer,
@@ -206,7 +248,17 @@ function createDomFixture(): DomFixture {
     projectTestPanel,
     projectTestStartLevel,
     projectTestSkillList,
-    projectTestGodMode
+    projectTestGodMode,
+    skillEditModal,
+    skillEditIconInput,
+    skillEditIconPreview,
+    skillEditNameInput,
+    skillEditNameCounter,
+    skillEditDescInput,
+    skillEditDescCounter,
+    skillEditSaveBtn,
+    skillEditCancelBtn,
+    skillEditRestoreBtn
   };
 }
 
@@ -216,14 +268,15 @@ function createManagerFixture(): ManagerFixture {
     getVariableDefinitions: vi.fn(() => []),
     getGame: vi.fn(() => ({})),
     getTestSettings: vi.fn(() => ({ startLevel: 1, godMode: false, skills: [] })),
-    getMaxPlayerLevel: vi.fn(() => 3)
+    getMaxPlayerLevel: vi.fn(() => 3),
+    setSkillCustomizations: vi.fn()
   };
   const state = {
     variablePanelCollapsed: false,
     skillPanelCollapsed: false,
     testPanelCollapsed: false
   };
-  return { domCache, gameEngine, state };
+  return { domCache, gameEngine, state, updateJSON: vi.fn() };
 }
 
 function createService(fixture = createManagerFixture()) {
@@ -545,9 +598,89 @@ describe('EditorRenderService', () => {
     expect(items).toHaveLength(2);
     expect(items[0].querySelector('.project-skill-drag-handle')).not.toBeNull();
     expect(items[0].querySelector('.project-skill-level-badge')?.textContent).toContain('2');
-    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal:heal');
+    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal:');
     expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal.desc:');
-    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.mystery:mystery');
+    expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.mystery:');
+  });
+
+  it('opens the skill edit modal from the list and preloads existing custom values', () => {
+    const fixture = createManagerFixture();
+    const game = {
+      skillCustomizations: {
+        heal: { name: 'Second Wind', description: 'Revive once', icon: '⚡' }
+      }
+    };
+    fixture.gameEngine.getGame.mockReturnValue(game);
+    const healSkill = { id: 'heal', icon: '❤️', nameKey: 'skill.heal', descriptionKey: 'skill.heal.desc' };
+    mocks.skillDefinitions.getAll.mockReturnValue([healSkill]);
+    mocks.skillDefinitions.getById.mockImplementation((id: string) => id === 'heal' ? healSkill : null);
+    mocks.skillDefinitions.getDefaultSkillOrder.mockReturnValue(['heal']);
+    mocks.skillDefinitions.DEFAULT_LEVEL_SLOTS = [{ level: 2, count: 1 }];
+    mocks.skillDefinitions.getDisplayIcon.mockReturnValue('⚡');
+    mocks.textGet.mockImplementation((key, fallback) => `${key}|${fallback}`);
+    const { service } = createService(fixture);
+
+    service.initSkillEditModal();
+    service.renderSkillList();
+    fixture.domCache.projectSkillsList.querySelector<HTMLButtonElement>('.project-skill-edit-btn')?.click();
+
+    expect(fixture.domCache.skillEditModal.hidden).toBe(false);
+    expect(fixture.domCache.skillEditNameInput.value).toBe('Second Wind');
+    expect(fixture.domCache.skillEditNameInput.placeholder).toBe('skill.heal|heal');
+    expect(fixture.domCache.skillEditDescInput.value).toBe('Revive once');
+    expect(fixture.domCache.skillEditDescInput.placeholder).toBe('skill.heal.desc|');
+    expect(fixture.domCache.skillEditIconInput.value).toBe('⚡');
+    expect(fixture.domCache.skillEditIconPreview.textContent).toBe('⚡');
+  });
+
+  it('saves skill edits through the modal and refreshes JSON/rendered list', () => {
+    const fixture = createManagerFixture();
+    fixture.gameEngine.getGame.mockReturnValue({
+      skillCustomizations: {
+        heal: { description: 'Old text' }
+      }
+    });
+    const healSkill = { id: 'heal', icon: '❤️', nameKey: 'skill.heal', descriptionKey: 'skill.heal.desc' };
+    mocks.skillDefinitions.getById.mockImplementation((id: string) => id === 'heal' ? healSkill : null);
+    const { service } = createService(fixture);
+    const renderSpy = vi.spyOn(service, 'renderSkillList');
+
+    service.initSkillEditModal();
+    service.openSkillEditModal('heal');
+    fixture.domCache.skillEditNameInput.value = '  Second Wind  ';
+    fixture.domCache.skillEditDescInput.value = '  Revive once  ';
+    fixture.domCache.skillEditIconInput.value = '  ⚡  ';
+    fixture.domCache.skillEditSaveBtn.click();
+
+    expect(fixture.gameEngine.setSkillCustomizations).toHaveBeenCalledWith({
+      heal: { description: 'Revive once', name: 'Second Wind', icon: '⚡' }
+    });
+    expect(fixture.updateJSON).toHaveBeenCalledTimes(1);
+    expect(renderSpy).toHaveBeenCalled();
+    expect(fixture.domCache.skillEditModal.hidden).toBe(true);
+  });
+
+  it('restores skill defaults through the modal by removing only that skill customization', () => {
+    const fixture = createManagerFixture();
+    fixture.gameEngine.getGame.mockReturnValue({
+      skillCustomizations: {
+        heal: { name: 'Second Wind', icon: '⚡' },
+        dash: { name: 'Quick Step' }
+      }
+    });
+    const healSkill = { id: 'heal', icon: '❤️', nameKey: 'skill.heal', descriptionKey: 'skill.heal.desc' };
+    mocks.skillDefinitions.getById.mockImplementation((id: string) => id === 'heal' ? healSkill : null);
+    const { service } = createService(fixture);
+
+    service.initSkillEditModal();
+    service.openSkillEditModal('heal');
+    fixture.domCache.skillEditRestoreBtn.click();
+
+    expect(fixture.gameEngine.setSkillCustomizations).toHaveBeenCalledWith({
+      dash: { name: 'Quick Step' }
+    });
+    expect(fixture.updateJSON).toHaveBeenCalledTimes(1);
+    expect(fixture.domCache.skillEditModal.hidden).toBe(true);
   });
 
   it('renders disabled message instead of skills when skill system is off', () => {

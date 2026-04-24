@@ -11,7 +11,7 @@ import { ShareVariableCodec } from './ShareVariableCodec';
 import { ShareBase64 } from './ShareBase64';
 import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
 import { ShareSpriteCatalog } from './ShareSpriteCatalog';
-import type { CustomSpriteEntry } from '../../../types/gameState';
+import type { CustomSpriteEntry, SkillCustomizationMap } from '../../../types/gameState';
 
 type CustomSpriteEntryLike = {
     group: string;
@@ -36,6 +36,7 @@ type ShareGameData = {
     customPalette?: string[];
     customSprites?: CustomSpriteEntryLike[];
     skillOrder?: string[];
+    skillCustomizations?: SkillCustomizationMap;
 };
 
 class ShareEncoder {
@@ -464,6 +465,11 @@ class ShareEncoder {
                 }).join('');
                 parts.push('Q' + encoded);
             }
+        }
+
+        const skillCustomizations = SkillDefinitions.sanitizeCustomizationMap(gameData?.skillCustomizations);
+        if (skillCustomizations) {
+            parts.push('C' + ShareTextCodec.encodeText(JSON.stringify(skillCustomizations)));
         }
 
         // Custom Sprites

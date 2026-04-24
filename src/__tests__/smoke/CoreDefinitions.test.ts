@@ -6,6 +6,12 @@ import { PICO8_COLORS, TILE_PRESETS, TileDefinitions } from '../../runtime/domai
 import { SkillDefinitions } from '../../runtime/domain/definitions/SkillDefinitions';
 
 describe('Core definitions', () => {
+  const getNecromancerSkill = () => {
+    const skill = SkillDefinitions.getById('necromancer');
+    if (!skill) throw new Error('Expected necromancer skill to exist');
+    return skill;
+  };
+
   it('EnemyDefinitions exposes a default entry', () => {
     expect(EnemyDefinitions.getDefault()).not.toBeNull();
   });
@@ -26,5 +32,70 @@ describe('Core definitions', () => {
 
   it('SkillDefinitions exposes skills', () => {
     expect(SkillDefinitions.getAll().length).toBeGreaterThan(0);
+  });
+
+  it('sanitizes skill customizations defensively', () => {
+    const sanitized = SkillDefinitions.sanitizeCustomizationMap({
+      necromancer: {
+        name: '  Custom Necromancer Name Too Long  ',
+        description: '  This description is intentionally too long for the level card.  '
+      },
+      unknown: { name: 'Nope' },
+      charisma: { name: '   ' }
+    });
+
+    expect(sanitized).toEqual({
+      necromancer: {
+        name: 'Custom Necromancer',
+        description: 'This description is intentionally too long for'
+      }
+    });
+  });
+
+  it('sanitizes skill customizations with icon field', () => {
+    const sanitized = SkillDefinitions.sanitizeCustomizationMap({
+      necromancer: { icon: '  ⚡  ' }
+    });
+    expect(sanitized).toEqual({ necromancer: { icon: '⚡' } });
+  });
+
+  it('sanitizes skill customizations truncating icon to ICON_MAX_LENGTH', () => {
+    const longIcon = '1234567890abcdefghij';
+    const sanitized = SkillDefinitions.sanitizeCustomizationMap({
+      necromancer: { icon: longIcon }
+    });
+    expect(sanitized).toEqual({
+      necromancer: { icon: longIcon.slice(0, SkillDefinitions.ICON_MAX_LENGTH) }
+    });
+  });
+
+  it('sanitizes skill customizations rejecting whitespace-only icon', () => {
+    const sanitized = SkillDefinitions.sanitizeCustomizationMap({
+      necromancer: { icon: '   ' }
+    });
+    expect(sanitized).toBeUndefined();
+  });
+
+  it('getDisplayIcon returns custom icon when set', () => {
+    const skill = getNecromancerSkill();
+    const customizations = { necromancer: { icon: '⚡' } };
+    expect(SkillDefinitions.getDisplayIcon(skill, customizations)).toBe('⚡');
+  });
+
+  it('getDisplayIcon trims whitespace from custom icon', () => {
+    const skill = getNecromancerSkill();
+    const customizations = { necromancer: { icon: '  ⚡  ' } };
+    expect(SkillDefinitions.getDisplayIcon(skill, customizations)).toBe('⚡');
+  });
+
+  it('getDisplayIcon falls back to skill default icon when no customization', () => {
+    const skill = getNecromancerSkill();
+    expect(SkillDefinitions.getDisplayIcon(skill, undefined)).toBe('☠️');
+  });
+
+  it('getDisplayIcon falls back when custom icon is empty or whitespace', () => {
+    const skill = getNecromancerSkill();
+    expect(SkillDefinitions.getDisplayIcon(skill, { necromancer: { icon: '   ' } })).toBe('☠️');
+    expect(SkillDefinitions.getDisplayIcon(skill, { necromancer: {} })).toBe('☠️');
   });
 });

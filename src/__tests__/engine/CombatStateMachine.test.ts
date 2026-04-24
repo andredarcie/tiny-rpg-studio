@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { CombatStateMachine, CombatState } from '../../runtime/services/engine/CombatStateMachine';
 
+const silenceConsoleWarn = () => vi.spyOn(console, 'warn').mockImplementation(() => {});
+const silenceConsoleLog = () => vi.spyOn(console, 'log').mockImplementation(() => {});
+
 describe('CombatStateMachine', () => {
   describe('Initialization', () => {
     it('should start in IDLE state by default', () => {
@@ -124,29 +127,37 @@ describe('CombatStateMachine', () => {
 
   describe('Invalid Transitions', () => {
     it('should reject IDLE → PLAYER_ATTACKING (must go through WINDUP)', () => {
+      const warnSpy = silenceConsoleWarn();
       const sm = new CombatStateMachine();
       expect(sm.transition(CombatState.PLAYER_ATTACKING)).toBe(false);
       expect(sm.getState()).toBe(CombatState.IDLE); // State unchanged
+      warnSpy.mockRestore();
     });
 
     it('should reject PLAYER_WINDUP → ENEMY_DEATH', () => {
+      const warnSpy = silenceConsoleWarn();
       const sm = new CombatStateMachine({ initialState: CombatState.PLAYER_WINDUP });
       expect(sm.transition(CombatState.ENEMY_DEATH)).toBe(false);
       expect(sm.getState()).toBe(CombatState.PLAYER_WINDUP);
+      warnSpy.mockRestore();
     });
 
     it('should reject PLAYER_DEATH → IDLE (no resurrection)', () => {
+      const warnSpy = silenceConsoleWarn();
       const sm = new CombatStateMachine({ initialState: CombatState.PLAYER_DEATH });
       expect(sm.transition(CombatState.IDLE)).toBe(false);
       expect(sm.getState()).toBe(CombatState.PLAYER_DEATH);
+      warnSpy.mockRestore();
     });
 
     it('should reject any transition from PLAYER_DEATH', () => {
+      const warnSpy = silenceConsoleWarn();
       const sm = new CombatStateMachine({ initialState: CombatState.PLAYER_DEATH });
       expect(sm.transition(CombatState.IDLE)).toBe(false);
       expect(sm.transition(CombatState.PLAYER_WINDUP)).toBe(false);
       expect(sm.transition(CombatState.ENEMY_WINDUP)).toBe(false);
       expect(sm.getState()).toBe(CombatState.PLAYER_DEATH);
+      warnSpy.mockRestore();
     });
 
     it('should include reason in invalid transition warning when provided', () => {
@@ -186,11 +197,13 @@ describe('CombatStateMachine', () => {
     });
 
     it('should not trigger callback on invalid transition', () => {
+      const warnSpy = silenceConsoleWarn();
       const callback = vi.fn();
       const sm = new CombatStateMachine({ onStateChange: callback });
 
       sm.transition(CombatState.PLAYER_ATTACKING); // Invalid from IDLE
       expect(callback).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
 
     it('should trigger callback multiple times', () => {
@@ -271,6 +284,7 @@ describe('CombatStateMachine', () => {
 
   describe('Reset', () => {
     it('should reset to IDLE', () => {
+      const logSpy = silenceConsoleLog();
       const sm = new CombatStateMachine();
       sm.transition(CombatState.PLAYER_WINDUP);
       sm.transition(CombatState.PLAYER_ATTACKING);
@@ -280,15 +294,18 @@ describe('CombatStateMachine', () => {
 
       expect(sm.getState()).toBe(CombatState.IDLE);
       expect(sm.getContext()).toEqual({});
+      logSpy.mockRestore();
     });
 
     it('should trigger callback on reset', () => {
+      const logSpy = silenceConsoleLog();
       const callback = vi.fn();
       const sm = new CombatStateMachine({ onStateChange: callback, initialState: CombatState.PLAYER_WINDUP });
 
       sm.reset();
 
       expect(callback).toHaveBeenCalledWith(CombatState.PLAYER_WINDUP, CombatState.IDLE);
+      logSpy.mockRestore();
     });
 
     it('should be idempotent when already IDLE', () => {
@@ -304,18 +321,22 @@ describe('CombatStateMachine', () => {
 
   describe('Force Transition', () => {
     it('should allow any transition', () => {
+      const warnSpy = silenceConsoleWarn();
       const sm = new CombatStateMachine();
       sm.forceTransition(CombatState.PLAYER_ATTACKING, 'test');
       expect(sm.getState()).toBe(CombatState.PLAYER_ATTACKING);
+      warnSpy.mockRestore();
     });
 
     it('should trigger callback', () => {
+      const warnSpy = silenceConsoleWarn();
       const callback = vi.fn();
       const sm = new CombatStateMachine({ onStateChange: callback });
 
       sm.forceTransition(CombatState.ENEMY_DEATH);
 
       expect(callback).toHaveBeenCalledWith(CombatState.IDLE, CombatState.ENEMY_DEATH);
+      warnSpy.mockRestore();
     });
 
     it('should log force transition without reason', () => {
@@ -379,6 +400,7 @@ describe('CombatStateMachine', () => {
     });
 
     it('should handle player death', () => {
+      const warnSpy = silenceConsoleWarn();
       const sm = new CombatStateMachine();
 
       // Enemy attacks
@@ -390,6 +412,7 @@ describe('CombatStateMachine', () => {
 
       // No further transitions allowed
       expect(sm.transition(CombatState.IDLE)).toBe(false);
+      warnSpy.mockRestore();
     });
   });
 

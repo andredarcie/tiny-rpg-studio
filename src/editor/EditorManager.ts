@@ -220,6 +220,7 @@ class EditorManager {
         this.activeRoomIndex = Math.max(0, Math.min(totalRooms - 1, startRoomIndex));
         this.gameEngine.npcManager.ensureDefaultNPCs();
         this.paletteService.initialize();
+        this.renderService.initSkillEditModal();
 
         // Render navigation icons with engine tiles
         const navIcons = new EditorNavIcons(this.gameEngine);

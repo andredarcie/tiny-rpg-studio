@@ -236,10 +236,13 @@ describe('EditorShareService', () => {
     const origCreate = URL.createObjectURL;
     URL.createObjectURL = vi.fn(() => 'blob:test');
     URL.revokeObjectURL = vi.fn();
+    const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     vi.spyOn(document.body, 'appendChild');
     svc.saveGame();
     expect(mgr.gameEngine.exportGameData).toHaveBeenCalled();
     expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(anchorClickSpy).toHaveBeenCalled();
+    anchorClickSpy.mockRestore();
     URL.createObjectURL = origCreate;
   });
 

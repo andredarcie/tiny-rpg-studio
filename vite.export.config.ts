@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   base: './', // Paths relativos para compatibilidade com itch.io
+  publicDir: false,
   build: {
     lib: {
       entry: 'src/main.ts',
@@ -13,7 +14,9 @@ export default defineConfig({
     emptyOutDir: false,
     cssCodeSplit: false,
     rollupOptions: {
-      inlineDynamicImports: true,
+      output: {
+        inlineDynamicImports: true,
+      },
     },
   },
 });

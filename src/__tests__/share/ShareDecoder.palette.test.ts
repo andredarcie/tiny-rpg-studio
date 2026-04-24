@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ShareDecoder } from '../../runtime/infra/share/ShareDecoder';
 import { ShareBase64 } from '../../runtime/infra/share/ShareBase64';
 
@@ -37,21 +37,25 @@ describe('ShareDecoder - Custom Palette', () => {
     });
 
     it('should return undefined for invalid color count', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const segment = 'FF0000,00FF00'; // Only 2 colors (legacy format)
         const decodeCustomPalette = (ShareDecoder as unknown as {
             decodeCustomPalette: (value: string) => string[] | undefined;
         }).decodeCustomPalette;
         const decoded = decodeCustomPalette(segment);
         expect(decoded).toBeUndefined();
+        warnSpy.mockRestore();
     });
 
     it('should return undefined for invalid hex colors', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const segment = 'ZZZZZZ,00FF00,0000FF,FFFF00,FF00FF,00FFFF,FFFFFF,000000,888888,444444,CCCCCC,999999,111111,222222,333333,555555';
         const decodeCustomPalette = (ShareDecoder as unknown as {
             decodeCustomPalette: (value: string) => string[] | undefined;
         }).decodeCustomPalette;
         const decoded = decodeCustomPalette(segment);
         expect(decoded).toBeUndefined();
+        warnSpy.mockRestore();
     });
 
     it('should convert colors to uppercase', () => {

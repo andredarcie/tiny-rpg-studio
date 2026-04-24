@@ -40,6 +40,9 @@ const makeGame = (): GameDefinition => ({
 describe('StateDataManager', () => {
   it('exports game data snapshot', () => {
     const game = makeGame();
+    game.skillCustomizations = {
+      necromancer: { name: 'Second Wind' }
+    };
     const worldManager = {} as StateWorldManager;
     const objectManager = {} as StateObjectManager;
     const variableManager = {} as StateVariableManager;
@@ -63,6 +66,9 @@ describe('StateDataManager', () => {
       variables: game.variables,
       exits: game.exits,
       tileset: game.tileset,
+      skillCustomizations: {
+        necromancer: { name: 'Second Wind' }
+      },
     });
   });
 
@@ -200,6 +206,39 @@ describe('StateDataManager', () => {
     manager.importGameData({ disableSkills: true });
 
     expect(game.disableSkills).toBe(true);
+  });
+
+  it('sanitizes skill customizations on import', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {
+        normalizeRooms: vi.fn(() => []),
+        normalizeTileMaps: vi.fn(() => [{ ground: [[null]], overlay: [[null]] }]),
+        clampCoordinate: vi.fn((v: number) => v),
+        clampRoomIndex: vi.fn((v: number) => v),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: {
+        normalizeObjects: vi.fn(() => []),
+        setGame: vi.fn(),
+      } as unknown as StateObjectManager,
+      variableManager: {
+        normalizeVariables: vi.fn(() => []),
+        setGame: vi.fn(),
+      } as unknown as StateVariableManager,
+    });
+
+    manager.importGameData({
+      skillCustomizations: {
+        necromancer: { name: '  Second Wind  ' },
+        missing: { name: 'Invalid' }
+      }
+    });
+
+    expect(game.skillCustomizations).toEqual({
+      necromancer: { name: 'Second Wind' }
+    });
   });
 });
 

@@ -233,12 +233,10 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
 
         const padding = Math.max(6, Math.floor(width * 0.05));
-        const name = data?.nameKey
-            ? getOverlayText(data.nameKey, data.id || '')
-            : (data?.id || '');
-        const description = data?.descriptionKey
-            ? getOverlayText(data.descriptionKey, '')
-            : '';
+        const name = data?.resolvedName
+            || (data?.nameKey ? getOverlayText(data.nameKey, data.id || '') : (data?.id || ''));
+        const description = data?.resolvedDescription
+            || (data?.descriptionKey ? getOverlayText(data.descriptionKey, '') : '');
 
         ctx.shadowColor = 'transparent';
         ctx.fillStyle = '#FFFFFF';
@@ -246,7 +244,9 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.textBaseline = 'top';
         const nameFont = Math.max(8, Math.floor(height / 16));
         ctx.font = `${nameFont}px "Press Start 2P", "VT323", monospace`;
-        ctx.fillText(name, x + padding, y + padding);
+        const iconReserve = data?.icon ? Math.max(18, Math.floor(height / 6)) : 0;
+        const nameMaxWidth = Math.max(12, width - padding * 2 - iconReserve);
+        ctx.fillText(this.ellipsizeCanvasText(ctx, name, nameMaxWidth), x + padding, y + padding);
 
         if (data?.icon) {
             ctx.font = `${Math.max(8, Math.floor(height / 14))}px monospace`;
@@ -266,6 +266,86 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.restore();
     }
 
+    ellipsizeCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+        const source = typeof text === 'string' ? text : '';
+        if (!source || ctx.measureText(source).width <= maxWidth) return source;
+        const ellipsis = '...';
+        if (ctx.measureText(ellipsis).width > maxWidth) return '';
+        let lo = 0;
+        let hi = source.length;
+        while (lo < hi) {
+            const mid = Math.ceil((lo + hi) / 2);
+            const candidate = source.slice(0, mid) + ellipsis;
+            if (ctx.measureText(candidate).width <= maxWidth) {
+                lo = mid;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return source.slice(0, lo) + ellipsis;
+    }
+
+    wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+        const words = String(text || '').split(/\s+/).filter(Boolean);
+        const lines: string[] = [];
+        let line = '';
+        let truncated = false;
+        const pushLine = (value: string) => {
+            if (lines.length >= maxLines) {
+                truncated = true;
+                return;
+            }
+            lines.push(value);
+        };
+        const splitLongWord = (word: string): string[] => {
+            const parts: string[] = [];
+            let rest = word;
+            while (rest && ctx.measureText(rest).width > maxWidth) {
+                let lo = 1;
+                let hi = rest.length;
+                while (lo < hi) {
+                    const mid = Math.ceil((lo + hi) / 2);
+                    if (ctx.measureText(rest.slice(0, mid)).width <= maxWidth) {
+                        lo = mid;
+                    } else {
+                        hi = mid - 1;
+                    }
+                }
+                parts.push(rest.slice(0, lo));
+                rest = rest.slice(lo);
+            }
+            if (rest) parts.push(rest);
+            return parts;
+        };
+
+        words.forEach((word) => {
+            if (truncated) return;
+            const pieces = ctx.measureText(word).width > maxWidth ? splitLongWord(word) : [word];
+            pieces.forEach((piece) => {
+                if (truncated) return;
+                if (lines.length >= maxLines) {
+                    truncated = true;
+                    return;
+                }
+                const candidate = line ? `${line} ${piece}` : piece;
+                if (ctx.measureText(candidate).width > maxWidth && line) {
+                    pushLine(line);
+                    line = piece;
+                } else {
+                    line = candidate;
+                }
+            });
+        });
+        if (line) pushLine(line);
+        if (maxLines === 1 && words.length > 1) {
+            truncated = true;
+        }
+        if (truncated && lines.length) {
+            lines[lines.length - 1] = this.ellipsizeCanvasText(ctx, `${lines[lines.length - 1]}...`, maxWidth);
+        }
+        return lines.slice(0, maxLines);
+    }
+
     drawWrappedText(
         ctx: CanvasRenderingContext2D,
         text: string,
@@ -276,35 +356,12 @@ class RendererOverlayRenderer extends RendererModuleBase {
         maxLines: number | null = null
     ) {
         if (!text) return;
-        const words = text.split(/\s+/).filter(Boolean);
-        let line = '';
+        const lines = this.wrapCanvasText(ctx, text, maxWidth, maxLines ?? Number.MAX_SAFE_INTEGER);
         let offsetY = y;
-        let linesDrawn = 0;
-        for (let i = 0; i < words.length; i++) {
-            const word = words[i];
-            const candidate = line ? `${line} ${word}` : word;
-            const metrics = ctx.measureText(candidate);
-            const wouldOverflow = metrics.width > maxWidth && line;
-            const hitMaxLines = maxLines && linesDrawn >= maxLines - 1;
-            if (wouldOverflow || hitMaxLines) {
-                ctx.fillText(line, x, offsetY);
-                line = word;
-                offsetY += lineHeight;
-                linesDrawn += 1;
-                if (maxLines && linesDrawn >= maxLines) {
-                    const remaining = words.slice(i).join(' ');
-                    const truncated = `${remaining}`.slice(0, 32).trim();
-                    const suffix = truncated ? `${truncated}...` : '...';
-                    ctx.fillText(suffix, x, offsetY);
-                    return;
-                }
-            } else {
-                line = candidate;
-            }
-        }
-        if (line) {
+        lines.forEach((line) => {
             ctx.fillText(line, x, offsetY);
-        }
+            offsetY += lineHeight;
+        });
     }
 
     drawLevelUpOverlayFull(ctx: CanvasRenderingContext2D) {
@@ -698,6 +755,8 @@ type SkillChoice = {
     nameKey?: string;
     descriptionKey?: string;
     icon?: string;
+    resolvedName?: string;
+    resolvedDescription?: string;
 };
 
 type PickupOverlay = {
