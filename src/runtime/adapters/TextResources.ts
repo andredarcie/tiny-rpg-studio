@@ -331,7 +331,8 @@ const TEXT_BUNDLES = {
         'explore.closeAria': 'Fechar explorar jogos',
         'explore.empty': 'Nenhum jogo disponível ainda.',
         'explore.loadMore': 'Carregar mais',
-        'explore.by': 'por'
+        'explore.by': 'por',
+        'explore.backToMyGame': '← Voltar para meu jogo'
     },
     'en-US': {
         'intro.byline': 'by {author}',
@@ -661,7 +662,8 @@ const TEXT_BUNDLES = {
         'explore.closeAria': 'Close explore games',
         'explore.empty': 'No games available yet.',
         'explore.loadMore': 'Load more',
-        'explore.by': 'by'
+        'explore.by': 'by',
+        'explore.backToMyGame': '← Back to my game'
     }
 };
 
