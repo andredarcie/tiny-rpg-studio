@@ -114,6 +114,7 @@
                 <div class="tabs-links">
                     <button class="tab-button active" type="button" data-tab="game" role="tab" aria-selected="true" aria-controls="tab-game" data-text-key="tabs.game"></button>
                     <button class="tab-button" type="button" data-tab="editor" role="tab" aria-selected="false" aria-controls="tab-editor" data-text-key="tabs.editor"></button>
+                    <button id="btn-explore" class="tab-action-button tab-action-button--explore" type="button" data-text-key="buttons.explore">Explorar</button>
                     <button id="btn-reset" class="tab-action-button" type="button" data-text-key="buttons.reset" data-aria-label-key="aria.reset"></button>
                 </div>
             </div>
@@ -526,6 +527,26 @@
 
     <input type="file" id="file-input" accept=".json" style="display: none;">
 
+    <!-- Explore Modal -->
+    <div id="explore-modal" class="explore-modal" hidden role="dialog" aria-modal="true" aria-labelledby="explore-modal-title">
+        <div class="explore-modal__panel">
+            <div class="explore-modal__header">
+                <h2 id="explore-modal-title" class="explore-modal__title" data-text-key="explore.title">Explorar Jogos</h2>
+                <button type="button" id="explore-close" class="explore-modal__close" data-aria-label-key="explore.closeAria">✕</button>
+            </div>
+            <div class="explore-modal__body">
+                <div id="explore-loading" class="explore-loading" hidden>
+                    <span class="explore-spinner"></span>
+                </div>
+                <p id="explore-empty" class="explore-empty" hidden data-text-key="explore.empty">Nenhum jogo disponível ainda.</p>
+                <div id="explore-grid" class="explore-grid" role="list"></div>
+                <div class="explore-footer">
+                    <button type="button" id="explore-load-more" class="explore-load-more" hidden data-text-key="explore.loadMore">Carregar mais</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="pixel-art-editor-modal" class="pixel-art-editor-modal" hidden>
         <div class="pixel-art-editor">
             <div class="pae-header">
@@ -557,8 +578,13 @@
         import {
             addDoc,
             collection,
+            getDocs,
             getFirestore,
-            serverTimestamp
+            limit,
+            orderBy,
+            query,
+            serverTimestamp,
+            startAfter
         } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -579,7 +605,8 @@
 
         window.TinyRPGFirebaseApp = app;
         window.TinyRPGFirebaseDb = db;
-        window.TinyRPGFirebaseFirestore = { addDoc, collection, serverTimestamp };
+        window.TinyRPGFirebaseFirestore = { addDoc, collection, serverTimestamp, getDocs, query, orderBy, limit, startAfter };
+        window.TinyRPGFirebaseGamesCollection = "games";
 
         try {
             if (firebaseConfig.measurementId) {

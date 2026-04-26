@@ -325,7 +325,13 @@ const TEXT_BUNDLES = {
         'editor.mobileNav.npcs': 'Mostrar NPCs',
         'editor.mobileNav.enemies': 'Mostrar inimigos',
         'editor.mobileNav.project': 'Mostrar projeto',
-        'tiles.summaryFallback': 'Tile {id}'
+        'tiles.summaryFallback': 'Tile {id}',
+        'buttons.explore': 'Explorar',
+        'explore.title': 'Explorar Jogos',
+        'explore.closeAria': 'Fechar explorar jogos',
+        'explore.empty': 'Nenhum jogo disponível ainda.',
+        'explore.loadMore': 'Carregar mais',
+        'explore.by': 'por'
     },
     'en-US': {
         'intro.byline': 'by {author}',
@@ -649,7 +655,13 @@ const TEXT_BUNDLES = {
         'editor.mobileNav.npcs': 'Show NPCs',
         'editor.mobileNav.enemies': 'Show enemies',
         'editor.mobileNav.project': 'Show project',
-        'tiles.summaryFallback': 'Tile {id}'
+        'tiles.summaryFallback': 'Tile {id}',
+        'buttons.explore': 'Explore',
+        'explore.title': 'Explore Games',
+        'explore.closeAria': 'Close explore games',
+        'explore.empty': 'No games available yet.',
+        'explore.loadMore': 'Load more',
+        'explore.by': 'by'
     }
 };
 

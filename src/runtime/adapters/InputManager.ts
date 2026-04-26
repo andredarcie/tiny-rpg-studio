@@ -17,6 +17,7 @@ type RendererApi = {
 };
 
 type GameEngineApi = {
+  isDestroyed?: boolean;
   gameState: GameStateApi;
   renderer: RendererApi;
   tryMove: (dx: number, dy: number) => void;
@@ -63,11 +64,11 @@ class InputManager {
   }
 
   setupEventListeners(): void {
-    document.addEventListener('keydown', (ev) => this.handleKeyDown(ev));
-    document.addEventListener('touchstart', (ev) => this.handleTouchStart(ev), { passive: false });
-    document.addEventListener('touchmove', (ev) => this.handleTouchMove(ev), { passive: false });
-    document.addEventListener('touchend', (ev) => this.handleTouchEnd(ev), { passive: false });
-    document.addEventListener('click', (ev) => this.handleClick(ev));
+    document.addEventListener('keydown', (ev) => { if (!this.gameEngine.isDestroyed) this.handleKeyDown(ev); });
+    document.addEventListener('touchstart', (ev) => { if (!this.gameEngine.isDestroyed) this.handleTouchStart(ev); }, { passive: false });
+    document.addEventListener('touchmove', (ev) => { if (!this.gameEngine.isDestroyed) this.handleTouchMove(ev); }, { passive: false });
+    document.addEventListener('touchend', (ev) => { if (!this.gameEngine.isDestroyed) this.handleTouchEnd(ev); }, { passive: false });
+    document.addEventListener('click', (ev) => { if (!this.gameEngine.isDestroyed) this.handleClick(ev); });
   }
 
   handleKeyDown(ev: KeyboardEvent): void {

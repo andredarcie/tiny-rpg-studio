@@ -55,6 +55,7 @@ export class GameEngine {
   movementManager: MovementManager;
   inputManager: InputManager;
   combatStunManager: CombatStunManager;
+  isDestroyed: boolean;
   awaitingRestart: boolean;
   introVisible: boolean;
   introStartTime: number;
@@ -94,6 +95,7 @@ export class GameEngine {
       combatStunManager: this.combatStunManager,
     });
     this.inputManager = new InputManager(this);
+    this.isDestroyed = false;
     this.awaitingRestart = false;
     this.introVisible = false;
     this.introStartTime = 0;
@@ -568,6 +570,15 @@ export class GameEngine {
 
   startEnemyLoop(): void {
     this.enemyManager.start();
+  }
+
+  destroy(): void {
+    this.isDestroyed = true;
+    this.enemyManager.stop();
+    if (this.renderer.tileAnimationTimer) {
+      clearInterval(this.renderer.tileAnimationTimer);
+      this.renderer.tileAnimationTimer = null;
+    }
   }
 
   tickEnemies(): void {

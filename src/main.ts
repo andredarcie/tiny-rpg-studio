@@ -1,6 +1,7 @@
 import './styles.css';
 import { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
+import { ExploreModal } from './editor/modules/ExploreModal';
 import { GameEngine } from './runtime/services/GameEngine';
 import { ShareUtils } from './runtime/infra/share/ShareUtils';
 import { getTinyRpgApi, setTinyRpgApi, type TinyRpgApi } from './runtime/infra/TinyRpgApi';
@@ -68,6 +69,7 @@ class TinyRPGApplication {
       editorManager = new EditorManager(gameEngine);
     }
     new EditorExportService();
+    new ExploreModal();
     this.bindResetButton(gameEngine);
     this.bindTouchPad(gameEngine);
     this.bindFullscreenButton();

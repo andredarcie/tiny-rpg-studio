@@ -2,6 +2,11 @@ type TinyRpgFirebaseHelpers = {
   addDoc?: (...args: unknown[]) => Promise<unknown>;
   collection?: (...args: unknown[]) => unknown;
   serverTimestamp?: () => unknown;
+  getDocs?: (...args: unknown[]) => Promise<unknown>;
+  query?: (...args: unknown[]) => unknown;
+  orderBy?: (...args: unknown[]) => unknown;
+  limit?: (...args: unknown[]) => unknown;
+  startAfter?: (...args: unknown[]) => unknown;
 };
 
 declare global {
@@ -11,6 +16,7 @@ declare global {
     __TINY_RPG_SHARED_CODE?: string;
     TinyRPGFirebaseConfig?: Record<string, unknown> | null;
     TinyRPGFirebaseCollection?: string | null;
+    TinyRPGFirebaseGamesCollection?: string | null;
     TinyRPGFirebaseApp?: unknown;
     TinyRPGFirebaseDb?: unknown;
     TinyRPGFirebaseFirestore?: TinyRpgFirebaseHelpers | null;
