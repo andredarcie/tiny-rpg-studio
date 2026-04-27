@@ -1,5 +1,7 @@
 import { RendererModuleBase } from './RendererModuleBase';
 import { GameConfig } from '../../../config/GameConfig';
+import { FONT_SIZE } from '../../../config/FontConfig';
+import { bitmapFont } from './BitmapFont';
 
 type FloatingTextEntry = {
     text: string;
@@ -54,7 +56,7 @@ class RendererFloatingText extends RendererModuleBase {
             duration: options.duration ?? config.duration,
             riseSpeed: options.riseSpeed ?? config.riseSpeed,
             color: options.color ?? '#FF004D', // Red for player damage
-            fontSize: options.fontSize ?? config.fontSize
+            fontSize: options.fontSize ?? FONT_SIZE
         };
 
         this.activeTexts.push(entry);
@@ -106,20 +108,11 @@ class RendererFloatingText extends RendererModuleBase {
             // Calculate opacity (linear fade)
             const opacity = 1 - progress;
 
-            // Draw text
             ctx.save();
             ctx.globalAlpha = opacity;
-            ctx.font = `bold ${entry.fontSize}px monospace`;
-            ctx.fillStyle = entry.color;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-
-            // Optional: Add outline for better visibility
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2;
-            ctx.strokeText(entry.text, entry.x, currentY);
-            ctx.fillText(entry.text, entry.x, currentY);
-
+            bitmapFont.drawText(ctx, entry.text, entry.x, currentY, entry.fontSize, entry.color);
             ctx.restore();
         });
 

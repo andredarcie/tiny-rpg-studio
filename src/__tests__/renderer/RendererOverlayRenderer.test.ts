@@ -351,10 +351,10 @@ describe('RendererOverlayRenderer – drawWrappedText', () => {
     });
 
     it('wraps text that exceeds maxWidth', () => {
-        // each char = 6px; maxWidth=50 → limit ~8 chars per line
-        // "aaaaa bbbbb" → "aaaaa"=30px fits, "aaaaa bbbbb"=66px overflows → wraps
+        // charSize=6 explicit: each char advances ~4.5px so both words fit individually (22.5px)
+        // but not together (49.5px > 48px), giving exactly 2 lines.
         const { overlay, ctx } = makeOverlay();
-        overlay.drawWrappedText(ctx, 'aaaaa bbbbb', 0, 0, 50, 12);
+        overlay.drawWrappedText(ctx, 'aaaaa bbbbb', 0, 0, 48, 12, 6, null);
         expect(ctx.fillText).toHaveBeenCalledTimes(2);
         expect(ctx.fillText).toHaveBeenNthCalledWith(1, 'aaaaa', 0, 0);
         expect(ctx.fillText).toHaveBeenNthCalledWith(2, 'bbbbb', 0, 12);
@@ -567,10 +567,10 @@ describe('RendererOverlayRenderer – getLevelUpCardLayout', () => {
         expect(withPending.cardArea.cardYStart).toBeGreaterThanOrEqual(withoutPending.cardArea.cardYStart);
     });
 
-    it('uses provided titleFont and pendingFont values', () => {
+    it('returns layout with rects when hasPendingText is true', () => {
         const { overlay } = makeOverlay();
         const layout = overlay.getLevelUpCardLayout({
-            width: 200, height: 200, titleFont: 20, pendingFont: 10, hasPendingText: true
+            width: 200, height: 200, hasPendingText: true
         });
         expect(layout.rects).toBeDefined();
     });

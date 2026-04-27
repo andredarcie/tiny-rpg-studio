@@ -15,6 +15,8 @@ import { RendererParticleSystem } from './renderer/RendererParticleSystem';
 import { RendererAttackTelegraph } from './renderer/RendererAttackTelegraph';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
+import { FONT_BITMAP_SRC } from '../../config/FontConfig';
+import { bitmapFont } from './renderer/BitmapFont';
 import { DebugFlags } from '../debug/DebugFlags';
 
 type SpriteMatrix = (string | null)[][];
@@ -116,6 +118,10 @@ class Renderer {
 
         // Connect attack telegraph to entity renderer for wind-up animations
         this.entityRenderer.attackTelegraph = this.attackTelegraph;
+
+        // Load after renderer modules exist because load() may invoke the callback synchronously
+        // when the bitmap font sheet is already cached.
+        bitmapFont.load(FONT_BITMAP_SRC, () => this.draw());
 
         this.drawIconIdNextFrame = '';
         this.timeIconOverPlayer = GameConfig.animation.iconOverPlayerDuration;

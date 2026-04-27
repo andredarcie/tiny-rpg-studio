@@ -6,6 +6,7 @@
  */
 
 import { GameConfigSchema } from './GameConfigSchema';
+import { FONT_SIZE } from './FontConfig';
 
 /**
  * Validated and immutable game configuration instance
@@ -128,7 +129,7 @@ export const GameConfig = new GameConfigSchema({
       /** Rise speed (pixels per second) */
       riseSpeed: 0.5,
       /** Font size for damage numbers (pixels) */
-      fontSize: 8,
+      fontSize: FONT_SIZE,
     },
     /** Attack telegraph (warning) configuration */
     telegraph: {

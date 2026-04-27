@@ -1,5 +1,7 @@
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
+import { FONT_SIZE } from '../../../config/FontConfig';
+import { bitmapFont } from './BitmapFont';
 
 class RendererHudRenderer {
     gameState: GameStateApi;
@@ -71,16 +73,14 @@ class RendererHudRenderer {
         }
 
         const label = this.getLevelLabel();
-        const fontSize = area.fontSize ?? Math.max(6, Math.floor(height * 0.4));
-        ctx.font = `${fontSize}px monospace`;
-        ctx.textBaseline = 'middle';
+        const fontSize = area.fontSize ?? FONT_SIZE;
 
         const mapCellSize = Math.max(4, Math.floor((height - padding * 2) / 3));
         const miniMapSize = mapCellSize * 3;
         const miniMapX = width - padding - miniMapSize;
         const miniMapY = Math.round(height / 2 - miniMapSize / 2);
 
-        const labelWidth = label ? ctx.measureText(label).width : 0;
+        const labelWidth = label ? bitmapFont.measureText(label, fontSize) : 0;
         const labelGap = label ? this.gap : 0;
         const rightReserved = miniMapSize + this.gap + labelWidth + labelGap;
         const availableWidth = Math.max(0, width - padding - rightReserved);
@@ -104,9 +104,9 @@ class RendererHudRenderer {
         });
 
         if (label) {
-            ctx.fillStyle = accent;
             ctx.textAlign = 'right';
-            ctx.fillText(label, miniMapX - this.gap, height / 2);
+            ctx.textBaseline = 'middle';
+            bitmapFont.drawText(ctx, label, miniMapX - this.gap, height / 2, fontSize, accent);
         }
 
         this.drawMiniMap(ctx, miniMapX, miniMapY, mapCellSize, miniMapSize);

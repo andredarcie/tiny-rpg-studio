@@ -109,27 +109,9 @@ class EditorObjectRenderer extends EditorRendererBase {
                 if (durability !== null || damage !== null) {
                     const stats = document.createElement('div');
                     stats.className = 'object-type-stats';
-
-                    if (damage !== null) {
-                        const damageSpan = document.createElement('span');
-                        damageSpan.className = 'object-stat-damage';
-                        damageSpan.textContent = `${damage}`;
-                        stats.appendChild(damageSpan);
-                    }
-
-                    if (durability !== null && damage !== null) {
-                        const separator = document.createElement('span');
-                        separator.className = 'object-stat-separator';
-                        separator.textContent = '⚔';
-                        stats.appendChild(separator);
-                    }
-
-                    if (durability !== null) {
-                        const durabilitySpan = document.createElement('span');
-                        durabilitySpan.className = 'object-stat-durability';
-                        durabilitySpan.textContent = `${durability}`;
-                        stats.appendChild(durabilitySpan);
-                    }
+                    const damageValue = damage !== null ? damage : '?';
+                    const durabilityValue = durability !== null ? durability : '?';
+                    stats.textContent = `ATK: ${damageValue} - DEF: ${durabilityValue}`;
 
                     meta.appendChild(stats);
                 }

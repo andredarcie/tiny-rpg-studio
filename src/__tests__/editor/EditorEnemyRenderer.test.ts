@@ -313,8 +313,7 @@ describe('EditorEnemyRenderer', () => {
 
     renderer.renderEnemyCatalog();
 
-    expect(fixture.enemyTypes.querySelector('.enemy-stat-lives')?.textContent).toBe('?');
-    expect(fixture.enemyTypes.querySelector('.enemy-stat-damage')?.textContent).toBe('?');
+    expect(fixture.enemyTypes.querySelector('.enemy-stats')?.textContent).toBe('LIFE: ? - ATK: ?');
   });
 
   // ─── drawEnemyPreview ─────────────────────────────────────────────────────

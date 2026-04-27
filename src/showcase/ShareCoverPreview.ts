@@ -1,4 +1,6 @@
 
+import { FONT_SIZE } from '../config/FontConfig';
+import { bitmapFont } from '../runtime/adapters/renderer/BitmapFont';
 import { TILE_PRESETS } from '../runtime/domain/definitions/TileDefinitions';
 import { ShareDecoder } from '../runtime/infra/share/ShareDecoder';
 
@@ -45,6 +47,7 @@ class ShareCoverPreview {
     if (this.ctx && this.dpr !== 1) {
       this.ctx.scale(this.dpr, this.dpr);
     }
+    bitmapFont.load('/pico8-font.png', () => this.render());
     this.gameData = null;
   }
 
@@ -217,32 +220,14 @@ class ShareCoverPreview {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        const fitText = (text: string, maxWidth: number, baseSize: number): number => {
-            let size = baseSize;
-            ctx.font = `${size}px "Space Mono", monospace`;
-            while (ctx.measureText(text).width > maxWidth && size > 12) {
-                size -= 1;
-                ctx.font = `${size}px "Space Mono", monospace`;
-            }
-            return size;
-        };
-
-        const titleSize = fitText(title, width * 0.9, Math.max(18, Math.floor(height / 9)));
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${titleSize}px "Space Mono", monospace`;
-        ctx.fillText(title, centerX, centerY - height * 0.12);
+        bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, FONT_SIZE, '#FFFFFF');
 
         if (author) {
             const authorText = `por ${author}`;
-            ctx.fillStyle = 'rgba(255,255,255,0.82)';
-            const authorSize = fitText(authorText, width * 0.8, Math.max(14, Math.floor(height / 16)));
-            ctx.font = `${authorSize}px "Space Mono", monospace`;
-            ctx.fillText(authorText, centerX, centerY - height * 0.02);
+            bitmapFont.drawText(ctx, authorText, centerX, centerY - height * 0.02, FONT_SIZE, 'rgba(255,255,255,0.82)');
         }
 
-        ctx.fillStyle = 'rgba(100, 181, 246, 0.95)';
-        ctx.font = `${Math.max(12, Math.floor(height / 18))}px "Space Mono", monospace`;
-        ctx.fillText('Iniciar aventura', centerX, centerY + height * 0.16);
+        bitmapFont.drawText(ctx, 'Iniciar aventura', centerX, centerY + height * 0.16, FONT_SIZE, 'rgba(100, 181, 246, 0.95)');
 
         ctx.restore();
     }

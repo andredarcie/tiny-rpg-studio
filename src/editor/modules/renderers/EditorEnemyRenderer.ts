@@ -123,20 +123,7 @@ class EditorEnemyRenderer extends EditorRendererBase {
 
             const livesValue = Number.isFinite(definition.lives) ? definition.lives : '?';
             const damageValue = Number.isFinite(definition.damage) ? definition.damage : '?';
-
-            const livesSpan = document.createElement('span');
-            livesSpan.className = 'enemy-stat-lives';
-            livesSpan.textContent = `${livesValue}`;
-
-            const separator = document.createElement('span');
-            separator.className = 'enemy-stat-separator';
-            separator.textContent = '⚔';
-
-            const damageSpan = document.createElement('span');
-            damageSpan.className = 'enemy-stat-damage';
-            damageSpan.textContent = `${damageValue}`;
-
-            stats.append(livesSpan, separator, damageSpan);
+            stats.textContent = `LIFE: ${livesValue} - ATK: ${damageValue}`;
 
             if (definition.boss) {
                 const badge = document.createElement('span');
