@@ -49,6 +49,21 @@ describe('BitmapFont', () => {
         it('is consistent across charSize when not loaded', () => {
             expect(font.measureText('abc', 8)).toBe(font.measureText('abc', 16));
         });
+
+        it('preserves case while stripping accents for glyph lookup', () => {
+            Object.defineProperty(font, 'sheet', { value: document.createElement('canvas'), configurable: true });
+            Object.defineProperty(font, 'glyphMetrics', {
+                value: Array.from({ length: 256 }, () => ({ left: 0, width: 0, advance: 4 })),
+                configurable: true
+            });
+
+            const glyphMetrics = (font as unknown as { glyphMetrics: Array<{ left: number; width: number; advance: number }> }).glyphMetrics;
+            glyphMetrics['A'.charCodeAt(0)] = { left: 0, width: 5, advance: 6 };
+            glyphMetrics['a'.charCodeAt(0)] = { left: 0, width: 3, advance: 4 };
+
+            expect(font.measureText('Á', 8)).toBe(font.measureText('A', 8));
+            expect(font.measureText('Á', 8)).not.toBe(font.measureText('a', 8));
+        });
     });
 
     // ─── drawText ───────────────────────────────────────────────────────────────

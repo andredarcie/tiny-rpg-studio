@@ -711,23 +711,12 @@ class EditorRenderService {
 
     renderTestTools() {
         const container = this.dom.projectTestContainer;
-        const toggle = this.dom.projectTestToggle;
         const panel = this.dom.projectTestPanel;
         const startLevelSelect = this.dom.projectTestStartLevel;
         const skillList = this.dom.projectTestSkillList;
         const godModeInput = this.dom.projectTestGodMode;
         const game = this.gameEngine.getGame() as { disableSkills?: boolean };
-        if (!container || !toggle || !panel) return;
-
-        const collapsed = Boolean(this.state.testPanelCollapsed);
-        const title = this.t('project.test.title', 'Ajuda nos testes');
-        const actionText = collapsed
-            ? this.t('project.test.toggle.show', 'Mostrar')
-            : this.t('project.test.toggle.hide', 'Esconder');
-        toggle.setAttribute('aria-expanded', String(!collapsed));
-        toggle.setAttribute('aria-controls', 'project-test-panel');
-        toggle.textContent = `${title} · ${actionText}`;
-        container.classList.toggle('is-collapsed', collapsed);
+        if (!container || !panel) return;
 
         const settings = this.gameEngine.getTestSettings();
         const maxLevel = this.gameEngine.getMaxPlayerLevel();

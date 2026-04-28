@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EditorPaletteService } from '../../editor/modules/EditorPaletteService';
-import { TextResources } from '../../runtime/adapters/TextResources';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 
 const CUSTOM_PALETTE = [
@@ -23,7 +22,6 @@ type PaletteServiceManager = ConstructorParameters<typeof EditorPaletteService>[
 type PaletteDomFixture = {
     paletteGrid: HTMLDivElement;
     projectPalettePanel: HTMLDivElement;
-    projectPaletteToggle: HTMLButtonElement;
     colorPickerModal: HTMLDivElement;
     colorPickerInput: HTMLInputElement;
     colorPreviewCurrent: HTMLDivElement;
@@ -48,7 +46,6 @@ type PaletteManagerFixture = {
     renderAll: ReturnType<typeof vi.fn>;
     dom: PaletteDomFixture;
     state: {
-        palettePanelCollapsed: boolean;
         editingColorIndex: number | null;
     };
 };
@@ -58,19 +55,16 @@ function asPaletteServiceManager(manager: PaletteManagerFixture): PaletteService
 }
 
 function createManager(overrides: {
-    paletteCollapsed?: boolean;
     palette?: string[] | null;
     editingColorIndex?: number | null;
 } = {}): PaletteManagerFixture {
     const {
-        paletteCollapsed = true,
         palette = CUSTOM_PALETTE,
         editingColorIndex = null
     } = overrides;
 
     const paletteGrid = document.createElement('div');
     const projectPalettePanel = document.createElement('div');
-    const projectPaletteToggle = document.createElement('button');
     const colorPickerModal = document.createElement('div');
     colorPickerModal.hidden = true;
     const colorPickerInput = document.createElement('input') as HTMLInputElement;
@@ -101,7 +95,6 @@ function createManager(overrides: {
         dom: {
             paletteGrid,
             projectPalettePanel,
-            projectPaletteToggle,
             colorPickerModal,
             colorPickerInput,
             colorPreviewCurrent,
@@ -115,7 +108,6 @@ function createManager(overrides: {
             paletteExportButton: null
         },
         state: {
-            palettePanelCollapsed: paletteCollapsed,
             editingColorIndex
         }
     };
@@ -124,16 +116,9 @@ function createManager(overrides: {
 }
 
 describe('EditorPaletteService', () => {
-    const originalLocale = TextResources.getLocale();
-
     beforeEach(() => {
         document.body.innerHTML = '';
         vi.clearAllMocks();
-        TextResources.setLocale(originalLocale, { silent: true });
-    });
-
-    afterEach(() => {
-        TextResources.setLocale(originalLocale, { silent: true });
     });
 
     // ─── renderPaletteGrid ────────────────────────────────────────────────────
@@ -180,23 +165,9 @@ describe('EditorPaletteService', () => {
         expect(btn.getAttribute('aria-label')).toContain(CUSTOM_PALETTE[3]);
     });
 
-    // ─── syncPaletteState / togglePanel ──────────────────────────────────────
+    // ─── syncPaletteState ────────────────────────────────────────────────────
 
-    it('uses English toggle labels when the locale is en-US', () => {
-        TextResources.setLocale('en-US', { silent: true });
-
-        const manager = createManager({ paletteCollapsed: true });
-        const service = new EditorPaletteService(asPaletteServiceManager(manager));
-
-        service.syncPaletteState();
-        expect(manager.dom.projectPaletteToggle.textContent).toContain('Show color palette');
-
-        manager.state.palettePanelCollapsed = false;
-        service.syncPaletteState();
-        expect(manager.dom.projectPaletteToggle.textContent).toContain('Hide color palette');
-    });
-
-    it('returns early from syncPaletteState when dom elements are missing', () => {
+    it('returns early from syncPaletteState when panel element is missing', () => {
         const manager = createManager();
         manager.dom.projectPalettePanel = null as unknown as HTMLDivElement;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
@@ -204,34 +175,13 @@ describe('EditorPaletteService', () => {
         expect(() => service.syncPaletteState()).not.toThrow();
     });
 
-    it('togglePanel hides an open panel and collapses state', () => {
-        const manager = createManager({ paletteCollapsed: false });
-        manager.dom.projectPalettePanel.hidden = false;
-        const service = new EditorPaletteService(asPaletteServiceManager(manager));
-
-        service.togglePanel();
-
-        expect(manager.dom.projectPalettePanel.hidden).toBe(true);
-        expect(manager.state.palettePanelCollapsed).toBe(true);
-    });
-
-    it('togglePanel shows a hidden panel and expands state', () => {
-        const manager = createManager({ paletteCollapsed: true });
+    it('syncPaletteState keeps the palette panel visible', () => {
+        const manager = createManager();
         manager.dom.projectPalettePanel.hidden = true;
         const service = new EditorPaletteService(asPaletteServiceManager(manager));
 
-        service.togglePanel();
-
+        service.syncPaletteState();
         expect(manager.dom.projectPalettePanel.hidden).toBe(false);
-        expect(manager.state.palettePanelCollapsed).toBe(false);
-    });
-
-    it('returns early from togglePanel when dom elements are missing', () => {
-        const manager = createManager();
-        manager.dom.projectPalettePanel = null as unknown as HTMLDivElement;
-        const service = new EditorPaletteService(asPaletteServiceManager(manager));
-
-        expect(() => service.togglePanel()).not.toThrow();
     });
 
     // ─── closeColorPicker ─────────────────────────────────────────────────────
@@ -455,15 +405,6 @@ describe('EditorPaletteService', () => {
         service.initialize();
         manager.dom.paletteResetButton.click();
         expect(manager.gameEngine.resetPaletteToDefault).toHaveBeenCalled();
-    });
-
-    it('toggle button click calls togglePanel', () => {
-        const manager = createManager({ paletteCollapsed: false });
-        manager.dom.projectPalettePanel.hidden = false;
-        const service = new EditorPaletteService(asPaletteServiceManager(manager));
-        service.initialize();
-        manager.dom.projectPaletteToggle.click();
-        expect(manager.state.palettePanelCollapsed).toBe(true);
     });
 
     it('color picker confirm button calls confirmColorChange', () => {

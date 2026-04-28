@@ -70,7 +70,6 @@ function makeDom() {
     const worldGrid = document.createElement('div');
     const projectVariablesToggle = document.createElement('button');
     const projectSkillsToggle = document.createElement('button');
-    const projectTestToggle = document.createElement('button');
     const projectTestStartLevel = document.createElement('select');
     const projectTestSkillList = document.createElement('div');
 
@@ -126,7 +125,6 @@ function makeDom() {
         worldGrid,
         projectVariablesToggle,
         projectSkillsToggle,
-        projectTestToggle,
         projectTestStartLevel,
         projectTestSkillList,
         projectTestGodMode,
@@ -220,7 +218,6 @@ function makeManager() {
         redo: vi.fn(),
         toggleVariablePanel: vi.fn(),
         toggleSkillPanel: vi.fn(),
-        toggleTestPanel: vi.fn(),
         updateGameMetadata: vi.fn(),
         setTestStartLevel: vi.fn(),
         setGodMode: vi.fn(),
@@ -326,13 +323,7 @@ describe('EditorEventBinder', () => {
         expect(manager.toggleSkillPanel).toHaveBeenCalledTimes(1);
     });
 
-    // 8. projectTestToggle click
-    it('projectTestToggle click calls manager.toggleTestPanel', () => {
-        dom.projectTestToggle.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-        expect(manager.toggleTestPanel).toHaveBeenCalledTimes(1);
-    });
-
-    // 9. titleInput input
+    // 8. titleInput input
     it('titleInput input event calls manager.updateGameMetadata', () => {
         dom.titleInput.value = 'My RPG';
         dom.titleInput.dispatchEvent(new Event('input', { bubbles: true }));

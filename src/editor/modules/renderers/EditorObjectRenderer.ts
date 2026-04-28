@@ -109,22 +109,26 @@ class EditorObjectRenderer extends EditorRendererBase {
                 if (durability !== null || damage !== null) {
                     const stats = document.createElement('div');
                     stats.className = 'object-type-stats';
-                    const damageValue = damage !== null ? damage : '?';
-                    const durabilityValue = durability !== null ? durability : '?';
+                    if (damage !== null) {
+                        const damageSpan = document.createElement('span');
+                        damageSpan.className = 'object-stat-damage';
+                        damageSpan.textContent = `ATK: ${damage}`;
+                        stats.appendChild(damageSpan);
+                    }
 
-                    const damageSpan = document.createElement('span');
-                    damageSpan.className = 'object-stat-damage';
-                    damageSpan.textContent = `ATK: ${damageValue}`;
+                    if (durability !== null && damage !== null) {
+                        const separator = document.createElement('span');
+                        separator.className = 'object-stat-separator';
+                        separator.textContent = ' - ';
+                        stats.appendChild(separator);
+                    }
 
-                    const separator = document.createElement('span');
-                    separator.className = 'object-stat-separator';
-                    separator.textContent = ' - ';
-
-                    const durabilitySpan = document.createElement('span');
-                    durabilitySpan.className = 'object-stat-durability';
-                    durabilitySpan.textContent = `DEF: ${durabilityValue}`;
-
-                    stats.append(damageSpan, separator, durabilitySpan);
+                    if (durability !== null) {
+                        const durabilitySpan = document.createElement('span');
+                        durabilitySpan.className = 'object-stat-durability';
+                        durabilitySpan.textContent = `DEF: ${durability}`;
+                        stats.appendChild(durabilitySpan);
+                    }
 
                     meta.appendChild(stats);
                 }

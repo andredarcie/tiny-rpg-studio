@@ -217,7 +217,7 @@ describe('EditorObjectRenderer', () => {
     expect(cards).toHaveLength(2);
     expect((cards[0] as HTMLElement).dataset.type).toBe(ITEM_TYPES.SWORD_BRONZE);
     expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: 4');
-    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: ?');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')).toBeNull();
   });
 
   it('renders catalog with non-sword custom category as pass-through', () => {
@@ -253,7 +253,7 @@ describe('EditorObjectRenderer', () => {
 
     renderer.renderObjectCatalog();
 
-    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: ?');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')).toBeNull();
     expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: 3');
   });
 

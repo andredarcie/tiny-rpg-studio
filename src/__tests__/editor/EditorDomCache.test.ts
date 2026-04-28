@@ -53,6 +53,10 @@ describe('EditorDomCache', () => {
       <button id="btn-redo"></button>
       <div id="enemy-types"></div>
       <div id="enemies-list"></div>
+      <button data-project-tab-button="development"></button>
+      <button data-project-tab-button="testing"></button>
+      <div data-project-tab-panel="development"></div>
+      <div data-project-tab-panel="testing"></div>
       <div id="project-variables-container"></div>
       <button id="project-variables-toggle"></button>
       <div id="project-variable-usage-list"></div>
@@ -61,7 +65,6 @@ describe('EditorDomCache', () => {
       <button id="project-skills-toggle"></button>
       <ol id="project-skills-list"></ol>
       <div id="project-test-container"></div>
-      <button id="project-test-toggle"></button>
       <div id="project-test-panel"></div>
       <select id="project-test-start-level"></select>
       <ul id="project-test-skill-list"></ul>
@@ -84,6 +87,8 @@ describe('EditorDomCache', () => {
     expect(cache.btnToggleNpcConditional).toBeInstanceOf(HTMLElement);
     expect(cache.npcVariantButtons).toHaveLength(2);
     expect(cache.titleInput).toBeInstanceOf(HTMLInputElement);
+    expect(cache.projectTabButtons).toHaveLength(2);
+    expect(cache.projectTabPanels).toHaveLength(2);
     expect(cache.projectTestStartLevel).toBeInstanceOf(HTMLSelectElement);
     expect(cache.projectTestGodMode).toBeInstanceOf(HTMLInputElement);
     expect(cache.projectTestDebugVision).toBeInstanceOf(HTMLInputElement);

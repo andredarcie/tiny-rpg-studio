@@ -33,8 +33,8 @@ class EditorEventBinder extends EditorManagerModule {
             mobileNavButtons,
             worldGrid,
             projectVariablesToggle,
+            projectTabButtons,
             projectSkillsToggle,
-            projectTestToggle,
             projectTestStartLevel,
             projectTestSkillList,
             projectTestGodMode,
@@ -62,9 +62,17 @@ class EditorEventBinder extends EditorManagerModule {
         btnUndo?.addEventListener('click', () => manager.undo());
         btnRedo?.addEventListener('click', () => manager.redo());
         projectVariablesToggle?.addEventListener('click', () => manager.toggleVariablePanel());
+        if (Array.isArray(projectTabButtons)) {
+            projectTabButtons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const tab = button.dataset.projectTabButton;
+                    if (!tab) return;
+                    manager.uiController.setActiveProjectTab(tab);
+                });
+            });
+        }
         projectSkillsToggle?.addEventListener('click', () => manager.toggleSkillPanel());
         this.dom.projectSkillsResetOrder?.addEventListener('click', () => manager.resetSkillOrder());
-        projectTestToggle?.addEventListener('click', () => manager.toggleTestPanel());
 
         titleInput?.addEventListener('input', () => manager.updateGameMetadata());
         authorInput?.addEventListener('input', () => manager.updateGameMetadata());

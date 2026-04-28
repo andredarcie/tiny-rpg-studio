@@ -311,7 +311,15 @@
                             <details open>
                                 <summary data-text-key="sections.project"></summary>
                                 <div class="project-actions">
-                                    <!-- Grupo: Desenvolvimento -->
+                                    <div class="project-tabs" role="tablist" aria-label="Project sections">
+                                        <button class="project-tab-button active" type="button" role="tab" aria-selected="true" data-project-tab-button="development" data-text-key="project.group.development">Desenvolvimento</button>
+                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="testing" data-text-key="project.group.testing">Testes</button>
+                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="appearance" data-text-key="project.group.appearance">Aparência</button>
+                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="info" data-text-key="project.group.info">Informações</button>
+                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="export" data-text-key="project.group.export">Exportação</button>
+                                    </div>
+
+                                    <div class="project-tab-panel active" role="tabpanel" data-project-tab-panel="development">
                                     <div class="project-group project-group--development">
                                         <h2 class="project-group__title" data-text-key="project.group.development">Desenvolvimento</h2>
                                         <div id="project-variables-container" class="project-variables">
@@ -328,14 +336,13 @@
                                             </label>
                                         </div>
                                     </div>
-
-                                    <hr class="project-separator">
+                                    </div>
 
                                     <!-- Grupo: Testes -->
+                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="testing" hidden>
                                     <div class="project-group project-group--testing">
                                         <h2 class="project-group__title" data-text-key="project.group.testing">Testes</h2>
                                         <div id="project-test-container" class="project-variables project-test">
-                                            <button id="project-test-toggle" class="project-variables__toggle project-test__toggle" type="button" aria-expanded="false" aria-controls="project-test-panel"></button>
                                             <div id="project-test-panel" class="project-test__panel">
                                                 <p class="project-test__hint" data-text-key="project.test.hint"></p>
                                                 <label class="project-test__field">
@@ -357,15 +364,14 @@
                                             </div>
                                         </div>
                                     </div>
-
-                                    <hr class="project-separator">
+                                    </div>
 
                                     <!-- Grupo: Aparência -->
+                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="appearance" hidden>
                                     <div class="project-group project-group--appearance">
                                         <h2 class="project-group__title" data-text-key="project.group.appearance">Aparência</h2>
                                         <div id="project-palette-container" class="project-variables project-palette">
-                                            <button id="project-palette-toggle" class="project-variables__toggle project-palette__toggle" type="button"></button>
-                                            <div id="project-palette-panel" class="project-palette__panel" hidden>
+                                            <div id="project-palette-panel" class="project-palette__panel">
                                                 <div class="palette-header">
                                                     <p class="palette-description" data-text-key="project.paletteDescription"></p>
                                                     <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -390,6 +396,7 @@
                                             <input type="checkbox" id="project-hide-hud">
                                             <span data-text-key="project.hideHud"></span>
                                         </label>
+                                    </div>
                                     </div>
 
                                     <!-- Skill Edit Modal -->
@@ -476,9 +483,8 @@
                                         </div>
                                     </div>
 
-                                    <hr class="project-separator">
-
                                     <!-- Grupo: Informações -->
+                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="info" hidden>
                                     <div class="project-group project-group--info">
                                         <h2 class="project-group__title" data-text-key="project.group.info">Informações</h2>
                                         <label class="project-field">
@@ -497,10 +503,10 @@
                                             </select>
                                         </label>
                                     </div>
-
-                                    <hr class="project-separator">
+                                    </div>
 
                                     <!-- Grupo: Exportação -->
+                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="export" hidden>
                                     <div class="project-group project-group--export">
                                         <h2 class="project-group__title" data-text-key="project.group.export">Exportação</h2>
                                         <p class="project-share-hint" data-text-key="project.shareHint"></p>
@@ -511,6 +517,7 @@
                                         </label>
                                         <button id="btn-import-html" data-text-key="project.importHTML"></button>
                                         <button id="btn-generate-html" data-text-key="project.generateHTML"></button>
+                                    </div>
                                     </div>
                                 </div>
                             </details>

@@ -106,10 +106,19 @@ class ShareCoverPreview {
         return cache.get(Number(tileId)) || null;
     }
 
-    renderFromUrl(shareUrl: string): HTMLCanvasElement {
+  renderFromUrl(shareUrl: string): HTMLCanvasElement {
         this.gameData = ShareCoverPreview.decodeShareUrl(shareUrl);
         this.render();
         return this.canvas;
+    }
+
+    fitBitmapText(text: string, maxWidth: number, baseSize: number, minSize: number): number {
+        const source = String(text || '');
+        let size = Math.max(minSize, baseSize);
+        while (size > minSize && bitmapFont.measureText(source, size) > maxWidth) {
+            size -= 1;
+        }
+        return size;
     }
 
     render(): HTMLCanvasElement {
@@ -212,7 +221,7 @@ class ShareCoverPreview {
         ctx.lineWidth = 2;
         ctx.strokeRect(3, 3, width - 6, height - 6);
 
-        const title = (this.gameData?.title || 'Tiny RPG Studio').trim() || 'Tiny RPG Studio';
+        const title = this.toDisplayCaps((this.gameData?.title || 'Tiny RPG Studio').trim() || 'Tiny RPG Studio');
         const author = (this.gameData?.author || '').trim();
         const centerX = width / 2;
         const centerY = height / 2;
@@ -221,18 +230,41 @@ class ShareCoverPreview {
         ctx.textBaseline = 'middle';
 
         const maxTextWidth = width * 0.9;
-        const titleText = bitmapFont.truncateText(title, maxTextWidth, FONT_SIZE);
-        bitmapFont.drawText(ctx, titleText, centerX, centerY - height * 0.12, FONT_SIZE, '#FFFFFF');
+        const titleSize = this.fitBitmapText(
+            title,
+            maxTextWidth,
+            Math.max(FONT_SIZE * 2, Math.floor(height / 9)),
+            FONT_SIZE
+        );
+        const titleText = bitmapFont.truncateText(title, maxTextWidth, titleSize);
+        bitmapFont.drawText(ctx, titleText, centerX, centerY - height * 0.12, titleSize, '#FFFFFF');
 
         if (author) {
-            const authorText = bitmapFont.truncateText(`por ${author}`, maxTextWidth, FONT_SIZE);
-            bitmapFont.drawText(ctx, authorText, centerX, centerY - height * 0.02, FONT_SIZE, 'rgba(255,255,255,0.82)');
+            const authorLabel = this.toDisplayCaps(`por ${author}`);
+            const authorSize = this.fitBitmapText(
+                authorLabel,
+                width * 0.8,
+                Math.max(Math.round(FONT_SIZE * 1.5), Math.floor(height / 16)),
+                FONT_SIZE
+            );
+            const authorText = bitmapFont.truncateText(authorLabel, width * 0.8, authorSize);
+            bitmapFont.drawText(ctx, authorText, centerX, centerY - height * 0.02, authorSize, 'rgba(255,255,255,0.82)');
         }
 
-        bitmapFont.drawText(ctx, 'Iniciar aventura', centerX, centerY + height * 0.16, FONT_SIZE, 'rgba(100, 181, 246, 0.95)');
+        const ctaLabel = this.toDisplayCaps('Iniciar aventura');
+        const ctaSize = this.fitBitmapText(
+            ctaLabel,
+            width * 0.8,
+            Math.max(Math.round(FONT_SIZE * 1.5), Math.floor(height / 18)),
+            FONT_SIZE
+        );
+        bitmapFont.drawText(ctx, ctaLabel, centerX, centerY + height * 0.16, ctaSize, 'rgba(100, 181, 246, 0.95)');
 
         ctx.restore();
     }
 }
 
 export { ShareCoverPreview };
+  toDisplayCaps(value: string): string {
+    return String(value || '').toLocaleUpperCase();
+  }

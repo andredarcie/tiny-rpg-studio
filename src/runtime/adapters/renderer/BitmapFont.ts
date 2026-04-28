@@ -118,7 +118,10 @@ export class BitmapFont {
     }
 
     private static normalize(text: string): string {
-        return String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        return String(text || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .normalize('NFC');
     }
 
     measureText(text: string, charSize: number): number {

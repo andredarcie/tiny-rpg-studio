@@ -14,6 +14,8 @@ const formatOverlayText = (key: string, params: Record<string, string | number |
     return value || fallback || '';
 };
 
+const toDisplayCaps = (value: string): string => String(value || '').toLocaleUpperCase();
+
 class RendererOverlayRenderer extends RendererModuleBase {
     introData: { title: string; author: string };
     pickupFx: { id: string | null; startTime: number };
@@ -61,7 +63,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
 
     drawIntroOverlay(ctx: CanvasRenderingContext2D, gameplayCanvas: { width: number; height: number }) {
         this.overlayEntityRenderer.cleanupEnemyLabels();
-        const title = this.introData.title || 'Tiny RPG Studio';
+        const title = toDisplayCaps(this.introData.title || 'Tiny RPG Studio');
         const author = (this.introData.author || '').trim();
         const width = gameplayCanvas.width;
         const height = gameplayCanvas.height;
@@ -74,7 +76,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
         const centerY = height / 2;
         bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, TITLE_FONT_SIZE, '#FFFFFF');
         if (author) {
-            const byline = formatOverlayText('intro.byline', { author }, `por ${author}`);
+            const byline = toDisplayCaps(formatOverlayText('intro.byline', { author }, `por ${author}`));
             bitmapFont.drawText(ctx, byline, centerX, centerY, FONT_SIZE, 'rgba(255,255,255,0.8)');
         }
 
@@ -83,7 +85,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
             const blink = ((Date.now() / GameConfig.animation.blinkInterval) % 2) > 1
                 ? GameConfig.animation.blinkMinOpacity
                 : GameConfig.animation.blinkMaxOpacity;
-            const startLabel = getOverlayText('intro.startAdventure', 'Iniciar aventura');
+            const startLabel = toDisplayCaps(getOverlayText('intro.startAdventure', 'Iniciar aventura'));
             bitmapFont.drawText(ctx, startLabel, centerX, centerY + height * 0.18, FONT_SIZE, `rgba(100, 181, 246, ${blink.toFixed(2)})`);
         }
 

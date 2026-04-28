@@ -33,10 +33,18 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const projectDisableSkills = document.createElement('input');
   projectDisableSkills.type = 'checkbox';
   const jsonArea = document.createElement('textarea');
+  const projectTabDevelopment = document.createElement('button');
+  projectTabDevelopment.dataset.projectTabButton = 'development';
+  const projectTabTesting = document.createElement('button');
+  projectTabTesting.dataset.projectTabButton = 'testing';
+  const projectPanelDevelopment = document.createElement('div');
+  projectPanelDevelopment.dataset.projectTabPanel = 'development';
+  const projectPanelTesting = document.createElement('div');
+  projectPanelTesting.dataset.projectTabPanel = 'testing';
 
   const state: Record<string, unknown> = {
     variablePanelCollapsed: false, skillPanelCollapsed: false,
-    testPanelCollapsed: false, activeMobilePanel: 'tiles', ...stateOverrides,
+    testPanelCollapsed: false, activeMobilePanel: 'tiles', activeProjectTab: 'development', ...stateOverrides,
   };
 
   return {
@@ -47,6 +55,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       projectHideHud,
       projectDisableSkills,
       jsonArea,
+      projectTabButtons: [projectTabDevelopment, projectTabTesting],
+      projectTabPanels: [projectPanelDevelopment, projectPanelTesting],
       mobileNavButtons: [] as HTMLButtonElement[],
       mobilePanels: [] as HTMLElement[],
     },
@@ -269,6 +279,17 @@ describe('EditorUIController', () => {
     // same panel → state unchanged
     ctrl.setActiveMobilePanel('tiles');
     expect(mgr.state.activeMobilePanel).toBe('tiles');
+  });
+
+  it('setActiveProjectTab updates project tab state and classes', () => {
+    const mgr = makeManager({ activeProjectTab: 'development' });
+    const ctrl = makeController(mgr);
+    ctrl.setActiveProjectTab('testing');
+    expect(mgr.state.activeProjectTab).toBe('testing');
+    expect(mgr.domCache.projectTabButtons[0].classList.contains('active')).toBe(false);
+    expect(mgr.domCache.projectTabButtons[1].classList.contains('active')).toBe(true);
+    expect(mgr.domCache.projectTabPanels[0].hidden).toBe(true);
+    expect(mgr.domCache.projectTabPanels[1].hidden).toBe(false);
   });
 
   // ─── updateMobilePanels ──────────────────────────────────────────────
