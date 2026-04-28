@@ -286,7 +286,6 @@ class RendererOverlayRenderer extends RendererModuleBase {
                 }
                 pushLine(rest.slice(0, splitAt));
                 rest = rest.slice(splitAt);
-                if (truncated) return;
             }
             const candidate = line ? `${line} ${rest}` : rest;
             if (bitmapFont.measureText(candidate, charSize) > maxWidth && line) {
@@ -296,7 +295,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
                 line = candidate;
             }
         });
-        if (line && !truncated) pushLine(line);
+        if (line) pushLine(line);
         if (maxLines === 1 && words.length > 1) {
             truncated = true;
         }

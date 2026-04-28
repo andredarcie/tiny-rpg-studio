@@ -51,6 +51,10 @@ class ShareCoverPreview {
     this.gameData = null;
   }
 
+    private toDisplayCaps(value: string): string {
+        return String(value || '').toLocaleUpperCase();
+    }
+
     static extractShareCode(value = ''): string {
         const text = String(value || '').trim();
         if (!text) return '';
@@ -265,6 +269,3 @@ class ShareCoverPreview {
 }
 
 export { ShareCoverPreview };
-  toDisplayCaps(value: string): string {
-    return String(value || '').toLocaleUpperCase();
-  }

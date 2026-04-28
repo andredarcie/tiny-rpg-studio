@@ -644,14 +644,14 @@ describe('RendererOverlayRenderer – drawIntroOverlay', () => {
         const { overlay, ctx } = makeOverlay();
         overlay.setIntroData({ title: 'My Game', author: '' });
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        expect(ctx.fillText).toHaveBeenCalledWith('My Game', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith('MY GAME', expect.any(Number), expect.any(Number));
     });
 
     it('falls back to "Tiny RPG Studio" when introData.title is empty', () => {
         const { overlay, ctx } = makeOverlay();
         overlay.introData = { title: '', author: '' };
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        expect(ctx.fillText).toHaveBeenCalledWith('Tiny RPG Studio', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith('TINY RPG STUDIO', expect.any(Number), expect.any(Number));
     });
 
     it('draws byline when author is set', () => {
@@ -659,7 +659,7 @@ describe('RendererOverlayRenderer – drawIntroOverlay', () => {
         overlay.setIntroData({ title: 'My Game', author: 'Dev' });
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
         const texts = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
-        expect(texts.some((t: string) => t.includes('Dev'))).toBe(true);
+        expect(texts.some((t: string) => t.includes('DEV'))).toBe(true);
     });
 
     it('draws start label when canDismissIntroScreen is true (blink max phase)', () => {

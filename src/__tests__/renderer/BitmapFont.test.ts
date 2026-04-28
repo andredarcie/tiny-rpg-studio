@@ -115,7 +115,7 @@ describe('BitmapFont', () => {
 
     describe('load', () => {
         let lastImg: { onload: (() => void) | null; onerror: (() => void) | null; src: string };
-        let imageCtorSpy: ReturnType<typeof vi.fn>;
+        let imageCtorSpy: ReturnType<typeof vi.fn<() => void>>;
 
         beforeEach(() => {
             imageCtorSpy = vi.fn();

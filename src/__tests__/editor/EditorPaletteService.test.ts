@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorPaletteService } from '../../editor/modules/EditorPaletteService';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 

@@ -126,7 +126,7 @@ class EditorExportService {
                 : src.endsWith('.png')
                     ? 'image/png'
                     : 'application/octet-stream';
-            const encoded = globalThis.btoa ? globalThis.btoa(text) : text;
+            const encoded = btoa(text);
             return `data:${mimeType};base64,${encoded}`;
         }
 

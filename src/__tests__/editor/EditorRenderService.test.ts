@@ -215,7 +215,6 @@ function createDomFixture(): DomFixture {
   const hint = document.createElement('div');
   hint.className = 'project-test__hint';
   projectTestContainer.appendChild(hint);
-  const projectTestToggle = document.createElement('button');
   const projectTestPanel = document.createElement('div');
   const projectTestStartLevel = document.createElement('select');
   const projectTestSkillList = document.createElement('div');
@@ -242,7 +241,6 @@ function createDomFixture(): DomFixture {
     projectSkillsContainer,
     projectSkillsToggle,
     projectTestContainer,
-    projectTestToggle,
     projectTestPanel,
     projectTestStartLevel,
     projectTestSkillList,

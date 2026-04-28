@@ -34,7 +34,13 @@ export class BitmapFont {
             const c = document.createElement('canvas');
             c.width = NORMALIZED_SHEET_SIZE;
             c.height = NORMALIZED_SHEET_SIZE;
-            const ctx = c.getContext('2d')!;
+            const ctx = c.getContext('2d');
+            if (!ctx) {
+                this.loading = false;
+                this.readyCallbacks.clear();
+                console.error('[BitmapFont] Unable to create 2D context for font sheet.');
+                return;
+            }
             ctx.imageSmoothingEnabled = false;
             for (let index = 0; index < CHARS_PER_ROW * CHARS_PER_ROW; index += 1) {
                 const col = index % CHARS_PER_ROW;
@@ -178,7 +184,8 @@ export class BitmapFont {
         if (this.tmp.width < w) this.tmp.width = Math.max(w, 256);
         if (this.tmp.height < h) this.tmp.height = h;
 
-        const tctx = this.tmp.getContext('2d')!;
+        const tctx = this.tmp.getContext('2d');
+        if (!tctx) return;
         tctx.clearRect(0, 0, w, h);
         tctx.imageSmoothingEnabled = false;
         tctx.globalCompositeOperation = 'source-over';
