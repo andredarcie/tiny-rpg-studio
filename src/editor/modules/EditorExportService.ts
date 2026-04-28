@@ -2,6 +2,7 @@ import { getTinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
+import { FONT_BITMAP_SRC, FONT_CSS_SRC } from '../../config/FontConfig';
 
 type GameExportData = {
     title?: string;
@@ -90,6 +91,46 @@ class EditorExportService {
             console.error('Import failed', error);
             alert(TextResources.get('alerts.importHTML.decodeError', 'Não foi possível decodificar os dados do jogo.') as string);
         }
+    }
+
+    private async fetchAssetAsDataUrl(src: string, downloadError: string): Promise<string> {
+        let response: Response;
+        try {
+            response = await fetch(src as RequestInfo);
+        } catch {
+            throw new Error(downloadError);
+        }
+
+        if (!response.ok) {
+            throw new Error(downloadError);
+        }
+
+        if (typeof response.blob === 'function') {
+            const blob = await response.blob();
+            return await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result || ''));
+                reader.onerror = () => reject(new Error(downloadError));
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        if (typeof response.text === 'function') {
+            const text = await response.text();
+            if (text.startsWith('data:')) {
+                return text;
+            }
+
+            const mimeType = src.endsWith('.woff')
+                ? 'font/woff'
+                : src.endsWith('.png')
+                    ? 'image/png'
+                    : 'application/octet-stream';
+            const encoded = globalThis.btoa ? globalThis.btoa(text) : text;
+            return `data:${mimeType};base64,${encoded}`;
+        }
+
+        throw new Error(downloadError);
     }
 
     async exportProjectAsHtml() {
@@ -335,6 +376,14 @@ class EditorExportService {
                 alert(invalidScriptResponseMessage);
                 return;
             }
+            const fontWoffDataUrl = await this.fetchAssetAsDataUrl(FONT_CSS_SRC, downloadError);
+            const fontBitmapDataUrl = await this.fetchAssetAsDataUrl(FONT_BITMAP_SRC, downloadError);
+            const exportCssText = cssText
+                .replaceAll(FONT_CSS_SRC, fontWoffDataUrl)
+                .replaceAll(FONT_BITMAP_SRC, fontBitmapDataUrl);
+            const exportScriptsText = allScripts
+                .replaceAll(FONT_CSS_SRC, fontWoffDataUrl)
+                .replaceAll(FONT_BITMAP_SRC, fontBitmapDataUrl);
 
             const html = `<!DOCTYPE html>
                 <html lang="${locale}">
@@ -342,10 +391,7 @@ class EditorExportService {
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
                 <title>Tiny RPG</title>
-                <link rel="preconnect" href="https://fonts.googleapis.com">
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-                <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-                <style>${cssText}
+                <style>${exportCssText}
                 body{background-color:#000}
                 #game-container{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;background-color:#000;overflow:hidden}
                 .game-controls{display:flex;justify-content:center;margin-top:1rem}
@@ -383,7 +429,7 @@ class EditorExportService {
                 </div>
                 <script>
             console.log('[TinyRPG Export] Loading scripts', { count: ${Object.keys(scripts).length}, requested: ${scriptSrcs.length}, skipped: ${JSON.stringify(skippedScripts)}, bundle: ${Boolean(bundleSource)} });
-                ${allScripts}
+                ${exportScriptsText}
                 console.log('[TinyRPG Export] Scripts executed');
                 </script>
                 </body>

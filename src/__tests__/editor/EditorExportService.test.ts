@@ -45,6 +45,7 @@ import { EditorExportService } from '../../editor/modules/EditorExportService';
 type FakeResponse = {
   ok: boolean;
   text: () => Promise<string>;
+  blob?: () => Promise<Blob>;
 };
 
 function setupDom() {
@@ -262,7 +263,10 @@ describe('EditorExportService', () => {
     ]);
     mockState.trLocale = 'pt-BR';
     mockState.api = makeApi({ exportGameData: vi.fn(() => ({ title: 'Árvore Mágica' })) });
-    fetchSpy.mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('console.log("bundle ok");') } as FakeResponse);
+    fetchSpy
+      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('console.log("bundle ok");') } as FakeResponse)
+      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('woff'), blob: () => Promise.resolve(new Blob(['woff'])) } as FakeResponse)
+      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('png'), blob: () => Promise.resolve(new Blob(['png'])) } as FakeResponse);
     const svc = new EditorExportService();
 
     await svc.exportProjectAsHtml();
