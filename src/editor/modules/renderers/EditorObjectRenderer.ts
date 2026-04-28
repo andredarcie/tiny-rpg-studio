@@ -111,7 +111,20 @@ class EditorObjectRenderer extends EditorRendererBase {
                     stats.className = 'object-type-stats';
                     const damageValue = damage !== null ? damage : '?';
                     const durabilityValue = durability !== null ? durability : '?';
-                    stats.textContent = `ATK: ${damageValue} - DEF: ${durabilityValue}`;
+
+                    const damageSpan = document.createElement('span');
+                    damageSpan.className = 'object-stat-damage';
+                    damageSpan.textContent = `ATK: ${damageValue}`;
+
+                    const separator = document.createElement('span');
+                    separator.className = 'object-stat-separator';
+                    separator.textContent = ' - ';
+
+                    const durabilitySpan = document.createElement('span');
+                    durabilitySpan.className = 'object-stat-durability';
+                    durabilitySpan.textContent = `DEF: ${durabilityValue}`;
+
+                    stats.append(damageSpan, separator, durabilitySpan);
 
                     meta.appendChild(stats);
                 }

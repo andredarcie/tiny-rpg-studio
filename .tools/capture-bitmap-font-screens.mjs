@@ -15,6 +15,14 @@ async function screenshot(page, name) {
   return file;
 }
 
+// Waits for two animation frames so any pending canvas renders flush.
+async function waitForRender(page, extraMs = 0) {
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
+  if (extraMs > 0) await page.waitForTimeout(extraMs);
+}
+
 async function main() {
   await ensureDir(outDir);
   const browser = await chromium.launch({ headless: true });
@@ -24,22 +32,27 @@ async function main() {
   page.on('pageerror', (err) => consoleMessages.push(`pageerror: ${err.message}`));
 
   await page.goto(`${url}?bitmap-validation=${Date.now()}`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(1400);
+  // Wait for the game canvas to receive its first painted frame.
+  await page.waitForFunction(() => {
+    const c = document.getElementById('game-canvas');
+    return c instanceof HTMLCanvasElement && c.width > 0 && c.height > 0;
+  }, { timeout: 10000 });
+  await waitForRender(page, 200);
   const intro = await screenshot(page, '01-intro');
 
   await page.click('#game-canvas');
   await page.keyboard.press('Enter');
-  await page.waitForTimeout(700);
+  await waitForRender(page, 100);
   const gameplay = await screenshot(page, '02-gameplay');
 
   await page.keyboard.press('ArrowRight');
-  await page.waitForTimeout(250);
+  await waitForRender(page);
   await page.keyboard.press('ArrowDown');
-  await page.waitForTimeout(700);
+  await waitForRender(page, 100);
   const moved = await screenshot(page, '03-gameplay-moved');
 
   await page.click('[data-tab="editor"]');
-  await page.waitForTimeout(1200);
+  await waitForRender(page, 200);
   const editor = await screenshot(page, '04-editor');
 
   const html = `<!doctype html>

@@ -2587,14 +2587,13 @@ body.game-mode .tab-button.active {
     justify-content: center;
     padding: 8px;
     width: 92px;
-    aspect-ratio: 1 / 1;
+    height: 92px;
     appearance: none;
     -webkit-appearance: none;
     background: var(--panel);
     border: 4px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0;
     cursor: pointer;
-    min-height: 72px;
     position: relative;
 }
 
@@ -2650,6 +2649,7 @@ body.game-mode .tab-button.active {
 .tile-card canvas {
     width: 64px;
     height: 64px;
+    flex-shrink: 0;
 }
 
 .npc-card .meta {
@@ -3087,7 +3087,7 @@ body.game-mode .tab-button.active {
 }
 
 @media (max-width: 960px) {
-    .editor-left .editor-section canvas {
+    #editor-canvas {
         width: clamp(200px, 80vw, 320px);
     }
 }

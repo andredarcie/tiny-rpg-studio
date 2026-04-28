@@ -1,4 +1,4 @@
-import { FONT_SIZE, LINE_HEIGHT } from '../../../config/FontConfig';
+import { FONT_SIZE, LINE_HEIGHT, TITLE_FONT_SIZE } from '../../../config/FontConfig';
 import { TextResources } from '../TextResources';
 import { bitmapFont } from './BitmapFont';
 import { RendererModuleBase } from './RendererModuleBase';
@@ -72,7 +72,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.textBaseline = 'middle';
         const centerX = width / 2;
         const centerY = height / 2;
-        bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, FONT_SIZE, '#FFFFFF');
+        bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, TITLE_FONT_SIZE, '#FFFFFF');
         if (author) {
             const byline = formatOverlayText('intro.byline', { author }, `por ${author}`);
             bitmapFont.drawText(ctx, byline, centerX, centerY, FONT_SIZE, 'rgba(255,255,255,0.8)');

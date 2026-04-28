@@ -41,15 +41,14 @@ class RendererDialogRenderer {
         const x = pad;
         const y = canvas.height - h - pad;
 
-        ctx.fillStyle = 'rgba(0,0,0,0.7)';
-        ctx.fillRect(x, y, w, h);
-
         const accent = this.paletteManager.getColor(7) || '#FFF1E8';
-        ctx.strokeStyle = accent;
-        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = accent;
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = this.paletteManager.getColor(1) || '#1D2B53';
+        ctx.fillRect(x + 1, y + 1, w - 2, h - 2);
 
         const maxWidth = w - 12;
-        const pages = this.calculateDialogPages(dialog, maxWidth, h - 12);
+        const pages = this.calculateDialogPages(dialog, maxWidth, h - 10);
         const totalPages = Math.max(1, pages.length);
         if (dialog.maxPages !== totalPages) {
             dialog.maxPages = totalPages;
@@ -60,7 +59,7 @@ class RendererDialogRenderer {
         }
         const lines = pages[currentIndex] || [];
 
-        let ty = y + 10;
+        let ty = y + 12;
         for (const line of lines) {
             bitmapFont.drawText(ctx, line, x + 6, ty, FONT_SIZE, accent);
             ty += LINE_HEIGHT;

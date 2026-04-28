@@ -12,7 +12,7 @@ type GlyphMetric = {
     advance: number;
 };
 
-class BitmapFont {
+export class BitmapFont {
     private sheet: HTMLCanvasElement | null = null;
     private glyphMetrics: GlyphMetric[] = [];
     private loading = false;
@@ -62,6 +62,7 @@ class BitmapFont {
         img.onerror = () => {
             this.loading = false;
             this.readyCallbacks.clear();
+            console.error(`[BitmapFont] Failed to load font sheet: ${src}`);
         };
         img.src = src;
     }
@@ -106,8 +107,22 @@ class BitmapFont {
         return this.getGlyphMetric(charCode).advance * scale;
     }
 
+    truncateText(text: string, maxWidth: number, charSize: number): string {
+        if (!this.sheet || this.measureText(text, charSize) <= maxWidth) return text;
+        const ellipsis = '...';
+        let truncated = text;
+        while (truncated.length > 0 && this.measureText(truncated + ellipsis, charSize) > maxWidth) {
+            truncated = truncated.slice(0, -1);
+        }
+        return truncated + ellipsis;
+    }
+
+    private static normalize(text: string): string {
+        return String(text || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    }
+
     measureText(text: string, charSize: number): number {
-        const lines = String(text || '').toLowerCase().split('\n');
+        const lines = BitmapFont.normalize(text).split('\n');
         return lines.reduce((maxWidth, line) => {
             let cursorX = 0;
             let renderedWidth = 0;
@@ -136,7 +151,7 @@ class BitmapFont {
 
         const scale = charSize / CHAR_PX;
         const lineHeight = Math.max(1, Math.round((LINE_HEIGHT / FONT_SIZE) * charSize));
-        const lines = String(text).toLowerCase().split('\n');
+        const lines = BitmapFont.normalize(text).split('\n');
         const w = Math.max(1, Math.ceil(this.measureText(text, charSize)));
         const h = Math.max(1, Math.ceil((lines.length - 1) * lineHeight + charSize));
 

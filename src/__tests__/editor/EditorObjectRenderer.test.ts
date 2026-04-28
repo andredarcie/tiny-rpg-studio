@@ -194,7 +194,8 @@ describe('EditorObjectRenderer', () => {
     expect(fixture.service.dom.objectTypes.textContent).toContain('t:objects.info.placed');
     expect(fixture.service.dom.objectTypes.textContent).toContain('t:objects.info.available');
     expect(fixture.service.dom.objectTypes.querySelector('.object-type-stats')).not.toBeNull();
-    expect(fixture.service.dom.objectTypes.querySelector('.object-type-stats')?.textContent).toBe('ATK: 7 - DEF: 9');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: 7');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: 9');
   });
 
   it('filters catalog by swords category and handles stats partial/null cases', () => {
@@ -215,7 +216,8 @@ describe('EditorObjectRenderer', () => {
     const cards = fixture.service.dom.objectTypes.querySelectorAll('.object-type-card');
     expect(cards).toHaveLength(2);
     expect((cards[0] as HTMLElement).dataset.type).toBe(ITEM_TYPES.SWORD_BRONZE);
-    expect(fixture.service.dom.objectTypes.querySelector('.object-type-stats')?.textContent).toBe('ATK: 4 - DEF: ?');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: 4');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: ?');
   });
 
   it('renders catalog with non-sword custom category as pass-through', () => {
@@ -251,7 +253,8 @@ describe('EditorObjectRenderer', () => {
 
     renderer.renderObjectCatalog();
 
-    expect(fixture.service.dom.objectTypes.querySelector('.object-type-stats')?.textContent).toBe('ATK: ? - DEF: 3');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: ?');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: 3');
   });
 
   it('returns early in renderObjects when list is missing', () => {

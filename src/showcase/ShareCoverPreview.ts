@@ -220,10 +220,12 @@ class ShareCoverPreview {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, FONT_SIZE, '#FFFFFF');
+        const maxTextWidth = width * 0.9;
+        const titleText = bitmapFont.truncateText(title, maxTextWidth, FONT_SIZE);
+        bitmapFont.drawText(ctx, titleText, centerX, centerY - height * 0.12, FONT_SIZE, '#FFFFFF');
 
         if (author) {
-            const authorText = `por ${author}`;
+            const authorText = bitmapFont.truncateText(`por ${author}`, maxTextWidth, FONT_SIZE);
             bitmapFont.drawText(ctx, authorText, centerX, centerY - height * 0.02, FONT_SIZE, 'rgba(255,255,255,0.82)');
         }
 

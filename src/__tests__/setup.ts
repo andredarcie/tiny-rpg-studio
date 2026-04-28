@@ -53,3 +53,5 @@ bitmapFont.drawText = ((ctx: CanvasRenderingContext2D, text: string, x: number, 
 bitmapFont.measureText = ((text: string, charSize: number) => {
     return String(text || '').length * (charSize / 8) * 6;
 }) as typeof bitmapFont.measureText;
+
+bitmapFont.truncateText = ((text: string) => text) as typeof bitmapFont.truncateText;

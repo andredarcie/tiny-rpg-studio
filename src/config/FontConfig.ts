@@ -15,6 +15,9 @@ export const FONT_BITMAP_SRC = '/pico8-font.png';
 /** Character size in canvas pixels. */
 export const FONT_SIZE = 8;
 
+/** Font size for the game title on the intro screen — 25% larger than FONT_SIZE. */
+export const TITLE_FONT_SIZE = Math.round(FONT_SIZE * 1.25);
+
 /** Font size used by the DOM editor UI. */
 export const UI_FONT_SIZE = 16;
 
@@ -33,6 +36,7 @@ export const LINE_HEIGHT = FONT_SIZE + 2;
  */
 export function applyFontConfig(): void {
     if (typeof document === 'undefined') return;
+    if (document.getElementById('engine-font-config')) return;
 
     const style = document.createElement('style');
     style.id = 'engine-font-config';
