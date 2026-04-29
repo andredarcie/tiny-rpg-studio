@@ -3916,6 +3916,7 @@ body.game-mode .tab-button.active {
     flex-direction: column;
     background: var(--bg);
     border: 2px solid var(--border);
+    cursor: pointer;
     text-align: left;
     font-family: var(--ui-font-family);
     color: var(--text);
@@ -3924,7 +3925,7 @@ body.game-mode .tab-button.active {
 }
 
 .explore-card:hover,
-.explore-card:focus-within {
+.explore-card:focus {
     border-color: var(--accent);
     outline: none;
 }
@@ -3933,9 +3934,6 @@ body.game-mode .tab-button.active {
     width: 100%;
     aspect-ratio: 1 / 1;
     background: var(--border);
-    border: none;
-    padding: 0;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;

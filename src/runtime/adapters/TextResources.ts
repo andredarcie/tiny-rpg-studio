@@ -331,7 +331,7 @@ const TEXT_BUNDLES = {
         'explore.loadMore': 'Carregar mais',
         'explore.by': 'por',
         'explore.backToMyGame': '← Voltar para meu jogo',
-        'explore.subtitle': '{count} tiny adventures da comunidade',
+        'explore.subtitle': '{count} pequenas aventuras da comunidade',
         'explore.itchLink': 'itch.io ↗',
         'explore.itchLinkAria': '{title} no itch.io'
     },
@@ -380,6 +380,9 @@ const TEXT_BUNDLES = {
         'npc.variant.dwarf': 'Dwarf',
         'npc.variant.fixed': 'Extras',
         'npcs.names.oldMage': 'Old Mage',
+        'npcs.names.oldMage.human': 'Old Mage',
+        'npcs.names.oldMage.elf': 'Old Mage',
+        'npcs.names.oldMage.dwarf': 'Old Mage',
         'npcs.names.villagerMan': 'Common man',
         'npcs.names.villagerMan.human': 'Common man',
         'npcs.names.villagerMan.elf': 'Common man',

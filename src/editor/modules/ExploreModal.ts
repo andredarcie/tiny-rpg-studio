@@ -196,14 +196,15 @@ class ExploreModal {
   }
 
   private renderCard(game: GameEntry): HTMLElement {
-    const card = document.createElement('div');
+    const card = document.createElement('button');
     card.className = 'explore-card';
+    card.type = 'button';
+    card.setAttribute('aria-label', game.title);
     card.setAttribute('role', 'listitem');
+    card.addEventListener('click', () => this.playGame(game));
 
-    const cover = document.createElement('button');
+    const cover = document.createElement('div');
     cover.className = 'explore-card__cover';
-    cover.type = 'button';
-    cover.setAttribute('aria-label', game.title);
 
     if (game.gameData) {
       const placeholder = document.createElement('span');
@@ -222,8 +223,6 @@ class ExploreModal {
       placeholder.textContent = '?';
       cover.appendChild(placeholder);
     }
-
-    cover.addEventListener('click', () => this.playGame(game));
 
     const info = document.createElement('div');
     info.className = 'explore-card__info';
@@ -244,6 +243,7 @@ class ExploreModal {
     itchLink.rel = 'noopener noreferrer';
     itchLink.textContent = TextResources.get('explore.itchLink', 'itch.io ↗');
     itchLink.setAttribute('aria-label', TextResources.format('explore.itchLinkAria', { title: game.title }, `${game.title} on itch.io`));
+    itchLink.addEventListener('click', e => e.stopPropagation());
 
     info.appendChild(titleEl);
     info.appendChild(authorEl);
