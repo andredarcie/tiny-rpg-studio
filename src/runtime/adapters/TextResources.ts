@@ -330,7 +330,10 @@ const TEXT_BUNDLES = {
         'explore.empty': 'Nenhum jogo disponível ainda.',
         'explore.loadMore': 'Carregar mais',
         'explore.by': 'por',
-        'explore.backToMyGame': '← Voltar para meu jogo'
+        'explore.backToMyGame': '← Voltar para meu jogo',
+        'explore.subtitle': '{count} tiny adventures da comunidade',
+        'explore.itchLink': 'itch.io ↗',
+        'explore.itchLinkAria': '{title} no itch.io'
     },
     'en-US': {
         'intro.byline': 'by {author}',
@@ -659,7 +662,10 @@ const TEXT_BUNDLES = {
         'explore.empty': 'No games available yet.',
         'explore.loadMore': 'Load more',
         'explore.by': 'by',
-        'explore.backToMyGame': '← Back to my game'
+        'explore.backToMyGame': '← Back to my game',
+        'explore.subtitle': '{count} tiny adventures from the community',
+        'explore.itchLink': 'itch.io ↗',
+        'explore.itchLinkAria': '{title} on itch.io'
     }
 };
 

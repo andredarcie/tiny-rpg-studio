@@ -36,6 +36,9 @@ playwright-report/
 .claude/settings.local.json
 .tools/butler/
 
+# Local scripts (not versioned)
+scripts/
+
 # Editor / OS files
 .vscode/*
 !.vscode/extensions.json

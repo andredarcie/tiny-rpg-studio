@@ -3856,9 +3856,27 @@ body.game-mode .tab-button.active {
     gap: 12px;
 }
 
+.explore-modal__title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
 .explore-modal__title {
     color: var(--accent);
     margin: 0;
+}
+
+.explore-modal__subtitle {
+    margin: 0;
+    color: var(--muted);
+    opacity: 0.55;
+    font-size: 0.85em;
+    line-height: var(--lh-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .explore-modal__close {
@@ -3898,7 +3916,6 @@ body.game-mode .tab-button.active {
     flex-direction: column;
     background: var(--bg);
     border: 2px solid var(--border);
-    cursor: pointer;
     text-align: left;
     font-family: var(--ui-font-family);
     color: var(--text);
@@ -3907,7 +3924,7 @@ body.game-mode .tab-button.active {
 }
 
 .explore-card:hover,
-.explore-card:focus {
+.explore-card:focus-within {
     border-color: var(--accent);
     outline: none;
 }
@@ -3916,6 +3933,9 @@ body.game-mode .tab-button.active {
     width: 100%;
     aspect-ratio: 1 / 1;
     background: var(--border);
+    border: none;
+    padding: 0;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -4001,6 +4021,24 @@ body.game-mode .tab-button.active {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+}
+
+.explore-card__itch-link {
+    display: inline-block;
+    margin-top: 2px;
+    color: var(--muted);
+    opacity: 0.55;
+    font-size: 0.85em;
+    text-decoration: none;
+    line-height: var(--lh-text);
+    transition: opacity 0.15s;
+}
+
+.explore-card__itch-link:hover,
+.explore-card__itch-link:focus {
+    opacity: 1;
+    color: var(--accent);
+    outline: none;
 }
 
 .explore-loading {
