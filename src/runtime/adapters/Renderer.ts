@@ -26,7 +26,7 @@ type RendererGameState = {
     isPickupOverlayActive?: () => boolean;
     isLevelUpCelebrationActive?: () => boolean;
     isLevelUpOverlayActive?: () => boolean;
-    getGame?: () => { hideHud?: boolean };
+    getGame?: () => { hideHud?: boolean; disablePixelFont?: boolean };
     getPlayer?: () => { roomIndex: number; x: number; y: number };
     getEnemies?: () => { id?: string; roomIndex: number; x: number; y: number; lastX: number; lastY?: number }[];
     isGameOver: () => boolean;
@@ -135,7 +135,13 @@ class Renderer {
         return Boolean(game?.hideHud);
     }
 
+    private shouldDisablePixelFont(): boolean {
+        const game = this.gameState.getGame ? this.gameState.getGame() : null;
+        return Boolean(game?.disablePixelFont);
+    }
+
     private applyCanvasLayout(): void {
+        bitmapFont.setDisabled(this.shouldDisablePixelFont());
         const tilePixelSize = Math.max(
             GameConfig.canvas.minTileSize,
             Math.floor(this.canvas.width / GameConfig.world.roomSize)

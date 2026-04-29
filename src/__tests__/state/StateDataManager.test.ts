@@ -55,6 +55,7 @@ describe('StateDataManager', () => {
       palette: game.palette,
       hideHud: false,
       disableSkills: false,
+      disablePixelFont: false,
       roomSize: game.roomSize,
       world: game.world,
       rooms: game.rooms,

@@ -39,6 +39,7 @@ type GameData = {
   author?: string;
   hideHud?: boolean;
   disableSkills?: boolean;
+  disablePixelFont?: boolean;
   skillCustomizations?: SkillCustomizationMap;
   rooms?: unknown[];
 };
@@ -328,6 +329,12 @@ export class GameEngine {
     const game = this.gameState.getGame();
     game.disableSkills = Boolean(active);
     this.gameState.resetGame();
+    this.draw();
+  }
+
+  setDisablePixelFont(active = false): void {
+    const game = this.gameState.getGame();
+    game.disablePixelFont = Boolean(active);
     this.draw();
   }
 

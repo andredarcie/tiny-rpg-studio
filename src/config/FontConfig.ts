@@ -7,10 +7,10 @@
 export const FONT_NAME = 'TinyRpgPico8';
 
 /** Path to the WOFF file used by the CSS editor. */
-export const FONT_CSS_SRC = '/pico8-ui.woff';
+export const FONT_CSS_SRC = 'pico8-ui.woff';
 
 /** Path to the PNG spritesheet used by the canvas bitmap font renderer. */
-export const FONT_BITMAP_SRC = '/pico8-font.png';
+export const FONT_BITMAP_SRC = 'pico8-font.png';
 
 /** Character size in canvas pixels. */
 export const FONT_SIZE = 8;
@@ -54,4 +54,17 @@ export function applyFontConfig(): void {
     const root = document.documentElement;
     root.style.setProperty('--engine-font-size', `${UI_FONT_SIZE}px`);
     root.style.setProperty('--ui-font-family', `"${FONT_NAME}", monospace`);
+}
+
+/**
+ * Switches the editor UI font between the pixel font and system monospace.
+ * Instant — no page reload needed.
+ */
+export function setEditorFontDisabled(disabled: boolean): void {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.style.setProperty(
+        '--ui-font-family',
+        disabled ? 'monospace' : `"${FONT_NAME}", monospace`
+    );
 }

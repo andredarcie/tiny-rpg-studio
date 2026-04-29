@@ -18,6 +18,7 @@ type ImportData = {
     customPalette?: string[];
     hideHud?: boolean;
     disableSkills?: boolean;
+    disablePixelFont?: boolean;
     roomSize?: number;
     world?: { rows?: number; cols?: number };
     rooms?: RoomDefinition[];
@@ -75,6 +76,7 @@ class StateDataManager {
             customPalette: this.game.customPalette,
             hideHud: Boolean(this.game.hideHud),
             disableSkills: Boolean(this.game.disableSkills),
+            disablePixelFont: Boolean(this.game.disablePixelFont),
             roomSize: this.game.roomSize,
             world: this.game.world,
             rooms: this.game.rooms,
@@ -127,6 +129,7 @@ class StateDataManager {
             customPalette,
             hideHud: Boolean(data.hideHud),
             disableSkills: Boolean(data.disableSkills),
+            disablePixelFont: Boolean(data.disablePixelFont),
             roomSize: 8,
             world: { rows: worldRows, cols: worldCols },
             rooms: normalizedRooms,

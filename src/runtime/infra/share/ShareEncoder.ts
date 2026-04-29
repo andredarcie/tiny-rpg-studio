@@ -25,6 +25,7 @@ type ShareGameData = {
     author?: unknown;
     hideHud?: unknown;
     disableSkills?: unknown;
+    disablePixelFont?: unknown;
     start?: unknown;
     sprites?: unknown[];
     enemies?: unknown[];
@@ -450,6 +451,9 @@ class ShareEncoder {
         }
         if (gameData?.disableSkills) {
             parts.push('R1');
+        }
+        if (gameData?.disablePixelFont) {
+            parts.push('F1');
         }
 
         // Skill Order

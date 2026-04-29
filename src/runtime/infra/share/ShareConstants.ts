@@ -33,9 +33,10 @@ class ShareConstants {
     static get VERSION_24() { return 24; }
     static get VERSION_25() { return 25; }
     static get VERSION_26() { return 26; }
+    static get VERSION_27() { return 27; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_26;
+        return ShareConstants.VERSION_27;
     }
 
     static get LEGACY_VERSION() {
@@ -116,6 +117,10 @@ class ShareConstants {
 
     static get DISABLE_SKILLS_VERSION() {
         return ShareConstants.VERSION_26;
+    }
+
+    static get DISABLE_PIXEL_FONT_VERSION() {
+        return ShareConstants.VERSION_27;
     }
 
     static get MATRIX_SIZE() {
@@ -214,7 +219,8 @@ class ShareConstants {
                 ShareConstants.VERSION_23,
                 ShareConstants.VERSION_24,
                 ShareConstants.VERSION_25,
-                ShareConstants.VERSION_26
+                ShareConstants.VERSION_26,
+                ShareConstants.VERSION_27
             ]);
         }
         return this._supportedVersions;

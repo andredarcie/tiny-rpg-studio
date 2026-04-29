@@ -41,6 +41,7 @@ class EditorEventBinder extends EditorManagerModule {
             projectTestDebugVision,
             projectHideHud,
             projectDisableSkills,
+            projectDisablePixelFont,
             shareUrlInput
         } = this.dom;
 
@@ -96,6 +97,10 @@ class EditorEventBinder extends EditorManagerModule {
         projectDisableSkills?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setDisableSkills(target.checked);
+        });
+        projectDisablePixelFont?.addEventListener('change', (ev: Event) => {
+            const target = ev.target as HTMLInputElement;
+            manager.setDisablePixelFont(target.checked);
         });
         shareUrlInput?.addEventListener('focus', () => shareUrlInput.select());
         shareUrlInput?.addEventListener('click', () => shareUrlInput.select());

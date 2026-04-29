@@ -18,6 +18,11 @@ export class BitmapFont {
     private loading = false;
     private tmp: HTMLCanvasElement | null = null;
     private readyCallbacks = new Set<() => void>();
+    private _disabled = false;
+
+    setDisabled(disabled: boolean): void {
+        this._disabled = disabled;
+    }
 
     load(src: string, onReady?: () => void): void {
         if (this.sheet) {
@@ -74,7 +79,7 @@ export class BitmapFont {
     }
 
     isReady(): boolean {
-        return this.sheet !== null;
+        return this._disabled || this.sheet !== null;
     }
 
     private buildGlyphMetrics(imageData: ImageData): GlyphMetric[] {
@@ -131,6 +136,10 @@ export class BitmapFont {
     }
 
     measureText(text: string, charSize: number): number {
+        if (this._disabled) {
+            const lines = BitmapFont.normalize(text).split('\n');
+            return lines.reduce((max, line) => Math.max(max, line.length * charSize * 0.6), 0);
+        }
         const lines = BitmapFont.normalize(text).split('\n');
         return lines.reduce((maxWidth, line) => {
             let cursorX = 0;
@@ -156,7 +165,20 @@ export class BitmapFont {
         charSize: number,
         color = '#ffffff'
     ): void {
-        if (!this.sheet || !text) return;
+        if (!text) return;
+        if (this._disabled) {
+            ctx.save();
+            ctx.font = `${charSize}px monospace`;
+            ctx.fillStyle = color;
+            ctx.textAlign = ctx.textAlign;
+            ctx.textBaseline = 'top';
+            const lines = BitmapFont.normalize(text).split('\n');
+            const lineH = Math.round(charSize * (LINE_HEIGHT / FONT_SIZE));
+            lines.forEach((line, i) => ctx.fillText(line, x, y + i * lineH));
+            ctx.restore();
+            return;
+        }
+        if (!this.sheet) return;
 
         const scale = charSize / CHAR_PX;
         const lineHeight = Math.max(1, Math.round((LINE_HEIGHT / FONT_SIZE) * charSize));

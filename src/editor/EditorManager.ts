@@ -340,6 +340,10 @@ class EditorManager {
         this.uiController.setDisableSkills(active);
     }
 
+    setDisablePixelFont(active: boolean) {
+        this.uiController.setDisablePixelFont(active);
+    }
+
     setActiveMobilePanel(panel: string) {
         this.uiController.setActiveMobilePanel(panel);
     }

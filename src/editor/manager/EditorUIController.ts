@@ -1,5 +1,7 @@
 
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { setEditorFontDisabled } from '../../config/FontConfig';
+import { bitmapFont } from '../../runtime/adapters/renderer/BitmapFont';
 import { EditorManagerModule } from './EditorManagerModule';
 import type { NpcDefinitionData } from '../../runtime/domain/entities/Npc';
 
@@ -83,6 +85,13 @@ class EditorUIController extends EditorManagerModule {
         this.updateJSON();
     }
 
+    setDisablePixelFont(active: boolean = false) {
+        this.gameEngine.setDisablePixelFont(Boolean(active));
+        bitmapFont.setDisabled(active);
+        setEditorFontDisabled(active);
+        this.updateJSON();
+    }
+
     syncUI() {
         const game = this.gameEngine.getGame();
         if (this.dom.titleInput) {
@@ -97,6 +106,11 @@ class EditorUIController extends EditorManagerModule {
         if (this.dom.projectDisableSkills) {
             this.dom.projectDisableSkills.checked = Boolean(game.disableSkills);
         }
+        if (this.dom.projectDisablePixelFont) {
+            this.dom.projectDisablePixelFont.checked = Boolean(game.disablePixelFont);
+        }
+        bitmapFont.setDisabled(Boolean(game.disablePixelFont));
+        setEditorFontDisabled(Boolean(game.disablePixelFont));
         this.updateProjectTabs();
         this.updateJSON();
     }
