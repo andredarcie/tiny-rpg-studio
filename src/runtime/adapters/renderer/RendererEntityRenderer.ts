@@ -1,6 +1,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
+import { bitmapFont } from './BitmapFont';
 
 type FlashState = {
     color: string;
@@ -476,13 +477,11 @@ class RendererEntityRenderer {
 
         ctx.save();
         ctx.globalAlpha = iconAlpha;
-        const iconColor = this.paletteManager.getColor(9) || '#FFD600';
-        ctx.fillStyle = iconColor;
-        const iconFont = `${Math.max(12, Math.round(iconSize))}px "Press Start 2P", monospace`;
-        ctx.font = iconFont;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('!', iconX, iconY);
+        const iconColor = this.paletteManager.getColor(9) || '#FFD600';
+        // Icon scales with tile size intentionally so it matches the enemy sprite, not the UI font size.
+        bitmapFont.drawText(ctx, '!', iconX, iconY, Math.max(8, Math.round(iconSize)), iconColor);
         ctx.restore();
 
     }

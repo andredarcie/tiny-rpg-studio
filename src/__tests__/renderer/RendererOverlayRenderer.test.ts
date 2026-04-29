@@ -351,10 +351,10 @@ describe('RendererOverlayRenderer – drawWrappedText', () => {
     });
 
     it('wraps text that exceeds maxWidth', () => {
-        // each char = 6px; maxWidth=50 → limit ~8 chars per line
-        // "aaaaa bbbbb" → "aaaaa"=30px fits, "aaaaa bbbbb"=66px overflows → wraps
+        // charSize=6 explicit: each char advances ~4.5px so both words fit individually (22.5px)
+        // but not together (49.5px > 48px), giving exactly 2 lines.
         const { overlay, ctx } = makeOverlay();
-        overlay.drawWrappedText(ctx, 'aaaaa bbbbb', 0, 0, 50, 12);
+        overlay.drawWrappedText(ctx, 'aaaaa bbbbb', 0, 0, 48, 12, 6, null);
         expect(ctx.fillText).toHaveBeenCalledTimes(2);
         expect(ctx.fillText).toHaveBeenNthCalledWith(1, 'aaaaa', 0, 0);
         expect(ctx.fillText).toHaveBeenNthCalledWith(2, 'bbbbb', 0, 12);
@@ -567,10 +567,10 @@ describe('RendererOverlayRenderer – getLevelUpCardLayout', () => {
         expect(withPending.cardArea.cardYStart).toBeGreaterThanOrEqual(withoutPending.cardArea.cardYStart);
     });
 
-    it('uses provided titleFont and pendingFont values', () => {
+    it('returns layout with rects when hasPendingText is true', () => {
         const { overlay } = makeOverlay();
         const layout = overlay.getLevelUpCardLayout({
-            width: 200, height: 200, titleFont: 20, pendingFont: 10, hasPendingText: true
+            width: 200, height: 200, hasPendingText: true
         });
         expect(layout.rects).toBeDefined();
     });
@@ -644,14 +644,14 @@ describe('RendererOverlayRenderer – drawIntroOverlay', () => {
         const { overlay, ctx } = makeOverlay();
         overlay.setIntroData({ title: 'My Game', author: '' });
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        expect(ctx.fillText).toHaveBeenCalledWith('My Game', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith('MY GAME', expect.any(Number), expect.any(Number));
     });
 
     it('falls back to "Tiny RPG Studio" when introData.title is empty', () => {
         const { overlay, ctx } = makeOverlay();
         overlay.introData = { title: '', author: '' };
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        expect(ctx.fillText).toHaveBeenCalledWith('Tiny RPG Studio', expect.any(Number), expect.any(Number));
+        expect(ctx.fillText).toHaveBeenCalledWith('TINY RPG STUDIO', expect.any(Number), expect.any(Number));
     });
 
     it('draws byline when author is set', () => {
@@ -659,7 +659,7 @@ describe('RendererOverlayRenderer – drawIntroOverlay', () => {
         overlay.setIntroData({ title: 'My Game', author: 'Dev' });
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
         const texts = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
-        expect(texts.some((t: string) => t.includes('Dev'))).toBe(true);
+        expect(texts.some((t: string) => t.includes('DEV'))).toBe(true);
     });
 
     it('draws start label when canDismissIntroScreen is true (blink max phase)', () => {

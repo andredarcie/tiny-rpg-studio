@@ -97,7 +97,34 @@ class EditorUIController extends EditorManagerModule {
         if (this.dom.projectDisableSkills) {
             this.dom.projectDisableSkills.checked = Boolean(game.disableSkills);
         }
+        this.updateProjectTabs();
         this.updateJSON();
+    }
+
+    setActiveProjectTab(tab: string) {
+        if (!tab) return;
+        if (this.state.activeProjectTab === tab) {
+            this.updateProjectTabs();
+            return;
+        }
+        this.state.activeProjectTab = tab;
+        this.updateProjectTabs();
+    }
+
+    updateProjectTabs() {
+        const current = this.state.activeProjectTab || 'development';
+        const buttons = Array.isArray(this.dom.projectTabButtons) ? this.dom.projectTabButtons : [];
+        buttons.forEach((button) => {
+            const match = button.dataset.projectTabButton === current;
+            button.classList.toggle('active', match);
+            button.setAttribute('aria-selected', match ? 'true' : 'false');
+        });
+        const panels = Array.isArray(this.dom.projectTabPanels) ? this.dom.projectTabPanels : [];
+        panels.forEach((panel) => {
+            const match = panel.dataset.projectTabPanel === current;
+            panel.classList.toggle('active', match);
+            panel.hidden = !match;
+        });
     }
 
     setActiveMobilePanel(panel: string) {

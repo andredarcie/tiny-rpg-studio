@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { bitmapFont } from '../runtime/adapters/renderer/BitmapFont';
 
 const noop = () => {};
 
@@ -43,3 +44,16 @@ if (typeof HTMLCanvasElement !== 'undefined') {
     // Prevent jsdom "Not implemented" errors for canvas contexts in tests.
     HTMLCanvasElement.prototype.getContext = vi.fn(() => createContext2D()) as unknown as HTMLCanvasElement['getContext'];
 }
+
+bitmapFont.drawText = ((ctx: CanvasRenderingContext2D, text: string, x: number, y: number) => {
+    if (typeof ctx.strokeText === 'function') {
+        ctx.strokeText(text, x, y);
+    }
+    ctx.fillText(text, x, y);
+}) as typeof bitmapFont.drawText;
+
+bitmapFont.measureText = ((text: string, charSize: number) => {
+    return String(text || '').length * (charSize / 8) * 6;
+}) as typeof bitmapFont.measureText;
+
+bitmapFont.truncateText = ((text: string) => text) as typeof bitmapFont.truncateText;

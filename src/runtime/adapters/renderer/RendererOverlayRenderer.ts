@@ -1,4 +1,6 @@
+import { FONT_SIZE, LINE_HEIGHT, TITLE_FONT_SIZE } from '../../../config/FontConfig';
 import { TextResources } from '../TextResources';
+import { bitmapFont } from './BitmapFont';
 import { RendererModuleBase } from './RendererModuleBase';
 import { GameConfig } from '../../../config/GameConfig';
 
@@ -11,6 +13,8 @@ const formatOverlayText = (key: string, params: Record<string, string | number |
     const value = TextResources.format(key, params, fallback) as string;
     return value || fallback || '';
 };
+
+const toDisplayCaps = (value: string): string => String(value || '').toLocaleUpperCase();
 
 class RendererOverlayRenderer extends RendererModuleBase {
     introData: { title: string; author: string };
@@ -59,7 +63,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
 
     drawIntroOverlay(ctx: CanvasRenderingContext2D, gameplayCanvas: { width: number; height: number }) {
         this.overlayEntityRenderer.cleanupEnemyLabels();
-        const title = this.introData.title || 'Tiny RPG Studio';
+        const title = toDisplayCaps(this.introData.title || 'Tiny RPG Studio');
         const author = (this.introData.author || '').trim();
         const width = gameplayCanvas.width;
         const height = gameplayCanvas.height;
@@ -70,14 +74,10 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.textBaseline = 'middle';
         const centerX = width / 2;
         const centerY = height / 2;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${Math.max(12, Math.floor(height / 12))}px monospace`;
-        ctx.fillText(title, centerX, centerY - height * 0.12);
+        bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, TITLE_FONT_SIZE, '#FFFFFF');
         if (author) {
-            const byline = formatOverlayText('intro.byline', { author }, `por ${author}`);
-            ctx.fillStyle = 'rgba(255,255,255,0.8)';
-            ctx.font = `${Math.max(10, Math.floor(height / 18))}px monospace`;
-            ctx.fillText(byline, centerX, centerY);
+            const byline = toDisplayCaps(formatOverlayText('intro.byline', { author }, `por ${author}`));
+            bitmapFont.drawText(ctx, byline, centerX, centerY, FONT_SIZE, 'rgba(255,255,255,0.8)');
         }
 
         const renderer = this.overlayRenderer;
@@ -85,10 +85,8 @@ class RendererOverlayRenderer extends RendererModuleBase {
             const blink = ((Date.now() / GameConfig.animation.blinkInterval) % 2) > 1
                 ? GameConfig.animation.blinkMinOpacity
                 : GameConfig.animation.blinkMaxOpacity;
-            ctx.fillStyle = `rgba(100, 181, 246, ${blink.toFixed(2)})`;
-            const startLabel = getOverlayText('intro.startAdventure', 'Iniciar aventura');
-            ctx.font = `${Math.max(9, Math.floor(height / 20))}px monospace`;
-            ctx.fillText(startLabel, centerX, centerY + height * 0.18);
+            const startLabel = toDisplayCaps(getOverlayText('intro.startAdventure', 'Iniciar aventura'));
+            bitmapFont.drawText(ctx, startLabel, centerX, centerY + height * 0.18, FONT_SIZE, `rgba(100, 181, 246, ${blink.toFixed(2)})`);
         }
 
         ctx.restore();
@@ -107,15 +105,11 @@ class RendererOverlayRenderer extends RendererModuleBase {
         const pending = Math.max(0, gameState.getPendingLevelUpChoices() || 0);
         const accent = this.overlayPalette.getColor(7);
         const accentStrong = this.overlayPalette.getColor(13) || accent;
-        const titleFont = Math.max(7, Math.floor(height / 42));
-        const pendingFont = Math.max(5, Math.floor(height / 70));
         const layout = this.getLevelUpCardLayout({
             width,
             height,
             choicesLength: choices.length,
             hasPendingText: pending > 0,
-            titleFont,
-            pendingFont
         });
 
         ctx.save();
@@ -124,20 +118,16 @@ class RendererOverlayRenderer extends RendererModuleBase {
 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
-        ctx.fillStyle = accent;
         const topPadding = Math.floor(height * 0.05);
-        ctx.font = `${titleFont}px "Press Start 2P", "VT323", monospace`;
         const titleY = topPadding;
-        ctx.fillText(title, centerX, titleY);
+        bitmapFont.drawText(ctx, title, centerX, titleY, FONT_SIZE, accent);
 
-        let nextY = titleY + titleFont + Math.floor(height * 0.02);
+        let nextY = titleY + FONT_SIZE + Math.floor(height * 0.02);
         if (pending > 0) {
             const pendingText = formatOverlayText('skills.pendingLabel', { value: pending }, '');
             if (pendingText) {
-                ctx.font = `${pendingFont}px monospace`;
-                ctx.fillStyle = accentStrong;
-                ctx.fillText(pendingText, centerX, nextY);
-                nextY += pendingFont + Math.floor(height * 0.02);
+                bitmapFont.drawText(ctx, pendingText, centerX, nextY, FONT_SIZE, accentStrong);
+                nextY += FONT_SIZE + Math.floor(height * 0.02);
             }
         }
         nextY += Math.floor(height * 0.06);
@@ -145,11 +135,9 @@ class RendererOverlayRenderer extends RendererModuleBase {
         if (!choices.length) {
             const allText = getOverlayText('skills.allUnlocked', '');
             if (allText) {
-                ctx.font = `${Math.max(9, Math.floor(height / 20))}px monospace`;
-                ctx.fillStyle = accentStrong;
                 const { cardArea } = layout;
                 const centerY = cardArea.cardYStart + cardArea.cardHeight / 2;
-                ctx.fillText(allText, centerX, centerY);
+                bitmapFont.drawText(ctx, allText, centerX, centerY, FONT_SIZE, accentStrong);
             }
             ctx.restore();
             return;
@@ -175,17 +163,13 @@ class RendererOverlayRenderer extends RendererModuleBase {
         height = 0,
         choicesLength = 0,
         hasPendingText = false,
-        titleFont = null,
-        pendingFont = null
     }: LevelUpLayoutOptions = {}) {
         const cardCount = Math.max(1, choicesLength || 1);
-        const computedTitleFont = Number.isFinite(titleFont) ? (titleFont as number) : Math.max(8, Math.floor(height / 34));
-        const computedPendingFont = Number.isFinite(pendingFont) ? (pendingFont as number) : Math.max(6, Math.floor(height / 58));
         const topPadding = Math.floor(height * 0.05);
         const titleY = topPadding;
-        let nextY = titleY + computedTitleFont + Math.floor(height * 0.02);
+        let nextY = titleY + FONT_SIZE + Math.floor(height * 0.02);
         if (hasPendingText) {
-            nextY += computedPendingFont + Math.floor(height * 0.02);
+            nextY += FONT_SIZE + Math.floor(height * 0.02);
         }
         nextY += Math.floor(height * 0.06);
 
@@ -239,44 +223,36 @@ class RendererOverlayRenderer extends RendererModuleBase {
             || (data?.descriptionKey ? getOverlayText(data.descriptionKey, '') : '');
 
         ctx.shadowColor = 'transparent';
-        ctx.fillStyle = '#FFFFFF';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        const nameFont = Math.max(8, Math.floor(height / 16));
-        ctx.font = `${nameFont}px "Press Start 2P", "VT323", monospace`;
         const iconReserve = data?.icon ? Math.max(18, Math.floor(height / 6)) : 0;
         const nameMaxWidth = Math.max(12, width - padding * 2 - iconReserve);
-        ctx.fillText(this.ellipsizeCanvasText(ctx, name, nameMaxWidth), x + padding, y + padding);
+        bitmapFont.drawText(ctx, this.ellipsizeText(name, nameMaxWidth, FONT_SIZE), x + padding, y + padding, FONT_SIZE, '#FFFFFF');
 
         if (data?.icon) {
-            ctx.font = `${Math.max(8, Math.floor(height / 14))}px monospace`;
             ctx.textAlign = 'right';
-            ctx.fillText(data.icon, x + width - padding, y + padding + Math.max(0, Math.floor(height * 0.02)));
+            bitmapFont.drawText(ctx, data.icon, x + width - padding, y + padding, FONT_SIZE, '#FFFFFF');
             ctx.textAlign = 'left';
         }
 
-        const descFont = Math.max(10, Math.floor(height / 17));
-        ctx.font = `${descFont}px "VT323", monospace`;
-        ctx.fillStyle = '#FFFFFF';
         const descTopGap = Math.max(5, Math.floor(height * 0.06));
-        const textY = y + padding + nameFont + descTopGap;
-        const lineHeight = Math.max(descFont + 2, Math.floor(height / 17));
-        this.drawWrappedText(ctx, description, x + padding, textY, width - padding * 2, lineHeight, 3);
+        const textY = y + padding + FONT_SIZE + descTopGap;
+        this.drawWrappedText(ctx, description, x + padding, textY, width - padding * 2, LINE_HEIGHT, FONT_SIZE, 3);
 
         ctx.restore();
     }
 
-    ellipsizeCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+    ellipsizeText(text: string, maxWidth: number, charSize: number): string {
         const source = typeof text === 'string' ? text : '';
-        if (!source || ctx.measureText(source).width <= maxWidth) return source;
+        if (!source || bitmapFont.measureText(source, charSize) <= maxWidth) return source;
         const ellipsis = '...';
-        if (ctx.measureText(ellipsis).width > maxWidth) return '';
+        if (bitmapFont.measureText(ellipsis, charSize) > maxWidth) return '';
         let lo = 0;
         let hi = source.length;
         while (lo < hi) {
             const mid = Math.ceil((lo + hi) / 2);
             const candidate = source.slice(0, mid) + ellipsis;
-            if (ctx.measureText(candidate).width <= maxWidth) {
+            if (bitmapFont.measureText(candidate, charSize) <= maxWidth) {
                 lo = mid;
             } else {
                 hi = mid - 1;
@@ -285,63 +261,46 @@ class RendererOverlayRenderer extends RendererModuleBase {
         return source.slice(0, lo) + ellipsis;
     }
 
-    wrapCanvasText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+    wrapText(text: string, maxWidth: number, charSize: number, maxLines: number): string[] {
         const words = String(text || '').split(/\s+/).filter(Boolean);
         const lines: string[] = [];
         let line = '';
         let truncated = false;
+
         const pushLine = (value: string) => {
-            if (lines.length >= maxLines) {
-                truncated = true;
-                return;
-            }
+            if (lines.length >= maxLines) { truncated = true; return; }
             lines.push(value);
-        };
-        const splitLongWord = (word: string): string[] => {
-            const parts: string[] = [];
-            let rest = word;
-            while (rest && ctx.measureText(rest).width > maxWidth) {
-                let lo = 1;
-                let hi = rest.length;
-                while (lo < hi) {
-                    const mid = Math.ceil((lo + hi) / 2);
-                    if (ctx.measureText(rest.slice(0, mid)).width <= maxWidth) {
-                        lo = mid;
-                    } else {
-                        hi = mid - 1;
-                    }
-                }
-                parts.push(rest.slice(0, lo));
-                rest = rest.slice(lo);
-            }
-            if (rest) parts.push(rest);
-            return parts;
         };
 
         words.forEach((word) => {
             if (truncated) return;
-            const pieces = ctx.measureText(word).width > maxWidth ? splitLongWord(word) : [word];
-            pieces.forEach((piece) => {
-                if (truncated) return;
-                if (lines.length >= maxLines) {
-                    truncated = true;
-                    return;
+            let rest = word;
+            while (rest && bitmapFont.measureText(rest, charSize) > maxWidth) {
+                if (line) { pushLine(line); line = ''; }
+                let splitAt = 1;
+                while (
+                    splitAt < rest.length
+                    && bitmapFont.measureText(rest.slice(0, splitAt + 1), charSize) <= maxWidth
+                ) {
+                    splitAt += 1;
                 }
-                const candidate = line ? `${line} ${piece}` : piece;
-                if (ctx.measureText(candidate).width > maxWidth && line) {
-                    pushLine(line);
-                    line = piece;
-                } else {
-                    line = candidate;
-                }
-            });
+                pushLine(rest.slice(0, splitAt));
+                rest = rest.slice(splitAt);
+            }
+            const candidate = line ? `${line} ${rest}` : rest;
+            if (bitmapFont.measureText(candidate, charSize) > maxWidth && line) {
+                pushLine(line);
+                line = rest;
+            } else {
+                line = candidate;
+            }
         });
         if (line) pushLine(line);
         if (maxLines === 1 && words.length > 1) {
             truncated = true;
         }
         if (truncated && lines.length) {
-            lines[lines.length - 1] = this.ellipsizeCanvasText(ctx, `${lines[lines.length - 1]}...`, maxWidth);
+            lines[lines.length - 1] = this.ellipsizeText(`${lines[lines.length - 1]}...`, maxWidth, charSize);
         }
         return lines.slice(0, maxLines);
     }
@@ -353,13 +312,18 @@ class RendererOverlayRenderer extends RendererModuleBase {
         y: number,
         maxWidth: number,
         lineHeight: number,
-        maxLines: number | null = null
+        charSizeOrMaxLines: number | null = FONT_SIZE,
+        maxLines: number | null = null,
+        color = '#FFFFFF'
     ) {
         if (!text) return;
-        const lines = this.wrapCanvasText(ctx, text, maxWidth, maxLines ?? Number.MAX_SAFE_INTEGER);
+        const legacyCall = arguments.length <= 7;
+        const charSize = legacyCall ? FONT_SIZE : Math.max(1, Number(charSizeOrMaxLines) || FONT_SIZE);
+        const resolvedMaxLines = legacyCall ? charSizeOrMaxLines : maxLines;
+        const lines = this.wrapText(text, maxWidth, charSize, resolvedMaxLines ?? Number.MAX_SAFE_INTEGER);
         let offsetY = y;
         lines.forEach((line) => {
-            ctx.fillText(line, x, offsetY);
+            bitmapFont.drawText(ctx, line, x, offsetY, charSize, color);
             offsetY += lineHeight;
         });
     }
@@ -404,10 +368,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.save();
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const titleFont = Math.max(12, Math.floor(height / 12));
-        ctx.font = `${titleFont}px "Press Start 2P", "VT323", monospace`;
-        ctx.fillStyle = '#FFF1E8';
-        ctx.fillText(title, centerX, centerY + floatY);
+        bitmapFont.drawText(ctx, title, centerX, centerY + floatY, FONT_SIZE, '#FFF1E8');
         ctx.restore();
     }
 
@@ -591,6 +552,15 @@ class RendererOverlayRenderer extends RendererModuleBase {
         return Math.max(min, Math.min(max, v));
     }
 
+    fitBitmapText(text: string, maxWidth: number, baseSize: number, minSize: number) {
+        const normalizedMin = Math.max(8, Math.ceil(minSize / 8) * 8);
+        let size = Math.max(normalizedMin, Math.floor(baseSize / 8) * 8);
+        while (size > normalizedMin && bitmapFont.measureText(text, size) > maxWidth) {
+            size -= 8;
+        }
+        return size;
+    }
+
     getNow() {
         const perf = (globalThis as Partial<typeof globalThis>).performance;
         if (perf) {
@@ -634,69 +604,27 @@ class RendererOverlayRenderer extends RendererModuleBase {
             ctx.save();
             const padding = Math.floor(this.canvas.width * 0.08);
             const availableWidth = Math.max(32, this.canvas.width - padding * 2);
-            const messageFontSize = Math.max(7, Math.floor(this.canvas.height / 30));
-            const lineHeight = Math.round(messageFontSize * 1.4);
-            const textFont = `${messageFontSize}px "Press Start 2P", "VT323", monospace`;
-            ctx.font = textFont;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillStyle = '#F8FAFC';
 
-            const wrapLines = (text: string): string[] => {
-                const sections = text
-                    .replace(/\r\n/g, '\n')
-                    .split(/\n+/)
-                    .map((section) => section.trim())
-                    .filter(Boolean);
-                if (!sections.length) return [];
-                const lines: string[] = [];
-                sections.forEach((section, index) => {
-                    const words = section.split(/\s+/);
-                    let current = '';
-                    words.forEach((word) => {
-                        const next = current ? `${current} ${word}` : word;
-                        if (ctx.measureText(next).width > availableWidth && current) {
-                            lines.push(current);
-                            current = word;
-                        } else {
-                            current = next;
-                        }
-                    });
-                    if (current) {
-                        lines.push(current);
-                    }
-                    if (index < sections.length - 1) {
-                        lines.push('');
-                    }
-                });
-                return lines.length ? lines : [''];
-            };
-
-            const lines = wrapLines(endingText);
-            const totalHeight = lines.length * lineHeight;
-            const offset = Math.max(lineHeight, Math.floor(messageFontSize * 1.2));
+            const lines = this.wrapText(endingText, availableWidth, FONT_SIZE, Number.MAX_SAFE_INTEGER);
+            const totalHeight = lines.length * LINE_HEIGHT;
+            const offset = Math.max(LINE_HEIGHT, Math.floor(FONT_SIZE * 1.2));
             let startY = Math.max(padding, Math.floor(centerY - totalHeight - offset));
-            if (!Number.isFinite(startY)) {
-                startY = padding;
-            }
+            if (!Number.isFinite(startY)) startY = padding;
             let cursorY = startY;
             lines.forEach((line) => {
                 if (line.trim().length) {
-                    const alignedY = Math.round(cursorY) + 0.5;
-                    ctx.fillText(line, centerX, alignedY);
+                    bitmapFont.drawText(ctx, line, centerX, Math.round(cursorY), FONT_SIZE, '#F8FAFC');
                 }
-                cursorY += lineHeight;
+                cursorY += LINE_HEIGHT;
             });
             ctx.restore();
         }
 
-        ctx.fillStyle = '#FFFFFF';
-        let fontSize = Math.max(5, Math.floor(this.canvas.height / 22));
-        const endFont = `${fontSize}px "Press Start 2P", monospace`;
-        ctx.font = endFont;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(isVictory ? 'The End' : 'Game Over', centerX, centerY);
+        bitmapFont.drawText(ctx, isVictory ? 'The End' : 'Game Over', centerX, centerY, FONT_SIZE, '#FFFFFF');
 
         if (!gameState.canResetAfterGameOver) {
             ctx.restore();
@@ -706,16 +634,13 @@ class RendererOverlayRenderer extends RendererModuleBase {
         const blink = ((Date.now() / GameConfig.animation.blinkInterval) % 2) > 1
             ? GameConfig.animation.blinkMinOpacity
             : GameConfig.animation.blinkMaxOpacity;
-        ctx.fillStyle = `rgba(100, 181, 246, ${blink.toFixed(2)})`;
-        fontSize = Math.max(4, Math.floor(this.canvas.height / 26));
-        ctx.font = `${fontSize}px "Press Start 2P", monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const retryY = Math.round(this.canvas.height / 1.5) + 0.5;
+        const retryY = Math.round(this.canvas.height / 1.5);
         const reviveLabel = gameState.hasNecromancerReviveReady()
             ? getOverlayText('skills.necromancer.revivePrompt', '')
             : getOverlayText(isVictory ? 'gameOver.retryVictory' : 'gameOver.retryDefeat', '');
-        ctx.fillText(reviveLabel, centerX, retryY);
+        bitmapFont.drawText(ctx, reviveLabel, centerX, retryY, FONT_SIZE, `rgba(100, 181, 246, ${blink.toFixed(2)})`);
         ctx.restore();
         ctx.restore();
     }
@@ -795,8 +720,6 @@ type LevelUpLayoutOptions = {
     height?: number;
     choicesLength?: number;
     hasPendingText?: boolean;
-    titleFont?: number | null;
-    pendingFont?: number | null;
 };
 
 type LevelUpCardOptions = {

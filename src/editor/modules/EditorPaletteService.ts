@@ -11,14 +11,8 @@ export class EditorPaletteService {
         this.manager = manager;
     }
 
-    private get text() {
-        return TextResources;
-    }
-
-    // Returns a translated string if available, otherwise falls back to the provided default or the key itself.
     private t(key: string, fallback = ''): string {
-        const textResources = this.text as typeof TextResources & { get: (lookupKey: string, defaultValue: string) => string };
-        const translatedText = textResources.get(key, fallback);
+        const translatedText = TextResources.get(key, fallback);
         if (translatedText) return translatedText;
         if (fallback) return fallback;
         return key || '';
@@ -174,46 +168,10 @@ export class EditorPaletteService {
         this.manager.historyManager.pushCurrentState();
     }
 
-    togglePanel(): void {
-        const panel = this.manager.dom.projectPalettePanel;
-        const toggle = this.manager.dom.projectPaletteToggle;
-
-        if (!panel || !toggle) return;
-
-        const isHidden = panel.hidden;
-        panel.hidden = !isHidden;
-        toggle.setAttribute('aria-expanded', String(!isHidden));
-
-        this.manager.state.palettePanelCollapsed = !isHidden;
-
-        // Update button text
-        this.updateToggleText();
-    }
-
     syncPaletteState(): void {
         const panel = this.manager.dom.projectPalettePanel;
-        const toggle = this.manager.dom.projectPaletteToggle;
-
-        if (!panel || !toggle) return;
-
-        const isCollapsed = this.manager.state.palettePanelCollapsed;
-        panel.hidden = isCollapsed;
-        toggle.setAttribute('aria-expanded', String(!isCollapsed));
-
-        // Update button text
-        this.updateToggleText();
-    }
-
-    private updateToggleText(): void {
-        const toggle = this.manager.dom.projectPaletteToggle;
-        if (!toggle) return;
-
-        const isCollapsed = this.manager.state.palettePanelCollapsed;
-        const actionText = isCollapsed
-            ? this.t('project.paletteExpand', 'Show color palette')
-            : this.t('project.paletteCollapse', 'Hide color palette');
-
-        toggle.textContent = `🎨 ${actionText}`;
+        if (!panel) return;
+        panel.hidden = false;
     }
 
     private populatePresetSelect(): void {
@@ -287,11 +245,6 @@ export class EditorPaletteService {
     }
 
     private bindEvents(): void {
-        // Toggle panel
-        this.manager.dom.projectPaletteToggle?.addEventListener('click', () => {
-            this.togglePanel();
-        });
-
         // Preset select
         this.manager.dom.palettePresetSelect?.addEventListener('change', () => {
             this.onPresetChange();

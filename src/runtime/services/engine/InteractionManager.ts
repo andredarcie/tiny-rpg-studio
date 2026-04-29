@@ -341,7 +341,7 @@ class InteractionManager {
       return npc.text;
     }
 
-    return npc.text || 'Hello!';
+    return npc.text || '';
   }
 
   getNpcDialogMeta(npc: NpcState): Record<string, unknown> | undefined {

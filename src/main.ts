@@ -1,4 +1,5 @@
 import './styles.css';
+import { applyFontConfig } from './config/FontConfig';
 import { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
 import { ExploreModal } from './editor/modules/ExploreModal';
@@ -23,6 +24,7 @@ class TinyRPGApplication {
   }
 
   static initializeApplication(): void {
+    applyFontConfig();
     this.setupTabs();
 
     const gameCanvas = document.getElementById('game-canvas');

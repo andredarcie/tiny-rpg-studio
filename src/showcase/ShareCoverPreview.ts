@@ -1,4 +1,6 @@
 
+import { FONT_SIZE } from '../config/FontConfig';
+import { bitmapFont } from '../runtime/adapters/renderer/BitmapFont';
 import { TILE_PRESETS } from '../runtime/domain/definitions/TileDefinitions';
 import { ShareDecoder } from '../runtime/infra/share/ShareDecoder';
 
@@ -45,8 +47,13 @@ class ShareCoverPreview {
     if (this.ctx && this.dpr !== 1) {
       this.ctx.scale(this.dpr, this.dpr);
     }
+    bitmapFont.load('/pico8-font.png', () => this.render());
     this.gameData = null;
   }
+
+    private toDisplayCaps(value: string): string {
+        return String(value || '').toLocaleUpperCase();
+    }
 
     static extractShareCode(value = ''): string {
         const text = String(value || '').trim();
@@ -103,10 +110,19 @@ class ShareCoverPreview {
         return cache.get(Number(tileId)) || null;
     }
 
-    renderFromUrl(shareUrl: string): HTMLCanvasElement {
+  renderFromUrl(shareUrl: string): HTMLCanvasElement {
         this.gameData = ShareCoverPreview.decodeShareUrl(shareUrl);
         this.render();
         return this.canvas;
+    }
+
+    fitBitmapText(text: string, maxWidth: number, baseSize: number, minSize: number): number {
+        const source = String(text || '');
+        let size = Math.max(minSize, baseSize);
+        while (size > minSize && bitmapFont.measureText(source, size) > maxWidth) {
+            size -= 1;
+        }
+        return size;
     }
 
     render(): HTMLCanvasElement {
@@ -209,7 +225,7 @@ class ShareCoverPreview {
         ctx.lineWidth = 2;
         ctx.strokeRect(3, 3, width - 6, height - 6);
 
-        const title = (this.gameData?.title || 'Tiny RPG Studio').trim() || 'Tiny RPG Studio';
+        const title = this.toDisplayCaps((this.gameData?.title || 'Tiny RPG Studio').trim() || 'Tiny RPG Studio');
         const author = (this.gameData?.author || '').trim();
         const centerX = width / 2;
         const centerY = height / 2;
@@ -217,32 +233,36 @@ class ShareCoverPreview {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        const fitText = (text: string, maxWidth: number, baseSize: number): number => {
-            let size = baseSize;
-            ctx.font = `${size}px "Space Mono", monospace`;
-            while (ctx.measureText(text).width > maxWidth && size > 12) {
-                size -= 1;
-                ctx.font = `${size}px "Space Mono", monospace`;
-            }
-            return size;
-        };
-
-        const titleSize = fitText(title, width * 0.9, Math.max(18, Math.floor(height / 9)));
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = `${titleSize}px "Space Mono", monospace`;
-        ctx.fillText(title, centerX, centerY - height * 0.12);
+        const maxTextWidth = width * 0.9;
+        const titleSize = this.fitBitmapText(
+            title,
+            maxTextWidth,
+            Math.max(FONT_SIZE * 2, Math.floor(height / 9)),
+            FONT_SIZE
+        );
+        const titleText = bitmapFont.truncateText(title, maxTextWidth, titleSize);
+        bitmapFont.drawText(ctx, titleText, centerX, centerY - height * 0.12, titleSize, '#FFFFFF');
 
         if (author) {
-            const authorText = `por ${author}`;
-            ctx.fillStyle = 'rgba(255,255,255,0.82)';
-            const authorSize = fitText(authorText, width * 0.8, Math.max(14, Math.floor(height / 16)));
-            ctx.font = `${authorSize}px "Space Mono", monospace`;
-            ctx.fillText(authorText, centerX, centerY - height * 0.02);
+            const authorLabel = this.toDisplayCaps(`por ${author}`);
+            const authorSize = this.fitBitmapText(
+                authorLabel,
+                width * 0.8,
+                Math.max(Math.round(FONT_SIZE * 1.5), Math.floor(height / 16)),
+                FONT_SIZE
+            );
+            const authorText = bitmapFont.truncateText(authorLabel, width * 0.8, authorSize);
+            bitmapFont.drawText(ctx, authorText, centerX, centerY - height * 0.02, authorSize, 'rgba(255,255,255,0.82)');
         }
 
-        ctx.fillStyle = 'rgba(100, 181, 246, 0.95)';
-        ctx.font = `${Math.max(12, Math.floor(height / 18))}px "Space Mono", monospace`;
-        ctx.fillText('Iniciar aventura', centerX, centerY + height * 0.16);
+        const ctaLabel = this.toDisplayCaps('Iniciar aventura');
+        const ctaSize = this.fitBitmapText(
+            ctaLabel,
+            width * 0.8,
+            Math.max(Math.round(FONT_SIZE * 1.5), Math.floor(height / 18)),
+            FONT_SIZE
+        );
+        bitmapFont.drawText(ctx, ctaLabel, centerX, centerY + height * 0.16, ctaSize, 'rgba(100, 181, 246, 0.95)');
 
         ctx.restore();
     }

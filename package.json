@@ -6,7 +6,11 @@
     "type": "git",
     "url": "https://github.com/andredarcie/tiny-rpg-studio"
   },
-  "files": ["dist/sdk/index.js", "dist/sdk/index.cjs", "dist/sdk/sdk"],
+  "files": [
+    "dist/sdk/index.js",
+    "dist/sdk/index.cjs",
+    "dist/sdk/sdk"
+  ],
   "exports": {
     ".": {
       "types": "./dist/sdk/sdk/index.d.ts",
@@ -15,12 +19,13 @@
     }
   },
   "scripts": {
+    "build:bitmap-font": "node scripts/generate-pico8-webfont.mjs",
     "dev": "vite",
-    "build": "npm run build:export && vite build",
+    "build": "npm run build:bitmap-font && npm run build:export && vite build",
     "build:desktop": "npm run build && tauri build",
     "tauri": "tauri",
     "build:check": "tsc --noEmit && npm run build",
-    "build:export": "vite build -c vite.export.config.ts",
+    "build:export": "npm run build:bitmap-font && vite build -c vite.export.config.ts",
     "build:sdk": "vite build -c vite.sdk.config.ts && tsc -p tsconfig.sdk.json",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
@@ -31,16 +36,18 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
+    "@tauri-apps/cli": "^2",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",
     "@vitest/coverage-v8": "^4.0.18",
     "concurrently": "^9.2.1",
     "eslint": "^9.35.0",
+    "fonteditor-core": "^2.6.3",
     "jsdom": "^24.1.0",
+    "pngjs": "^7.0.0",
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
-    "vitest": "^4.0.18",
-    "@tauri-apps/cli": "^2"
+    "vitest": "^4.0.18"
   }
 }

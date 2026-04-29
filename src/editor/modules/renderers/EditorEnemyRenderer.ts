@@ -126,15 +126,15 @@ class EditorEnemyRenderer extends EditorRendererBase {
 
             const livesSpan = document.createElement('span');
             livesSpan.className = 'enemy-stat-lives';
-            livesSpan.textContent = `${livesValue}`;
+            livesSpan.textContent = `LIFE: ${livesValue}`;
 
             const separator = document.createElement('span');
             separator.className = 'enemy-stat-separator';
-            separator.textContent = '⚔';
+            separator.textContent = ' - ';
 
             const damageSpan = document.createElement('span');
             damageSpan.className = 'enemy-stat-damage';
-            damageSpan.textContent = `${damageValue}`;
+            damageSpan.textContent = `ATK: ${damageValue}`;
 
             stats.append(livesSpan, separator, damageSpan);
 

@@ -34,6 +34,8 @@ class EditorDomCache {
     enemyTypes: HTMLElement | null;
     enemiesList: HTMLElement | null;
     projectVariablesContainer: HTMLElement | null;
+    projectTabButtons: HTMLElement[];
+    projectTabPanels: HTMLElement[];
     projectVariablesToggle: HTMLElement | null;
     projectVariableList: HTMLElement | null;
     projectVariableSummary: HTMLElement | null;
@@ -48,7 +50,6 @@ class EditorDomCache {
     projectTestGodMode: HTMLInputElement | null;
     projectTestDebugVision: HTMLInputElement | null;
     projectPaletteContainer: HTMLElement | null;
-    projectPaletteToggle: HTMLButtonElement | null;
     projectPalettePanel: HTMLElement | null;
     paletteGrid: HTMLElement | null;
     palettePresetSelect: HTMLSelectElement | null;
@@ -124,6 +125,8 @@ class EditorDomCache {
             this.enemyTypes = null;
             this.enemiesList = null;
             this.projectVariablesContainer = null;
+            this.projectTabButtons = [];
+            this.projectTabPanels = [];
             this.projectVariablesToggle = null;
             this.projectVariableList = null;
             this.projectVariableSummary = null;
@@ -138,7 +141,6 @@ class EditorDomCache {
             this.projectTestGodMode = null;
             this.projectTestDebugVision = null;
             this.projectPaletteContainer = null;
-            this.projectPaletteToggle = null;
             this.projectPalettePanel = null;
             this.paletteGrid = null;
             this.palettePresetSelect = null;
@@ -203,6 +205,8 @@ class EditorDomCache {
         this.enemyTypes = root.querySelector('#enemy-types') as HTMLElement | null;
         this.enemiesList = root.querySelector('#enemies-list') as HTMLElement | null;
         this.projectVariablesContainer = root.querySelector('#project-variables-container') as HTMLElement | null;
+        this.projectTabButtons = Array.from(root.querySelectorAll('[data-project-tab-button]'));
+        this.projectTabPanels = Array.from(root.querySelectorAll('[data-project-tab-panel]'));
         this.projectVariablesToggle = root.querySelector('#project-variables-toggle') as HTMLElement | null;
         this.projectVariableList = root.querySelector('#project-variable-usage-list') as HTMLElement | null;
         this.projectVariableSummary = root.querySelector('#project-variable-usage-summary') as HTMLElement | null;
@@ -217,7 +221,6 @@ class EditorDomCache {
         this.projectTestGodMode = root.querySelector('#project-test-god-mode') as HTMLInputElement | null;
         this.projectTestDebugVision = root.querySelector('#project-test-debug-vision') as HTMLInputElement | null;
         this.projectPaletteContainer = root.querySelector('#project-palette-container') as HTMLElement | null;
-        this.projectPaletteToggle = root.querySelector('#project-palette-toggle') as HTMLButtonElement | null;
         this.projectPalettePanel = root.querySelector('#project-palette-panel') as HTMLElement | null;
         this.paletteGrid = root.querySelector('#palette-grid') as HTMLElement | null;
         this.palettePresetSelect = root.querySelector('#palette-preset-select') as HTMLSelectElement | null;

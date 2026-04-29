@@ -27,7 +27,6 @@ type DomFixture = {
   projectSkillsContainer: HTMLDivElement;
   projectSkillsToggle: HTMLButtonElement;
   projectTestContainer: HTMLDivElement;
-  projectTestToggle: HTMLButtonElement;
   projectTestPanel: HTMLDivElement;
   projectTestStartLevel: HTMLSelectElement;
   projectTestSkillList: HTMLDivElement;
@@ -46,7 +45,6 @@ type DomFixture = {
 type TestState = {
   variablePanelCollapsed: boolean;
   skillPanelCollapsed: boolean;
-  testPanelCollapsed: boolean;
 };
 type ManagerFixture = {
   domCache: DomFixture;
@@ -217,7 +215,6 @@ function createDomFixture(): DomFixture {
   const hint = document.createElement('div');
   hint.className = 'project-test__hint';
   projectTestContainer.appendChild(hint);
-  const projectTestToggle = document.createElement('button');
   const projectTestPanel = document.createElement('div');
   const projectTestStartLevel = document.createElement('select');
   const projectTestSkillList = document.createElement('div');
@@ -244,7 +241,6 @@ function createDomFixture(): DomFixture {
     projectSkillsContainer,
     projectSkillsToggle,
     projectTestContainer,
-    projectTestToggle,
     projectTestPanel,
     projectTestStartLevel,
     projectTestSkillList,
@@ -705,7 +701,6 @@ describe('EditorRenderService', () => {
 
   it('renders test tools panel with empty skills, hint, options and god mode', () => {
     const fixture = createManagerFixture();
-    fixture.state.testPanelCollapsed = true;
     fixture.gameEngine.getTestSettings.mockReturnValue({
       startLevel: 2,
       godMode: true,
@@ -717,8 +712,6 @@ describe('EditorRenderService', () => {
 
     service.renderTestTools();
 
-    expect(fixture.domCache.projectTestContainer.classList.contains('is-collapsed')).toBe(true);
-    expect(fixture.domCache.projectTestToggle.textContent).toContain('Ajuda');
     expect(fixture.domCache.projectTestContainer.querySelector('.project-test__hint')?.textContent).toContain('URL');
     expect(fixture.domCache.projectTestStartLevel.querySelectorAll('option')).toHaveLength(4);
     expect(

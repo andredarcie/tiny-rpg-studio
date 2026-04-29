@@ -5,6 +5,7 @@ node_modules/
 dist/
 dist-ssr/
 docs/
+output/
 src-tauri/target/
 src-tauri/icons/
 *.tsbuildinfo
@@ -34,6 +35,9 @@ playwright-report/
 !.env.example
 .claude/settings.local.json
 .tools/butler/
+
+# Local scripts (not versioned)
+scripts/
 
 # Editor / OS files
 .vscode/*
