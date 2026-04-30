@@ -279,7 +279,7 @@ describe('BitmapFont', () => {
             font.load('/font.png');
             lastImg.onload?.();
 
-            const output = normalizedImage as ImageData;
+            const output = normalizedImage as unknown as ImageData;
             expect(getContextSpy).toHaveBeenCalled();
             expect(output).not.toBeNull();
             expect(output.data[3]).toBe(255);
