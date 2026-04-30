@@ -53,13 +53,13 @@ describe('BitmapFont', () => {
         it('preserves case while stripping accents for glyph lookup', () => {
             Object.defineProperty(font, 'sheet', { value: document.createElement('canvas'), configurable: true });
             Object.defineProperty(font, 'glyphMetrics', {
-                value: Array.from({ length: 256 }, () => ({ left: 0, width: 0, advance: 4 })),
+                value: Array.from({ length: 256 }, () => ({ left: 0, width: 0, advance: 4, top: 0, height: 5 })),
                 configurable: true
             });
 
-            const glyphMetrics = (font as unknown as { glyphMetrics: Array<{ left: number; width: number; advance: number }> }).glyphMetrics;
-            glyphMetrics['A'.charCodeAt(0)] = { left: 0, width: 5, advance: 6 };
-            glyphMetrics['a'.charCodeAt(0)] = { left: 0, width: 3, advance: 4 };
+            const glyphMetrics = (font as unknown as { glyphMetrics: Array<{ left: number; width: number; advance: number; top: number; height: number }> }).glyphMetrics;
+            glyphMetrics['A'.charCodeAt(0)] = { left: 0, width: 5, advance: 6, top: 0, height: 5 };
+            glyphMetrics['a'.charCodeAt(0)] = { left: 0, width: 3, advance: 4, top: 0, height: 5 };
 
             expect(font.measureText('Á', 8)).toBe(font.measureText('A', 8));
             expect(font.measureText('Á', 8)).not.toBe(font.measureText('a', 8));
@@ -78,6 +78,74 @@ describe('BitmapFont', () => {
         it('does nothing for empty text even when loaded', () => {
             const ctx = makeCtx();
             expect(() => font.drawText(ctx, '', 0, 0, 8)).not.toThrow();
+        });
+
+        it('normalizes short uppercase glyphs to the standard visible height', () => {
+            const tmpDrawImage = vi.fn();
+            const tmpCtx = {
+                clearRect: vi.fn(),
+                drawImage: tmpDrawImage,
+                fillRect: vi.fn(),
+                imageSmoothingEnabled: false,
+                globalCompositeOperation: 'source-over',
+                fillStyle: '#000000'
+            } as unknown as CanvasRenderingContext2D;
+            const targetCtx = makeCtx();
+            const sheetCanvas = document.createElement('canvas');
+            const tmpCanvas = document.createElement('canvas');
+            tmpCanvas.getContext = vi.fn(() => tmpCtx) as unknown as HTMLCanvasElement['getContext'];
+
+            Object.defineProperty(font, 'sheet', { value: sheetCanvas, configurable: true });
+            Object.defineProperty(font, 'tmp', { value: tmpCanvas, configurable: true, writable: true });
+            Object.defineProperty(font, 'glyphMetrics', {
+                value: Array.from({ length: 256 }, () => ({ left: 0, width: 0, advance: 4, top: 0, height: 5 })),
+                configurable: true
+            });
+
+            const glyphMetrics = (font as unknown as { glyphMetrics: Array<{ left: number; width: number; advance: number; top: number; height: number }> }).glyphMetrics;
+            glyphMetrics['E'.charCodeAt(0)] = { left: 0, width: 3, advance: 4, top: 1, height: 4 };
+
+            font.drawText(targetCtx, 'E', 0, 0, 8);
+
+            expect(tmpDrawImage).toHaveBeenCalledWith(
+                sheetCanvas,
+                40, 33, 3, 4,
+                0, 0, 3, 5
+            );
+        });
+
+        it('preserves baseline-relative vertical placement for punctuation', () => {
+            const tmpDrawImage = vi.fn();
+            const tmpCtx = {
+                clearRect: vi.fn(),
+                drawImage: tmpDrawImage,
+                fillRect: vi.fn(),
+                imageSmoothingEnabled: false,
+                globalCompositeOperation: 'source-over',
+                fillStyle: '#000000'
+            } as unknown as CanvasRenderingContext2D;
+            const targetCtx = makeCtx();
+            const sheetCanvas = document.createElement('canvas');
+            const tmpCanvas = document.createElement('canvas');
+            tmpCanvas.getContext = vi.fn(() => tmpCtx) as unknown as HTMLCanvasElement['getContext'];
+
+            Object.defineProperty(font, 'sheet', { value: sheetCanvas, configurable: true });
+            Object.defineProperty(font, 'tmp', { value: tmpCanvas, configurable: true, writable: true });
+            Object.defineProperty(font, 'glyphMetrics', {
+                value: Array.from({ length: 256 }, () => ({ left: 0, width: 0, advance: 4, top: 0, height: 5 })),
+                configurable: true
+            });
+
+            const glyphMetrics = (font as unknown as { glyphMetrics: Array<{ left: number; width: number; advance: number; top: number; height: number }> }).glyphMetrics;
+            glyphMetrics['.'.charCodeAt(0)] = { left: 1, width: 1, advance: 2, top: 4, height: 1 };
+
+            font.drawText(targetCtx, '.', 0, 0, 8);
+
+            expect(tmpDrawImage).toHaveBeenCalledWith(
+                sheetCanvas,
+                113, 20, 1, 1,
+                0, 4, 1, 1
+            );
         });
     });
 
@@ -173,6 +241,48 @@ describe('BitmapFont', () => {
             font.load('/font.png');
             font.load('/font.png');
             expect(imageCtorSpy).toHaveBeenCalledTimes(1);
+        });
+
+        it('preserves bright source pixels that are off the nearest-neighbor sample point', () => {
+            const sourcePixels = new Uint8ClampedArray(512 * 512 * 4);
+            const sourceIndex = ((3 * 512) + 3) * 4;
+            sourcePixels[sourceIndex] = 255;
+            sourcePixels[sourceIndex + 1] = 255;
+            sourcePixels[sourceIndex + 2] = 255;
+            sourcePixels[sourceIndex + 3] = 255;
+
+            let normalizedImage: ImageData | null = null;
+            const dstCtx = {
+                createImageData: vi.fn((width: number, height: number) => ({
+                    data: new Uint8ClampedArray(width * height * 4),
+                    width,
+                    height
+                })),
+                putImageData: vi.fn((imageData: ImageData) => {
+                    normalizedImage = imageData;
+                })
+            } as unknown as CanvasRenderingContext2D;
+            const srcCtx = {
+                drawImage: vi.fn(),
+                getImageData: vi.fn(() => ({
+                    data: sourcePixels,
+                    width: 512,
+                    height: 512
+                }))
+            } as unknown as CanvasRenderingContext2D;
+
+            let contextCall = 0;
+            const getContextSpy = vi
+                .spyOn(HTMLCanvasElement.prototype, 'getContext')
+                .mockImplementation(() => ((contextCall += 1) === 1 ? dstCtx : srcCtx));
+
+            font.load('/font.png');
+            lastImg.onload?.();
+
+            const output = normalizedImage as ImageData;
+            expect(getContextSpy).toHaveBeenCalled();
+            expect(output).not.toBeNull();
+            expect(output.data[3]).toBe(255);
         });
     });
 });

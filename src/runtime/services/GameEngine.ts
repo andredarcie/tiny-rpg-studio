@@ -426,7 +426,6 @@ export class GameEngine {
   dismissIntroScreen(): boolean {
     if (!this.introVisible || !this.canDismissIntroScreen) return false;
     this.introVisible = false;
-    soundEngine.play('gameStart');
     this.gameState.resumeGame('intro-screen');
     this.renderer.draw();
     return true;
