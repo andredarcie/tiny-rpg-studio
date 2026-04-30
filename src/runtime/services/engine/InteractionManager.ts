@@ -1,6 +1,7 @@
 import { ITEM_TYPES, type ItemType } from '../../domain/constants/itemTypes';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { TextResources } from '../../adapters/TextResources';
+import { soundEngine } from '../SoundEngine';
 
 type DialogManagerApi = {
   showDialog: (text: string, meta?: Record<string, unknown>) => void;
@@ -129,6 +130,7 @@ class InteractionManager {
       if (!sameTile || item.collected) continue;
 
       item.collected = true;
+      soundEngine.play('itemPickup');
       const text = typeof item.text === 'string' ? item.text : this.getInteractionText('objects.item.pickup', '');
       if (text) {
         this.dialogManager.showDialog(text);
@@ -157,6 +159,7 @@ class InteractionManager {
     switch (object.type) {
       case OT.KEY: {
         object.collected = true;
+        soundEngine.play('itemPickup');
         this.showPickupOverlay(object.type, () => {
           this.gameState.addKeys?.(1);
         });
@@ -176,6 +179,7 @@ class InteractionManager {
           return false;
         }
         object.collected = true;
+        soundEngine.play('itemPickup');
         this.showPickupOverlay(object.type, () => {
           if (fullHeal) {
             this.gameState.healPlayerToFull?.();
@@ -187,6 +191,7 @@ class InteractionManager {
       }
       case OT.XP_SCROLL: {
         object.collected = true;
+        soundEngine.play('itemPickup');
         this.showPickupOverlay(object.type, () => {
           const xpToNext = this.gameState.getExperienceToNext?.() ?? 0;
           const gain = xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0;
@@ -201,6 +206,7 @@ class InteractionManager {
           return false;
         }
         object.collected = true;
+        soundEngine.play('itemPickup');
         const swordType = object.type;
         const durability = this.getSwordDurability(swordType);
         const gameStateWithSword = this.gameState as typeof this.gameState & {
@@ -288,6 +294,7 @@ class InteractionManager {
     const OT = this.types;
     if (object.type !== OT.SWITCH) return false;
     object.on = !object.on;
+    soundEngine.play('switchToggle');
     const variableId = this.gameState.normalizeVariableId?.(object.variableId ?? null) ?? null;
     if (variableId) {
       this.gameState.setVariableValue?.(variableId, object.on);

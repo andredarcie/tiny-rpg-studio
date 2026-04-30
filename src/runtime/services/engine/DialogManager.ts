@@ -1,4 +1,5 @@
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
+import { soundEngine } from '../SoundEngine';
 
 type DialogMeta = {
   pauseReason?: string;
@@ -34,6 +35,7 @@ class DialogManager {
     const hasOptions = Object.keys(options).length > 0;
     const meta = hasOptions ? { ...options } : null;
 
+    soundEngine.play('dialog');
     const reason = meta?.pauseReason || 'dialog';
     if (meta) meta.pauseReason = reason;
     this.gameState.pauseGame(reason);

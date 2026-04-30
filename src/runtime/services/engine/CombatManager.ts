@@ -1,6 +1,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { TextResources } from '../../adapters/TextResources';
 import { GameConfig } from '../../../config/GameConfig';
+import { soundEngine } from '../SoundEngine';
 import type {
   GameStateApi,
   RendererApi,
@@ -243,6 +244,7 @@ class CombatManager {
     cameraShake: CameraShakeApi,
     enemyAttackMissed: boolean
   ): void {
+    soundEngine.play('playerAttack');
     combatAnimator.startLungeAttack('player', enemyPos, () => {
       if (!this.checkCombatRangeOrCancel(enemy)) return;
 
@@ -317,6 +319,7 @@ class CombatManager {
       }
 
       // Player counter-attacks (consolidated damage logic)
+      soundEngine.play('playerAttack');
       combatAnimator.startLungeAttack('player', enemyPos, () => {
         if (!this.checkCombatRangeOrCancel(enemy)) return;
 
@@ -348,6 +351,7 @@ class CombatManager {
     entityRenderer: EntityRendererApi,
     cameraShake: CameraShakeApi
   ): number {
+    soundEngine.play('playerHit');
     const playerLives = this.gameState.damagePlayer(damage);
     const reduction = this.gameState.consumeLastDamageReduction();
 
@@ -396,10 +400,12 @@ class CombatManager {
     const isBackstab = this.isBackstab(player, enemy);
     const finalDamage = baseDamage + (isBackstab ? 1 : 0);
 
-    // Show backstab message if applicable
-    if (isBackstab && options.showBackstabMessage) {
-      const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
-      this.renderer.showCombatIndicator(backstabText, { duration: GameConfig.combat.messageDuration.standard });
+    if (isBackstab) {
+      soundEngine.play('backstab');
+      if (options.showBackstabMessage) {
+        const backstabText = getEnemyLocaleText('combat.backstab', 'Backstab!');
+        this.renderer.showCombatIndicator(backstabText, { duration: GameConfig.combat.messageDuration.standard });
+      }
     }
 
     // Apply damage to enemy
@@ -416,8 +422,11 @@ class CombatManager {
     // Spawn multiple life loss squares (one per damage point)
     this.spawnMultipleLifeLoss(enemy, previousLives, finalDamage);
 
-    // Check if enemy is defeated
     const defeated = enemy.lives <= 0;
+
+    if (!defeated) {
+      soundEngine.play('enemyHit');
+    }
 
     return { defeated, actualDamage: finalDamage };
   }
@@ -495,7 +504,7 @@ class CombatManager {
       return;
     }
 
-    // Mark enemy as dying (triggers rotation/fade animation in renderer)
+    soundEngine.play('enemyDeath');
     enemy.deathStartTime = performance.now();
 
     // Schedule cleanup after animation completes
@@ -511,10 +520,9 @@ class CombatManager {
    * Play player death sequence: grayscale, pause, show death message, then game over
    */
   private playPlayerDeathSequence(enemyType: string): void {
-    // Cancel any existing death sequence
     this.cancelDeathSequence();
 
-    // Apply grayscale filter to canvas
+    soundEngine.play('playerDeath');
     this.renderer.applyGrayscaleFilter();
 
     // Pause the game
@@ -692,6 +700,7 @@ class CombatManager {
   }
 
   showMissFeedback(): void {
+    soundEngine.play('miss');
     this.renderer.showCombatIndicator('Miss', { duration: GameConfig.combat.messageDuration.standard });
   }
 }

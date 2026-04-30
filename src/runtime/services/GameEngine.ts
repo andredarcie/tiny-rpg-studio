@@ -1,5 +1,6 @@
 import { DialogManager } from './engine/DialogManager';
 import { EnemyManager } from './engine/EnemyManager';
+import { soundEngine } from './SoundEngine';
 import { InteractionManager } from './engine/InteractionManager';
 import { MovementManager } from './engine/MovementManager';
 import { CombatStunManager } from './engine/CombatStunManager';
@@ -178,6 +179,7 @@ export class GameEngine {
     if (!this.isLevelUpOverlayActive()) return;
     const choice = this.gameState.selectLevelUpSkill(index);
     if (choice) {
+      soundEngine.play('skillPick');
       const name = this.getSkillDisplayName(choice);
       const message =
         (TextResources.format('skills.pickupMessage', { name }, '') as string) ||
@@ -424,6 +426,7 @@ export class GameEngine {
   dismissIntroScreen(): boolean {
     if (!this.introVisible || !this.canDismissIntroScreen) return false;
     this.introVisible = false;
+    soundEngine.play('gameStart');
     this.gameState.resumeGame('intro-screen');
     this.renderer.draw();
     return true;
@@ -611,6 +614,7 @@ export class GameEngine {
 
   handleGameCompletion(): void {
     if (this.isGameOver()) return;
+    soundEngine.play('victory');
     this.enemyManager.stop();
     this.gameState.pauseGame('game-over');
     this.gameState.setGameOver(true, 'victory');

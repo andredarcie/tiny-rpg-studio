@@ -3,6 +3,7 @@ import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { TextResources } from '../../adapters/TextResources';
 import { GameConfig } from '../../../config/GameConfig';
 import { CombatManager } from './CombatManager';
+import { soundEngine } from '../SoundEngine';
 import type {
   GameStateApi,
   RendererApi,
@@ -228,9 +229,11 @@ class EnemyManager {
     const experienceReward = this.getExperienceReward(enemy.type);
     const defeatResult = this.gameState.handleEnemyDefeated(experienceReward);
 
-    // Check if leveled up and should start level overlay
-    if (defeatResult?.leveledUp && this.shouldStartLevelOverlay()) {
-      this.gameState.startLevelUpSelectionIfNeeded();
+    if (defeatResult?.leveledUp) {
+      soundEngine.play('levelUp');
+      if (this.shouldStartLevelOverlay()) {
+        this.gameState.startLevelUpSelectionIfNeeded();
+      }
     }
   }
 

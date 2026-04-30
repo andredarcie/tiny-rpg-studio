@@ -1,5 +1,6 @@
 import { TextResources } from '../../adapters/TextResources';
 import { GameConfig } from '../../../config/GameConfig';
+import { soundEngine } from '../SoundEngine';
 
 type PlayerState = {
   roomIndex: number;
@@ -292,6 +293,7 @@ class MovementManager {
         if (objectAtTarget) {
           objectAtTarget.opened = true;
         }
+        soundEngine.play('doorUnlock');
         const remainingKeys = Number(this.gameState.getKeys());
         const message = openedWithSkill
           ? getMovementText('doors.unlockedSkill', getMovementText('doors.opened', ''))
@@ -354,6 +356,7 @@ class MovementManager {
 
     this.gameState.setPlayerPosition(targetX, targetY, targetRoomIndex !== roomIndex ? targetRoomIndex : null);
     if (enteringNewRoom) {
+      soundEngine.play('roomTransition');
       const updatedPlayer = this.gameState.getPlayer();
       if (updatedPlayer) {
         if (dx !== 0) {
