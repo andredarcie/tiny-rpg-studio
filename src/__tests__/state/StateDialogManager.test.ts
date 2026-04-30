@@ -49,4 +49,50 @@ describe('StateDialogManager', () => {
     manager.setPage(-5);
     expect(state.dialog.page).toBe(1);
   });
+
+  it('tracks read dialog variants per npc and reports unread status', () => {
+    const state = {
+      dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
+      npcDialogReadState: {},
+    } as RuntimeState & {
+      npcDialogReadState: Record<string, Record<string, true>>;
+    };
+
+    const manager = new StateDialogManager(state);
+    const dialogStateManager = manager as unknown as {
+      hasUnreadNpcDialog: (npcId: string, variantKey: string | null) => boolean;
+      markNpcDialogAsRead: (npcId: string, variantKey: string | null) => void;
+      hasReadNpcDialogVariant: (npcId: string, variantKey: string | null) => boolean;
+    };
+
+    expect(dialogStateManager.hasUnreadNpcDialog('npc-1', null)).toBe(false);
+    expect(dialogStateManager.hasUnreadNpcDialog('npc-1', 'default:Hello')).toBe(true);
+
+    dialogStateManager.markNpcDialogAsRead('npc-1', 'default:Hello');
+
+    expect(dialogStateManager.hasReadNpcDialogVariant('npc-1', 'default:Hello')).toBe(true);
+    expect(dialogStateManager.hasUnreadNpcDialog('npc-1', 'default:Hello')).toBe(false);
+    expect(dialogStateManager.hasUnreadNpcDialog('npc-1', 'conditional:flag:Hello')).toBe(true);
+  });
+
+  it('clears npc read dialog state on reset', () => {
+    const state = {
+      dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
+      npcDialogReadState: {
+        npcA: { 'default:Oi': true },
+        npcB: { 'conditional:quest:Valeu': true },
+      },
+    } as RuntimeState & {
+      npcDialogReadState: Record<string, Record<string, true>>;
+    };
+
+    const manager = new StateDialogManager(state);
+    const dialogStateManager = manager as unknown as {
+      resetNpcDialogReadState: () => void;
+    };
+
+    dialogStateManager.resetNpcDialogReadState();
+
+    expect(state.npcDialogReadState).toEqual({});
+  });
 });

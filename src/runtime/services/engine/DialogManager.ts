@@ -5,6 +5,8 @@ type DialogMeta = {
   pauseReason?: string;
   setVariableId?: string;
   rewardAllowed?: boolean;
+  npcId?: string;
+  npcDialogVariantKey?: string;
 };
 
 type GameStateApi = {
@@ -13,6 +15,7 @@ type GameStateApi = {
   setDialog: (active: boolean, text?: string, meta?: DialogMeta | null) => void;
   getDialog: () => { active: boolean };
   setVariableValue?: (id: string, value: boolean) => [boolean, boolean];
+  markNpcDialogAsRead?: (npcId: string, variantKey: string | null) => void;
 };
 
 type RendererApi = {
@@ -39,6 +42,9 @@ class DialogManager {
     const reason = meta?.pauseReason || 'dialog';
     if (meta) meta.pauseReason = reason;
     this.gameState.pauseGame(reason);
+    if (meta?.npcId && meta.npcDialogVariantKey) {
+      this.gameState.markNpcDialogAsRead?.(meta.npcId, meta.npcDialogVariantKey);
+    }
 
     this.pendingDialogAction = meta;
     this.gameState.setDialog(true, text, meta);

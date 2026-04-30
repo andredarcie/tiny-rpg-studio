@@ -196,6 +196,7 @@ export type GameDefinition = {
 export type RuntimeState = {
     player: PlayerRuntimeState;
     dialog: DialogState;
+    npcDialogReadState: Record<string, Record<string, true>>;
     enemies: EnemyDefinition[];
     variables: VariableDefinition[];
     gameOver: boolean;

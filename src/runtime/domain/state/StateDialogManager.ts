@@ -16,6 +16,10 @@ class StateDialogManager {
         return this.state?.dialog ?? null;
     }
 
+    get npcDialogReadState() {
+        return this.state?.npcDialogReadState ?? null;
+    }
+
     getDialog(): DialogState {
         return this.dialog ?? { active: false, text: '', page: 1, maxPages: 1, meta: null };
     }
@@ -48,8 +52,35 @@ class StateDialogManager {
         dialog.page = clamped;
     }
 
+    markNpcDialogAsRead(npcId: string, variantKey: string | null) {
+        const state = this.npcDialogReadState;
+        if (!state || !npcId || !variantKey) return;
+        state[npcId] = state[npcId] || {};
+        state[npcId][variantKey] = true;
+    }
+
+    hasReadNpcDialogVariant(npcId: string, variantKey: string | null): boolean {
+        const state = this.npcDialogReadState;
+        if (!state || !npcId || !variantKey) return false;
+        return Boolean(state[npcId]?.[variantKey]);
+    }
+
+    hasUnreadNpcDialog(npcId: string, variantKey: string | null): boolean {
+        if (!variantKey) return false;
+        return !this.hasReadNpcDialogVariant(npcId, variantKey);
+    }
+
+    resetNpcDialogReadState() {
+        const state = this.npcDialogReadState;
+        if (!state) return;
+        Object.keys(state).forEach((npcId) => {
+            delete state[npcId];
+        });
+    }
+
     reset() {
         this.setDialog(false);
+        this.resetNpcDialogReadState();
     }
 }
 

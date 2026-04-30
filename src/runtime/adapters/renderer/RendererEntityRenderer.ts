@@ -2,6 +2,7 @@ import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
 import { bitmapFont } from './BitmapFont';
+import { drawUnreadNpcDialogMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
 
 type FlashState = {
     color: string;
@@ -175,6 +176,9 @@ class RendererEntityRenderer {
             if (!sprite) continue;
             sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
             this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+            if (shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
+                drawUnreadNpcDialogMarker(ctx, this.paletteManager, px, py, tileSize);
+            }
         }
     }
 
@@ -501,11 +505,17 @@ type PlayerState = {
 };
 
 type NpcState = {
+    id?: string;
     placed?: boolean;
     roomIndex: number;
     x: number;
     y: number;
     type: string;
+    text?: string;
+    conditionText?: string;
+    conditionVariableId?: string | null;
+    rewardVariableId?: string | null;
+    conditionalRewardVariableId?: string | null;
 };
 
 type GameObjectState = {
@@ -558,8 +568,10 @@ type GameStateApi = {
     getGame: () => GameData;
     getPlayer: () => PlayerState;
     getEnemies?: () => EnemyState[];
+    normalizeVariableId?: (id: string | null) => string | null;
     isVariableOn?: (id: string) => boolean;
     hasSkill?: (skillId: string) => boolean;
+    hasUnreadNpcDialog?: (npcId: string, variantKey: string | null) => boolean;
 };
 
 type SpriteFactoryApi = {

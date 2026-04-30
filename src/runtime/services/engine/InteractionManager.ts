@@ -2,6 +2,7 @@ import { ITEM_TYPES, type ItemType } from '../../domain/constants/itemTypes';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
+import { resolveNpcDialog } from './resolveNpcDialog';
 
 type DialogManagerApi = {
   showDialog: (text: string, meta?: Record<string, unknown>) => void;
@@ -32,6 +33,7 @@ type GameObjectState = {
 };
 
 type NpcState = {
+  id?: string;
   placed?: boolean;
   roomIndex: number;
   x: number;
@@ -323,7 +325,10 @@ class InteractionManager {
       const sameTile = npc.roomIndex === player.roomIndex && npc.x === player.x && npc.y === player.y;
       if (!sameTile) continue;
 
-      const dialogText = this.getNpcDialogText(npc);
+      const resolvedDialog = resolveNpcDialog(npc, this.gameState);
+      if (!resolvedDialog.hasDialog) continue;
+
+      const dialogText = resolvedDialog.text;
       const meta = this.getNpcDialogMeta(npc);
       this.dialogManager.showDialog(dialogText, meta);
       break;
@@ -331,47 +336,28 @@ class InteractionManager {
   }
 
   getNpcDialogText(npc: NpcState): string {
-    const rawConditionId = npc.conditionVariableId || null;
-    const isBardCondition = rawConditionId === 'skill:bard';
-    const conditionId = isBardCondition ? null : this.gameState.normalizeVariableId?.(rawConditionId) ?? null;
-    const hasConditionText = typeof npc.conditionText === 'string' && npc.conditionText.trim().length > 0;
-    const charisma = this.gameState.hasSkill?.('charisma');
-    const conditionActive =
-      hasConditionText && ((isBardCondition && charisma) || (conditionId && this.gameState.isVariableOn?.(conditionId)));
-    const useConditionText = conditionActive && hasConditionText;
-
-    if (useConditionText) {
-      return npc.conditionText ?? '';
-    }
-
-    if (typeof npc.text === 'string' && npc.text.trim()) {
-      return npc.text;
-    }
-
-    return npc.text || '';
+    return resolveNpcDialog(npc, this.gameState).text;
   }
 
   getNpcDialogMeta(npc: NpcState): Record<string, unknown> | undefined {
-    const rawConditionId = npc.conditionVariableId || null;
-    const isBardCondition = rawConditionId === 'skill:bard';
-    const conditionId = isBardCondition ? null : this.gameState.normalizeVariableId?.(rawConditionId) ?? null;
-    const rewardId = this.gameState.normalizeVariableId?.(npc.rewardVariableId ?? null) ?? null;
-    const conditionalRewardId =
-      this.gameState.normalizeVariableId?.(npc.conditionalRewardVariableId ?? null) ?? null;
-    const hasConditionText = typeof npc.conditionText === 'string' && npc.conditionText.trim().length > 0;
-    const charisma = this.gameState.hasSkill?.('charisma');
-    const conditionActive =
-      hasConditionText && ((isBardCondition && charisma) || (conditionId && this.gameState.isVariableOn?.(conditionId)));
-
-    if (conditionActive && conditionalRewardId) {
-      return { setVariableId: conditionalRewardId, rewardAllowed: true };
+    const resolvedDialog = resolveNpcDialog(npc, this.gameState);
+    if (!resolvedDialog.hasDialog) {
+      return undefined;
     }
 
-    if (!conditionActive && rewardId) {
-      return { setVariableId: rewardId, rewardAllowed: true };
+    const meta: Record<string, unknown> = {};
+    if (resolvedDialog.rewardVariableId) {
+      meta.setVariableId = resolvedDialog.rewardVariableId;
+      meta.rewardAllowed = true;
+    }
+    if (typeof npc.id === 'string' && npc.id.trim()) {
+      meta.npcId = npc.id;
+    }
+    if (resolvedDialog.variantKey) {
+      meta.npcDialogVariantKey = resolvedDialog.variantKey;
     }
 
-    return undefined;
+    return Object.keys(meta).length > 0 ? meta : undefined;
   }
 
   checkRoomExits(exits: ExitState[], rooms: RoomState[], player: PlayerPosition): void {

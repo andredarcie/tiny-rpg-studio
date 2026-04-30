@@ -87,6 +87,91 @@ describe('InteractionManager', () => {
     expect(text).toBe('Conditional');
   });
 
+  it('passes npc dialog variant metadata when opening dialog', () => {
+    const gameState = createInteractionGameState();
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [],
+      exits: [],
+      rooms: [],
+      sprites: [{ id: 'npc-1', placed: true, roomIndex: 0, x: 2, y: 3, text: 'Fala comigo!' }],
+    });
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    manager.handlePlayerInteractions();
+
+    expect(dialogManager.showDialog).toHaveBeenCalledWith('Fala comigo!', {
+      npcId: 'npc-1',
+      npcDialogVariantKey: 'default:Fala comigo!',
+    });
+  });
+
+  it('uses bard condition as the effective unread dialog variant', () => {
+    const gameState = createInteractionGameState();
+    (gameState.hasSkill as ReturnType<typeof vi.fn>).mockImplementation((skillId: string) => skillId === 'charisma');
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    const text = manager.getNpcDialogText({
+      id: 'bard-npc',
+      conditionVariableId: 'skill:bard',
+      conditionText: 'Segredo do bardo',
+      text: 'Ola',
+      roomIndex: 0,
+      x: 0,
+      y: 0,
+    } as never);
+
+    const meta = manager.getNpcDialogMeta({
+      id: 'bard-npc',
+      conditionVariableId: 'skill:bard',
+      conditionText: 'Segredo do bardo',
+      text: 'Ola',
+      roomIndex: 0,
+      x: 0,
+      y: 0,
+    } as never);
+
+    expect(text).toBe('Segredo do bardo');
+    expect(meta).toEqual({
+      npcId: 'bard-npc',
+      npcDialogVariantKey: 'conditional:skill:bard:Segredo do bardo',
+    });
+  });
+
+  it('does not open npc dialog when the effective dialog is empty', () => {
+    const gameState = createInteractionGameState();
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [],
+      exits: [],
+      rooms: [],
+      sprites: [{ id: 'npc-empty', placed: true, roomIndex: 0, x: 2, y: 3, text: '   ' }],
+    });
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    manager.handlePlayerInteractions();
+
+    expect(dialogManager.showDialog).not.toHaveBeenCalled();
+  });
+
+  it('keeps dialog flow stable for npc without a valid id', () => {
+    const gameState = createInteractionGameState();
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [],
+      exits: [],
+      rooms: [],
+      sprites: [{ placed: true, roomIndex: 0, x: 2, y: 3, text: 'Sem id' }],
+    });
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    manager.handlePlayerInteractions();
+
+    expect(dialogManager.showDialog).toHaveBeenCalledWith('Sem id', {
+      npcDialogVariantKey: 'default:Sem id',
+    });
+  });
+
   it('does not show NPC dialog when combat is active', () => {
     const gameState = createInteractionGameState();
     (gameState.isInCombat as ReturnType<typeof vi.fn>).mockReturnValue(true);

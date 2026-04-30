@@ -113,5 +113,20 @@ describe('GameState', () => {
       expect(sync).toHaveBeenCalledTimes(1);
       expect(state.isLevelUpOverlayActive()).toBe(true);
     });
+
+    it('clears npc read dialog variants from the current session on reset', () => {
+      const state = new GameState();
+      const gameStateWithNpcDialogs = state as unknown as {
+        hasUnreadNpcDialog: (npcId: string, variantKey: string | null) => boolean;
+        markNpcDialogAsRead: (npcId: string, variantKey: string | null) => void;
+      };
+
+      gameStateWithNpcDialogs.markNpcDialogAsRead('npc-1', 'default:Oi');
+      expect(gameStateWithNpcDialogs.hasUnreadNpcDialog('npc-1', 'default:Oi')).toBe(false);
+
+      state.resetGame();
+
+      expect(gameStateWithNpcDialogs.hasUnreadNpcDialog('npc-1', 'default:Oi')).toBe(true);
+    });
   });
 });

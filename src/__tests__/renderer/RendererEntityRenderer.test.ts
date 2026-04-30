@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
+import { bitmapFont } from '../../runtime/adapters/renderer/BitmapFont';
 import { RendererEntityRenderer } from '../../runtime/adapters/renderer/RendererEntityRenderer';
 
 type SpriteMatrix = (string | null)[][];
@@ -295,6 +296,30 @@ describe('RendererEntityRenderer', () => {
     renderer.drawNPCs(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
+  });
+
+  it('drawNPCs shows unread marker only for npc with unread effective dialog variant', () => {
+    const { renderer, game, player, spriteFactory, canvasHelper, gameState } = makeFixture();
+    const ctx = createCtx();
+    player.roomIndex = 1;
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({
+      default: sprite(9),
+    });
+    game.sprites = [
+      { id: 'npc-read', placed: true, roomIndex: 1, x: 1, y: 1, type: 'villager', text: 'Lido' },
+      { id: 'npc-unread', placed: true, roomIndex: 1, x: 2, y: 2, type: 'villager', text: 'Novo dialogo' },
+      { id: 'npc-empty', placed: true, roomIndex: 1, x: 3, y: 3, type: 'villager', text: '   ' },
+    ] as Array<Record<string, unknown>>;
+    const drawTextSpy = vi.spyOn(bitmapFont, 'drawText').mockImplementation(() => {});
+    (gameState as unknown as {
+      hasUnreadNpcDialog: (npcId: string, variantKey: string | null) => boolean;
+    }).hasUnreadNpcDialog = vi.fn((npcId: string) => npcId === 'npc-unread');
+
+    renderer.drawNPCs(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(3);
+    expect(drawTextSpy).toHaveBeenCalledTimes(1);
+    expect(drawTextSpy).toHaveBeenCalledWith(ctx, '!', 44, 34, expect.any(Number), expect.any(String));
   });
 
   it('drawEnemies handles no enemy list and empty list', () => {

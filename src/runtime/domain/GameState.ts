@@ -125,6 +125,7 @@ class GameState {
                 stunUntil: 0
             },
             dialog: { active: false, text: "", page: 1, maxPages: 1, meta: null },
+            npcDialogReadState: {},
             enemies: [],
             variables: [],
             gameOver: false,
@@ -347,6 +348,14 @@ class GameState {
 
     setDialogPage(page: number): void {
         this.dialogManager.setPage(page);
+    }
+
+    markNpcDialogAsRead(npcId: string, variantKey: string | null): void {
+        this.dialogManager.markNpcDialogAsRead(npcId, variantKey);
+    }
+
+    hasUnreadNpcDialog(npcId: string, variantKey: string | null): boolean {
+        return this.dialogManager.hasUnreadNpcDialog(npcId, variantKey);
     }
 
     setEditorMode(active = false): void {
