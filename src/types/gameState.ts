@@ -193,10 +193,12 @@ export type GameDefinition = {
     skillCustomizations?: SkillCustomizationMap;
 };
 
+export type NpcDialogReadState = Partial<Record<string, Partial<Record<string, true>>>>;
+
 export type RuntimeState = {
     player: PlayerRuntimeState;
     dialog: DialogState;
-    npcDialogReadState: Record<string, Record<string, true>>;
+    npcDialogReadState: NpcDialogReadState;
     enemies: EnemyDefinition[];
     variables: VariableDefinition[];
     gameOver: boolean;

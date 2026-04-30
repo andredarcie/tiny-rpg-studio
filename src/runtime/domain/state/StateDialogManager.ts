@@ -54,15 +54,16 @@ class StateDialogManager {
 
     markNpcDialogAsRead(npcId: string, variantKey: string | null) {
         const state = this.npcDialogReadState;
-        if (!state || !npcId || !variantKey) return;
-        state[npcId] = state[npcId] || {};
-        state[npcId][variantKey] = true;
+        if (!state || !variantKey) return;
+        const npcState = state[npcId] ?? {};
+        npcState[variantKey] = true;
+        state[npcId] = npcState;
     }
 
     hasReadNpcDialogVariant(npcId: string, variantKey: string | null): boolean {
         const state = this.npcDialogReadState;
-        if (!state || !npcId || !variantKey) return false;
-        return Boolean(state[npcId]?.[variantKey]);
+        if (!state || !variantKey) return false;
+        return state[npcId]?.[variantKey] === true;
     }
 
     hasUnreadNpcDialog(npcId: string, variantKey: string | null): boolean {
