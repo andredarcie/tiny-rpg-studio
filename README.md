@@ -1,13 +1,17 @@
 # Tiny RPG Studio
 
-Tiny RPG Studio is a browser-native RPG maker. Paint tiles, build rooms, drop NPCs/enemies/objects, and play instantly in the same page. It is intentionally small and constrained to spark creativity: build micro-stories in minutes and share everything as a single URL.
+Tiny RPG Studio is a browser-native RPG maker. Paint tiles, build rooms, drop NPCs/enemies/objects, and play instantly in the same page. It is intentionally small and constrained to spark creativity: build and share micro-stories in minutes as a single URL.
 
 ## Features
 - Side-by-side Editor/Game tabs for instant iteration.
-- Shareable games: one URL encodes the full game state.
+- Shareable games: the full game state is encoded in a single URL — no account required to play.
+- Combat system with attack animations, enemy AI, and skill-based abilities.
+- Editor tools for tiles, NPCs, enemies, objects, items, skills, variables, and worlds.
+- Explore and play games created by the community.
+- PICO-8 style bitmap font for authentic retro visuals.
 - Lightweight runtime: fast load, no heavy framework dependencies.
-- Editor tools for tiles, NPCs, enemies, objects, variables, and worlds.
-- PWA-ready: installable experience with offline-ready caching and manifest support via Vite.
+- PWA-ready: installable as a native-like app with offline support.
+- Desktop app build via Tauri.
 
 ## Requirements
 - Node.js 18+ (recommended)
@@ -27,10 +31,14 @@ Open the URL Vite prints (usually `http://localhost:5173`).
 
 ## Build
 ```bash
+# Web
 npm run build
+
+# Desktop (requires Tauri)
+npm run build:desktop
 ```
 
-## Preview Production Build
+## Preview
 ```bash
 npm run preview
 ```
@@ -49,32 +57,18 @@ npm run test:e2e
 ## Project Structure
 ```
 src/
-  core/              Core game systems (engine, renderer, tiles, share, etc.)
+  runtime/           Game engine, renderer, services, and domain logic
   editor/            Editor UI logic and services
-  state/             Game state facades and managers
+  config/            Game and editor configuration schemas
+  sdk/               Public SDK for embedding the runtime
   __tests__/         Vitest unit tests
 public/
-  js/                Legacy JS assets kept for reference
   styles.css         Global styles
 index.html           Main entry (Vite)
 vite.config.ts       Vite config
 ```
 
-## Share Codes
-- The app serializes game data into compact share codes.
-- Codes can be shared as a URL hash (e.g. `#v1...`) and decoded on load.
-
-## Export Mode
-Some editor flows render exports with flags set on `window` (e.g. `__TINY_RPG_EXPORT_MODE`).
-When exporting, the app can open a new tab and generate a static HTML payload.
-
 ## Contributing
 - Keep changes small and focused.
 - Add tests for new logic when possible.
 - Run `npm test` before opening a PR.
-
-## License
-See the repository license file.
-
-## Progressive Web App
-- The Vite build now includes a manifest and service worker (powered by `vite-plugin-pwa`), so Tiny RPG Studio can be installed like a normal app and keep working offline once cached.
