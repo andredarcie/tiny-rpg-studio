@@ -18,7 +18,7 @@ describe('StateDialogManager', () => {
   it('sets and resets dialog values', () => {
     const state = {
       dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
-    } as RuntimeState;
+    } as unknown as RuntimeState;
 
     const manager = new StateDialogManager(state);
 
@@ -36,7 +36,7 @@ describe('StateDialogManager', () => {
   it('clamps dialog pages', () => {
     const state = {
       dialog: { active: true, text: 'hi', page: 1, maxPages: 3, meta: null },
-    } as RuntimeState;
+    } as unknown as RuntimeState;
 
     const manager = new StateDialogManager(state);
 
@@ -54,9 +54,7 @@ describe('StateDialogManager', () => {
     const state = {
       dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
       npcDialogReadState: {},
-    } as RuntimeState & {
-      npcDialogReadState: Record<string, Record<string, true>>;
-    };
+    } as unknown as RuntimeState;
 
     const manager = new StateDialogManager(state);
     const dialogStateManager = manager as unknown as {
@@ -82,9 +80,7 @@ describe('StateDialogManager', () => {
         npcA: { 'default:Oi': true },
         npcB: { 'conditional:quest:Valeu': true },
       },
-    } as RuntimeState & {
-      npcDialogReadState: Record<string, Record<string, true>>;
-    };
+    } as unknown as RuntimeState;
 
     const manager = new StateDialogManager(state);
     const dialogStateManager = manager as unknown as {

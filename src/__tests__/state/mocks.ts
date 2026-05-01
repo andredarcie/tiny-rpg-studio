@@ -22,6 +22,7 @@ const baseRuntimeState: RuntimeState = {
         stunUntil: 0
     },
     dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
+    npcDialogReadState: {},
     enemies: [],
     variables: [],
     gameOver: false,
