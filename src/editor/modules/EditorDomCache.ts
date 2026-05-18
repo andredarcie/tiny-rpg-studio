@@ -20,6 +20,7 @@ class EditorDomCache {
     npcVariantButtons: HTMLElement[];
     objectCategoryButtons: HTMLElement[];
     worldGrid: HTMLElement | null;
+    worldMetrics: HTMLElement | null;
     titleInput: HTMLInputElement | null;
     authorInput: HTMLInputElement | null;
     fileInput: HTMLInputElement | null;
@@ -112,6 +113,7 @@ class EditorDomCache {
             this.npcVariantButtons = [];
             this.objectCategoryButtons = [];
             this.worldGrid = null;
+            this.worldMetrics = null;
             this.titleInput = null;
             this.authorInput = null;
             this.fileInput = null;
@@ -193,6 +195,7 @@ class EditorDomCache {
         this.npcVariantButtons = Array.from(root.querySelectorAll('[data-npc-variant-filter]'));
         this.objectCategoryButtons = Array.from(root.querySelectorAll('[data-object-category-filter]'));
         this.worldGrid = root.querySelector('#world-grid') as HTMLElement | null;
+        this.worldMetrics = root.querySelector('#world-metrics') as HTMLElement | null;
         this.titleInput = root.querySelector('#game-title') as HTMLInputElement | null;
         this.authorInput = root.querySelector('#game-author') as HTMLInputElement | null;
         this.fileInput = root.querySelector('#file-input') as HTMLInputElement | null;

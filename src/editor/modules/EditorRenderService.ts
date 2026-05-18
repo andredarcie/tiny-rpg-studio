@@ -146,6 +146,7 @@ class EditorRenderService {
 
     renderWorldGrid() {
         this.worldRenderer.renderWorldGrid();
+        this.worldRenderer.renderWorldMetrics();
     }
 
     renderMapNavigation() {

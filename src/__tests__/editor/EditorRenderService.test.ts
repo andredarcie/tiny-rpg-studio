@@ -180,6 +180,7 @@ vi.mock('../../editor/modules/renderers/EditorWorldRenderer', () => ({
     renderWorldGrid = vi.fn();
     renderMapNavigation = vi.fn();
     updateMapPosition = vi.fn();
+    renderWorldMetrics = vi.fn();
     constructor() {
       mocks.worldInstances.push(this);
     }

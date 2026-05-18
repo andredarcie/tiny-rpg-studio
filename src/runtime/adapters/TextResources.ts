@@ -334,7 +334,21 @@ const TEXT_BUNDLES = {
         'explore.backToMyGame': '← Voltar para meu jogo',
         'explore.subtitle': '{count} pequenas aventuras da comunidade',
         'explore.itchLink': 'itch.io ↗',
-        'explore.itchLinkAria': '{title} no itch.io'
+        'explore.itchLinkAria': '{title} no itch.io',
+        'metrics.title': 'Game Metrics',
+        'metrics.tooltip.npcs': 'Quantidade de NPCs posicionados no mapa.',
+        'metrics.tooltip.enemies': 'Quantidade de inimigos posicionados em todos os quartos.',
+        'metrics.tooltip.items': 'Quantidade de itens posicionados no mapa (poções, chaves, pergaminhos, etc.).',
+        'metrics.tooltip.objects': 'Quantidade de objetos interativos posicionados (alavancas, portas, espadas, etc.), excluindo finais de jogo.',
+        'metrics.tooltip.endings': 'Quantidade de finais possíveis do jogo — cada objeto "Final do jogo" colocado no mapa conta como um final.',
+        'metrics.tooltip.roomExits': 'Quantidade de teleportes entre quartos colocados no mapa. Mostram como os quartos estão conectados.',
+        'metrics.tooltip.conditionalDialogs': 'Quantidade de NPCs com um diálogo alternativo configurado — ativado quando uma variável está ativa.',
+        'metrics.tooltip.variablesInUse': 'Quantidade de variáveis únicas efetivamente usadas no jogo — referenciadas por NPCs, inimigos ou objetos como condição ou recompensa.',
+        'metrics.tooltip.roomsWithTiles': 'Quantidade de quartos que têm ao menos um tile diferente do padrão pintado por você.',
+        'metrics.tooltip.paintedTiles': 'Quantidade de tiles modificados em relação ao padrão — inclui tiles de overlay e tiles de chão alterados.',
+        'metrics.tooltip.dialogWords': 'Total de palavras escritas nos diálogos dos NPCs, incluindo diálogos alternativos.',
+        'metrics.tooltip.customSprites': 'Quantidade de sprites personalizados desenhados por você no editor de pixel art.',
+        'metrics.tooltip.walls': 'Quantidade de blocos de colisão pintados por você. Define os caminhos e obstáculos do mapa.'
     },
     'en-US': {
         'intro.byline': 'by {author}',
@@ -670,7 +684,21 @@ const TEXT_BUNDLES = {
         'explore.backToMyGame': '← Back to my game',
         'explore.subtitle': '{count} tiny adventures from the community',
         'explore.itchLink': 'itch.io ↗',
-        'explore.itchLinkAria': '{title} on itch.io'
+        'explore.itchLinkAria': '{title} on itch.io',
+        'metrics.title': 'Game Metrics',
+        'metrics.tooltip.npcs': 'Number of NPCs currently placed on the map.',
+        'metrics.tooltip.enemies': 'Number of enemies placed across all rooms.',
+        'metrics.tooltip.items': 'Number of items placed on the map (potions, keys, scrolls, etc.).',
+        'metrics.tooltip.objects': 'Number of interactive objects placed (switches, doors, swords, etc.), excluding game endings.',
+        'metrics.tooltip.endings': 'Number of possible game endings — each "Game End" object placed on the map counts as one ending.',
+        'metrics.tooltip.roomExits': 'Number of teleporters between rooms placed on the map. Shows how rooms are connected.',
+        'metrics.tooltip.conditionalDialogs': 'Number of NPCs with a conditional dialog configured — shown when a variable is active.',
+        'metrics.tooltip.variablesInUse': 'Number of unique variables actually used in the game — referenced by NPCs, enemies, or objects as a condition or reward.',
+        'metrics.tooltip.roomsWithTiles': 'Number of rooms with at least one tile painted by you, different from the default.',
+        'metrics.tooltip.paintedTiles': 'Number of tiles changed from the default — includes overlay tiles and modified ground tiles.',
+        'metrics.tooltip.dialogWords': 'Total word count across all NPC dialogs, including conditional dialogs.',
+        'metrics.tooltip.customSprites': 'Number of custom sprites drawn by you in the pixel art editor.',
+        'metrics.tooltip.walls': 'Number of collision blocks painted by you. Defines the paths and obstacles in the map.'
     }
 };
 
