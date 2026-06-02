@@ -53,15 +53,8 @@ class EditorObjectRenderer extends EditorRendererBase {
         const categoryFilter = this.state.objectCategoryFilter || 'all';
         const filteredDefinitions = definitions.filter((def) => {
             if (categoryFilter === 'all') return true;
-            if (categoryFilter === 'swords') {
-                const itemDef = ItemDefinitions.getItemDefinition(def.type as ItemType);
-                return Boolean(itemDef && itemDef.hasTag('sword'));
-            }
-            if (categoryFilter === 'logic') {
-                const itemDef = ItemDefinitions.getItemDefinition(def.type as ItemType);
-                return Boolean(itemDef && (itemDef.hasTag('logic-gate') || itemDef.hasTag('led') || itemDef.hasTag('switch')));
-            }
-            return true;
+            const itemDef = ItemDefinitions.getItemDefinition(def.type as ItemType);
+            return Boolean(itemDef && itemDef.hasTag(categoryFilter));
         });
 
         const selectedType = this.manager.selectedObjectType;
@@ -221,142 +214,7 @@ class EditorObjectRenderer extends EditorRendererBase {
             header.appendChild(position);
 
             body.appendChild(header);
-
-            if (object.type === EditorObjectTypes.SWITCH || object.type === DOOR_VARIABLE_TYPE) {
-                const config = document.createElement('div');
-                config.className = 'object-config';
-
-                const label = document.createElement('label');
-                label.className = 'object-config-label';
-
-                const select = document.createElement('select');
-                select.className = 'object-config-select';
-                this.manager.npcService.populateVariableSelect(select, object.variableId || '');
-                select.addEventListener('change', () => {
-                    this.gameEngine.setObjectVariableById(object.id ?? '', select.value);
-                    this.renderObjects();
-                    this.service.worldRenderer.renderWorldGrid();
-                    this.service.renderEditor();
-                    this.manager.updateJSON();
-                    this.manager.history.pushCurrentState();
-                });
-                label.append(`${this.t('objects.switch.variableLabel')} `, select);
-                config.appendChild(label);
-
-                const status = document.createElement('div');
-                status.className = 'object-status';
-                const isOn = object.type === EditorObjectTypes.SWITCH
-                    ? Boolean(object.on)
-                    : Boolean(this.gameEngine.isVariableOn(object.variableId || ''));
-                status.textContent = this.tf('objects.switch.stateLabel', {
-                    state: isOn ? this.t('objects.state.on') : this.t('objects.state.off')
-                });
-                config.appendChild(status);
-
-                body.appendChild(config);
-            }
-
-            if (object.isLogicGate) {
-                body.appendChild(this.buildLogicGateConfig(object));
-            }
-
-            if (object.isLed) {
-                const config = document.createElement('div');
-                config.className = 'object-config';
-
-                const label = document.createElement('label');
-                label.className = 'object-config-label';
-
-                const select = document.createElement('select');
-                select.className = 'object-config-select';
-                this.manager.npcService.populateVariableSelect(select, object.variableId || '');
-                select.addEventListener('change', () => {
-                    this.gameEngine.setObjectVariableById(object.id ?? '', select.value);
-                    this.renderObjects();
-                    this.service.worldRenderer.renderWorldGrid();
-                    this.service.renderEditor();
-                    this.manager.updateJSON();
-                    this.manager.history.pushCurrentState();
-                });
-                label.append(`${this.t('objects.logic.variableLabel')} `, select);
-                config.appendChild(label);
-                body.appendChild(config);
-            }
-
-            if (object.type === EditorObjectTypes.DOOR && object.opened) {
-                const badge = document.createElement('div');
-                badge.className = 'object-status';
-                badge.textContent = this.t('objects.status.doorOpened');
-                body.appendChild(badge);
-            }
-
-            if (object.type === EditorObjectTypes.KEY && object.collected) {
-                const badge = document.createElement('div');
-                badge.className = 'object-status';
-                badge.textContent = this.t('objects.status.keyCollected');
-                body.appendChild(badge);
-            }
-
-            if (object.type === EditorObjectTypes.LIFE_POTION && object.collected) {
-                const badge = document.createElement('div');
-                badge.className = 'object-status';
-                badge.textContent = this.t('objects.status.potionCollected');
-                body.appendChild(badge);
-            }
-
-            if (object.type === EditorObjectTypes.XP_SCROLL && object.collected) {
-                const badge = document.createElement('div');
-                badge.className = 'object-status';
-                badge.textContent = this.t('objects.status.scrollUsed');
-                body.appendChild(badge);
-            }
-
-            if ((object.type === EditorObjectTypes.SWORD || object.type === EditorObjectTypes.SWORD_BRONZE || object.type === EditorObjectTypes.SWORD_WOOD) && object.collected) {
-                const badge = document.createElement('div');
-                badge.className = 'object-status';
-                badge.textContent = this.t('objects.status.swordBroken');
-                body.appendChild(badge);
-            }
-
-            const isPlayerEnd = object.type === PLAYER_END_TYPE;
-            if (isPlayerEnd) {
-                const config = document.createElement('div');
-                config.className = 'object-config';
-
-                const label = document.createElement('label');
-                label.className = 'object-config-label';
-                label.textContent = this.t('objects.end.textLabel');
-
-                const textarea = document.createElement('textarea');
-                textarea.className = 'object-config-textarea';
-                textarea.rows = 4;
-                const maxLength = typeof StateObjectManager.PLAYER_END_TEXT_LIMIT === 'number'
-                    ? StateObjectManager.PLAYER_END_TEXT_LIMIT
-                    : 40;
-                textarea.maxLength = maxLength;
-                textarea.placeholder = this.t('objects.end.placeholder');
-                textarea.value = object.endingText || '';
-                textarea.addEventListener('input', () => {
-                    this.manager.objectService.updatePlayerEndText(object.roomIndex, textarea.value);
-                });
-
-                label.appendChild(textarea);
-                config.appendChild(label);
-
-                const hint = document.createElement('div');
-                hint.className = 'object-config-hint';
-                hint.textContent = this.tf('objects.end.hint', { max: maxLength });
-                config.appendChild(hint);
-
-                body.appendChild(config);
-            }
-
-            if (isPlayerEnd) {
-                const badge = document.createElement('div');
-                badge.className = 'object-status';
-                badge.textContent = this.t('objects.status.gameEnd');
-                body.appendChild(badge);
-            }
+            body.appendChild(this.buildObjectConfigArea(object));
 
             if (object.type !== EditorObjectTypes.PLAYER_START) {
                 const removeBtn = document.createElement('button');
@@ -392,7 +250,281 @@ class EditorObjectRenderer extends EditorRendererBase {
         });
     }
 
-    private buildLogicGateConfig(object: EditorObject): HTMLElement {
+    buildObjectConfigArea(object: EditorObject, onAfterChange?: () => void): HTMLElement {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'object-config-area';
+
+        const refresh = () => {
+            this.renderObjects();
+            this.service.worldRenderer.renderWorldGrid();
+            this.service.renderEditor();
+            this.manager.updateJSON();
+            this.manager.history.pushCurrentState();
+            onAfterChange?.();
+        };
+
+        if (object.type === EditorObjectTypes.SWITCH || object.type === DOOR_VARIABLE_TYPE) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+
+            const label = document.createElement('label');
+            label.className = 'object-config-label';
+
+            const select = document.createElement('select');
+            select.className = 'object-config-select';
+            this.manager.npcService.populateVariableSelect(select, object.variableId || '');
+            select.addEventListener('change', () => {
+                this.gameEngine.setObjectVariableById(object.id ?? '', select.value);
+                refresh();
+            });
+            label.append(`${this.t('objects.switch.variableLabel')} `, select);
+            config.appendChild(label);
+
+            const status = document.createElement('div');
+            status.className = 'object-status';
+            const isOn = object.type === EditorObjectTypes.SWITCH
+                ? Boolean(object.on)
+                : Boolean(this.gameEngine.isVariableOn(object.variableId || ''));
+            status.textContent = this.tf('objects.switch.stateLabel', {
+                state: isOn ? this.t('objects.state.on') : this.t('objects.state.off')
+            });
+            config.appendChild(status);
+
+            wrapper.appendChild(config);
+        }
+
+        if (object.isLogicGate) {
+            wrapper.appendChild(this.buildLogicGateConfig(object, refresh));
+        }
+
+        if (object.type === EditorObjectTypes.TRAP) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+
+            const label = document.createElement('label');
+            label.className = 'object-config-label';
+
+            const select = document.createElement('select');
+            select.className = 'object-config-select';
+            this.manager.npcService.populateVariableSelect(select, object.variableId || '');
+            select.addEventListener('change', () => {
+                this.gameEngine.setObjectVariableById(object.id ?? '', select.value);
+                refresh();
+            });
+            label.append(`${this.t('objects.switch.variableLabel')} `, select);
+            config.appendChild(label);
+
+            const status = document.createElement('div');
+            status.className = 'object-status';
+            const isActiveTrap = Boolean(this.gameEngine.isVariableOn(object.variableId || ''));
+            status.textContent = this.tf('objects.switch.stateLabel', {
+                state: isActiveTrap ? this.t('objects.state.on') : this.t('objects.state.off')
+            });
+            config.appendChild(status);
+            wrapper.appendChild(config);
+        }
+
+        if (object.type === EditorObjectTypes.PRESSURE_PLATE) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+
+            const label = document.createElement('label');
+            label.className = 'object-config-label';
+
+            const select = document.createElement('select');
+            select.className = 'object-config-select';
+            this.manager.npcService.populateVariableSelect(select, object.variableId || '');
+            select.addEventListener('change', () => {
+                this.gameEngine.setObjectVariableById(object.id ?? '', select.value);
+                refresh();
+            });
+            label.append(`${this.t('objects.switch.variableLabel')} `, select);
+            config.appendChild(label);
+
+            const status = document.createElement('div');
+            status.className = 'object-status';
+            const isActivePlate = Boolean(this.gameEngine.isVariableOn(object.variableId || ''));
+            status.textContent = this.tf('objects.switch.stateLabel', {
+                state: isActivePlate ? this.t('objects.state.on') : this.t('objects.state.off')
+            });
+            config.appendChild(status);
+            wrapper.appendChild(config);
+        }
+
+        if (object.type === EditorObjectTypes.CHEST) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+
+            const isRandom = Boolean((object as Record<string, unknown>).randomItem);
+
+            const selectLabel = document.createElement('label');
+            selectLabel.className = 'object-config-label';
+
+            const select = document.createElement('select');
+            select.className = 'object-config-select';
+            select.disabled = isRandom;
+
+            const chestItemTypes: Array<{ value: string; labelKey: string }> = [
+                { value: '', labelKey: 'objects.chest.noItem' },
+                { value: EditorObjectTypes.KEY, labelKey: 'objects.label.key' },
+                { value: EditorObjectTypes.LIFE_POTION, labelKey: 'objects.label.lifePotion' },
+                { value: EditorObjectTypes.XP_SCROLL, labelKey: 'objects.label.xpScroll' },
+                { value: EditorObjectTypes.SWORD_WOOD, labelKey: 'objects.label.swordWood' },
+                { value: EditorObjectTypes.SWORD_BRONZE, labelKey: 'objects.label.swordBronze' },
+                { value: EditorObjectTypes.SWORD, labelKey: 'objects.label.sword' },
+                { value: EditorObjectTypes.ARMOR, labelKey: 'objects.label.armor' },
+                { value: EditorObjectTypes.BOOTS, labelKey: 'objects.label.boots' },
+            ];
+            const currentContains = (object as Record<string, unknown>).containsItemType as string | null | undefined;
+            chestItemTypes.forEach(({ value, labelKey }) => {
+                const opt = document.createElement('option');
+                opt.value = value;
+                opt.textContent = this.t(labelKey);
+                opt.selected = (currentContains || '') === value;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', () => {
+                this.gameEngine.setObjectContainsItemById(object.id ?? '', select.value || null);
+                refresh();
+            });
+            selectLabel.append(`${this.t('objects.chest.containsLabel')} `, select);
+            config.appendChild(selectLabel);
+
+            const checkLabel = document.createElement('label');
+            checkLabel.className = 'object-config-label object-config-label--checkbox';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = isRandom;
+            checkbox.addEventListener('change', () => {
+                const nowRandom = checkbox.checked;
+                select.disabled = nowRandom;
+                this.gameEngine.setObjectRandomItemById(object.id ?? '', nowRandom);
+                refresh();
+            });
+            checkLabel.append(checkbox, ` ${this.t('objects.chest.randomItem')}`);
+            config.appendChild(checkLabel);
+
+            wrapper.appendChild(config);
+        }
+
+        if (object.isLed) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+
+            const label = document.createElement('label');
+            label.className = 'object-config-label';
+
+            const select = document.createElement('select');
+            select.className = 'object-config-select';
+            this.manager.npcService.populateVariableSelect(select, object.variableId || '');
+            select.addEventListener('change', () => {
+                this.gameEngine.setObjectVariableById(object.id ?? '', select.value);
+                refresh();
+            });
+            label.append(`${this.t('objects.logic.variableLabel')} `, select);
+            config.appendChild(label);
+            wrapper.appendChild(config);
+        }
+
+        if (object.type === EditorObjectTypes.DOOR && object.opened) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.doorOpened');
+            wrapper.appendChild(badge);
+        }
+
+        if (object.type === EditorObjectTypes.KEY && object.collected) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.keyCollected');
+            wrapper.appendChild(badge);
+        }
+
+        if (object.type === EditorObjectTypes.LIFE_POTION && object.collected) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.potionCollected');
+            wrapper.appendChild(badge);
+        }
+
+        if (object.type === EditorObjectTypes.XP_SCROLL && object.collected) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.scrollUsed');
+            wrapper.appendChild(badge);
+        }
+
+        if ((object.type === EditorObjectTypes.SWORD || object.type === EditorObjectTypes.SWORD_BRONZE || object.type === EditorObjectTypes.SWORD_WOOD) && object.collected) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.swordBroken');
+            wrapper.appendChild(badge);
+        }
+
+        if (object.type === EditorObjectTypes.ARMOR && object.collected) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.armorEquipped');
+            wrapper.appendChild(badge);
+        }
+
+        if (object.type === EditorObjectTypes.BOOTS && object.collected) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.bootsEquipped');
+            wrapper.appendChild(badge);
+        }
+
+        if (object.type === EditorObjectTypes.CHEST && object.opened) {
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.chestOpened');
+            wrapper.appendChild(badge);
+        }
+
+        const isPlayerEnd = object.type === PLAYER_END_TYPE;
+        if (isPlayerEnd) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+
+            const label = document.createElement('label');
+            label.className = 'object-config-label';
+            label.textContent = this.t('objects.end.textLabel');
+
+            const textarea = document.createElement('textarea');
+            textarea.className = 'object-config-textarea';
+            textarea.rows = 4;
+            const maxLength = typeof StateObjectManager.PLAYER_END_TEXT_LIMIT === 'number'
+                ? StateObjectManager.PLAYER_END_TEXT_LIMIT
+                : 40;
+            textarea.maxLength = maxLength;
+            textarea.placeholder = this.t('objects.end.placeholder');
+            textarea.value = object.endingText || '';
+            textarea.addEventListener('input', () => {
+                this.manager.objectService.updatePlayerEndText(object.roomIndex, textarea.value);
+            });
+
+            label.appendChild(textarea);
+            config.appendChild(label);
+
+            const hint = document.createElement('div');
+            hint.className = 'object-config-hint';
+            hint.textContent = this.tf('objects.end.hint', { max: maxLength });
+            config.appendChild(hint);
+
+            wrapper.appendChild(config);
+
+            const badge = document.createElement('div');
+            badge.className = 'object-status';
+            badge.textContent = this.t('objects.status.gameEnd');
+            wrapper.appendChild(badge);
+        }
+
+        return wrapper;
+    }
+
+    private buildLogicGateConfig(object: EditorObject, refresh: () => void): HTMLElement {
         const config = document.createElement('div');
         config.className = 'object-config';
 
@@ -404,14 +536,6 @@ class EditorObjectRenderer extends EditorRendererBase {
                 usedOutputs.add(obj.outputVariableId);
             }
         });
-
-        const refresh = () => {
-            this.renderObjects();
-            this.service.worldRenderer.renderWorldGrid();
-            this.service.renderEditor();
-            this.manager.updateJSON();
-            this.manager.history.pushCurrentState();
-        };
 
         const addSelect = (labelKey: string, selectedId: string, onChange: (value: string) => void, disabledIds?: Set<string>) => {
             const label = document.createElement('label');
@@ -517,6 +641,16 @@ class EditorObjectRenderer extends EditorRendererBase {
                 return this.t('objects.label.swordWood');
             case EditorObjectTypes.XP_SCROLL:
                 return this.t('objects.label.xpScroll');
+            case EditorObjectTypes.ARMOR:
+                return this.t('objects.label.armor');
+            case EditorObjectTypes.BOOTS:
+                return this.t('objects.label.boots');
+            case EditorObjectTypes.TRAP:
+                return this.t('objects.label.trap');
+            case EditorObjectTypes.PRESSURE_PLATE:
+                return this.t('objects.label.pressurePlate');
+            case EditorObjectTypes.CHEST:
+                return this.t('objects.label.chest');
             default:
                 return type;
         }

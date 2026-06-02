@@ -550,6 +550,16 @@ export class GameEngine {
     return result;
   }
 
+  setObjectContainsItemById(id: string, containsItemType: string | null): void {
+    this.gameState.setObjectContainsItemById(id, containsItemType);
+    this.renderer.draw();
+  }
+
+  setObjectRandomItemById(id: string, randomItem: boolean): void {
+    this.gameState.setObjectRandomItemById(id, randomItem);
+    this.renderer.draw();
+  }
+
   setGateInputVariableById(id: string, variableId: string | null, slot: 1 | 2): string | null {
     const result = this.gameState.setGateInputVariableById(id, variableId, slot);
     this.gameState.recomputeLogicGates();
@@ -588,6 +598,10 @@ export class GameEngine {
   removeObjectById(id: string): void {
     this.gameState.removeObjectById(id);
     this.renderer.draw();
+  }
+
+  moveObjectById(id: string, x: number, y: number): boolean {
+    return this.gameState.moveObjectById(id, x, y);
   }
 
   getKeyCount(): number {

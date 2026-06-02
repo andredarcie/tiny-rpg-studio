@@ -15,7 +15,13 @@ const ITEM_TYPES = {
     LOGIC_GATE_OR: 'logic-gate-or',
     LOGIC_GATE_NAND: 'logic-gate-nand',
     LOGIC_GATE_NOR: 'logic-gate-nor',
-    LOGIC_LED: 'logic-led'
+    LOGIC_LED: 'logic-led',
+    ARMOR: 'armor',
+    BOOTS: 'boots',
+    TRAP: 'trap',
+    PRESSURE_PLATE: 'pressure-plate',
+    CHEST: 'chest',
+    PUSH_BOX: 'push-box'
 } as const;
 
 type ItemType = (typeof ITEM_TYPES)[keyof typeof ITEM_TYPES];

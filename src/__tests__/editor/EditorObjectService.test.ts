@@ -49,6 +49,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     },
     renderObjectCatalog: vi.fn(),
     updateJSON: vi.fn(),
+    hideRepositionIndicator: vi.fn(),
+    showRepositionIndicator: vi.fn(),
   };
 }
 

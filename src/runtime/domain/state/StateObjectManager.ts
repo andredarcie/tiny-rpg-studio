@@ -18,6 +18,8 @@ type RawObjectInput = {
     inputVariableId2?: string | null;
     outputVariableId?: string | null;
     hiddenInGame?: boolean;
+    containsItemType?: string | null;
+    randomItem?: boolean;
 };
 
 type ObjectEntry = {
@@ -47,6 +49,11 @@ type ObjectEntry = {
     isSingleInputGate?: boolean;
     isLed?: boolean;
     hiddenInGame?: boolean;
+    containsItemType?: string | null;
+    randomItem?: boolean;
+    activated?: boolean;
+    originalX?: number;
+    originalY?: number;
 } & Record<string, unknown>;
 
 type WorldManagerApi = {
@@ -189,9 +196,18 @@ class StateObjectManager {
                     x,
                     y,
                     collected: StateObjectManager.isCollectibleType(type) ? Boolean(raw.collected) : false,
-                    opened: type === OT.DOOR ? Boolean(raw.opened) : false,
+                    opened: (type === OT.DOOR || type === OT.CHEST) ? Boolean(raw.opened) : false,
                     variableId: normalizedVariable
                 };
+                if (type === OT.PUSH_BOX) {
+                    base.originalX = x;
+                    base.originalY = y;
+                }
+                if (type === OT.CHEST) {
+                    const rawContains = raw.containsItemType;
+                    base.containsItemType = typeof rawContains === 'string' && rawContains ? rawContains : null;
+                    base.randomItem = Boolean(raw.randomItem);
+                }
                 if (type === StateObjectManager.SWITCH_TYPE) {
                     base.on = Boolean(raw.on);
                 }
@@ -248,6 +264,7 @@ class StateObjectManager {
 
     resetRuntime() {
         const objects = this.getObjects();
+        const OT = this.types;
         objects.forEach((object) => {
             if (object.isCollectible) {
                 object.collected = false;
@@ -259,8 +276,34 @@ class StateObjectManager {
             if (object.type === StateObjectManager.SWITCH_TYPE) {
                 object.on = false;
             }
+            if (object.type === OT.CHEST) {
+                object.opened = false;
+            }
+            if (object.type === OT.PRESSURE_PLATE) {
+                object.activated = false;
+            }
+            if (object.type === OT.PUSH_BOX && typeof object.originalX === 'number' && typeof object.originalY === 'number') {
+                object.x = object.originalX;
+                object.y = object.originalY;
+            }
         });
         this.ensurePlayerStartObject();
+    }
+
+    resetPushBoxesForRoom(roomIndex: number): void {
+        const OT = this.types;
+        const target = this.worldManager?.clampRoomIndex(roomIndex) ?? roomIndex;
+        this.getObjects().forEach((object) => {
+            if (
+                object.type === OT.PUSH_BOX &&
+                object.roomIndex === target &&
+                typeof object.originalX === 'number' &&
+                typeof object.originalY === 'number'
+            ) {
+                object.x = object.originalX;
+                object.y = object.originalY;
+            }
+        });
     }
 
     generateObjectId(type: ItemType, roomIndex: number, x?: number, y?: number) {
@@ -293,11 +336,13 @@ class StateObjectManager {
         const targetRoom = this.worldManager.clampRoomIndex(roomIndex ?? 0);
         const cx = this.worldManager.clampCoordinate(x ?? 0);
         const cy = this.worldManager.clampCoordinate(y ?? 0);
-        return this.getObjects().find((object) =>
+        const matches = this.getObjects().filter((object) =>
             object.roomIndex === targetRoom &&
             object.x === cx &&
             object.y === cy
-        ) || null;
+        );
+        // Push-box takes priority over passive floor objects (e.g. pressure plate underneath)
+        return matches.find((o) => o.type === ITEM_TYPES.PUSH_BOX) || matches[0] || null;
     }
 
     setObjectPosition(type: ItemType, roomIndex: number, x: number, y: number): ObjectEntry | null {
@@ -383,6 +428,18 @@ class StateObjectManager {
             const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
             entry.variableId = this.variableManager?.normalizeVariableId?.(entry.variableId) ?? fallbackVariableId;
         }
+        if (normalizedType === ITEM_TYPES.CHEST) {
+            entry.opened = false;
+        }
+        if (normalizedType === ITEM_TYPES.TRAP) {
+            const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
+            entry.variableId = this.variableManager?.normalizeVariableId?.(entry.variableId) ?? fallbackVariableId;
+        }
+        if (normalizedType === ITEM_TYPES.PRESSURE_PLATE) {
+            const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
+            entry.variableId = this.variableManager?.normalizeVariableId?.(entry.variableId) ?? fallbackVariableId;
+            entry.activated = false;
+        }
         return this.applyObjectBehavior(entry);
     }
 
@@ -395,6 +452,18 @@ class StateObjectManager {
         this.game.objects = this.getObjects().filter((object) =>
             !(object.type === normalizedType && object.roomIndex === targetRoom)
         );
+    }
+
+    moveObjectById(id: string, x: number, y: number): boolean {
+        if (!this.worldManager) return false;
+        const entry = this.getObjects().find((object) => object.id === id);
+        if (!entry) return false;
+        entry.x = this.worldManager.clampCoordinate(x);
+        entry.y = this.worldManager.clampCoordinate(y);
+        if (entry.type === StateObjectManager.PLAYER_START_TYPE) {
+            this.syncPlayerStart(entry);
+        }
+        return true;
     }
 
     removeObjectById(id: string) {
@@ -410,6 +479,22 @@ class StateObjectManager {
         const normalized = this.variableManager?.normalizeVariableId?.(variableId);
         entry.variableId = normalized ?? fallbackVariableId;
         return entry.variableId;
+    }
+
+    setObjectContainsItemById(id: string, containsItemType: string | null): void {
+        const entry = this.getObjects().find((object) => object.id === id);
+        if (!entry) return;
+        entry.containsItemType = containsItemType || null;
+    }
+
+    setObjectRandomItemById(id: string, randomItem: boolean): void {
+        const entry = this.getObjects().find((object) => object.id === id);
+        if (!entry) return;
+        entry.randomItem = randomItem;
+    }
+
+    getAllObjects(): ObjectEntry[] {
+        return this.getObjects();
     }
 
     setGateInputVariableById(id: string, variableId: string | null, slot: 1 | 2): string | null {

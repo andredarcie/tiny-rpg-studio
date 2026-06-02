@@ -30,6 +30,7 @@ type GameStateApi = {
   isVariableOn: (id: string) => boolean;
   hasSkill?: (skillId: string) => boolean;
   isInCombat?: () => boolean;
+  resetPushBoxesForRoom?: (roomIndex: number) => void;
 };
 
 type TileManagerApi = {
@@ -81,6 +82,10 @@ type RoomState = {
 };
 
 type GameObjectState = {
+  type?: string;
+  roomIndex?: number;
+  x?: number;
+  y?: number;
   isVariableDoor?: boolean;
   variableId?: string | null;
   isLockedDoor?: boolean;
@@ -324,6 +329,16 @@ class MovementManager {
       }
     }
 
+    if (objectAtTarget?.type === 'push-box') {
+      const boxNewX = targetX + dx;
+      const boxNewY = targetY + dy;
+      if (!this.canPushBoxTo(targetRoomIndex, boxNewX, boxNewY, targetRoom)) {
+        return;
+      }
+      objectAtTarget.x = boxNewX;
+      objectAtTarget.y = boxNewY;
+    }
+
     // Prevent passing through NPCs: trigger dialog and stay in place.
     const npcAtTarget = this.findNpcAt(targetRoomIndex, targetX, targetY);
     if (npcAtTarget) {
@@ -353,6 +368,10 @@ class MovementManager {
 
     const supportsTransition = enteringNewRoom;
     const fromFrame = supportsTransition ? this.renderer.captureGameplayFrame() : null;
+
+    if (enteringNewRoom) {
+      this.gameState.resetPushBoxesForRoom?.(roomIndex);
+    }
 
     this.gameState.setPlayerPosition(targetX, targetY, targetRoomIndex !== roomIndex ? targetRoomIndex : null);
     if (enteringNewRoom) {
@@ -440,6 +459,26 @@ class MovementManager {
       tileY: coords?.y,
     });
     this.renderer.draw();
+  }
+
+  canPushBoxTo(roomIndex: number, x: number, y: number, room: RoomState | undefined): boolean {
+    const limit = this.gameState.game.roomSize - 1;
+    if (x < 0 || x > limit || y < 0 || y > limit) return false;
+    if (room?.walls?.[y]?.[x]) return false;
+    const objectThere = this.gameState.getObjectAt(roomIndex, x, y);
+    if (objectThere) {
+      const t = objectThere.type;
+      if (t === 'push-box' || objectThere.isLockedDoor || objectThere.isVariableDoor) return false;
+    }
+    const tileMap = this.tileManager.getTileMap(roomIndex);
+    const overlayId = tileMap?.overlay?.[y]?.[x] ?? null;
+    const groundId = tileMap?.ground?.[y]?.[x] ?? null;
+    const candidateId = overlayId ?? groundId;
+    if (candidateId !== null) {
+      const tile = this.tileManager.getTile(candidateId);
+      if (tile?.collision && !this.canTraverseCollisionTile(tile)) return false;
+    }
+    return true;
   }
 
   findNpcAt(roomIndex: number, x: number, y: number): NpcState | null {

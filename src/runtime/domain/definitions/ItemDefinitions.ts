@@ -15,7 +15,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.playerStart',
         behavior: {
             order: 10,
-            tags: ['placeable', 'player-start', 'global-unique', 'hidden-in-runtime']
+            tags: ['placeable', 'player-start', 'global-unique', 'hidden-in-runtime', 'markers']
         },
         sprite: SpriteMatrixRegistry.get('object', 'player-start')
     },
@@ -26,7 +26,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.playerEnd',
         behavior: {
             order: 20,
-            tags: ['placeable', 'player-end', 'per-room-unique']
+            tags: ['placeable', 'player-end', 'per-room-unique', 'markers']
         },
         sprite: SpriteMatrixRegistry.get('object', 'player-end')
     },
@@ -37,7 +37,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.switch',
         behavior: {
             order: 30,
-            tags: ['placeable', 'switch', 'requires-variable']
+            tags: ['placeable', 'switch', 'requires-variable', 'triggers']
         },
         sprite: SpriteMatrixRegistry.get('object', 'switch'),
         spriteOn: SpriteMatrixRegistry.get('object', 'switch--on')
@@ -49,7 +49,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.key',
         behavior: {
             order: 60,
-            tags: ['placeable', 'collectible', 'hide-when-collected']
+            tags: ['placeable', 'collectible', 'hide-when-collected', 'consumables']
         },
         sprite: SpriteMatrixRegistry.get('object', 'key')
     },
@@ -60,7 +60,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.door',
         behavior: {
             order: 40,
-            tags: ['placeable', 'door', 'locked-door', 'hide-when-opened']
+            tags: ['placeable', 'door', 'locked-door', 'hide-when-opened', 'obstacles']
         },
         sprite: SpriteMatrixRegistry.get('object', 'door')
     },
@@ -71,7 +71,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.doorVariable',
         behavior: {
             order: 50,
-            tags: ['placeable', 'door', 'requires-variable', 'variable-door', 'hide-when-variable-open']
+            tags: ['placeable', 'door', 'requires-variable', 'variable-door', 'hide-when-variable-open', 'obstacles']
         },
         sprite: SpriteMatrixRegistry.get('object', 'door-variable')
     },
@@ -82,7 +82,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.lifePotion',
         behavior: {
             order: 70,
-            tags: ['placeable', 'collectible', 'hide-when-collected']
+            tags: ['placeable', 'collectible', 'hide-when-collected', 'consumables']
         },
         sprite: SpriteMatrixRegistry.get('object', 'life-potion')
     },
@@ -93,7 +93,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.xpScroll',
         behavior: {
             order: 110,
-            tags: ['placeable', 'collectible', 'hide-when-collected']
+            tags: ['placeable', 'collectible', 'hide-when-collected', 'consumables']
         },
         sprite: SpriteMatrixRegistry.get('object', 'xp-scroll')
     },
@@ -106,7 +106,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
             order: 80,
             swordDurability: 5,
             swordDamage: 4,
-            tags: ['placeable', 'collectible', 'sword', 'hide-when-collected']
+            tags: ['placeable', 'collectible', 'sword', 'hide-when-collected', 'equipment']
         },
         sprite: SpriteMatrixRegistry.get('object', 'sword')
     },
@@ -119,7 +119,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
             order: 90,
             swordDurability: 4,
             swordDamage: 3,
-            tags: ['placeable', 'collectible', 'sword', 'hide-when-collected']
+            tags: ['placeable', 'collectible', 'sword', 'hide-when-collected', 'equipment']
         },
         sprite: SpriteMatrixRegistry.get('object', 'sword-bronze')
     },
@@ -132,7 +132,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
             order: 100,
             swordDurability: 3,
             swordDamage: 2,
-            tags: ['placeable', 'collectible', 'sword', 'hide-when-collected']
+            tags: ['placeable', 'collectible', 'sword', 'hide-when-collected', 'equipment']
         },
         sprite: SpriteMatrixRegistry.get('object', 'sword-wood')
     },
@@ -143,7 +143,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.logicGateNot',
         behavior: {
             order: 120,
-            tags: ['placeable', 'logic-gate', 'single-input']
+            tags: ['placeable', 'logic-gate', 'single-input', 'logic']
         },
         sprite: SpriteMatrixRegistry.get('object', 'logic-gate-not')
     },
@@ -154,7 +154,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.logicGateAnd',
         behavior: {
             order: 130,
-            tags: ['placeable', 'logic-gate']
+            tags: ['placeable', 'logic-gate', 'logic']
         },
         sprite: SpriteMatrixRegistry.get('object', 'logic-gate-and')
     },
@@ -165,7 +165,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.logicGateOr',
         behavior: {
             order: 140,
-            tags: ['placeable', 'logic-gate']
+            tags: ['placeable', 'logic-gate', 'logic']
         },
         sprite: SpriteMatrixRegistry.get('object', 'logic-gate-or')
     },
@@ -176,7 +176,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.logicGateNand',
         behavior: {
             order: 150,
-            tags: ['placeable', 'logic-gate']
+            tags: ['placeable', 'logic-gate', 'logic']
         },
         sprite: SpriteMatrixRegistry.get('object', 'logic-gate-nand')
     },
@@ -187,7 +187,7 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.logicGateNor',
         behavior: {
             order: 160,
-            tags: ['placeable', 'logic-gate']
+            tags: ['placeable', 'logic-gate', 'logic']
         },
         sprite: SpriteMatrixRegistry.get('object', 'logic-gate-nor')
     },
@@ -198,10 +198,79 @@ const ITEM_DEFINITION_DATA: ItemDefinitionData[] = [
         nameKey: 'objects.label.logicLed',
         behavior: {
             order: 170,
-            tags: ['placeable', 'led', 'requires-variable']
+            tags: ['placeable', 'led', 'requires-variable', 'logic']
         },
         sprite: SpriteMatrixRegistry.get('object', 'logic-led'),
         spriteOn: SpriteMatrixRegistry.get('object', 'logic-led--on')
+    },
+    {
+        type: ITEM_TYPES.ARMOR,
+        id: 'object-armor',
+        name: 'Armadura',
+        nameKey: 'objects.label.armor',
+        behavior: {
+            order: 75,
+            tags: ['placeable', 'collectible', 'hide-when-collected', 'equipment']
+        },
+        sprite: SpriteMatrixRegistry.get('object', 'armor')
+    },
+    {
+        type: ITEM_TYPES.BOOTS,
+        id: 'object-boots',
+        name: 'Botas',
+        nameKey: 'objects.label.boots',
+        behavior: {
+            order: 78,
+            tags: ['placeable', 'collectible', 'hide-when-collected', 'equipment']
+        },
+        sprite: SpriteMatrixRegistry.get('object', 'boots')
+    },
+    {
+        type: ITEM_TYPES.TRAP,
+        id: 'object-trap',
+        name: 'Armadilha',
+        nameKey: 'objects.label.trap',
+        behavior: {
+            order: 85,
+            tags: ['placeable', 'requires-variable', 'multi-instance', 'obstacles']
+        },
+        sprite: SpriteMatrixRegistry.get('object', 'trap'),
+        spriteOn: SpriteMatrixRegistry.get('object', 'trap--on')
+    },
+    {
+        type: ITEM_TYPES.PRESSURE_PLATE,
+        id: 'object-pressure-plate',
+        name: 'Placa de Pressão',
+        nameKey: 'objects.label.pressurePlate',
+        behavior: {
+            order: 90,
+            tags: ['placeable', 'requires-variable', 'multi-instance', 'triggers']
+        },
+        sprite: SpriteMatrixRegistry.get('object', 'pressure-plate'),
+        spriteOn: SpriteMatrixRegistry.get('object', 'pressure-plate--on')
+    },
+    {
+        type: ITEM_TYPES.CHEST,
+        id: 'object-chest',
+        name: 'Baú',
+        nameKey: 'objects.label.chest',
+        behavior: {
+            order: 95,
+            tags: ['placeable', 'multi-instance', 'triggers']
+        },
+        sprite: SpriteMatrixRegistry.get('object', 'chest'),
+        spriteOn: SpriteMatrixRegistry.get('object', 'chest--on')
+    },
+    {
+        type: ITEM_TYPES.PUSH_BOX,
+        id: 'object-push-box',
+        name: 'Caixa',
+        nameKey: 'objects.label.pushBox',
+        behavior: {
+            order: 100,
+            tags: ['placeable', 'multi-instance', 'obstacles']
+        },
+        sprite: SpriteMatrixRegistry.get('object', 'push-box')
     }
 ];
 

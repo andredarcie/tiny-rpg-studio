@@ -69,6 +69,10 @@ vi.mock('../editor/modules/EditorExportService', () => ({
   EditorExportService: mocks.EditorExportServiceCtor,
 }));
 
+vi.mock('../editor/modules/ExploreModal', () => ({
+  ExploreModal: vi.fn(),
+}));
+
 vi.mock('../runtime/adapters/TextResources', () => ({
   TextResources: {
     get: (...args: [string | null | undefined, string?]) => mocks.textGet(...args),
@@ -77,14 +81,10 @@ vi.mock('../runtime/adapters/TextResources', () => ({
   },
 }));
 
-async function importMainModule() {
-  vi.resetModules();
-  return import('../main');
-}
-
-async function importApiModule() {
-  return import('../runtime/infra/TinyRpgApi');
-}
+// Static imports — module loads once with mocks already applied.
+// vi.clearAllMocks() in beforeEach resets call counts between tests.
+import { TinyRPGApplication } from '../main';
+import { getTinyRpgApi } from '../runtime/infra/TinyRpgApi';
 
 describe('TinyRPGApplication.initializeApplication / boot', () => {
   beforeEach(() => {
@@ -98,9 +98,8 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     delete (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE;
   });
 
-  it('initializeApplication returns early when #game-canvas is missing or invalid', async () => {
+  it('initializeApplication returns early when #game-canvas is missing or invalid', () => {
     document.body.innerHTML = `<div id="game-canvas"></div>`;
-    const { TinyRPGApplication } = await importMainModule();
     const setupTabsSpy = vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
 
     TinyRPGApplication.initializeApplication();
@@ -110,10 +109,8 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     expect(mocks.EditorManagerCtor).not.toHaveBeenCalled();
   });
 
-  it('initializeApplication wires engine/api/services and resets game on non-initial tab activations', async () => {
+  it('initializeApplication wires engine/api/services and resets game on non-initial tab activations', () => {
     document.body.innerHTML = `<canvas id="game-canvas"></canvas>`;
-    const { TinyRPGApplication } = await importMainModule();
-    const { getTinyRpgApi } = await importApiModule();
 
     const loadSharedSpy = vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
     const bindResetSpy = vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
@@ -169,11 +166,9 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     expect(mocks.engine.resetGame.mock.calls.length).toBe(resetsAfterInitial + 2);
   });
 
-  it('initializeApplication skips EditorManager in export mode and api.renderAll is safe', async () => {
+  it('initializeApplication skips EditorManager in export mode and api.renderAll is safe', () => {
     document.body.innerHTML = `<canvas id="game-canvas"></canvas>`;
     (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE = true;
-    const { TinyRPGApplication } = await importMainModule();
-    const { getTinyRpgApi } = await importApiModule();
     vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
@@ -190,8 +185,7 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     expect(mocks.editorManagerInstance.renderAll).not.toHaveBeenCalled();
   });
 
-  it('boot registers DOMContentLoaded handler that initializes app and responsive canvas', async () => {
-    const { TinyRPGApplication } = await importMainModule();
+  it('boot registers DOMContentLoaded handler that initializes app and responsive canvas', () => {
     const initSpy = vi.spyOn(TinyRPGApplication, 'initializeApplication').mockImplementation(() => {});
     const responsiveSpy = vi.spyOn(TinyRPGApplication, 'setupResponsiveCanvas').mockImplementation(() => {});
 

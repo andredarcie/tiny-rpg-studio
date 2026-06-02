@@ -164,14 +164,30 @@ class RendererHudRenderer {
             }
         }
 
+        const tileSize = this.canvasHelper.getTilePixelSize();
+        const equipSize = tileSize;
+        const equipStep = equipSize / 8;
+        const equipY = padding + Math.max(0, Math.round((height - padding * 2 - equipSize) / 2));
+        let equipX = width - padding;
+
         const swordSprite = this.getSwordHudSprite(swordType);
         if (swordType && swordSprite) {
-            const tileSize = this.canvasHelper.getTilePixelSize();
-            const swordSize = tileSize;
-            const swordX = width - padding - swordSize;
-            const swordY = padding + Math.max(0, Math.round((height - padding * 2 - swordSize) / 2));
-            const step = swordSize / 8;
-            this.canvasHelper.drawSprite(ctx, swordSprite, swordX, swordY, step);
+            equipX -= equipSize;
+            this.canvasHelper.drawSprite(ctx, swordSprite, equipX, equipY, equipStep);
+            equipX -= gap;
+        }
+
+        const bootsSprite = this.objectSprites[ITEM_TYPES.BOOTS];
+        if (this.gameState.hasBoots?.() && bootsSprite) {
+            equipX -= equipSize;
+            this.canvasHelper.drawSprite(ctx, bootsSprite, equipX, equipY, equipStep);
+            equipX -= gap;
+        }
+
+        const armorSprite = this.objectSprites[ITEM_TYPES.ARMOR];
+        if (this.gameState.hasArmor?.() && armorSprite) {
+            equipX -= equipSize;
+            this.canvasHelper.drawSprite(ctx, armorSprite, equipX, equipY, equipStep);
         }
 
         ctx.restore();
@@ -317,6 +333,8 @@ type GameStateApi = {
     getDamageShield: () => number;
     getDamageShieldMax: () => number;
     getSwordType: () => string | null;
+    hasBoots?: () => boolean;
+    hasArmor?: () => boolean;
     getLevel: () => number;
     getGame: () => { world?: { rows?: number; cols?: number } };
     getPlayer: () => { roomIndex?: number };

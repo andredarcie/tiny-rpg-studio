@@ -149,7 +149,7 @@ class ItemCatalog {
     }
 
     allowsMultiplePerRoom(type: ItemType): boolean {
-        return this.isLogicGate(type) || this.isLed(type) || this.isSwitch(type);
+        return this.isLogicGate(type) || this.isLed(type) || this.isSwitch(type) || this.hasTag(type, 'multi-instance');
     }
 
     getSwordDurability(type: ItemType): number | null {

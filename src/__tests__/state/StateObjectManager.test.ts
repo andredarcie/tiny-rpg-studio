@@ -130,6 +130,30 @@ describe('StateObjectManager', () => {
     manager.removeObject(ITEM_TYPES.PLAYER_START, 0);
     expect(manager.getObjects().some((o) => o.type === ITEM_TYPES.PLAYER_START)).toBe(true);
   });
+
+  it('resetRuntime resets switch, pressure-plate and chest back to default state', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+
+    manager.setObjectPosition(ITEM_TYPES.SWITCH, 0, 1, 1);
+    manager.setObjectPosition(ITEM_TYPES.PRESSURE_PLATE, 0, 2, 2);
+    manager.setObjectPosition(ITEM_TYPES.CHEST, 0, 3, 3);
+
+    const sw = manager.getObjects().find((o) => o.type === ITEM_TYPES.SWITCH);
+    const plate = manager.getObjects().find((o) => o.type === ITEM_TYPES.PRESSURE_PLATE);
+    const chest = manager.getObjects().find((o) => o.type === ITEM_TYPES.CHEST);
+    if (!sw || !plate || !chest) throw new Error('objects not found');
+
+    sw.on = true;
+    plate.activated = true;
+    chest.opened = true;
+
+    manager.resetRuntime();
+
+    expect(sw.on).toBe(false);
+    expect(plate.activated).toBe(false);
+    expect(chest.opened).toBe(false);
+  });
 });
 
 describe('StateObjectManager - logic gates', () => {

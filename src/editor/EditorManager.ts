@@ -19,6 +19,8 @@ import { EditorWorldService } from './modules/EditorWorldService';
 import { EditorEventBinder } from './manager/EditorEventBinder';
 import { EditorInteractionController } from './manager/EditorInteractionController';
 import { EditorUIController } from './manager/EditorUIController';
+import { NpcEditModal } from './modules/NpcEditModal';
+import { ObjectEditModal } from './modules/ObjectEditModal';
 import { PixelArtEditorController } from './modules/PixelArtEditorController';
 import { ProjectSaveManager } from './manager/ProjectSaveManager';
 import { ProjectSaveUI } from './manager/ProjectSaveUI';
@@ -43,6 +45,8 @@ class EditorManager {
     uiController: EditorUIController;
     eventBinder: EditorEventBinder;
     interactionController: EditorInteractionController;
+    npcEditModal: NpcEditModal;
+    objectEditModal: ObjectEditModal;
     pixelArtEditorController: PixelArtEditorController;
     private projectSaveManager?: ProjectSaveManager;
     private projectSaveUI?: ProjectSaveUI;
@@ -71,6 +75,8 @@ class EditorManager {
         this.uiController = new EditorUIController(this);
         this.eventBinder = new EditorEventBinder(this);
         this.interactionController = new EditorInteractionController(this);
+        this.npcEditModal = new NpcEditModal(this.renderService);
+        this.objectEditModal = new ObjectEditModal(this.renderService);
         this.pixelArtEditorController = new PixelArtEditorController();
         this.pixelArtEditorController.init(this, this.domCache);
 
@@ -121,6 +127,22 @@ class EditorManager {
                 });
             });
         }
+    }
+
+    showRepositionIndicator(name: string): void {
+        const el = this.domCache.repositionIndicator;
+        if (!el) return;
+        el.textContent = `Movendo ${name}`;
+        el.hidden = false;
+        this.domCache.editorCanvas?.classList.add('is-repositioning');
+    }
+
+    hideRepositionIndicator(): void {
+        const el = this.domCache.repositionIndicator;
+        if (!el) return;
+        el.hidden = true;
+        el.textContent = '';
+        this.domCache.editorCanvas?.classList.remove('is-repositioning');
     }
 
     // State accessors to keep compatibility with legacy references

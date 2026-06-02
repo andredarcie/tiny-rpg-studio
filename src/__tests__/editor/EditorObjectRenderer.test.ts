@@ -81,7 +81,7 @@ function makeSwordDef({
   durability = null
 }: { isSword?: boolean; damage?: number | null; durability?: number | null }) {
   return {
-    hasTag: vi.fn((tag: string) => (tag === 'sword' ? isSword : false)),
+    hasTag: vi.fn((tag: string) => (tag === 'sword' || tag === 'equipment') ? isSword : false),
     getSwordDamage: vi.fn(() => damage),
     getSwordDurability: vi.fn(() => durability)
   };
@@ -212,10 +212,10 @@ describe('EditorObjectRenderer', () => {
     expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: 9');
   });
 
-  it('filters catalog by swords category and handles stats partial/null cases', () => {
+  it('filters catalog by equipment category and handles stats partial/null cases', () => {
     const fixture = createFixture();
     const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
-    fixture.service.state.objectCategoryFilter = 'swords';
+    fixture.service.state.objectCategoryFilter = 'equipment';
     mockData.objectDefinitions = [
       { type: ITEM_TYPES.SWORD_BRONZE, name: 'Bronze' },
       { type: ITEM_TYPES.SWORD_WOOD, name: 'Wood' },
@@ -234,7 +234,7 @@ describe('EditorObjectRenderer', () => {
     expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')).toBeNull();
   });
 
-  it('renders catalog with non-sword custom category as pass-through', () => {
+  it('renders empty catalog for unknown category filter', () => {
     const fixture = createFixture();
     fixture.service.state.objectCategoryFilter = 'misc';
     const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
@@ -242,7 +242,7 @@ describe('EditorObjectRenderer', () => {
 
     renderer.renderObjectCatalog();
 
-    expect(fixture.service.dom.objectTypes.querySelectorAll('.object-type-card')).toHaveLength(1);
+    expect(fixture.service.dom.objectTypes.querySelectorAll('.object-type-card')).toHaveLength(0);
   });
 
   it('defaults catalog category to all and handles missing room objects', () => {
@@ -260,7 +260,7 @@ describe('EditorObjectRenderer', () => {
 
   it('renders catalog sword stats with durability-only branch', () => {
     const fixture = createFixture();
-    fixture.service.state.objectCategoryFilter = 'swords';
+    fixture.service.state.objectCategoryFilter = 'equipment';
     mockData.objectDefinitions = [{ type: ITEM_TYPES.SWORD_WOOD, name: 'Wood' }];
     mockData.itemDefinitionMap.set(ITEM_TYPES.SWORD_WOOD, makeSwordDef({ damage: null, durability: 3 }));
     const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));

@@ -194,12 +194,15 @@
                                     <div class="object-category-selector">
                                         <div class="object-category-buttons">
                                             <button type="button" class="object-category-button active" data-object-category-filter="all" aria-pressed="true" data-text-key="objects.category.all"></button>
-                                            <button type="button" class="object-category-button" data-object-category-filter="swords" aria-pressed="false" data-text-key="objects.category.swords"></button>
+                                            <button type="button" class="object-category-button" data-object-category-filter="markers" aria-pressed="false" data-text-key="objects.category.markers"></button>
+                                            <button type="button" class="object-category-button" data-object-category-filter="equipment" aria-pressed="false" data-text-key="objects.category.equipment"></button>
+                                            <button type="button" class="object-category-button" data-object-category-filter="consumables" aria-pressed="false" data-text-key="objects.category.consumables"></button>
+                                            <button type="button" class="object-category-button" data-object-category-filter="obstacles" aria-pressed="false" data-text-key="objects.category.obstacles"></button>
+                                            <button type="button" class="object-category-button" data-object-category-filter="triggers" aria-pressed="false" data-text-key="objects.category.triggers"></button>
                                             <button type="button" class="object-category-button" data-object-category-filter="logic" aria-pressed="false" data-text-key="objects.category.logic"></button>
                                         </div>
                                     </div>
                                     <div id="object-types" class="object-types"></div>
-                                    <div id="objects-list" class="objects-list"></div>
                                 </div>
                             </details>
                         </div>
@@ -209,6 +212,7 @@
                     <div class="editor-center">
                         <div class="editor-section editor-section--map">
                             <div class="editor-map-wrapper">
+                                <div id="reposition-indicator" class="reposition-indicator" hidden></div>
                                 <button
                                     type="button"
                                     class="map-nav-button map-nav-button--up"
@@ -276,30 +280,6 @@
                                         </div>
                                     </div>
                                     <div id="npcs-list" class="npcs-list"></div>
-                                    <div class="npc-editor" hidden>
-                                        <label for="npc-text" data-text-key="npc.dialog.defaultLabel"></label>
-                                        <textarea id="npc-text" data-placeholder-key="npc.dialog.placeholder"></textarea>
-                                        <div class="npc-reward-group">
-                                            <label for="npc-reward-variable" data-text-key="npc.reward.defaultLabel"></label>
-                                            <select id="npc-reward-variable"></select>
-                                        </div>
-                                        <div class="npc-conditional-toggle">
-                                            <button type="button" id="btn-toggle-npc-conditional" aria-expanded="false" aria-controls="npc-conditional-section" data-text-key="npc.toggle.create"></button>
-                                        </div>
-                                        <div id="npc-conditional-section" class="npc-conditional-section" hidden>
-                                            <div class="npc-conditional-group">
-                                                <label for="npc-conditional-variable" data-text-key="npc.conditional.variableLabel"></label>
-                                                <select id="npc-conditional-variable"></select>
-                                                <label for="npc-conditional-text" data-text-key="npc.conditional.textLabel"></label>
-                                                <textarea id="npc-conditional-text" data-placeholder-key="npc.conditional.placeholder"></textarea>
-                                            </div>
-                                            <div class="npc-reward-group npc-conditional-reward">
-                                                <label for="npc-conditional-reward-variable" data-text-key="npc.conditional.rewardLabel"></label>
-                                                <select id="npc-conditional-reward-variable"></select>
-                                            </div>
-                                        </div>
-                                        <button id="npc-delete" data-text-key="npc.delete"></button>
-                                    </div>
                                 </div>
                             </details>
                         </div>
@@ -568,6 +548,12 @@
 
     <input type="file" id="file-input" accept=".json" style="display: none;">
 
+    <!-- NPC Edit Modal -->
+    <div id="npc-edit-modal" class="object-edit-modal" hidden role="dialog" aria-modal="true"></div>
+
+    <!-- Object Edit Modal -->
+    <div id="object-edit-modal" class="object-edit-modal" hidden role="dialog" aria-modal="true"></div>
+
     <!-- Explore Modal -->
     <div id="explore-modal" class="explore-modal" hidden role="dialog" aria-modal="true" aria-labelledby="explore-modal-title">
         <div class="explore-modal__panel">
@@ -609,6 +595,7 @@
                 <button type="button" class="pae-tool" data-tool="erase" id="pae-tool-erase" data-text-key="pixelArtEditor.erase">Apagar</button>
             </div>
             <div class="pae-actions">
+                <button type="button" id="pae-copy-code" class="pae-copy-code-btn" data-text-key="pixelArtEditor.copyCode">Copiar código</button>
                 <button type="button" id="pae-reset" data-text-key="pixelArtEditor.reset">Restaurar padrão</button>
                 <button type="button" id="pae-save" class="pae-save-btn" data-text-key="pixelArtEditor.save">Salvar</button>
             </div>

@@ -20,9 +20,39 @@ class EditorTileService {
         const canvas = this.dom.editorCanvas;
         if (!canvas) return;
         ev.preventDefault();
+
+        if (this.tryOpenObjectModal(ev)) return;
+
         this.state.mapPainting = true;
         canvas.setPointerCapture(ev.pointerId);
         this.applyPaint(ev);
+    }
+
+    private tryOpenObjectModal(ev: PointerEvent): boolean {
+        if (this.state.placingNpc || this.state.placingEnemy || this.state.placingObjectType) return false;
+
+        const coord = this.getTileFromEvent(ev);
+        if (!coord) return false;
+
+        // Check for placed object
+        const objects = (this.manager.gameEngine.getObjectsForRoom(this.state.activeRoomIndex) || []) as Array<{ id?: string; x: number; y: number }>;
+        const foundObject = objects.find((o) => o.x === coord.x && o.y === coord.y);
+        if (foundObject?.id) {
+            this.manager.objectEditModal.open(foundObject.id);
+            return true;
+        }
+
+        // Check for placed NPC
+        const sprites = (this.manager.gameEngine.getSprites() || []) as Array<{ id?: string; x?: number; y?: number; roomIndex?: number; placed?: boolean }>;
+        const foundNpc = sprites.find((s) =>
+            s.placed && s.roomIndex === this.state.activeRoomIndex && s.x === coord.x && s.y === coord.y
+        );
+        if (foundNpc?.id) {
+            this.manager.npcEditModal.open(foundNpc.id);
+            return true;
+        }
+
+        return false;
     }
 
     continuePaint(ev: PointerEvent) {
@@ -67,7 +97,11 @@ class EditorTileService {
             return;
         }
         if (this.state.placingObjectType) {
-            this.manager.objectService.placeObjectAt(this.state.placingObjectType, coord, roomIndex);
+            if (this.state.repositioningObjectId) {
+                this.manager.objectService.repositionObjectAt(this.state.repositioningObjectId, coord);
+            } else {
+                this.manager.objectService.placeObjectAt(this.state.placingObjectType, coord, roomIndex);
+            }
             this.state.skipMapHistory = true;
             return;
         }

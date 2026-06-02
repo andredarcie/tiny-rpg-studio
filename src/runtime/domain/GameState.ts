@@ -498,12 +498,28 @@ class GameState {
         this.objectManager.removeObjectById(id);
     }
 
+    moveObjectById(id: string, x: number, y: number): boolean {
+        return this.objectManager.moveObjectById(id, x, y);
+    }
+
     setObjectVariable(type: string, roomIndex: number, variableId: string | null) {
         return this.objectManager.setObjectVariable(type as Parameters<typeof this.objectManager.setObjectVariable>[0], roomIndex, variableId);
     }
 
     setObjectVariableById(id: string, variableId: string | null): string | null {
         return this.objectManager.setObjectVariableById(id, variableId);
+    }
+
+    setObjectContainsItemById(id: string, containsItemType: string | null): void {
+        this.objectManager.setObjectContainsItemById(id, containsItemType);
+    }
+
+    setObjectRandomItemById(id: string, randomItem: boolean): void {
+        this.objectManager.setObjectRandomItemById(id, randomItem);
+    }
+
+    getAllObjects() {
+        return this.objectManager.getAllObjects();
     }
 
     setGateInputVariableById(id: string, variableId: string | null, slot: 1 | 2): string | null {
@@ -558,6 +574,26 @@ class GameState {
 
     addDamageShield(amount = 1, type = null) {
         return this.playerManager.addDamageShield(amount, type);
+    }
+
+    setArmorEquipped() {
+        this.playerManager.setArmorEquipped();
+    }
+
+    setBootsEquipped() {
+        this.playerManager.setBootsEquipped();
+    }
+
+    hasBoots() {
+        return this.playerManager.hasBoots();
+    }
+
+    resetPushBoxesForRoom(roomIndex: number): void {
+        this.objectManager.resetPushBoxesForRoom(roomIndex);
+    }
+
+    hasArmor() {
+        return this.playerManager.hasArmor();
     }
 
     getDamageShield() {

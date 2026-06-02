@@ -29,7 +29,9 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     renderService: {
       renderEditor: vi.fn(), renderTileList: vi.fn(), updateSelectedTilePreview: vi.fn(),
     },
-    gameEngine: { setMapTile: vi.fn(), draw: vi.fn() },
+    gameEngine: { setMapTile: vi.fn(), draw: vi.fn(), getObjectsForRoom: vi.fn(() => []), getSprites: vi.fn(() => []) },
+    objectEditModal: { open: vi.fn() },
+    npcEditModal: { open: vi.fn() },
     npcService: { placeNpcAt: vi.fn() },
     enemyService: { placeEnemyAt: vi.fn() },
     objectService: { placeObjectAt: vi.fn() },

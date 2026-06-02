@@ -78,6 +78,12 @@ export interface MockGameState {
   // Pickup overlay
   showPickupOverlay: (options: unknown) => void;
 
+  // New item methods
+  setArmorEquipped?: () => void;
+  setBootsEquipped?: () => void;
+  hasBoots?: () => boolean;
+  getAllObjects?: () => unknown[];
+
   // Optional methods (used by some managers)
   prepareNecromancerRevive?: () => void;
   pauseGame?: (reason: string) => void;
@@ -174,6 +180,12 @@ export const createMockGameState = (overrides: Partial<MockGameState> = {}): Moc
     // Optional methods
     pauseGame: vi.fn(),
     resumeGame: vi.fn(),
+
+    // New item methods
+    setArmorEquipped: vi.fn(),
+    setBootsEquipped: vi.fn(),
+    hasBoots: vi.fn(() => false),
+    getAllObjects: vi.fn(() => []),
 
     // Apply overrides
     ...overrides,

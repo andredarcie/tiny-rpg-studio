@@ -72,6 +72,12 @@ vi.mock('../../editor/manager/EditorUIController', () => ({
 vi.mock('../../editor/manager/EditorInteractionController', () => ({
   EditorInteractionController: class { handleCanvasResize = vi.fn(); handleKey = vi.fn(); }
 }));
+vi.mock('../../editor/modules/NpcEditModal', () => ({
+  NpcEditModal: class { open = vi.fn(); close = vi.fn(); }
+}));
+vi.mock('../../editor/modules/ObjectEditModal', () => ({
+  ObjectEditModal: class { open = vi.fn(); close = vi.fn(); }
+}));
 
 import { EditorManager } from '../../editor/EditorManager';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';

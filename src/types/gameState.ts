@@ -33,6 +33,8 @@ export type PlayerRuntimeState = {
     godMode: boolean;
     lastAttackTime: number;
     stunUntil: number;
+    armorEquipped?: boolean;
+    bootsEquipped?: boolean;
 };
 
 export type DialogState = {

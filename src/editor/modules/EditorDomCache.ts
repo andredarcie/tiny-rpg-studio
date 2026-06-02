@@ -80,8 +80,12 @@ class EditorDomCache {
     paeSave: HTMLButtonElement | null = null;
     paeReset: HTMLButtonElement | null = null;
     paeClose: HTMLButtonElement | null = null;
+    paeCopyCode: HTMLButtonElement | null = null;
     paeToolPaint: HTMLButtonElement | null = null;
     paeToolErase: HTMLButtonElement | null = null;
+    npcEditModal: HTMLElement | null = null;
+    repositionIndicator: HTMLElement | null = null;
+    objectEditModal: HTMLElement | null = null;
     skillEditModal: HTMLElement | null = null;
     skillEditIconInput: HTMLInputElement | null = null;
     skillEditIconPreview: HTMLElement | null = null;
@@ -166,6 +170,9 @@ class EditorDomCache {
             this.colorPreviewNew = null;
             this.colorPickerIndex = null;
             this.jsonArea = null;
+            this.npcEditModal = null;
+            this.repositionIndicator = null;
+            this.objectEditModal = null;
             this.pixelArtEditorModal = null;
             this.paeCanvas = null;
             this.paePalette = null;
@@ -175,6 +182,7 @@ class EditorDomCache {
             this.paeSave = null;
             this.paeReset = null;
             this.paeClose = null;
+            this.paeCopyCode = null;
             this.paeToolPaint = null;
             this.paeToolErase = null;
             return;
@@ -250,6 +258,9 @@ class EditorDomCache {
         this.colorPreviewNew = root.querySelector('#color-preview-new .color-preview-swatch') as HTMLElement | null;
         this.colorPickerIndex = root.querySelector('#color-picker-index') as HTMLElement | null;
         this.jsonArea = root.querySelector('#json-area') as HTMLTextAreaElement | null;
+        this.npcEditModal = root.querySelector('#npc-edit-modal') as HTMLElement | null;
+        this.repositionIndicator = root.querySelector('#reposition-indicator') as HTMLElement | null;
+        this.objectEditModal = root.querySelector('#object-edit-modal') as HTMLElement | null;
         this.pixelArtEditorModal = root.querySelector('#pixel-art-editor-modal') as HTMLElement | null;
         this.paeCanvas = root.querySelector('#pae-canvas') as HTMLCanvasElement | null;
         this.paePalette = root.querySelector('#pae-palette') as HTMLElement | null;
@@ -259,6 +270,7 @@ class EditorDomCache {
         this.paeSave = root.querySelector('#pae-save') as HTMLButtonElement | null;
         this.paeReset = root.querySelector('#pae-reset') as HTMLButtonElement | null;
         this.paeClose = root.querySelector('#pae-close') as HTMLButtonElement | null;
+        this.paeCopyCode = root.querySelector('#pae-copy-code') as HTMLButtonElement | null;
         this.paeToolPaint = root.querySelector('#pae-tool-paint') as HTMLButtonElement | null;
         this.paeToolErase = root.querySelector('#pae-tool-erase') as HTMLButtonElement | null;
         this.skillEditModal = root.querySelector('#skill-edit-modal') as HTMLElement | null;

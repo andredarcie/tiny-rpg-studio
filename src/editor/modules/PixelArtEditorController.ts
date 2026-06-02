@@ -35,6 +35,7 @@ type DomDeps = {
     paeSave: HTMLButtonElement | null;
     paeReset: HTMLButtonElement | null;
     paeClose: HTMLButtonElement | null;
+    paeCopyCode: HTMLButtonElement | null;
     paeToolPaint: HTMLButtonElement | null;
     paeToolErase: HTMLButtonElement | null;
 };
@@ -129,6 +130,46 @@ export class PixelArtEditorController {
         this.activeFrameIndex = 0;
         this.renderFrameBar();
         this.renderCanvas();
+    }
+
+    copyCode(): void {
+        const frame = this.frames.at(this.activeFrameIndex);
+        if (!frame) return;
+
+        const spriteKey = this.variant === 'on' ? `${this.key}--on` : this.key;
+
+        const formatCell = (v: number | null): string =>
+            v === null ? 'null' : v < 10 ? ` ${v}` : `${v}`;
+
+        const rows = frame
+            .map((row) => `        [ ${row.map(formatCell).join(',  ')} ]`)
+            .join(',\n');
+
+        const code = `'${spriteKey}': [\n${rows}\n    ]`;
+
+        const btn = this.dom?.paeCopyCode;
+        const originalText = btn?.textContent ?? '';
+
+        navigator.clipboard.writeText(code).then(() => {
+            if (btn) {
+                btn.textContent = TextResources.get('pixelArtEditor.copyCodeDone', 'Copiado!') as string;
+                setTimeout(() => { btn.textContent = originalText; }, 1500);
+            }
+        }).catch(() => {
+            // fallback for environments without clipboard API
+            const ta = document.createElement('textarea');
+            ta.value = code;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (btn) {
+                btn.textContent = TextResources.get('pixelArtEditor.copyCodeDone', 'Copiado!') as string;
+                setTimeout(() => { btn.textContent = originalText; }, 1500);
+            }
+        });
     }
 
     // ── Rendering ──────────────────────────────────────────────
@@ -257,6 +298,7 @@ export class PixelArtEditorController {
         this.dom?.paeSave?.addEventListener('click', () => this.save());
         this.dom?.paeReset?.addEventListener('click', () => this.resetToDefault());
         this.dom?.paeClose?.addEventListener('click', () => this.close());
+        this.dom?.paeCopyCode?.addEventListener('click', () => this.copyCode());
 
         this.dom?.paeToolPaint?.addEventListener('click', () => {
             this.tool = 'paint';

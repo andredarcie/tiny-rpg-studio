@@ -88,6 +88,8 @@ class StatePlayerManager {
         this.player.godMode = false;
         this.player.lastAttackTime = 0;
         this.player.stunUntil = 0;
+        this.player.armorEquipped = false;
+        this.player.bootsEquipped = false;
     }
 
     setLevel(level = 1) {
@@ -148,6 +150,9 @@ class StatePlayerManager {
         if (this.skillManager?.hasSkill?.('iron-body')) {
             delta = Math.max(0, delta - 1);
         }
+        if (this.player.armorEquipped) {
+            delta = Math.max(0, delta - 1);
+        }
         if (this.player.godMode) {
             this.player.lastDamageReduction = delta;
             this.player.currentLives = this.player.maxLives;
@@ -200,6 +205,24 @@ class StatePlayerManager {
 
     getDamageShield() {
         return Math.max(0, Number(this.player?.damageShield) || 0);
+    }
+
+    setArmorEquipped() {
+        if (!this.player) return;
+        this.player.armorEquipped = true;
+    }
+
+    setBootsEquipped() {
+        if (!this.player) return;
+        this.player.bootsEquipped = true;
+    }
+
+    hasBoots() {
+        return Boolean(this.player?.bootsEquipped);
+    }
+
+    hasArmor() {
+        return Boolean(this.player?.armorEquipped);
     }
 
     getDamageShieldMax() {

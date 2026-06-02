@@ -744,7 +744,7 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     position: relative;
     display: flex;
     justify-content: center;
-    padding: 24px;
+    padding: 36px;
     margin: 0 auto;
     width: 100%;
     max-width: 900px;
@@ -764,6 +764,26 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 .editor-map-wrapper canvas {
     display: block;
     width: 100%;
+}
+
+/* Reposition mode indicator */
+.reposition-indicator {
+    position: absolute;
+    top: 36px;
+    left: 36px;
+    right: 36px;
+    z-index: 10;
+    text-align: center;
+    color: var(--accent);
+    pointer-events: none;
+    padding: 4px 8px;
+    background: rgba(0, 0, 0, 0.72);
+    border-bottom: 1px solid rgba(91, 250, 142, 0.4);
+}
+
+.editor-map-wrapper canvas.is-repositioning {
+    outline: 2px solid var(--accent);
+    box-shadow: 0 0 0 2px var(--accent), 0 0 18px rgba(91, 250, 142, 0.25);
 }
 
 .map-nav-button {
@@ -804,7 +824,7 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 }
 
 .map-nav-button--up {
-    top: 6px;
+    top: 4px;
     left: 50%;
     transform: translateX(-50%);
 }
@@ -815,7 +835,7 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 }
 
 .map-nav-button--down {
-    bottom: 6px;
+    bottom: 4px;
     left: 50%;
     transform: translateX(-50%);
 }
@@ -826,7 +846,7 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 }
 
 .map-nav-button--left {
-    left: 6px;
+    left: 4px;
     top: 50%;
     transform: translateY(-50%);
 }
@@ -837,7 +857,7 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
 }
 
 .map-nav-button--right {
-    right: 6px;
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
 }
@@ -1441,6 +1461,14 @@ textarea {
     flex-direction: column;
     gap: 4px;
     color: #cfd8dc;
+}
+
+.object-config-label--checkbox {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    margin-top: 4px;
 }
 
 .object-config-select {
@@ -2932,17 +2960,19 @@ body.game-mode .tab-button.active {
 }
 
 .object-category-buttons {
-    display: inline-flex;
-    gap: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
 .object-category-button {
-    padding: 6px 10px;
+    padding: 4px 8px;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--panel);
     color: var(--text);
     cursor: pointer;
+    font-size: 0.8em;
     transition: border-color 0.2s ease, background 0.2s ease;
 }
 
@@ -3482,6 +3512,217 @@ body.game-mode .tab-button.active {
     justify-content: center;
 }
 
+/* Object / NPC Edit Modals */
+#object-edit-modal,
+#npc-edit-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 16px;
+}
+
+#object-edit-modal[hidden],
+#npc-edit-modal[hidden] {
+    display: none;
+}
+
+.object-edit-modal__panel {
+    font-size: var(--engine-font-size);
+    background: var(--panel, #151821);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: 6px;
+    max-width: 380px;
+    width: 100%;
+    max-height: 82vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(91, 250, 142, 0.08);
+}
+
+/* ── header ── */
+.object-edit-modal__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 14px 13px;
+    background: rgba(255, 255, 255, 0.025);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.object-edit-modal__preview {
+    flex-shrink: 0;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px;
+    image-rendering: pixelated;
+}
+
+.object-edit-modal__title-group {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 2px;
+}
+
+.object-edit-modal__title {
+    margin: 0;
+    color: var(--accent);
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+}
+
+.object-edit-modal__header .object-position {
+    display: inline-flex;
+    align-items: center;
+    color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    padding: 1px 6px;
+    align-self: flex-start;
+    letter-spacing: 0.04em;
+}
+
+.object-edit-modal__desc {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.38);
+    line-height: 1.45;
+}
+
+.object-edit-modal__close {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    flex-shrink: 0;
+    border-radius: 3px;
+    margin-left: auto;
+    align-self: flex-start;
+    transition: color 0.15s, background 0.15s;
+}
+
+.object-edit-modal__close:hover {
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── config body ── */
+.object-edit-modal__config {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+}
+
+.object-edit-modal__config:empty {
+    display: none;
+}
+
+/* ── footer ── */
+.object-edit-modal__footer {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.15);
+    flex-shrink: 0;
+}
+
+.object-edit-modal__footer .btn-secondary {
+    flex: 1;
+    min-height: 34px;
+    padding: 6px 10px;
+}
+
+.object-edit-modal__move {
+    color: var(--accent) !important;
+    border-color: rgba(91, 250, 142, 0.3) !important;
+}
+
+.object-edit-modal__move:hover {
+    background: rgba(91, 250, 142, 0.08) !important;
+    border-color: rgba(91, 250, 142, 0.6) !important;
+}
+
+.object-edit-modal__remove {
+    color: #e06060 !important;
+    border-color: rgba(224, 96, 96, 0.35) !important;
+}
+
+.object-edit-modal__remove:hover {
+    background: rgba(224, 96, 96, 0.1) !important;
+    border-color: rgba(224, 96, 96, 0.6) !important;
+}
+
+/* ── NPC modal specifics ── */
+.npc-edit-modal__body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+}
+
+.npc-edit-modal__toggle {
+    align-self: flex-start;
+    padding: 4px 10px;
+    min-height: 26px;
+    opacity: 0.75;
+}
+
+.npc-edit-modal__toggle:hover {
+    opacity: 1;
+}
+
+.npc-conditional-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+/* ── status badges inside modal ── */
+.object-edit-modal__config .object-status {
+    color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    padding: 3px 8px;
+    align-self: flex-start;
+}
+
+/* ── labels inside modal ── */
+.object-edit-modal__config .object-config-label,
+.npc-edit-modal__body .object-config-label {
+    gap: 5px;
+}
+
+@media (pointer: coarse) {
+    .object-edit-modal__footer .btn-secondary {
+        min-height: 42px;
+    }
+
+    .npc-edit-modal__toggle {
+        min-height: 34px;
+    }
+}
+
 /* Modal de Color Picker */
 #color-picker-modal {
     position: fixed;
@@ -3844,6 +4085,23 @@ body.game-mode .tab-button.active {
     padding: 4px 12px;
     cursor: pointer;
     font-weight: var(--fw-bold);
+}
+
+.pae-copy-code-btn {
+    margin-right: auto;
+    background: transparent;
+    color: var(--text-muted, #90a4ae);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 0.85em;
+    border-radius: 4px;
+    transition: color 0.15s, border-color 0.15s;
+}
+
+.pae-copy-code-btn:hover {
+    color: var(--text);
+    border-color: var(--text-muted, #90a4ae);
 }
 
 /* ─── Project Save Toast Notifications ─────────────────────────────────── */

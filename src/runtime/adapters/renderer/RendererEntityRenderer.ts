@@ -138,6 +138,21 @@ class RendererEntityRenderer {
                     : false;
                 sprite = (isOn ? objectSprites[`${object.type}--on`] : objectSprites[object.type]) || sprite;
             }
+            if (object.type === OT.CHEST && object.opened) {
+                sprite = objectSprites[`${object.type}--on`] || sprite;
+            }
+            if (object.type === OT.PRESSURE_PLATE) {
+                const isActive = object.variableId
+                    ? this.gameState.isVariableOn?.(object.variableId) ?? false
+                    : Boolean(object.activated);
+                sprite = (isActive ? objectSprites[`${object.type}--on`] : objectSprites[object.type]) || sprite;
+            }
+            if (object.type === OT.TRAP) {
+                const isActive = object.variableId
+                    ? !(this.gameState.isVariableOn?.(object.variableId) ?? false)
+                    : true;
+                sprite = (isActive ? objectSprites[object.type] : objectSprites[`${object.type}--on`]) || sprite;
+            }
             if (!sprite) continue;
             const px = object.x * tileSize;
             const floatOffset = object.isCollectible && !object.collected
@@ -542,6 +557,7 @@ type GameObjectState = {
     isCollectible?: boolean;
     isLed?: boolean;
     hiddenInGame?: boolean;
+    activated?: boolean;
 };
 
 type ItemState = {

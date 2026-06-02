@@ -465,6 +465,59 @@ class ShareEncoder {
             }
         }
 
+        const armorPositions = ShareDataNormalizer.normalizeMultiObjectPositions(objects, OT.ARMOR);
+        if (armorPositions.length) {
+            const code = SharePositionCodec.encodePositions(armorPositions);
+            if (code) parts.push('A' + code);
+        }
+
+        const bootsPositions = ShareDataNormalizer.normalizeMultiObjectPositions(objects, OT.BOOTS);
+        if (bootsPositions.length) {
+            const code = SharePositionCodec.encodePositions(bootsPositions);
+            if (code) parts.push('O' + code);
+        }
+
+        const trapEntries = ShareDataNormalizer.normalizeVariableMultiObjects(objects, OT.TRAP);
+        if (trapEntries.length) {
+            const positions = trapEntries.map((e) => ({ x: e.x, y: e.y, roomIndex: e.roomIndex }));
+            const code = SharePositionCodec.encodePositions(positions);
+            if (code) {
+                parts.push('T' + code);
+                const varCode = ShareVariableCodec.encodeVariableRefArray(trapEntries.map((e) => e.variableNibble));
+                if (varCode) parts.push('D' + varCode);
+            }
+        }
+
+        const plateEntries = ShareDataNormalizer.normalizeVariableMultiObjects(objects, OT.PRESSURE_PLATE);
+        if (plateEntries.length) {
+            const positions = plateEntries.map((e) => ({ x: e.x, y: e.y, roomIndex: e.roomIndex }));
+            const code = SharePositionCodec.encodePositions(positions);
+            if (code) {
+                parts.push('j' + code);
+                const varCode = ShareVariableCodec.encodeVariableRefArray(plateEntries.map((e) => e.variableNibble));
+                if (varCode) parts.push('3' + varCode);
+            }
+        }
+
+        const pushBoxPositions = ShareDataNormalizer.normalizeMultiObjectPositions(objects, OT.PUSH_BOX);
+        if (pushBoxPositions.length) {
+            const code = SharePositionCodec.encodePositions(pushBoxPositions);
+            if (code) parts.push('4' + code);
+        }
+
+        const chestEntries = ShareDataNormalizer.normalizeChestObjects(objects);
+        if (chestEntries.length) {
+            const positions = chestEntries.map((e) => ({ x: e.x, y: e.y, roomIndex: e.roomIndex }));
+            const code = SharePositionCodec.encodePositions(positions);
+            if (code) {
+                parts.push('5' + code);
+                const containsCode = ShareVariableCodec.encodeVariableNibbleArray(chestEntries.map((e) => e.containsNibble));
+                if (containsCode) parts.push('6' + containsCode);
+                const randomCode = ShareVariableCodec.encodeVariableNibbleArray(chestEntries.map((e) => e.randomNibble));
+                if (randomCode) parts.push('7' + randomCode);
+            }
+        }
+
         if (variableCode) {
             parts.push('b' + variableCode);
         }

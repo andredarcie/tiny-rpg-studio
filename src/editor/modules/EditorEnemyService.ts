@@ -85,6 +85,7 @@ class EditorEnemyService {
         if (!id) {
             return;
         }
+        this.deactivatePlacement();
         this.manager.renderService.renderEnemies();
         this.manager.renderService.renderEnemyCatalog();
         this.manager.renderService.renderWorldGrid();

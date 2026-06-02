@@ -55,7 +55,7 @@ function makeManager(ov: Record<string, unknown> = {}) {
     getVariableDefinitions: vi.fn((): VariableDef[] => [{ id: 'var-1', name: 'Flag 1' }, { id: 'var-2', name: '' }]),
     draw: vi.fn(),
   };
-  return { state, renderService, history, gameEngine, domCache: { editorCanvas: canvas }, enemyService: { deactivatePlacement: vi.fn() }, objectService: { togglePlacement: vi.fn() }, updateJSON: vi.fn() };
+  return { state, renderService, history, gameEngine, domCache: { editorCanvas: canvas }, enemyService: { deactivatePlacement: vi.fn() }, objectService: { togglePlacement: vi.fn() }, updateJSON: vi.fn(), hideRepositionIndicator: vi.fn() };
 }
 function makeService(ov: Record<string, unknown> = {}) { const m = makeManager(ov); return { service: new EditorNpcService(asNpcServiceManager(m)), manager: m }; }
 beforeEach(() => { vi.stubGlobal('alert', vi.fn()); });

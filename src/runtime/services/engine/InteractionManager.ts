@@ -28,8 +28,12 @@ type GameObjectState = {
   x: number;
   y: number;
   collected?: boolean;
+  opened?: boolean;
   variableId?: string | null;
   on?: boolean;
+  activated?: boolean;
+  containsItemType?: string | null;
+  randomItem?: boolean;
 };
 
 type NpcState = {
@@ -84,6 +88,11 @@ type GameStateApi = {
   addExperience?: (amount: number) => void;
   getSwordType?: () => string | null;
   addDamageShield?: (durability: number, type: string) => void;
+  damagePlayer?: (amount: number) => number;
+  setArmorEquipped?: () => void;
+  setBootsEquipped?: () => void;
+  hasBoots?: () => boolean;
+  getAllObjects?: () => GameObjectState[];
   showPickupOverlay?: (payload: Record<string, unknown>) => void;
   setPlayerPosition: (x: number, y: number, roomIndex: number | null) => void;
   getRoomIndex: (row: number, col: number) => number | null;
@@ -148,9 +157,12 @@ class InteractionManager {
       if (object.x !== player.x || object.y !== player.y) continue;
 
       if (this.handleCollectibleObject(object)) break;
+      if (this.handleTrap(object)) break;
+      if (this.handleChest(object)) break;
       if (this.handleSwitch(object)) break;
       if (this.handlePlayerEnd(object)) break;
     }
+    this.checkPressurePlates(player);
   }
 
   handleCollectibleObject(object: GameObjectState): boolean {
@@ -223,6 +235,22 @@ class InteractionManager {
           if (gameStateWithSword.setSwordDurability) {
             gameStateWithSword.setSwordDurability(durability);
           }
+        });
+        return true;
+      }
+      case OT.ARMOR: {
+        object.collected = true;
+        soundEngine.play('itemPickup');
+        this.showPickupOverlay(object.type, () => {
+          this.gameState.setArmorEquipped?.();
+        });
+        return true;
+      }
+      case OT.BOOTS: {
+        object.collected = true;
+        soundEngine.play('itemPickup');
+        this.showPickupOverlay(object.type, () => {
+          this.gameState.setBootsEquipped?.();
         });
         return true;
       }
@@ -306,12 +334,6 @@ class InteractionManager {
     if (variableId) {
       this.gameState.setVariableValue?.(variableId, object.on);
     }
-    const message = object.on
-      ? this.getInteractionText('objects.switch.onMessage', '')
-      : this.getInteractionText('objects.switch.offMessage', '');
-    if (message) {
-      this.dialogManager.showDialog(message);
-    }
     return true;
   }
 
@@ -322,6 +344,111 @@ class InteractionManager {
     this.gameState.setActiveEndingText?.(endingText || '');
     this.options?.onPlayerVictory?.();
     return true;
+  }
+
+  handleTrap(object: GameObjectState): boolean {
+    const OT = this.types;
+    if (object.type !== OT.TRAP) return false;
+    const variableId = this.gameState.normalizeVariableId?.(object.variableId ?? null) ?? null;
+    const isActive = variableId ? !(this.gameState.isVariableOn?.(variableId) ?? false) : true;
+    if (!isActive) return true;
+    if (this.gameState.hasBoots?.()) return true;
+    this.gameState.damagePlayer?.(1);
+    soundEngine.play('playerHit');
+    return true;
+  }
+
+  handleChest(object: GameObjectState): boolean {
+    const OT = this.types;
+    if (object.type !== OT.CHEST) return false;
+    if (object.opened) return false;
+
+    let containsType: ItemType | undefined;
+    if (object.randomItem) {
+      const pool: ItemType[] = [
+        OT.KEY, OT.LIFE_POTION, OT.XP_SCROLL,
+        OT.SWORD_WOOD, OT.SWORD_BRONZE, OT.SWORD,
+        OT.ARMOR, OT.BOOTS,
+      ];
+      containsType = pool[Math.floor(Math.random() * pool.length)];
+    } else {
+      containsType = object.containsItemType as ItemType | undefined;
+    }
+
+    if (!containsType) return false;
+    object.opened = true;
+    soundEngine.play('itemPickup');
+    this.showPickupOverlay(containsType, () => {
+      this.applyItemEffect(containsType);
+    });
+    return true;
+  }
+
+  applyItemEffect(type: ItemType): void {
+    const OT = this.types;
+    switch (type) {
+      case OT.KEY:
+        this.gameState.addKeys?.(1);
+        break;
+      case OT.LIFE_POTION:
+        if (this.gameState.hasSkill?.('potion-master')) {
+          this.gameState.healPlayerToFull?.();
+        } else {
+          this.gameState.addLife?.(1);
+        }
+        break;
+      case OT.XP_SCROLL: {
+        const xpToNext = this.gameState.getExperienceToNext?.() ?? 0;
+        const gain = xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0;
+        this.gameState.addExperience?.(gain);
+        break;
+      }
+      case OT.ARMOR:
+        this.gameState.setArmorEquipped?.();
+        break;
+      case OT.BOOTS:
+        this.gameState.setBootsEquipped?.();
+        break;
+      case OT.SWORD:
+      case OT.SWORD_BRONZE:
+      case OT.SWORD_WOOD: {
+        const durability = this.getSwordDurability(type);
+        const gs = this.gameState as typeof this.gameState & {
+          setSwordType?: (t: ItemType) => void;
+          setSwordDurability?: (d: number) => void;
+        };
+        gs.setSwordType?.(type);
+        gs.setSwordDurability?.(durability);
+        break;
+      }
+    }
+  }
+
+  checkPressurePlates(player: PlayerPosition): void {
+    const OT = this.types;
+    const allObjects = this.gameState.getAllObjects?.() || [];
+    const pushBoxes = allObjects.filter((o) => o.type === OT.PUSH_BOX);
+    for (const object of allObjects) {
+      if (object.type !== OT.PRESSURE_PLATE) continue;
+      const variableId = this.gameState.normalizeVariableId?.(object.variableId ?? null) ?? null;
+      if (!variableId) continue;
+      const playerOnPlate =
+        object.roomIndex === player.roomIndex &&
+        object.x === player.x &&
+        object.y === player.y;
+      const boxOnPlate = pushBoxes.some(
+        (box) => box.roomIndex === object.roomIndex && box.x === object.x && box.y === object.y
+      );
+      const isActivated = playerOnPlate || boxOnPlate;
+      const wasActivated = Boolean(object.activated);
+      if (isActivated && !wasActivated) {
+        object.activated = true;
+        this.gameState.setVariableValue?.(variableId, true);
+      } else if (!isActivated && wasActivated) {
+        object.activated = false;
+        this.gameState.setVariableValue?.(variableId, false);
+      }
+    }
   }
 
   checkNpcs(npcs: NpcState[], player: PlayerPosition): void {

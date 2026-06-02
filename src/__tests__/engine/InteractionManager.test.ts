@@ -57,7 +57,7 @@ describe('InteractionManager', () => {
     expect(gameState.addKeys).toHaveBeenCalledWith(1);
   });
 
-  it('toggles switches and shows dialog', () => {
+  it('toggles switches without showing dialog', () => {
     const gameState = createInteractionGameState();
     const manager = new InteractionManager(gameState, dialogManager);
     const object: { type: string; on: boolean; variableId: string; roomIndex: number; x: number; y: number } = { type: 'switch', on: false, variableId: 'var-1', roomIndex: 0, x: 0, y: 0 };
@@ -67,7 +67,7 @@ describe('InteractionManager', () => {
     expect(handled).toBe(true);
     expect(object.on).toBe(true);
     expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', true);
-    expect(dialogManager.showDialog).toHaveBeenCalled();
+    expect(dialogManager.showDialog).not.toHaveBeenCalled();
   });
 
   it('uses conditional NPC dialog when variable is active', () => {
@@ -200,5 +200,165 @@ describe('InteractionManager', () => {
     manager.checkRoomExits(exits, rooms, player);
 
     expect(gameState.setPlayerPosition).toHaveBeenCalledWith(2, 3, 0);
+  });
+
+  // --- Armor ---
+  it('armor pickup sets armorEquipped via overlay effect', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const object = { type: 'armor', collected: false, roomIndex: 0, x: 0, y: 0 };
+
+    const handled = manager.handleCollectibleObject(object as never);
+    expect(handled).toBe(true);
+    expect(object.collected).toBe(true);
+
+    const effect = (gameState.showPickupOverlay as ReturnType<typeof vi.fn>).mock.calls[0][0] as { effect?: () => void };
+    effect.effect?.();
+    expect(gameState.setArmorEquipped).toHaveBeenCalled();
+  });
+
+  // --- Boots ---
+  it('boots pickup sets bootsEquipped via overlay effect', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const object = { type: 'boots', collected: false, roomIndex: 0, x: 0, y: 0 };
+
+    const handled = manager.handleCollectibleObject(object as never);
+    expect(handled).toBe(true);
+    expect(object.collected).toBe(true);
+
+    const effect = (gameState.showPickupOverlay as ReturnType<typeof vi.fn>).mock.calls[0][0] as { effect?: () => void };
+    effect.effect?.();
+    expect(gameState.setBootsEquipped).toHaveBeenCalled();
+  });
+
+  // --- Trap ---
+  it('trap damages player on contact', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const trap = { type: 'trap', roomIndex: 0, x: 0, y: 0 };
+
+    const handled = manager.handleTrap(trap as never);
+    expect(handled).toBe(true);
+    expect(gameState.damagePlayer).toHaveBeenCalledWith(1);
+  });
+
+  it('trap does not damage player when boots are equipped', () => {
+    const gameState = createInteractionGameState({ hasBoots: vi.fn(() => true) } as never);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const trap = { type: 'trap', roomIndex: 0, x: 0, y: 0 };
+
+    const handled = manager.handleTrap(trap as never);
+    expect(handled).toBe(true);
+    expect(gameState.damagePlayer).not.toHaveBeenCalled();
+  });
+
+  it('handleTrap returns false for non-trap objects', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const key = { type: 'key', collected: false, roomIndex: 0, x: 0, y: 0 };
+
+    expect(manager.handleTrap(key as never)).toBe(false);
+  });
+
+  it('trap does not damage player when variable is ON (trap deactivated)', () => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const trap = { type: 'trap', variableId: 'var-1', roomIndex: 0, x: 0, y: 0 };
+
+    const handled = manager.handleTrap(trap as never);
+
+    expect(handled).toBe(true);
+    expect(gameState.damagePlayer).not.toHaveBeenCalled();
+  });
+
+  it('trap damages player when variable is OFF (trap active)', () => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const trap = { type: 'trap', variableId: 'var-1', roomIndex: 0, x: 0, y: 0 };
+
+    manager.handleTrap(trap as never);
+
+    expect(gameState.damagePlayer).toHaveBeenCalledWith(1);
+  });
+
+  // --- Chest ---
+  it('chest opens and gives contained item via overlay effect', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const chest = { type: 'chest', opened: false, containsItemType: 'key', roomIndex: 0, x: 0, y: 0 };
+
+    const handled = manager.handleChest(chest as never);
+    expect(handled).toBe(true);
+    expect(chest.opened).toBe(true);
+    expect(gameState.showPickupOverlay).toHaveBeenCalled();
+
+    const effect = (gameState.showPickupOverlay as ReturnType<typeof vi.fn>).mock.calls[0][0] as { effect?: () => void };
+    effect.effect?.();
+    expect(gameState.addKeys).toHaveBeenCalledWith(1);
+  });
+
+  it('chest does not open if already opened', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const chest = { type: 'chest', opened: true, containsItemType: 'key', roomIndex: 0, x: 0, y: 0 };
+
+    expect(manager.handleChest(chest as never)).toBe(false);
+    expect(gameState.showPickupOverlay).not.toHaveBeenCalled();
+  });
+
+  it('unconfigured chest returns false without opening', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const chest = { type: 'chest', opened: false, containsItemType: null, roomIndex: 0, x: 0, y: 0 };
+
+    expect(manager.handleChest(chest as never)).toBe(false);
+  });
+
+  // --- Pressure Plate ---
+  it('pressure plate activates variable when player steps on it', () => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    const plate = { type: 'pressure-plate', variableId: 'var-1', activated: false, roomIndex: 0, x: 2, y: 3 };
+    (gameState.getAllObjects as ReturnType<typeof vi.fn>).mockReturnValue([plate]);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const player = { roomIndex: 0, x: 2, y: 3 };
+
+    manager.checkPressurePlates(player);
+
+    expect(plate.activated).toBe(true);
+    expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', true);
+  });
+
+  it('pressure plate deactivates variable when player moves off', () => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    const plate = { type: 'pressure-plate', variableId: 'var-1', activated: true, roomIndex: 0, x: 2, y: 3 };
+    (gameState.getAllObjects as ReturnType<typeof vi.fn>).mockReturnValue([plate]);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const player = { roomIndex: 0, x: 5, y: 5 };
+
+    manager.checkPressurePlates(player);
+
+    expect(plate.activated).toBe(false);
+    expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', false);
+  });
+
+  it('pressure plate deactivates when player leaves the room', () => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    const plate = { type: 'pressure-plate', variableId: 'var-1', activated: true, roomIndex: 0, x: 2, y: 3 };
+    (gameState.getAllObjects as ReturnType<typeof vi.fn>).mockReturnValue([plate]);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const player = { roomIndex: 1, x: 2, y: 3 };
+
+    manager.checkPressurePlates(player);
+
+    expect(plate.activated).toBe(false);
+    expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', false);
   });
 });

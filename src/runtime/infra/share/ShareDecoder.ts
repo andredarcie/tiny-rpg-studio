@@ -365,6 +365,36 @@ class ShareDecoder {
             ? SharePositionCodec.decodePositions(payload.I || '')
             : [];
         const ledVarNibbles = decodeVarRef(payload.U, ledPositions.length);
+        const armorPositions = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? SharePositionCodec.decodePositions(payload.A || '')
+            : [];
+        const bootsPositions = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? SharePositionCodec.decodePositions(payload.O || '')
+            : [];
+        const trapPositions = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? SharePositionCodec.decodePositions(payload.T || '')
+            : [];
+        const trapVarNibbles = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? decodeVarRef(payload.D, trapPositions.length)
+            : [];
+        const platePositions = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? SharePositionCodec.decodePositions(payload.j || '')
+            : [];
+        const plateVarNibbles = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? decodeVarRef(payload['3'], platePositions.length)
+            : [];
+        const pushBoxPositions = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? SharePositionCodec.decodePositions(payload['4'] || '')
+            : [];
+        const chestPositions = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? SharePositionCodec.decodePositions(payload['5'] || '')
+            : [];
+        const chestContainsNibbles = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? ShareVariableCodec.decodeVariableNibbleArray(payload['6'] || '', chestPositions.length)
+            : [];
+        const chestRandomNibbles = version >= ShareConstants.NEW_OBJECTS_VERSION
+            ? ShareVariableCodec.decodeVariableNibbleArray(payload['7'] || '', chestPositions.length)
+            : [];
         const title = (ShareTextCodec.decodeText(payload.n, ShareConstants.DEFAULT_TITLE) || ShareConstants.DEFAULT_TITLE).slice(0, 18);
         const author = (ShareTextCodec.decodeText(payload.y, '') || '').slice(0, 18);
         const backgroundMusicVideoId = version >= ShareConstants.BACKGROUND_MUSIC_VERSION
@@ -501,7 +531,13 @@ class ShareDecoder {
             ...playerEndEntries,
             ...ShareDataNormalizer.buildObjectEntries(switchPositions, OT.SWITCH, { variableNibbles: switchVariableNibbles, stateBits: switchStateNibbles }),
             ...gateEntries,
-            ...ledEntries
+            ...ledEntries,
+            ...ShareDataNormalizer.buildObjectEntries(armorPositions, OT.ARMOR),
+            ...ShareDataNormalizer.buildObjectEntries(bootsPositions, OT.BOOTS),
+            ...ShareDataNormalizer.buildObjectEntries(trapPositions, OT.TRAP, { variableNibbles: trapVarNibbles }),
+            ...ShareDataNormalizer.buildObjectEntries(platePositions, OT.PRESSURE_PLATE, { variableNibbles: plateVarNibbles }),
+            ...ShareDataNormalizer.buildObjectEntries(pushBoxPositions, OT.PUSH_BOX),
+            ...ShareDataNormalizer.buildObjectEntries(chestPositions, OT.CHEST, { containsNibbles: chestContainsNibbles, randomBits: chestRandomNibbles }),
         ];
 
         // Custom Palette

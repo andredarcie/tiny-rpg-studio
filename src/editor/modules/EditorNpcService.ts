@@ -110,6 +110,7 @@ class EditorNpcService {
     deactivatePlacement() {
         if (!this.state.placingNpc) return;
         this.state.placingNpc = false;
+        this.manager.hideRepositionIndicator();
         if (!this.state.placingEnemy && !this.state.placingObjectType && this.dom.editorCanvas) {
             this.dom.editorCanvas.style.cursor = 'default';
         }
@@ -181,6 +182,7 @@ class EditorNpcService {
             alert(this.t('alerts.npc.placeError'));
             return;
         }
+        this.deactivatePlacement();
         this.manager.renderService.renderNpcs();
         this.manager.renderService.renderWorldGrid();
         this.manager.renderService.renderEditor();

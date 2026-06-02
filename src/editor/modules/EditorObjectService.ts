@@ -31,6 +31,8 @@ class EditorObjectService {
         if (forceOff) {
             if (!this.state.placingObjectType) return;
             this.state.placingObjectType = null;
+            this.state.repositioningObjectId = null;
+            this.manager.hideRepositionIndicator();
             if (!this.state.placingNpc && !this.state.placingEnemy && this.dom.editorCanvas) {
                 this.dom.editorCanvas.style.cursor = 'default';
             }
@@ -41,6 +43,8 @@ class EditorObjectService {
         if (!normalizedType) return;
         if (this.state.placingObjectType === normalizedType) {
             this.state.placingObjectType = null;
+            this.state.repositioningObjectId = null;
+            this.manager.hideRepositionIndicator();
             if (!this.state.placingNpc && !this.state.placingEnemy && this.dom.editorCanvas) {
                 this.dom.editorCanvas.style.cursor = 'default';
             }
@@ -54,9 +58,31 @@ class EditorObjectService {
         this.manager.renderObjectCatalog();
     }
 
+    startRepositioning(objectId: string, objectType: string, objectName: string) {
+        this.state.repositioningObjectId = objectId;
+        this.selectObjectType(objectType);
+        this.manager.showRepositionIndicator(objectName);
+    }
+
+    repositionObjectAt(id: string, coord: { x: number; y: number }) {
+        const moved = this.gameEngine.moveObjectById(id, coord.x, coord.y);
+        if (!moved) return;
+        this.state.repositioningObjectId = null;
+        this.manager.hideRepositionIndicator();
+        this.togglePlacement(this.state.placingObjectType, true);
+        this.manager.renderService.renderObjects();
+        this.manager.renderObjectCatalog();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.gameEngine.draw();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+    }
+
     placeObjectAt(type: string, coord: { x: number; y: number }, roomIndex: number) {
         const object = this.gameEngine.setObjectPosition(type, roomIndex, coord.x, coord.y);
         if (!object) return;
+        this.togglePlacement(type, true);
         this.manager.renderService.renderObjects();
         this.manager.renderObjectCatalog();
         this.manager.renderService.renderWorldGrid();

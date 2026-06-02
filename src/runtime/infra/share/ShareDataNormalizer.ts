@@ -51,12 +51,16 @@ type ShareObjectInput = {
     inputVariableId2?: string | null;
     outputVariableId?: string | null;
     hiddenInGame?: boolean;
+    containsItemType?: string | null;
+    randomItem?: boolean;
 };
 
 type SharePositionOptions = {
     variableNibbles?: number[];
     endingTexts?: string[];
     stateBits?: number[];
+    containsNibbles?: number[];
+    randomBits?: number[];
 };
 
 type NpcDefinitionLookup = {
@@ -349,6 +353,82 @@ class ShareDataNormalizer {
             (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
     }
 
+    static readonly CHEST_ITEM_MAP: (string | null)[] = [
+        null,
+        ITEM_TYPES.KEY,
+        ITEM_TYPES.LIFE_POTION,
+        ITEM_TYPES.XP_SCROLL,
+        ITEM_TYPES.SWORD,
+        ITEM_TYPES.SWORD_BRONZE,
+        ITEM_TYPES.SWORD_WOOD,
+        ITEM_TYPES.ARMOR,
+        ITEM_TYPES.BOOTS,
+    ];
+
+    static normalizeMultiObjectPositions(list: unknown[] | null | undefined, type: string): PositionEntry[] {
+        if (!Array.isArray(list)) return [];
+        const seenTiles = new Set<string>();
+        const result: PositionEntry[] = [];
+        for (const raw of list) {
+            const entry = raw as ShareObjectInput;
+            if (entry.type !== type) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
+            const tileKey = `${roomIndex}:${x}:${y}`;
+            if (seenTiles.has(tileKey)) continue;
+            seenTiles.add(tileKey);
+            result.push({ x, y, roomIndex });
+        }
+        return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
+    }
+
+    static normalizeVariableMultiObjects(list: unknown[] | null | undefined, type: string) {
+        if (!Array.isArray(list)) return [];
+        const seenTiles = new Set<string>();
+        const fallbackNibble = ShareVariableCodec.variableIdToNibble(ShareVariableCodec.getFirstVariableId()) || 1;
+        const result: Array<PositionEntry & { variableNibble: number }> = [];
+        for (const raw of list) {
+            const entry = raw as ShareObjectInput;
+            if (entry.type !== type) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
+            const tileKey = `${roomIndex}:${x}:${y}`;
+            if (seenTiles.has(tileKey)) continue;
+            seenTiles.add(tileKey);
+            const variableNibble =
+                ShareVariableCodec.variableIdToNibble(typeof entry.variableId === 'string' ? entry.variableId : null) ||
+                fallbackNibble;
+            result.push({ x, y, roomIndex, variableNibble });
+        }
+        return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
+    }
+
+    static normalizeChestObjects(list: unknown[] | null | undefined) {
+        if (!Array.isArray(list)) return [];
+        const seenTiles = new Set<string>();
+        const result: Array<PositionEntry & { containsNibble: number; randomNibble: number }> = [];
+        for (const raw of list) {
+            const entry = raw as ShareObjectInput;
+            if (entry.type !== ITEM_TYPES.CHEST) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
+            const tileKey = `${roomIndex}:${x}:${y}`;
+            if (seenTiles.has(tileKey)) continue;
+            seenTiles.add(tileKey);
+            const containsIndex = ShareDataNormalizer.CHEST_ITEM_MAP.indexOf(entry.containsItemType ?? null);
+            const containsNibble = containsIndex >= 0 ? containsIndex : 0;
+            const randomNibble = entry.randomItem ? 1 : 0;
+            result.push({ x, y, roomIndex, containsNibble, randomNibble });
+        }
+        return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
+    }
+
     static buildObjectEntries(
         positions: unknown[] | null | undefined,
         type: string,
@@ -407,6 +487,24 @@ class ShareDataNormalizer {
                 if (endingText) {
                     entry.endingText = endingText;
                 }
+            }
+            if (type === ITEM_TYPES.ARMOR || type === ITEM_TYPES.BOOTS) {
+                entry.collected = false;
+            }
+            if (type === ITEM_TYPES.TRAP || type === ITEM_TYPES.PRESSURE_PLATE) {
+                const nibble = variableNibbles[index] ?? ShareVariableCodec.variableIdToNibble(fallbackVariableId);
+                const variableId = ShareVariableCodec.nibbleToVariableId(nibble) || fallbackVariableId;
+                if (variableId) {
+                    entry.variableId = variableId;
+                }
+            }
+            if (type === ITEM_TYPES.CHEST) {
+                entry.opened = false;
+                const containsNibbles = Array.isArray(options.containsNibbles) ? options.containsNibbles : [];
+                const randomBits = Array.isArray(options.randomBits) ? options.randomBits : [];
+                const containsNibble = containsNibbles[index] ?? 0;
+                entry.containsItemType = ShareDataNormalizer.CHEST_ITEM_MAP[containsNibble] ?? null;
+                entry.randomItem = Boolean(randomBits[index]);
             }
             return entry;
         });
