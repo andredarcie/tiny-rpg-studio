@@ -293,12 +293,16 @@ export class OnlineModeApplication {
                     gameEngine.renderer.draw();
                 });
 
+                // Guest: forward NPC reward signals to the host without applying locally.
+                // The host will apply the variable and broadcast the authoritative state
+                // back via world-state-diff. Using onNpcReward instead of onVariableChanged
+                // avoids the infinite loop that arises when applyVariableDiff() calls
+                // setVariableValue() which would re-trigger onVariableChanged.
                 const varIds = ShareConstants.VARIABLE_IDS;
-                gameEngine.gameState.onVariableChanged = (variableId, value) => {
+                gameEngine.dialogManager.onNpcReward = (variableId, value) => {
                     const index = varIds.indexOf(variableId);
                     if (index < 0) return;
-                    const encoded = typeof value === 'boolean' ? (value ? 1 : 0)
-                        : typeof value === 'number' ? value : 0;
+                    const encoded = value ? 1 : 0;
                     manager.client.send({ type: 'variable-changed', variableIndex: index, newValue: encoded });
                 };
             }
