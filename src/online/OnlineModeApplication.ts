@@ -293,8 +293,16 @@ export class OnlineModeApplication {
                     sync?.applyDiff(msg.diff);
                     gameEngine.renderer.draw();
                 });
-                // Guests do not send variable changes — the host is the authority.
-                // State arrives via world-state-diff from the host broadcaster.
+                // Guest: forward NPC reward signals to the host without applying locally.
+                // onNpcReward fires only from DialogManager.completeDialog (NPC quest rewards),
+                // NOT from switch/object interactions — avoiding the feedback loop that
+                // onVariableChanged caused when applyVariableDiff re-triggered setVariableValue.
+                const varIds = ShareConstants.VARIABLE_IDS;
+                gameEngine.dialogManager.onNpcReward = (variableId, value) => {
+                    const index = varIds.indexOf(variableId);
+                    if (index < 0) return;
+                    manager.client.send({ type: 'variable-changed', variableIndex: index, newValue: value ? 1 : 0 });
+                };
             }
         });
 

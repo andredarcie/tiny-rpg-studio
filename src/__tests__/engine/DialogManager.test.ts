@@ -125,4 +125,32 @@ describe('DialogManager', () => {
     expect(resumeGame).not.toHaveBeenCalled();
     expect(renderer.draw).not.toHaveBeenCalled();
   });
+
+  it('calls onNpcReward instead of setVariableValue when the callback is set', () => {
+    const manager = new DialogManager(
+      { pauseGame, resumeGame, setDialog, getDialog, setVariableValue },
+      renderer,
+    );
+    const onNpcReward = vi.fn();
+    manager.onNpcReward = onNpcReward;
+
+    manager.showDialog('hi', { setVariableId: 'var-2', rewardAllowed: true });
+    manager.completeDialog();
+
+    expect(onNpcReward).toHaveBeenCalledWith('var-2', true);
+    expect(setVariableValue).not.toHaveBeenCalled();
+  });
+
+  it('falls back to setVariableValue when onNpcReward is not set', () => {
+    const manager = new DialogManager(
+      { pauseGame, resumeGame, setDialog, getDialog, setVariableValue },
+      renderer,
+    );
+    setVariableValue.mockReturnValue([true, false]);
+
+    manager.showDialog('hi', { setVariableId: 'var-3', rewardAllowed: true });
+    manager.completeDialog();
+
+    expect(setVariableValue).toHaveBeenCalledWith('var-3', true);
+  });
 });

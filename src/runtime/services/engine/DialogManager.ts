@@ -27,6 +27,13 @@ class DialogManager {
   gameState: GameStateApi;
   renderer: RendererApi;
   pendingDialogAction: DialogMeta | null;
+  /**
+   * Optional callback invoked when an NPC reward variable should be set.
+   * When present, it is called INSTEAD of setVariableValue so that callers
+   * (e.g. online-guest mode) can forward the signal to an authority (the host)
+   * without applying the change locally first.
+   */
+  onNpcReward: ((variableId: string, value: boolean) => void) | null = null;
 
   constructor(gameState: GameStateApi, renderer: RendererApi) {
     this.gameState = gameState;
@@ -53,9 +60,17 @@ class DialogManager {
   completeDialog(): void {
     const OT = ITEM_TYPES;
     if (this.pendingDialogAction?.setVariableId && this.pendingDialogAction.rewardAllowed !== false) {
-      const [, openedDoor] = this.gameState.setVariableValue?.(this.pendingDialogAction.setVariableId, true) || [];
-      if (openedDoor) {
-        this.renderer.setIconOverPlayer(OT.DOOR_VARIABLE);
+      const varId = this.pendingDialogAction.setVariableId;
+      if (this.onNpcReward) {
+        // In online-guest mode the reward must be forwarded to the host as a
+        // signal. The guest must NOT apply the variable locally — the host will
+        // apply it and broadcast the authoritative state back via world-state-diff.
+        this.onNpcReward(varId, true);
+      } else {
+        const [, openedDoor] = this.gameState.setVariableValue?.(varId, true) || [];
+        if (openedDoor) {
+          this.renderer.setIconOverPlayer(OT.DOOR_VARIABLE);
+        }
       }
     }
     this.pendingDialogAction = null;
