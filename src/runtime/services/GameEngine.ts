@@ -704,6 +704,9 @@ export class GameEngine {
 
   processGuestMove(guestX: number, guestY: number, guestRoomIndex: number, dx: number, dy: number): void {
     this.movementManager.tryPushBoxForGuest(guestX, guestY, guestRoomIndex, dx, dy);
+    // Evaluate pressure plates for the guest's new position without clobbering
+    // the local player's activation state (handled by _evaluatePressurePlates).
+    this.interactionManager.checkPressurePlatesAt({ x: guestX, y: guestY, roomIndex: guestRoomIndex });
     this.onOnlineStateChanged?.();
   }
 

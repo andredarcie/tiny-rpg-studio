@@ -32,6 +32,10 @@ type GameObjectState = {
   variableId?: string | null;
   on?: boolean;
   activated?: boolean;
+  // Internal tracker: which named sources are currently activating this plate.
+  // Keyed by 'local' | 'guest' | 'box'. Kept separate from `activated` so
+  // multiple players can stand on the same plate without conflicting.
+  _activatedBy?: Record<string, boolean>;
   containsItemType?: string | null;
   randomItem?: boolean;
 };
@@ -449,6 +453,26 @@ class InteractionManager {
   }
 
   checkPressurePlates(player: PlayerPosition): void {
+    this._evaluatePressurePlates(player, 'local');
+  }
+
+  /**
+   * Called by the host when it receives a position update from a guest player.
+   * Evaluates pressure plates for the guest's position without clobbering the
+   * local player's activation state.
+   */
+  checkPressurePlatesAt(guestPosition: PlayerPosition): void {
+    this._evaluatePressurePlates(guestPosition, 'guest');
+  }
+
+  /**
+   * Unified pressure-plate evaluation. Tracks which named source ('local',
+   * 'guest', 'box') is activating each plate via `object._activatedBy`. The
+   * plate is activated when ANY source is active, and deactivated only when
+   * ALL sources are inactive. This prevents two players from flickering each
+   * other's plates when only one of them is standing on it.
+   */
+  private _evaluatePressurePlates(player: PlayerPosition, playerKey: string): void {
     const OT = this.types;
     const allObjects = this.gameState.getAllObjects?.() || [];
     const pushBoxes = allObjects.filter((o) => o.type === OT.PUSH_BOX);
@@ -456,6 +480,8 @@ class InteractionManager {
       if (object.type !== OT.PRESSURE_PLATE) continue;
       const variableId = this.gameState.normalizeVariableId?.(object.variableId ?? null) ?? null;
       if (!variableId) continue;
+
+      // Determine whether this specific source is activating the plate.
       const playerOnPlate =
         object.roomIndex === player.roomIndex &&
         object.x === player.x &&
@@ -463,12 +489,31 @@ class InteractionManager {
       const boxOnPlate = pushBoxes.some(
         (box) => box.roomIndex === object.roomIndex && box.x === object.x && box.y === object.y
       );
-      const isActivated = playerOnPlate || boxOnPlate;
+
+      // Initialise the per-source tracker lazily.
+      if (!object._activatedBy) {
+        // Seed from the existing `activated` flag so pre-existing state is respected.
+        object._activatedBy = { box: boxOnPlate };
+        if (object.activated) {
+          // We don't know which source caused the prior activation, so we
+          // default to assuming it was the local player to avoid losing state.
+          object._activatedBy['local'] = true;
+        }
+      }
+
+      // Update the current source's contribution.
+      object._activatedBy[playerKey] = playerOnPlate;
+      // Boxes are always re-evaluated on every call regardless of playerKey.
+      object._activatedBy['box'] = boxOnPlate;
+
+      // The plate is active when ANY source is active.
+      const nowActive = Object.values(object._activatedBy).some(Boolean);
       const wasActivated = Boolean(object.activated);
-      if (isActivated && !wasActivated) {
+
+      if (nowActive && !wasActivated) {
         object.activated = true;
         this.gameState.setVariableValue?.(variableId, true);
-      } else if (!isActivated && wasActivated) {
+      } else if (!nowActive && wasActivated) {
         object.activated = false;
         this.gameState.setVariableValue?.(variableId, false);
       }
