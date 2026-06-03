@@ -702,6 +702,11 @@ export class GameEngine {
     this.enemyManager.setRemotePlayers(players);
   }
 
+  checkPressurePlatesForGuest(x: number, y: number, roomIndex: number): void {
+    this.interactionManager.checkPressurePlates({ x, y, roomIndex });
+    this.onOnlineStateChanged?.();
+  }
+
   processGuestMove(guestX: number, guestY: number, guestRoomIndex: number, dx: number, dy: number): void {
     this.movementManager.tryPushBoxForGuest(guestX, guestY, guestRoomIndex, dx, dy);
     this.onOnlineStateChanged?.();

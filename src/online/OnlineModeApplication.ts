@@ -218,6 +218,10 @@ export class OnlineModeApplication {
                 roomTracker.removePlayer(msg.playerId);
                 gameEngine.setOnlineActiveRooms(roomTracker.getOccupiedRooms());
                 updateEnemyAiRemotePlayers();
+                // Deactivate any pressure plate the departing guest was standing on.
+                // Passing an impossible position (-1, -1, -1) guarantees playerOnPlate
+                // is false for every plate, so plates held only by the guest are released.
+                gameEngine.checkPressurePlatesForGuest(-1, -1, -1);
             }
         });
 
