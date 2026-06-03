@@ -207,6 +207,9 @@ export class OnlineModeApplication {
                 gameEngine.checkPressurePlatesForGuest(msg.x, msg.y, msg.roomIndex);
             }
             if (!existing || existing.roomIndex !== msg.roomIndex || existing.x !== msg.x || existing.y !== msg.y) {
+                if (manager.isHost) {
+                    gameEngine.checkPressurePlatesForGuest(msg.x, msg.y, msg.roomIndex);
+                }
                 gameEngine.renderer.entityRenderer.setRemotePlayers([...remotePositions.values()]);
                 gameEngine.renderer.draw();
             }

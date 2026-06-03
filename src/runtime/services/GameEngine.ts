@@ -719,6 +719,17 @@ export class GameEngine {
     this.onOnlineStateChanged?.();
   }
 
+  checkPressurePlatesForGuest(guestX: number, guestY: number, guestRoomIndex: number): void {
+    // Snapshot activated states before checking so we only broadcast when something actually changed.
+    const objects = this.gameState.getAllObjects?.() ?? [];
+    const before = objects.map((o) => o.activated);
+    this.interactionManager.checkPressurePlates({ x: guestX, y: guestY, roomIndex: guestRoomIndex });
+    const changed = objects.some((o, i) => o.activated !== before[i]);
+    if (changed) {
+      this.onOnlineStateChanged?.();
+    }
+  }
+
   processGuestInteract(guestX: number, guestY: number, guestRoomIndex: number): void {
     // Only process switch toggles on behalf of the Guest.
     // Items, NPCs, traps, chests and exits must NOT run here — they have
