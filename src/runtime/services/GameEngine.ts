@@ -837,8 +837,12 @@ export class GameEngine {
 
   handleGameCompletion(): void {
     if (this.isGameOver()) return;
-    // Guests don't auto-trigger victory — the Host sends a game-over event.
-    if (this.isGuestMode()) return;
+    if (this.isGuestMode()) {
+      // Guest does not apply victory locally — the Host is the authority.
+      // Signal the Host so it can process the win and broadcast the game-over state.
+      this.onOnlineGameCompletion?.();
+      return;
+    }
     this.onOnlineGameCompletion?.();
     soundEngine.play('victory');
     this.enemyManager.stop();
