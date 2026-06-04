@@ -459,6 +459,12 @@ class InteractionManager {
   }
 
   checkPressurePlates(player: PlayerPosition): void {
+    // Pressure plates are host-authoritative (see itemTypes.ts PRESSURE_PLATE).
+    // The host evaluates every player's position and broadcasts the resulting
+    // variable; the guest only mirrors it. Re-evaluating locally from the guest's
+    // own position would clobber the synced variable (e.g. one set by a lever),
+    // and since the broadcaster only emits diffs the host would never re-sync it.
+    if (this.guestMode) return;
     this._evaluatePressurePlates(player, 'local');
   }
 

@@ -5,6 +5,7 @@ import { InteractionManager } from './engine/InteractionManager';
 import { MovementManager } from './engine/MovementManager';
 import { CombatStunManager } from './engine/CombatStunManager';
 import { GameState } from '../domain/GameState';
+import { ITEM_TYPES } from '../domain/constants/itemTypes';
 import { InputManager } from '../adapters/InputManager';
 import { NPCManager } from './NPCManager';
 import { Renderer } from '../adapters/Renderer';
@@ -731,6 +732,41 @@ export class GameEngine {
       this.renderer.draw();
       this.onOnlineStateChanged?.();
     }
+  }
+
+  /**
+   * Applies a remote `object-triggered` message on the guest. Besides flipping
+   * the object's own `on`/`opened` flags, a switch (lever) OWNS a variable — so
+   * we propagate it via setVariableValue. That makes everything derived from the
+   * variable (pressure plates, variable-doors, LEDs, logic gates) reflect the new
+   * state immediately, instead of relying solely on a separate world-state-diff
+   * that may arrive late, be missed, or be overwritten by local evaluation.
+   * Returns true if a matching object was found and updated.
+   */
+  applyRemoteObjectTriggered(objectId: string, roomIndex: number, newState: boolean): boolean {
+    const objs = this.gameState.getObjectsForRoom(roomIndex) as Array<{
+      id?: string;
+      type?: string;
+      roomIndex: number;
+      x: number;
+      y: number;
+      on?: boolean;
+      opened?: boolean;
+      isLockedDoor?: boolean;
+      variableId?: string | null;
+    }>;
+    const obj = objs.find((o) => (o.id ?? `obj-${o.roomIndex}-${o.x}-${o.y}`) === objectId);
+    if (!obj) return false;
+    obj.on = newState;
+    if ('opened' in obj || obj.isLockedDoor) {
+      obj.opened = newState;
+    }
+    // A switch drives a variable; sync it so plates/doors/LEDs/gates update too.
+    if (obj.type === ITEM_TYPES.SWITCH && obj.variableId) {
+      this.gameState.setVariableValue(obj.variableId, newState);
+    }
+    this.renderer.draw();
+    return true;
   }
 
   processGuestAttack(enemyId: string): void {

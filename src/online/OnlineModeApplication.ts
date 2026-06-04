@@ -629,23 +629,11 @@ export class OnlineModeApplication {
             // Ignore echoes of our own messages — prevents stale echoes from
             // overwriting a subsequent toggle that arrived before the echo.
             if (msg.byPlayerId === manager.client.sessionToken) return;
-            const objs = gameEngine.gameState.getObjectsForRoom(msg.roomIndex) as Array<{
-                id?: string;
-                roomIndex: number;
-                x: number;
-                y: number;
-                on?: boolean;
-                opened?: boolean;
-                isLockedDoor?: boolean;
-            }>;
-            const obj = objs.find((o) => (o.id ?? `obj-${o.roomIndex}-${o.x}-${o.y}`) === msg.objectId);
-            if (obj) {
-                obj.on = msg.newState;
-                if ('opened' in obj || obj.isLockedDoor) {
-                    obj.opened = msg.newState;
-                }
-                gameEngine.renderer.draw();
-            }
+            // Flip the object's own state AND propagate a switch's variable, so
+            // everything derived from it (pressure plates, variable-doors, LEDs,
+            // logic gates) updates together with the lever — not only when/if a
+            // separate world-state-diff carrying the variable arrives.
+            gameEngine.applyRemoteObjectTriggered(msg.objectId, msg.roomIndex, msg.newState);
         });
     }
 
