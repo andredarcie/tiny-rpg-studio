@@ -152,6 +152,10 @@ export class GameEngine {
   tryMove(dx: number, dy: number): void {
     this.movementManager.tryMove(dx, dy);
     this.onOnlineMove?.(dx, dy);
+    // Signal any tile-based interaction (switch, etc.) to the host so it can
+    // apply authoritative state. movementManager already called handlePlayerInteractions
+    // internally; this only fires the relay for the online guest path.
+    this.onOnlineInteract?.();
   }
 
   checkInteractions(): void {

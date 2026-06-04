@@ -430,6 +430,9 @@ class StateObjectManager {
         }
         if (normalizedType === ITEM_TYPES.CHEST) {
             entry.opened = false;
+            if (entry.randomItem === undefined) {
+                entry.randomItem = true;
+            }
         }
         if (normalizedType === ITEM_TYPES.TRAP) {
             const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
