@@ -1,4 +1,4 @@
-import type { ChatEntry, OnlineMessage } from '../shared/protocol';
+import type { ChatEntry } from '../shared/protocol';
 import type { OnlineClient } from '../client/OnlineClient';
 
 const MAX_LOCAL_MESSAGES = 30;
@@ -102,22 +102,40 @@ export class ChatPanel {
 
     private sendCurrentMessage(): void {
         const text = this.input.value.trim();
-        if (!text || !this.client.isConnected) return;
-        const message: OnlineMessage = {
+        if (!text) return;
+        if (!this.client.isConnected) {
+            this.input.style.borderColor = '#ff4d4d';
+            setTimeout(() => { this.input.style.borderColor = ''; }, 1000);
+            return;
+        }
+        this.client.send({
             type: 'chat-message',
-            message: {
-                id: '',
-                playerId: this.client.sessionToken,
-                playerName: '',
-                text,
-                sentAt: Date.now(),
-            },
-        };
-        this.client.send(message);
+            message: { id: '', playerId: this.client.sessionToken, playerName: '', text, sentAt: Date.now() },
+        });
         this.input.value = '';
+        // Optimistic update — show immediately without waiting for server echo
+        this.addMessage({
+            id: `local-${Date.now()}`,
+            playerId: this.client.sessionToken,
+            playerName: '',
+            text,
+            sentAt: Date.now(),
+        });
     }
 
     private addMessage(message: ChatEntry): void {
+        // Deduplicate: if the server echo matches a locally-optimistic message
+        // (same sender, same text, within 5s), replace it with the authoritative entry.
+        const isOwnEcho = message.playerId === this.client.sessionToken && message.id !== '' && !message.id.startsWith('local-');
+        if (isOwnEcho) {
+            const idx = this.messages.reduceRight((found: number, m: ChatEntry, i: number) =>
+                found === -1 && m.id.startsWith('local-') && m.text === message.text ? i : found, -1);
+            if (idx >= 0) {
+                this.messages = [...this.messages.slice(0, idx), message, ...this.messages.slice(idx + 1)];
+                this.renderMessages();
+                return;
+            }
+        }
         this.messages = [...this.messages, message].slice(-MAX_LOCAL_MESSAGES);
         if (this.panel.hidden && message.playerId !== this.client.sessionToken) {
             this.unreadCount = Math.min(this.unreadCount + 1, 9);

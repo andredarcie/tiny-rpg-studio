@@ -308,7 +308,9 @@ export default class GameParty implements Party.Server {
 
     private handleChatMessage(msg: Record<string, unknown>, sender: Party.Connection): void {
         const player = this.players.get(sender.id);
+        // Silently drop if the sender hasn't completed player-join yet
         if (!player) return;
+        if (player.role === 'spectator') return;
         const rawMessage = msg.message as { text?: unknown } | undefined;
         const text = typeof rawMessage?.text === 'string'
             ? rawMessage.text.trim().replace(/\s+/g, ' ').slice(0, MAX_CHAT_MESSAGE_LENGTH)
