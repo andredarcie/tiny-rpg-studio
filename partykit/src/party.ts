@@ -199,6 +199,10 @@ export default class GameParty implements Party.Server {
                 const nextConn = [...this.party.getConnections()].find((c) => c.id === nextHost.id);
                 nextConn?.send(JSON.stringify({ type: 'role-changed', newRole: 'host' }));
             }
+            // Downgrade the disconnected entry so the original host rejoins as guest
+            // if they reconnect within the grace period — prevents two simultaneous hosts.
+            const entry = this.disconnected.get(player.sessionToken);
+            if (entry) entry.state.role = nextHost ? 'guest' : 'host';
         }
 
         // Use sessionToken so clients can match against their remotePositions map
@@ -217,6 +221,12 @@ export default class GameParty implements Party.Server {
         const prior = this.disconnected.get(sessionToken);
         if (prior && !this.cancelled) {
             this.disconnected.delete(sessionToken);
+            // Safety net: if someone else was promoted to host while this player
+            // was disconnected, they must rejoin as guest to avoid two hosts.
+            const hasActiveHost = [...this.players.values()].some((p) => p.role === 'host');
+            if (prior.state.role === 'host' && hasActiveHost) {
+                prior.state.role = 'guest';
+            }
             const restored: PlayerState = { ...prior.state, id: sender.id };
             this.players.set(sender.id, restored);
             sender.send(JSON.stringify({ type: 'role-changed', newRole: restored.role }));
