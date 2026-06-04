@@ -511,7 +511,7 @@ describe('GameEngine business rules (legacy)', () => {
     // handlePlayerInteractions runs for guests so items, NPCs, exits, traps work locally
     expect(engine.interactionManager.handlePlayerInteractions.mock.calls.length).toBe(1)
     // guestMode flag is set so handleSwitch inside skips state mutation
-    expect(engine.interactionManager.guestMode).toBe(true)
+    expect((engine.interactionManager as unknown as { guestMode: boolean }).guestMode).toBe(true)
     // Outbound signal to host is always sent
     expect(interactSignalFired.length).toBe(1)
   })
