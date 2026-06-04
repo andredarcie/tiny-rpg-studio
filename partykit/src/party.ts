@@ -153,6 +153,10 @@ export default class GameParty implements Party.Server {
                 if (player) this.party.broadcast(message, [sender.id]);
                 break;
             }
+            case 'ping': {
+                sender.send(JSON.stringify({ type: 'pong', sentAt: msg.sentAt }));
+                break;
+            }
             case 'chat-message': {
                 this.handleChatMessage(msg, sender);
                 break;
@@ -220,6 +224,18 @@ export default class GameParty implements Party.Server {
             this.players.set(sender.id, restored);
             sender.send(JSON.stringify({ type: 'role-changed', newRole: restored.role }));
             this.broadcastPlayerList();
+            // Re-send game-start so a fresh client (e.g. manual page refresh within the
+            // grace window) fully re-initialises its online game session.
+            if (this.gameStarted) {
+                sender.send(JSON.stringify({ type: 'game-start' }));
+                if (restored.role === 'guest') {
+                    const host = this.findOldestActivePlayer('host');
+                    if (host) {
+                        const hostConn = [...this.party.getConnections()].find((c) => c.id === host.id);
+                        hostConn?.send(JSON.stringify({ type: 'snapshot-request', targetId: sender.id }));
+                    }
+                }
+            }
             return;
         }
 

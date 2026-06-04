@@ -139,23 +139,52 @@ export class ChatPanel {
 
     private addMessage(message: ChatEntry): void {
         // Deduplicate: if the server echo matches a locally-optimistic message
-        // (same sender, same text, within 5s), replace it with the authoritative entry.
+        // (same sender, same text, within 5 s), replace it with the authoritative entry.
         const isOwnEcho = message.playerId === this.client.sessionToken && message.id !== '' && !message.id.startsWith('local-');
         if (isOwnEcho) {
             const idx = this.messages.reduceRight((found: number, m: ChatEntry, i: number) =>
-                found === -1 && m.id.startsWith('local-') && m.text === message.text ? i : found, -1);
+                found === -1
+                && m.id.startsWith('local-')
+                && m.text === message.text
+                && Math.abs(message.sentAt - m.sentAt) < 5000
+                    ? i : found, -1);
             if (idx >= 0) {
                 this.messages = [...this.messages.slice(0, idx), message, ...this.messages.slice(idx + 1)];
                 this.renderMessages();
                 return;
             }
         }
+        const overflow = this.messages.length >= MAX_LOCAL_MESSAGES;
         this.messages = [...this.messages, message].slice(-MAX_LOCAL_MESSAGES);
         if (this.panel.hidden && message.playerId !== this.client.sessionToken) {
             this.unreadCount = Math.min(this.unreadCount + 1, 9);
         }
-        this.renderMessages();
+        // Incremental append — avoids rebuilding all DOM nodes for each new message.
+        // Fall back to a full rebuild only when the list had to discard the oldest entry.
+        if (overflow) {
+            this.renderMessages();
+        } else {
+            this.list.querySelector('.online-chat__empty')?.remove();
+            this.list.appendChild(this.buildMessageElement(message));
+            this.scrollToLatest();
+        }
         this.updateToggleLabel();
+    }
+
+    private buildMessageElement(message: ChatEntry): HTMLElement {
+        const item = document.createElement('div');
+        item.className = 'online-chat__message';
+        if (message.playerId === this.client.sessionToken) {
+            item.classList.add('online-chat__message--self');
+        }
+        const name = document.createElement('span');
+        name.className = 'online-chat__name';
+        name.textContent = message.playerId === this.client.sessionToken ? 'Você' : message.playerName;
+        const text = document.createElement('span');
+        text.className = 'online-chat__text';
+        text.textContent = message.text;
+        item.append(name, text);
+        return item;
     }
 
     private renderMessages(): void {
@@ -167,24 +196,8 @@ export class ChatPanel {
             this.list.appendChild(empty);
             return;
         }
-
         for (const message of this.messages) {
-            const item = document.createElement('div');
-            item.className = 'online-chat__message';
-            if (message.playerId === this.client.sessionToken) {
-                item.classList.add('online-chat__message--self');
-            }
-
-            const name = document.createElement('span');
-            name.className = 'online-chat__name';
-            name.textContent = message.playerId === this.client.sessionToken ? 'Você' : message.playerName;
-
-            const text = document.createElement('span');
-            text.className = 'online-chat__text';
-            text.textContent = message.text;
-
-            item.append(name, text);
-            this.list.appendChild(item);
+            this.list.appendChild(this.buildMessageElement(message));
         }
         this.scrollToLatest();
     }

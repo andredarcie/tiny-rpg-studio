@@ -18,6 +18,13 @@ export class OnlineStateSync {
     private onDraw: (() => void) | null = null;
     private rafId: number | null = null;
     private enemyRemovalTimers = new Map<string, ReturnType<typeof setTimeout>>();
+    // Diffs that arrived before the first snapshot are buffered and replayed
+    // after the snapshot is applied, preventing the snapshot from overwriting
+    // changes that are newer than the snapshot's capture time.
+    private _snapshotApplied = false;
+    private pendingDiffs: WorldStateDiff[] = [];
+
+    get snapshotApplied(): boolean { return this._snapshotApplied; }
 
     constructor(gameState: GameStateRef, onDraw?: () => void) {
         this.gameState = gameState;
@@ -25,10 +32,11 @@ export class OnlineStateSync {
     }
 
     applyDiff(diff: WorldStateDiff): void {
-        if (diff.enemies) this.applyEnemyDiff(diff.enemies);
-        if (diff.variables) this.applyVariableDiff(diff.variables);
-        if (diff.objects) this.applyObjectDiff(diff.objects);
-        if (diff.items) this.applyItemDiff(diff.items);
+        if (!this._snapshotApplied) {
+            this.pendingDiffs.push(diff);
+            return;
+        }
+        this.applyDiffFields(diff);
     }
 
     applySnapshot(snapshot: FullStateSnapshot): void {
@@ -59,6 +67,25 @@ export class OnlineStateSync {
         this.applyVariableDiff(snapshot.variables);
         this.applyObjectDiff(snapshot.objects);
         this.applyItemDiff(snapshot.items);
+        // Flush diffs that arrived before the snapshot; they represent changes
+        // newer than the snapshot's capture time, so apply them on top.
+        this._snapshotApplied = true;
+        for (const diff of this.pendingDiffs.splice(0)) {
+            this.applyDiffFields(diff);
+        }
+        this.onDraw?.();
+    }
+
+    reset(): void {
+        this._snapshotApplied = false;
+        this.pendingDiffs = [];
+    }
+
+    private applyDiffFields(diff: WorldStateDiff): void {
+        if (diff.enemies) this.applyEnemyDiff(diff.enemies);
+        if (diff.variables) this.applyVariableDiff(diff.variables);
+        if (diff.objects) this.applyObjectDiff(diff.objects);
+        if (diff.items) this.applyItemDiff(diff.items);
     }
 
     applyEnemyDeath(enemyId: string, fallbackState?: Partial<EnemyNetState>): void {

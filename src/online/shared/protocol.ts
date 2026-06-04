@@ -196,6 +196,16 @@ export type SnapshotRequestMsg = {
     targetId: string;
 };
 
+export type PingMsg = {
+    type: 'ping';
+    sentAt: number;
+};
+
+export type PongMsg = {
+    type: 'pong';
+    sentAt: number;
+};
+
 export type ServerFullMsg = {
     type: 'server-full';
 };
@@ -253,6 +263,8 @@ export type OnlineMessage =
     | ChatHistoryMsg
     | ServerFullMsg
     | KickPlayerMsg
-    | PlayerKickedMsg;
+    | PlayerKickedMsg
+    | PingMsg
+    | PongMsg;
 
 export type OnlineMessageType = OnlineMessage['type'];

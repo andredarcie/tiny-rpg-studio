@@ -157,8 +157,7 @@ export class OnlineModeApplication {
             const p = manager.players.find((pl) => pl.sessionToken === id);
             if (!p) return 1;
             if (p.role === 'host') return 0;
-            if (p.role === 'guest') return 1;
-            return 2;
+            return 1;
         };
 
         const updateEnemyAiRemotePlayers = () => {
@@ -169,8 +168,9 @@ export class OnlineModeApplication {
         };
 
         manager.onPlayerListChanged((players) => {
-            players.forEach((p, i) => {
-                const idx = p.role === 'host' ? 0 : p.role === 'guest' ? 1 : 2 + i;
+            let newPlayerSeeded = false;
+            for (const p of players) {
+                const idx = p.role === 'host' ? 0 : 1;
                 playerMeta.set(p.sessionToken, { name: p.name, playerIndex: idx });
                 // Seed remote position from player-list if not yet tracked — makes the
                 // player visible immediately without waiting for their first player-position.
@@ -185,8 +185,9 @@ export class OnlineModeApplication {
                         alive: p.alive,
                         facing: 'right',
                     });
+                    newPlayerSeeded = true;
                 }
-            });
+            }
             for (const [id, rp] of remotePositions.entries()) {
                 const meta = playerMeta.get(id);
                 if (meta) {
@@ -197,6 +198,11 @@ export class OnlineModeApplication {
             if (remotePositions.size > 0) {
                 gameEngine.renderer.entityRenderer.setRemotePlayers([...remotePositions.values()]);
                 gameEngine.renderer.draw();
+            }
+            // Host proactively announces position when a new player joins so the
+            // newcomer sees the host immediately, even if the host is standing still.
+            if (manager.isHost && newPlayerSeeded) {
+                positionSender?.sendNow(true);
             }
             playerList?.update(players, manager.client.sessionToken);
             syncServerModal();
@@ -299,27 +305,19 @@ export class OnlineModeApplication {
             }
 
             if (manager.isHost) {
-                broadcaster = new OnlineStateBroadcaster(manager.client, gs);
+                if (!broadcaster) {
+                    broadcaster = new OnlineStateBroadcaster(manager.client, gs);
+                }
                 broadcaster.start();
                 for (const targetId of pendingSnapshotTargets.splice(0)) {
                     manager.client.send({ type: 'full-state-snapshot', snapshot: broadcaster.buildSnapshot(), targetId });
                 }
                 gameEngine.onOnlineStateChanged = () => broadcaster?.triggerNow();
                 gameEngine.onOnlineMove = () => positionSender?.sendNow();
-                manager.client.on('variable-changed', (msg) => {
-                    const varId = ShareConstants.VARIABLE_IDS[msg.variableIndex];
-                    if (varId) {
-                        gameEngine.gameState.setVariableValue(varId, msg.newValue);
-                        broadcaster?.triggerNow();
-                        gameEngine.renderer.draw();
-                    }
-                });
             } else {
-                sync = new OnlineStateSync(gs, () => gameEngine.renderer.draw());
-                manager.client.on('world-state-diff', (msg) => {
-                    sync?.applyDiff(msg.diff);
-                    gameEngine.renderer.draw();
-                });
+                if (!sync) {
+                    sync = new OnlineStateSync(gs, () => gameEngine.renderer.draw());
+                }
                 // Guest: forward NPC reward signals to the host without applying locally.
                 // onNpcReward fires only from DialogManager.completeDialog (NPC quest rewards),
                 // NOT from switch/object interactions — avoiding the feedback loop that
@@ -346,6 +344,13 @@ export class OnlineModeApplication {
                 // updated player-position so host sees the new stats immediately.
                 gameEngine.onOnlineStateChanged = () => positionSender?.sendNow(true);
             }
+
+            // Initial render so pre-seeded remote players (from player-list) are visible
+            // immediately, without waiting for a world-state-diff (only sent on changes).
+            if (remotePositions.size > 0) {
+                gameEngine.renderer.entityRenderer.setRemotePlayers([...remotePositions.values()]);
+            }
+            gameEngine.renderer.draw();
         });
 
         manager.client.on('player-died', (msg) => {
@@ -484,19 +489,45 @@ export class OnlineModeApplication {
             }
         });
 
+        // Ping/pong: send every 3 s while connected, measure RTT and show in modal.
+        setInterval(() => {
+            if (!manager.client.isConnected) return;
+            manager.client.send({ type: 'ping', sentAt: Date.now() });
+        }, 3000);
+        manager.client.on('pong', (msg) => {
+            serverModal.update({ pingMs: Date.now() - msg.sentAt });
+        });
+
+        // Registered once here so reconnects (which re-fire game-start) don't
+        // accumulate duplicate closures in OnlineClient's handler Set.
+        manager.client.on('world-state-diff', (msg) => {
+            if (manager.isHost) return;
+            sync?.applyDiff(msg.diff);
+            gameEngine.renderer.draw();
+        });
+        manager.client.on('variable-changed', (msg) => {
+            if (!manager.isHost) return;
+            const varId = ShareConstants.VARIABLE_IDS[msg.variableIndex];
+            if (varId) {
+                gameEngine.gameState.setVariableValue(varId, msg.newValue);
+                broadcaster?.triggerNow();
+                gameEngine.renderer.draw();
+            }
+        });
+
         manager.client.on('player-list', (msg) => {
             const prev = manager.players;
             const incoming = msg.players;
             for (const p of incoming) {
                 if (p.sessionToken === manager.client.sessionToken) continue;
-                const wasPresent = prev.some((x) => x.id === p.id);
+                const wasPresent = prev.some((x) => x.sessionToken === p.sessionToken);
                 if (!wasPresent) {
                     toast.show(`🟢 ${p.name} entrou na partida`);
                 }
             }
             for (const p of prev) {
                 if (p.sessionToken === manager.client.sessionToken) continue;
-                const stillPresent = incoming.some((x) => x.id === p.id);
+                const stillPresent = incoming.some((x) => x.sessionToken === p.sessionToken);
                 if (!stillPresent) {
                     toast.show(`🔴 ${p.name} saiu da partida`);
                 }
@@ -576,6 +607,10 @@ export class OnlineModeApplication {
                 sync = new OnlineStateSync(gameEngine.gameState, () => gameEngine.renderer.draw());
                 setSync(sync);
             }
+            // Skip if the snapshot hasn't arrived yet — applySnapshot will mark the
+            // enemy dead when it arrives, so skipping here avoids a double death
+            // animation and a reset of deathStartTime by the subsequent snapshot.
+            if (!sync.snapshotApplied) return;
             sync.applyEnemyDeath(msg.enemyId, { roomIndex: msg.roomIndex });
         });
         manager.client.on('item-picked', (msg) => {

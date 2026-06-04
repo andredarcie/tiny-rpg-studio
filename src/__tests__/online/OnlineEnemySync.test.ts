@@ -48,6 +48,13 @@ describe('online enemy synchronization', () => {
             setVariableValue: vi.fn(),
         }, draw);
 
+        // Guests always receive a snapshot before diffs; seed the initial state.
+        sync.applySnapshot({
+            enemies: { e1: { x: 2, y: 3, hp: 1, roomIndex: 0, alive: true } },
+            variables: {}, objects: {}, items: {}, players: [],
+        });
+        draw.mockClear();
+
         sync.applyDiff({
             tick: 1,
             enemies: {
