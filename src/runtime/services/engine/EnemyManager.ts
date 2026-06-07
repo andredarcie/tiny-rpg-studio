@@ -855,7 +855,12 @@ class EnemyManager {
     }
     variableId = this.gameState.normalizeVariableId?.(variableId) ?? null;
     if (!variableId) return null;
-    const persist = baseConfig?.persist !== undefined ? Boolean(baseConfig.persist) : true;
+    // Defeating an enemy is GAMEPLAY, so by default it only sets the runtime
+    // variable (which opens the gate for this playthrough). It must NOT persist
+    // into the authored definition — doing so left the variable stuck ON forever
+    // in the editor and made a fresh game start with the gate already open even
+    // though the boss had respawned. Persisting remains opt-in per enemy config.
+    const persist = baseConfig?.persist !== undefined ? Boolean(baseConfig.persist) : false;
     let message = null;
     if (typeof baseConfig?.message === 'string' && baseConfig.message.trim().length) {
       message = baseConfig.message.trim();

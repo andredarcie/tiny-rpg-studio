@@ -3,7 +3,19 @@ import tsParser from '@typescript-eslint/parser';
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'public/**', 'legacy/**', 'coverage/**', 'docs/**', 'examples/**'],
+    ignores: [
+      'dist/**',
+      'node_modules/**',
+      'public/**',
+      'legacy/**',
+      'coverage/**',
+      'docs/**',
+      'examples/**',
+      // Harness/agent worktrees are throwaway copies of the repo; never lint them.
+      '.claude/**',
+      // Generated/minified bundles are build output, not source to lint.
+      '**/*.bundle.js',
+    ],
   },
   {
     files: ['src/**/*.{ts,tsx}'],

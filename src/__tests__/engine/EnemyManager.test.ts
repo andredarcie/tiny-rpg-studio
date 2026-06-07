@@ -242,7 +242,8 @@ describe('EnemyManager', () => {
     const result = manager.tryTriggerDefeatVariable({ id: 'enemy-1', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0 });
 
     expect(result).toBe(true);
-    expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', true, true);
+    // Boss defeat is gameplay: it must NOT persist into the authored definition.
+    expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', true, false);
     expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Unlocked', { duration: 900 });
   });
 
@@ -838,8 +839,9 @@ describe('EnemyManager', () => {
       // Player died - onPlayerDefeated should be called after death sequence
       expect(onPlayerDefeated).toHaveBeenCalled();
 
-      // Bug: the variable is NEVER set because return happens before tryTriggerDefeatVariable
-      expect(gameState.setVariableValue).toHaveBeenCalledWith('boss-door', true, true);
+      // The defeat variable must still be set even when the player dies in the
+      // same collision. It is gameplay state, so it is set runtime-only (persist=false).
+      expect(gameState.setVariableValue).toHaveBeenCalledWith('boss-door', true, false);
 
       vi.useRealTimers();
     });
@@ -1311,7 +1313,7 @@ describe('EnemyManager', () => {
       } as never);
       expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)).toEqual({
         variableId: 'base',
-        persist: true,
+        persist: false,
         message: 'Direct message',
       });
 

@@ -152,6 +152,16 @@ class StateVariableManager {
         return entry ? Boolean(entry.value) : false;
     }
 
+    /**
+     * Updates a variable's value. Always updates the RUNTIME state.
+     *
+     * When `persist` is true the AUTHORED definition (`game.variables`) is updated
+     * too. The definition is the editor's source of truth and the baseline that
+     * `resetRuntime()` clones at the start of every playthrough, so persisting
+     * makes a value the new default that survives `resetGame()`. This is meant for
+     * authoring operations (e.g. the SDK's `setVariableDefault`), NOT for gameplay:
+     * persisting a gameplay result would permanently mutate the author's variable.
+     */
     setVariableValue(variableId: string | number, value: unknown, persist = false): boolean {
         let updated = false;
         const nextValue = Boolean(value);
