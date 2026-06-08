@@ -5,7 +5,7 @@ type MockFn = ReturnType<typeof vi.fn>;
 type CanvasRendererMockInstance = { renderEditor: MockFn };
 type TilePanelRendererMockInstance = { renderTileList: MockFn; updateSelectedTilePreview: MockFn };
 type NpcRendererMockInstance = { renderNpcs: MockFn; updateNpcForm: MockFn };
-type EnemyRendererMockInstance = { renderEnemies: MockFn; renderEnemyCatalog: MockFn };
+type EnemyRendererMockInstance = { renderEnemyCatalog: MockFn };
 type WorldRendererMockInstance = { renderWorldGrid: MockFn; renderMapNavigation: MockFn; updateMapPosition: MockFn };
 type ObjectRendererMockInstance = { renderObjectCatalog: MockFn; renderObjects: MockFn };
 type SkillListInput = Parameters<EditorRenderServiceType['groupSkillsByLevel']>[0];
@@ -167,7 +167,6 @@ vi.mock('../../editor/modules/renderers/EditorNpcRenderer', () => ({
 
 vi.mock('../../editor/modules/renderers/EditorEnemyRenderer', () => ({
   EditorEnemyRenderer: class {
-    renderEnemies = vi.fn();
     renderEnemyCatalog = vi.fn();
     constructor() {
       mocks.enemyInstances.push(this);
@@ -370,7 +369,6 @@ describe('EditorRenderService', () => {
     service.renderTileList();
     service.renderNpcs();
     service.updateNpcForm();
-    service.renderEnemies();
     service.renderEnemyCatalog();
     service.renderObjectCatalog();
     service.renderObjects();
@@ -384,7 +382,6 @@ describe('EditorRenderService', () => {
     expect(mocks.tilePanelInstances[0].updateSelectedTilePreview).toHaveBeenCalled();
     expect(mocks.npcInstances[0].renderNpcs).toHaveBeenCalled();
     expect(mocks.npcInstances[0].updateNpcForm).toHaveBeenCalled();
-    expect(mocks.enemyInstances[0].renderEnemies).toHaveBeenCalled();
     expect(mocks.enemyInstances[0].renderEnemyCatalog).toHaveBeenCalled();
     expect(mocks.objectInstances[0].renderObjectCatalog).toHaveBeenCalled();
     expect(mocks.objectInstances[0].renderObjects).toHaveBeenCalled();

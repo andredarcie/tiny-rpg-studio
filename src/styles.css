@@ -643,9 +643,6 @@ body.editor-mode input[type='checkbox']:focus-visible {
 
 body.editor-mode .editor-section details,
 body.editor-mode .world-cell,
-body.editor-mode .enemy-item,
-body.editor-mode .enemy-variable-select,
-body.editor-mode .enemy-remove,
 body.editor-mode .npc-card .npc-preview,
 body.editor-mode .object-preview,
 body.editor-mode .game-minimap,
@@ -660,9 +657,6 @@ body.editor-mode [class*='grid'] > [class*='card'] {
 }
 
 body.editor-mode .enemy-card.boss,
-body.editor-mode .enemy-item,
-body.editor-mode .enemy-variable-select,
-body.editor-mode .enemy-remove,
 body.editor-mode .object-preview {
     border-color: var(--border);
 }
@@ -2766,31 +2760,6 @@ body.game-mode .tab-button.active {
     transition: width 0.25s ease;
 }
 
-.enemy-overlay {
-    position: absolute;
-    pointer-events: none;
-}
-
-.enemy-overlay-remove {
-    position: absolute;
-    transform: translate(-90%, -40%);
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    background: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    line-height: 20px;
-    padding: 0;
-    cursor: pointer;
-    pointer-events: auto;
-}
-
-.enemy-overlay-remove:hover {
-    background: rgba(220, 53, 69, 0.9);
-    border-color: rgba(220, 53, 69, 0.9);
-}
-
 .enemy-types::-webkit-scrollbar {
     width: 6px;
 }
@@ -2871,63 +2840,6 @@ body.game-mode .tab-button.active {
     margin-top: 4px;
     color: var(--muted);
     line-height: var(--lh-normal);
-}
-
-.enemies-list {
-    display: grid;
-    gap: 6px;
-}
-
-.enemy-item {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 6px 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: rgba(18, 22, 34, 0.6);
-}
-
-.enemy-item > span {
-    flex: 1 1 auto;
-    text-align: left;
-    line-height: var(--lh-normal);
-}
-
-.enemy-variable-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--muted);
-}
-
-.enemy-variable-select {
-    min-width: 120px;
-    padding: 3px 6px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: rgba(15, 18, 29, 0.85);
-    color: var(--text);
-}
-
-.enemy-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    justify-content: space-between;
-}
-
-.enemy-controls .enemy-variable-wrapper {
-    flex: 1;
-}
-
-.enemy-remove {
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: rgba(15, 18, 29, 0.9);
-    color: var(--text);
-    cursor: pointer;
 }
 
 .tile-list,
@@ -3829,9 +3741,10 @@ body.game-mode .tab-button.active {
     justify-content: center;
 }
 
-/* Object / NPC Edit Modals */
+/* Object / NPC / Enemy Edit Modals */
 #object-edit-modal,
-#npc-edit-modal {
+#npc-edit-modal,
+#enemy-edit-modal {
     position: fixed;
     inset: 0;
     z-index: 1000;
@@ -3843,7 +3756,8 @@ body.game-mode .tab-button.active {
 }
 
 #object-edit-modal[hidden],
-#npc-edit-modal[hidden] {
+#npc-edit-modal[hidden],
+#enemy-edit-modal[hidden] {
     display: none;
 }
 
@@ -3947,6 +3861,35 @@ body.game-mode .tab-button.active {
 
 .object-edit-modal__config:empty {
     display: none;
+}
+
+/* ── enemy stats grid ── */
+.enemy-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.enemy-stat-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+}
+
+.enemy-stat-cell__label {
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.78em;
+}
+
+.enemy-stat-cell__value {
+    color: var(--text);
+    font-weight: var(--fw-bold);
 }
 
 /* ── footer ── */

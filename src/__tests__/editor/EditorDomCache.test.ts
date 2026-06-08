@@ -52,7 +52,6 @@ describe('EditorDomCache', () => {
       <button id="btn-undo"></button>
       <button id="btn-redo"></button>
       <div id="enemy-types"></div>
-      <div id="enemies-list"></div>
       <button data-project-tab-button="development"></button>
       <button data-project-tab-button="testing"></button>
       <div data-project-tab-panel="development"></div>

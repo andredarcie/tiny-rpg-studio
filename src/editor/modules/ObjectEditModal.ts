@@ -2,6 +2,8 @@
 import { EditorRendererBase } from './renderers/EditorRendererBase';
 import { EditorConstants } from './EditorConstants';
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
+import { EditorModal } from './EditorModal';
+import type { EditorModalButton } from './EditorModal';
 import type { EditorRenderService } from './EditorRenderService';
 
 type ObjectDefinitionView = {
@@ -20,20 +22,11 @@ type EditorObject = {
 
 class ObjectEditModal extends EditorRendererBase {
     private currentObjectId: string | null = null;
+    private readonly modal: EditorModal;
 
     constructor(service: EditorRenderService) {
         super(service);
-        this.bindStaticEvents();
-    }
-
-    private bindStaticEvents(): void {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.dom.objectEditModal && !this.dom.objectEditModal.hidden) {
-                e.preventDefault();
-                this.close();
-            }
-        });
-
+        this.modal = new EditorModal(() => this.dom.objectEditModal);
     }
 
     open(objectId: string): void {
@@ -42,128 +35,72 @@ class ObjectEditModal extends EditorRendererBase {
         if (!object) return;
 
         this.currentObjectId = objectId;
-        const modal = this.dom.objectEditModal;
-        if (!modal) return;
 
-        const existing = modal.querySelector('.object-edit-modal__panel');
-        if (existing) existing.remove();
+        const definitions = EditorConstants.OBJECT_DEFINITIONS as ObjectDefinitionView[];
+        const descKey = this.getDescriptionKey(object.type);
 
-        modal.appendChild(this.buildPanel(object));
-        modal.hidden = false;
+        this.modal.open({
+            header: {
+                title: this.service.objectRenderer.getObjectLabel(object.type, definitions),
+                subtitle: `(${object.x}, ${object.y})`,
+                description: descKey ? this.t(descKey) : '',
+                drawPreview: (canvas) => this.service.objectRenderer.drawObjectPreview(canvas, object.type),
+            },
+            body: this.buildConfigArea(object),
+            buttons: this.buildButtons(object),
+            closeLabel: this.t('buttons.close', 'Fechar'),
+            onClose: () => this.close(),
+        });
     }
 
     close(): void {
-        const modal = this.dom.objectEditModal;
-        if (modal) modal.hidden = true;
+        this.modal.close();
         this.currentObjectId = null;
     }
 
-    private buildPanel(object: EditorObject): HTMLElement {
-        const panel = document.createElement('div');
-        panel.className = 'object-edit-modal__panel';
-
-        panel.appendChild(this.buildHeader(object));
-
+    private buildConfigArea(object: EditorObject): HTMLElement {
         const afterChange = () => {
             if (this.currentObjectId) this.open(this.currentObjectId);
         };
         const configArea = this.service.objectRenderer.buildObjectConfigArea(object, afterChange);
         configArea.className = 'object-edit-modal__config';
-        panel.appendChild(configArea);
-
-        panel.appendChild(this.buildFooter(object));
-        return panel;
+        return configArea;
     }
 
-    private buildHeader(object: EditorObject): HTMLElement {
-        const header = document.createElement('div');
-        header.className = 'object-edit-modal__header';
-
-        const preview = document.createElement('canvas');
-        preview.width = 48;
-        preview.height = 48;
-        preview.className = 'object-preview object-edit-modal__preview';
-        this.service.objectRenderer.drawObjectPreview(preview, object.type);
-
-        const titleGroup = document.createElement('div');
-        titleGroup.className = 'object-edit-modal__title-group';
-
-        const definitions = EditorConstants.OBJECT_DEFINITIONS as ObjectDefinitionView[];
-        const title = document.createElement('h3');
-        title.className = 'object-edit-modal__title';
-        title.textContent = this.service.objectRenderer.getObjectLabel(object.type, definitions);
-
-        const pos = document.createElement('span');
-        pos.className = 'object-position';
-        pos.textContent = `(${object.x}, ${object.y})`;
-
-        const descKey = this.getDescriptionKey(object.type);
-        const descText = descKey ? this.t(descKey) : '';
-
-        titleGroup.append(title, pos);
-
-        if (descText) {
-            const desc = document.createElement('p');
-            desc.className = 'object-edit-modal__desc';
-            desc.textContent = descText;
-            titleGroup.appendChild(desc);
-        }
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'object-edit-modal__close';
-        closeBtn.setAttribute('aria-label', this.t('buttons.close', 'Fechar'));
-        closeBtn.textContent = '✕';
-        closeBtn.addEventListener('click', () => this.close());
-
-        header.append(preview, titleGroup, closeBtn);
-        return header;
-    }
-
-    private buildFooter(object: EditorObject): HTMLElement {
-        const footer = document.createElement('div');
-        footer.className = 'object-edit-modal__footer';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'btn-secondary';
-        closeBtn.textContent = this.t('buttons.close', 'Fechar');
-        closeBtn.addEventListener('click', () => this.close());
-        footer.appendChild(closeBtn);
+    private buildButtons(object: EditorObject): EditorModalButton[] {
+        const buttons: EditorModalButton[] = [];
 
         if (object.id && object.type) {
-            const moveBtn = document.createElement('button');
-            moveBtn.type = 'button';
-            moveBtn.className = 'btn-secondary object-edit-modal__move';
-            moveBtn.textContent = this.t('buttons.move', 'Mover');
-            moveBtn.addEventListener('click', () => {
-                const definitions = EditorConstants.OBJECT_DEFINITIONS as ObjectDefinitionView[];
-                const name = this.service.objectRenderer.getObjectLabel(object.type, definitions);
-                this.manager.objectService.startRepositioning(object.id ?? '', object.type, name);
-                this.close();
+            buttons.push({
+                label: this.t('buttons.move', 'Mover'),
+                variant: 'move',
+                onClick: () => {
+                    const definitions = EditorConstants.OBJECT_DEFINITIONS as ObjectDefinitionView[];
+                    const name = this.service.objectRenderer.getObjectLabel(object.type, definitions);
+                    this.manager.objectService.startRepositioning(object.id ?? '', object.type, name);
+                    this.close();
+                },
             });
-            footer.appendChild(moveBtn);
         }
 
         if (object.type !== ITEM_TYPES.PLAYER_START) {
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'btn-secondary object-edit-modal__remove';
-            removeBtn.textContent = this.t('buttons.remove', 'Remover');
-            removeBtn.addEventListener('click', () => {
-                if (object.id) {
-                    this.manager.objectService.removeObjectById(object.id);
-                } else {
-                    this.manager.objectService.removeObject(object.type, object.roomIndex);
-                }
-                this.manager.updateJSON();
-                this.manager.history.pushCurrentState();
-                this.close();
+            buttons.push({
+                label: this.t('buttons.remove', 'Remover'),
+                variant: 'remove',
+                onClick: () => {
+                    if (object.id) {
+                        this.manager.objectService.removeObjectById(object.id);
+                    } else {
+                        this.manager.objectService.removeObject(object.type, object.roomIndex);
+                    }
+                    this.manager.updateJSON();
+                    this.manager.history.pushCurrentState();
+                    this.close();
+                },
             });
-            footer.appendChild(removeBtn);
         }
 
-        return footer;
+        return buttons;
     }
 
     private getDescriptionKey(type: string): string {

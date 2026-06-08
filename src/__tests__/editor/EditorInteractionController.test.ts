@@ -25,7 +25,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     state,
     editorCanvas: canvas,
     dom: {},
-    renderService: { renderEditor: vi.fn(), renderEnemies: vi.fn() },
+    renderService: { renderEditor: vi.fn() },
     npcService: { clearSelection: vi.fn() },
     enemyService: { deactivatePlacement: vi.fn() },
     objectService: { togglePlacement: vi.fn() },
@@ -64,12 +64,11 @@ describe('EditorInteractionController', () => {
     expect(mgr.renderService.renderEditor).not.toHaveBeenCalled();
   });
 
-  it('resizes canvas and calls renderEditor and renderEnemies', () => {
+  it('resizes canvas and calls renderEditor', () => {
     const mgr = makeManager();
     const ctrl = new EditorInteractionController(asInteractionControllerManager(mgr));
     ctrl.handleCanvasResize(true);
     expect(mgr.renderService.renderEditor).toHaveBeenCalled();
-    expect(mgr.renderService.renderEnemies).toHaveBeenCalled();
   });
 
   it('skips resize when size is unchanged and force=false', () => {

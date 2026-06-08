@@ -24,7 +24,6 @@ class EditorEventBinder extends EditorManagerModule {
             npcVariantButtons,
             objectCategoryButtons,
             enemyTypes,
-            enemiesList,
             objectTypes,
             objectsList,
             tileList,
@@ -303,24 +302,6 @@ class EditorEventBinder extends EditorManagerModule {
 
             manager.desselectAllAndRender();
             enemyService.selectEnemyType(type);
-        });
-
-        enemiesList?.addEventListener('click', (ev: Event) => {
-            const target = ev.target as HTMLElement;
-            const button = target.closest('[data-remove-enemy]') as HTMLElement | null;
-            if (!button) return;
-            const enemyId = button.dataset.removeEnemy;
-            if (!enemyId) return;
-            enemyService.removeEnemy(enemyId);
-        });
-
-        enemiesList?.addEventListener('change', (ev: Event) => {
-            const target = ev.target as HTMLSelectElement;
-            if (target.tagName !== 'SELECT') return;
-            const enemyId = target.dataset.enemyVariable;
-            if (!enemyId) return;
-            const value = target.value || '';
-            enemyService.handleEnemyVariableChange(enemyId, value);
         });
 
         worldGrid?.addEventListener('click', (ev: Event) => {

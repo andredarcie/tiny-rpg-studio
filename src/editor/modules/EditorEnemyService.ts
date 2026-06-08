@@ -86,7 +86,6 @@ class EditorEnemyService {
             return;
         }
         this.deactivatePlacement();
-        this.manager.renderService.renderEnemies();
         this.manager.renderService.renderEnemyCatalog();
         this.manager.renderService.renderWorldGrid();
         this.manager.renderService.renderEditor();
@@ -97,7 +96,35 @@ class EditorEnemyService {
 
     removeEnemy(enemyId: string) {
         this.gameEngine.removeEnemy(enemyId);
-        this.manager.renderService.renderEnemies();
+        this.manager.renderService.renderEnemyCatalog();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.gameEngine.draw();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+    }
+
+    startRepositioning(enemyId: string, enemyName: string) {
+        this.manager.npcService.clearSelection();
+        if (this.state.placingObjectType) {
+            this.manager.objectService.togglePlacement(this.state.placingObjectType, true);
+        }
+        this.state.repositioningEnemyId = enemyId;
+        this.state.placingEnemy = true;
+        this.state.placingNpc = false;
+        this.state.placingObjectType = null;
+        if (this.dom.editorCanvas) {
+            this.dom.editorCanvas.style.cursor = 'crosshair';
+        }
+        this.manager.showRepositionIndicator(enemyName);
+    }
+
+    repositionEnemyAt(enemyId: string, coord: { x: number; y: number }) {
+        const moved = this.gameEngine.moveEnemyById(enemyId, coord.x, coord.y);
+        this.state.repositioningEnemyId = null;
+        this.deactivatePlacement();
+        this.manager.hideRepositionIndicator();
+        if (!moved) return;
         this.manager.renderService.renderEnemyCatalog();
         this.manager.renderService.renderWorldGrid();
         this.manager.renderService.renderEditor();
@@ -112,7 +139,6 @@ class EditorEnemyService {
             : null;
         const changed = this.gameEngine.setEnemyVariable(enemyId, normalizedId);
         if (!changed) return;
-        this.manager.renderService.renderEnemies();
         this.manager.renderService.renderWorldGrid();
         this.manager.renderService.renderEditor();
         this.manager.updateJSON();

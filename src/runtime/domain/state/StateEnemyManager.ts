@@ -127,6 +127,31 @@ class StateEnemyManager {
         }
     }
 
+    moveEnemyById(enemyId: string | number, x: number, y: number): boolean {
+        if (!this.game || !this.state) return false;
+        const clampedX = this.worldManager.clampCoordinate(x);
+        const clampedY = this.worldManager.clampCoordinate(y);
+        let moved = false;
+
+        const persisted = this.game.enemies.find((enemy) => enemy.id === enemyId);
+        if (persisted) {
+            persisted.lastX = persisted.x;
+            persisted.x = clampedX;
+            persisted.y = clampedY;
+            moved = true;
+        }
+
+        const runtime = this.state.enemies.find((enemy) => enemy.id === enemyId);
+        if (runtime) {
+            runtime.lastX = runtime.x;
+            runtime.x = clampedX;
+            runtime.y = clampedY;
+            moved = true;
+        }
+
+        return moved;
+    }
+
     setEnemyVariable(enemyId: string | number, variableId: string | null = null): boolean {
         if (!this.game || !this.state) return false;
         const normalized = this.normalizeEnemyVariableId(variableId);

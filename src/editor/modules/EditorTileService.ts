@@ -52,6 +52,16 @@ class EditorTileService {
             return true;
         }
 
+        // Check for placed enemy
+        const enemies = (this.manager.gameEngine.getActiveEnemies() || []) as Array<{ id?: string; x?: number; y?: number; roomIndex?: number }>;
+        const foundEnemy = enemies.find((e) =>
+            e.roomIndex === this.state.activeRoomIndex && e.x === coord.x && e.y === coord.y
+        );
+        if (foundEnemy?.id) {
+            this.manager.enemyEditModal.open(foundEnemy.id);
+            return true;
+        }
+
         return false;
     }
 
@@ -92,7 +102,11 @@ class EditorTileService {
             return;
         }
         if (this.state.placingEnemy) {
-            this.manager.enemyService.placeEnemyAt(coord);
+            if (this.state.repositioningEnemyId) {
+                this.manager.enemyService.repositionEnemyAt(this.state.repositioningEnemyId, coord);
+            } else {
+                this.manager.enemyService.placeEnemyAt(coord);
+            }
             this.state.skipMapHistory = true;
             return;
         }

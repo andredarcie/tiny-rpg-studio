@@ -128,10 +128,6 @@ class EditorRenderService {
         this.npcRenderer.updateNpcForm();
     }
 
-    renderEnemies() {
-        this.enemyRenderer.renderEnemies();
-    }
-
     renderEnemyCatalog() {
         this.enemyRenderer.renderEnemyCatalog();
     }

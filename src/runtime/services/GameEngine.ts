@@ -677,6 +677,10 @@ export class GameEngine {
     this.enemyManager.removeEnemy(String(enemyId));
   }
 
+  moveEnemyById(id: string, x: number, y: number): boolean {
+    return this.gameState.moveEnemyById(id, x, y);
+  }
+
   generateEnemyId(): string {
     return this.enemyManager.generateEnemyId();
   }

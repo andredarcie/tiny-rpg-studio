@@ -49,7 +49,6 @@ function makeDom() {
     const objectCategoryButtons = [objCategoryBtn1, objCategoryBtn2];
 
     const enemyTypes = document.createElement('div');
-    const enemiesList = document.createElement('div');
     const objectTypes = document.createElement('div');
     const objectsList = document.createElement('div');
     const tileList = document.createElement('div');
@@ -118,7 +117,6 @@ function makeDom() {
         npcVariantButtons,
         objectCategoryButtons,
         enemyTypes,
-        enemiesList,
         objectTypes,
         objectsList,
         tileList,
@@ -677,71 +675,7 @@ describe('EditorEventBinder', () => {
         expect(enemyService.selectEnemyType).not.toHaveBeenCalled();
     });
 
-    // 26. enemiesList click on [data-remove-enemy]
-    it('enemiesList click on [data-remove-enemy] calls enemyService.removeEnemy', () => {
-        const btn = document.createElement('button');
-        btn.dataset.removeEnemy = 'enemy-42';
-        dom.enemiesList.appendChild(btn);
-
-        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-        expect(enemyService.removeEnemy).toHaveBeenCalledWith('enemy-42');
-    });
-
-    it('enemiesList click on element without data-remove-enemy does nothing', () => {
-        const btn = document.createElement('button');
-        dom.enemiesList.appendChild(btn);
-
-        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-        expect(enemyService.removeEnemy).not.toHaveBeenCalled();
-    });
-
-    it('enemiesList click on [data-remove-enemy] with empty value does nothing', () => {
-        const btn = document.createElement('button');
-        btn.dataset.removeEnemy = '';
-        dom.enemiesList.appendChild(btn);
-
-        btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-        expect(enemyService.removeEnemy).not.toHaveBeenCalled();
-    });
-
-    // 27. enemiesList change on SELECT with data-enemy-variable
-    it('enemiesList change on SELECT with data-enemy-variable calls enemyService.handleEnemyVariableChange', () => {
-        const select = document.createElement('select');
-        select.dataset.enemyVariable = 'enemy-99';
-        const option = document.createElement('option');
-        option.value = 'angry';
-        select.appendChild(option);
-        select.value = 'angry';
-        dom.enemiesList.appendChild(select);
-
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-
-        expect(enemyService.handleEnemyVariableChange).toHaveBeenCalledWith('enemy-99', 'angry');
-    });
-
-    it('enemiesList change on non-SELECT element does nothing', () => {
-        const input = document.createElement('input');
-        input.dataset.enemyVariable = 'enemy-99';
-        dom.enemiesList.appendChild(input);
-
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-
-        expect(enemyService.handleEnemyVariableChange).not.toHaveBeenCalled();
-    });
-
-    it('enemiesList change on SELECT without data-enemy-variable does nothing', () => {
-        const select = document.createElement('select');
-        dom.enemiesList.appendChild(select);
-
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-
-        expect(enemyService.handleEnemyVariableChange).not.toHaveBeenCalled();
-    });
-
-    // 28. worldGrid click on [data-room-index]
+    // 26. worldGrid click on [data-room-index]
     it('worldGrid click on [data-room-index] calls worldService.setActiveRoom with numeric index', () => {
         const cell = document.createElement('div');
         cell.dataset.roomIndex = '5';

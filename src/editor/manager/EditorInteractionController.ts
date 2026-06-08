@@ -23,7 +23,6 @@ class EditorInteractionController extends EditorManagerModule {
         canvas.width = size;
         canvas.height = size;
         this.renderService.renderEditor();
-        this.renderService.renderEnemies();
     }
 
     handleKey(ev: KeyboardEvent) {

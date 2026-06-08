@@ -29,11 +29,12 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     renderService: {
       renderEditor: vi.fn(), renderTileList: vi.fn(), updateSelectedTilePreview: vi.fn(),
     },
-    gameEngine: { setMapTile: vi.fn(), draw: vi.fn(), getObjectsForRoom: vi.fn(() => []), getSprites: vi.fn(() => []) },
+    gameEngine: { setMapTile: vi.fn(), draw: vi.fn(), getObjectsForRoom: vi.fn(() => []), getSprites: vi.fn(() => []), getActiveEnemies: vi.fn((): Array<{ id: string; roomIndex: number; x: number; y: number }> => []) },
     objectEditModal: { open: vi.fn() },
     npcEditModal: { open: vi.fn() },
+    enemyEditModal: { open: vi.fn() },
     npcService: { placeNpcAt: vi.fn() },
-    enemyService: { placeEnemyAt: vi.fn() },
+    enemyService: { placeEnemyAt: vi.fn(), repositionEnemyAt: vi.fn() },
     objectService: { placeObjectAt: vi.fn() },
     history: { pushCurrentState: vi.fn() },
     updateJSON: vi.fn(),
@@ -200,6 +201,14 @@ describe('EditorTileService', () => {
     expect(mgr.enemyService.placeEnemyAt).toHaveBeenCalledWith({ x: 4, y: 4 });
   });
 
+  it('applyPaint routes to repositionEnemyAt when repositioning an enemy', () => {
+    const mgr = makeManager({ placingEnemy: true, repositioningEnemyId: 'enemy-3' });
+    const svc = new EditorTileService(asTileServiceManager(mgr));
+    svc.applyPaint(makePointer(80, 80));
+    expect(mgr.enemyService.repositionEnemyAt).toHaveBeenCalledWith('enemy-3', { x: 4, y: 4 });
+    expect(mgr.enemyService.placeEnemyAt).not.toHaveBeenCalled();
+  });
+
   it('applyPaint routes to placeObjectAt when placingObjectType', () => {
     const mgr = makeManager({ placingObjectType: 'key', activeRoomIndex: 2 });
     const svc = new EditorTileService(asTileServiceManager(mgr));
@@ -228,6 +237,36 @@ describe('EditorTileService', () => {
     const svc = new EditorTileService(asTileServiceManager(mgr));
     svc.applyPaint(makePointer());
     expect(mgr.gameEngine.setMapTile).not.toHaveBeenCalled();
+  });
+
+  // ─── tryOpenObjectModal routing ───────────────────────────────────────────────
+
+  it('startPaint opens the enemy modal when clicking a placed enemy', () => {
+    const mgr = makeManager({ selectedTileId: 'tile-1' });
+    mgr.gameEngine.getActiveEnemies = vi.fn(() => [{ id: 'enemy-7', roomIndex: 0, x: 4, y: 4 }]);
+    const svc = new EditorTileService(asTileServiceManager(mgr));
+    svc.startPaint(makePointer(80, 80));
+    expect(mgr.enemyEditModal.open).toHaveBeenCalledWith('enemy-7');
+    expect(mgr.state.mapPainting).toBe(false);
+  });
+
+  it('does not open the enemy modal while placing an enemy', () => {
+    const mgr = makeManager({ placingEnemy: true });
+    mgr.domCache.editorCanvas.setPointerCapture = vi.fn();
+    mgr.gameEngine.getActiveEnemies = vi.fn(() => [{ id: 'enemy-7', roomIndex: 0, x: 4, y: 4 }]);
+    const svc = new EditorTileService(asTileServiceManager(mgr));
+    svc.startPaint(makePointer(80, 80));
+    expect(mgr.enemyEditModal.open).not.toHaveBeenCalled();
+  });
+
+  it('ignores enemies in a different room', () => {
+    const mgr = makeManager({ selectedTileId: 'tile-1', activeRoomIndex: 1 });
+    mgr.domCache.editorCanvas.setPointerCapture = vi.fn();
+    mgr.gameEngine.getActiveEnemies = vi.fn(() => [{ id: 'enemy-7', roomIndex: 0, x: 4, y: 4 }]);
+    const svc = new EditorTileService(asTileServiceManager(mgr));
+    svc.startPaint(makePointer(80, 80));
+    expect(mgr.enemyEditModal.open).not.toHaveBeenCalled();
+    expect(mgr.state.mapPainting).toBe(true);
   });
 });
 

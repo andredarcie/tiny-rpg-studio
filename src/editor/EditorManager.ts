@@ -21,6 +21,7 @@ import { EditorInteractionController } from './manager/EditorInteractionControll
 import { EditorUIController } from './manager/EditorUIController';
 import { NpcEditModal } from './modules/NpcEditModal';
 import { ObjectEditModal } from './modules/ObjectEditModal';
+import { EnemyEditModal } from './modules/EnemyEditModal';
 import { PixelArtEditorController } from './modules/PixelArtEditorController';
 import { ProjectSaveManager } from './manager/ProjectSaveManager';
 import { ProjectSaveUI } from './manager/ProjectSaveUI';
@@ -47,6 +48,7 @@ class EditorManager {
     interactionController: EditorInteractionController;
     npcEditModal: NpcEditModal;
     objectEditModal: ObjectEditModal;
+    enemyEditModal: EnemyEditModal;
     pixelArtEditorController: PixelArtEditorController;
     private projectSaveManager?: ProjectSaveManager;
     private projectSaveUI?: ProjectSaveUI;
@@ -77,6 +79,7 @@ class EditorManager {
         this.interactionController = new EditorInteractionController(this);
         this.npcEditModal = new NpcEditModal(this.renderService);
         this.objectEditModal = new ObjectEditModal(this.renderService);
+        this.enemyEditModal = new EnemyEditModal(this.renderService);
         this.pixelArtEditorController = new PixelArtEditorController();
         this.pixelArtEditorController.init(this, this.domCache);
 
@@ -282,7 +285,6 @@ class EditorManager {
         this.renderService.renderWorldGrid();
         this.renderService.renderNpcs();
         this.renderService.renderEnemyCatalog();
-        this.renderService.renderEnemies();
         this.renderService.renderObjectCatalog();
         this.renderService.renderObjects();
         this.renderService.renderEditor();
@@ -304,10 +306,6 @@ class EditorManager {
 
     renderNpcs() {
         this.renderService.renderNpcs();
-    }
-
-    renderEnemies() {
-        this.renderService.renderEnemies();
     }
 
     renderEnemyCatalog() {

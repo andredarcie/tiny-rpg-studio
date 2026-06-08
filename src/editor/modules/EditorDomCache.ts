@@ -33,7 +33,6 @@ class EditorDomCache {
     btnUndo: HTMLElement | null;
     btnRedo: HTMLElement | null;
     enemyTypes: HTMLElement | null;
-    enemiesList: HTMLElement | null;
     projectVariablesContainer: HTMLElement | null;
     projectTabButtons: HTMLElement[];
     projectTabPanels: HTMLElement[];
@@ -95,6 +94,7 @@ class EditorDomCache {
     npcEditModal: HTMLElement | null = null;
     repositionIndicator: HTMLElement | null = null;
     objectEditModal: HTMLElement | null = null;
+    enemyEditModal: HTMLElement | null = null;
     skillEditModal: HTMLElement | null = null;
     skillEditIconInput: HTMLInputElement | null = null;
     skillEditIconPreview: HTMLElement | null = null;
@@ -141,7 +141,6 @@ class EditorDomCache {
             this.btnUndo = null;
             this.btnRedo = null;
             this.enemyTypes = null;
-            this.enemiesList = null;
             this.projectVariablesContainer = null;
             this.projectTabButtons = [];
             this.projectTabPanels = [];
@@ -191,6 +190,7 @@ class EditorDomCache {
             this.npcEditModal = null;
             this.repositionIndicator = null;
             this.objectEditModal = null;
+            this.enemyEditModal = null;
             this.pixelArtEditorModal = null;
             this.paeCanvas = null;
             this.paePalette = null;
@@ -238,7 +238,6 @@ class EditorDomCache {
         this.btnUndo = root.querySelector('#btn-undo') as HTMLElement | null;
         this.btnRedo = root.querySelector('#btn-redo') as HTMLElement | null;
         this.enemyTypes = root.querySelector('#enemy-types') as HTMLElement | null;
-        this.enemiesList = root.querySelector('#enemies-list') as HTMLElement | null;
         this.projectVariablesContainer = root.querySelector('#project-variables-container') as HTMLElement | null;
         this.projectTabButtons = Array.from(root.querySelectorAll('[data-project-tab-button]'));
         this.projectTabPanels = Array.from(root.querySelectorAll('[data-project-tab-panel]'));
@@ -288,6 +287,7 @@ class EditorDomCache {
         this.npcEditModal = root.querySelector('#npc-edit-modal') as HTMLElement | null;
         this.repositionIndicator = root.querySelector('#reposition-indicator') as HTMLElement | null;
         this.objectEditModal = root.querySelector('#object-edit-modal') as HTMLElement | null;
+        this.enemyEditModal = root.querySelector('#enemy-edit-modal') as HTMLElement | null;
         this.pixelArtEditorModal = root.querySelector('#pixel-art-editor-modal') as HTMLElement | null;
         this.paeCanvas = root.querySelector('#pae-canvas') as HTMLCanvasElement | null;
         this.paePalette = root.querySelector('#pae-palette') as HTMLElement | null;

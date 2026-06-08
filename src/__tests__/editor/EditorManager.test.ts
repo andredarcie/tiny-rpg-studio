@@ -9,7 +9,7 @@ vi.mock('../../editor/modules/EditorHistoryManager', () => ({
 vi.mock('../../editor/modules/EditorRenderService', () => ({
   EditorRenderService: class {
     renderTileList = vi.fn(); renderWorldGrid = vi.fn(); renderNpcs = vi.fn();
-    renderEnemyCatalog = vi.fn(); renderEnemies = vi.fn(); renderObjectCatalog = vi.fn();
+    renderEnemyCatalog = vi.fn(); renderObjectCatalog = vi.fn();
     renderObjects = vi.fn(); renderEditor = vi.fn(); updateSelectedTilePreview = vi.fn();
     initSkillEditModal = vi.fn();
   }
@@ -77,6 +77,9 @@ vi.mock('../../editor/modules/NpcEditModal', () => ({
 }));
 vi.mock('../../editor/modules/ObjectEditModal', () => ({
   ObjectEditModal: class { open = vi.fn(); close = vi.fn(); }
+}));
+vi.mock('../../editor/modules/EnemyEditModal', () => ({
+  EnemyEditModal: class { open = vi.fn(); close = vi.fn(); }
 }));
 
 import { EditorManager } from '../../editor/EditorManager';
@@ -192,7 +195,6 @@ describe('EditorManager', () => {
     expect(mgr.renderService.renderWorldGrid).toHaveBeenCalledTimes(1);
     expect(mgr.renderService.renderNpcs).toHaveBeenCalledTimes(1);
     expect(mgr.renderService.renderEnemyCatalog).toHaveBeenCalledTimes(1);
-    expect(mgr.renderService.renderEnemies).toHaveBeenCalledTimes(1);
     expect(mgr.renderService.renderObjectCatalog).toHaveBeenCalledTimes(1);
     expect(mgr.renderService.renderObjects).toHaveBeenCalledTimes(1);
     expect(mgr.renderService.renderEditor).toHaveBeenCalledTimes(1);
@@ -251,8 +253,6 @@ describe('EditorManager', () => {
     expect(mgr.renderService.renderTileList).toHaveBeenCalledTimes(1);
     mgr.renderNpcs();
     expect(mgr.renderService.renderNpcs).toHaveBeenCalledTimes(1);
-    mgr.renderEnemies();
-    expect(mgr.renderService.renderEnemies).toHaveBeenCalledTimes(1);
     mgr.renderEnemyCatalog();
     expect(mgr.renderService.renderEnemyCatalog).toHaveBeenCalledTimes(1);
     mgr.renderObjectCatalog();

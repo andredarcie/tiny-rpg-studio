@@ -38,7 +38,6 @@ class EditorWorldService {
         this.manager.renderService.renderObjects();
         this.manager.renderObjectCatalog();
         this.manager.renderService.renderEditor();
-        this.manager.renderService.renderEnemies();
         this.manager.renderService.renderNpcs();
     }
 

@@ -37,17 +37,20 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     selectedEnemyType: null as string | null,
     domCache: { editorCanvas: canvas },
     renderService: {
-      renderEnemies: vi.fn(), renderEnemyCatalog: vi.fn(),
+      renderEnemyCatalog: vi.fn(),
       renderWorldGrid: vi.fn(), renderEditor: vi.fn(),
     },
     npcService: { clearSelection: vi.fn() },
     objectService: { togglePlacement: vi.fn() },
     history: { pushCurrentState: vi.fn() },
+    showRepositionIndicator: vi.fn(),
+    hideRepositionIndicator: vi.fn(),
     gameEngine: {
       getEnemyDefinitions: vi.fn((): PlacedEnemy[] => []),
       getActiveEnemies: vi.fn((): PlacedEnemy[] => []),
       addEnemy: vi.fn<() => string | null>(() => 'enemy-new'),
       removeEnemy: vi.fn(),
+      moveEnemyById: vi.fn(() => true),
       setEnemyVariable: vi.fn(() => true),
       renderer: { showCombatIndicator: vi.fn() },
       draw: vi.fn(),
@@ -162,7 +165,7 @@ describe('EditorEnemyService', () => {
       vi.mocked(EnemyDefinitions.getEnemyDefinition).mockReturnValue(def as unknown as never);
       manager.state.selectedEnemyType = 'giant-rat';
       service.placeEnemyAt({ x: 1, y: 1 });
-      expect(manager.renderService.renderEnemies).not.toHaveBeenCalled();
+      expect(manager.renderService.renderEnemyCatalog).not.toHaveBeenCalled();
     });
 
     it('calls full render chain on success', () => {
@@ -171,7 +174,6 @@ describe('EditorEnemyService', () => {
       manager.selectedEnemyType = 'giant-rat';
       manager.state.selectedEnemyType = 'giant-rat';
       service.placeEnemyAt({ x: 1, y: 1 });
-      expect(manager.renderService.renderEnemies).toHaveBeenCalled();
       expect(manager.renderService.renderEnemyCatalog).toHaveBeenCalled();
       expect(manager.renderService.renderWorldGrid).toHaveBeenCalled();
       expect(manager.renderService.renderEditor).toHaveBeenCalled();
@@ -185,13 +187,45 @@ describe('EditorEnemyService', () => {
     it('calls gameEngine.removeEnemy and full render chain', () => {
       service.removeEnemy('enemy-1');
       expect(manager.gameEngine.removeEnemy).toHaveBeenCalledWith('enemy-1');
-      expect(manager.renderService.renderEnemies).toHaveBeenCalled();
       expect(manager.renderService.renderEnemyCatalog).toHaveBeenCalled();
       expect(manager.renderService.renderWorldGrid).toHaveBeenCalled();
       expect(manager.renderService.renderEditor).toHaveBeenCalled();
       expect(manager.gameEngine.draw).toHaveBeenCalled();
       expect(manager.updateJSON).toHaveBeenCalled();
       expect(manager.history.pushCurrentState).toHaveBeenCalled();
+    });
+  });
+
+  describe('startRepositioning', () => {
+    it('enters enemy placement mode and shows the indicator', () => {
+      manager.state.placingObjectType = null;
+      service.startRepositioning('enemy-1', 'Dragão');
+      expect(manager.state.repositioningEnemyId).toBe('enemy-1');
+      expect(manager.state.placingEnemy).toBe(true);
+      expect(manager.npcService.clearSelection).toHaveBeenCalled();
+      expect(manager.showRepositionIndicator).toHaveBeenCalledWith('Dragão');
+    });
+  });
+
+  describe('repositionEnemyAt', () => {
+    it('moves the enemy, clears reposition state and runs the render chain', () => {
+      manager.state.repositioningEnemyId = 'enemy-1';
+      manager.state.placingEnemy = true;
+      service.repositionEnemyAt('enemy-1', { x: 5, y: 6 });
+      expect(manager.gameEngine.moveEnemyById).toHaveBeenCalledWith('enemy-1', 5, 6);
+      expect(manager.state.repositioningEnemyId).toBeNull();
+      expect(manager.state.placingEnemy).toBe(false);
+      expect(manager.hideRepositionIndicator).toHaveBeenCalled();
+      expect(manager.history.pushCurrentState).toHaveBeenCalled();
+    });
+
+    it('skips the render chain when the move fails', () => {
+      manager.gameEngine.moveEnemyById = vi.fn(() => false);
+      manager.state.repositioningEnemyId = 'enemy-1';
+      manager.state.placingEnemy = true;
+      service.repositionEnemyAt('enemy-1', { x: 5, y: 6 });
+      expect(manager.state.repositioningEnemyId).toBeNull();
+      expect(manager.history.pushCurrentState).not.toHaveBeenCalled();
     });
   });
 
@@ -209,12 +243,11 @@ describe('EditorEnemyService', () => {
     it('does not render when setEnemyVariable returns false', () => {
       manager.gameEngine.setEnemyVariable = vi.fn(() => false);
       service.handleEnemyVariableChange('enemy-1', 'var-1');
-      expect(manager.renderService.renderEnemies).not.toHaveBeenCalled();
+      expect(manager.renderService.renderWorldGrid).not.toHaveBeenCalled();
     });
 
     it('calls render chain on success', () => {
       service.handleEnemyVariableChange('enemy-1', 'var-1');
-      expect(manager.renderService.renderEnemies).toHaveBeenCalled();
       expect(manager.renderService.renderWorldGrid).toHaveBeenCalled();
       expect(manager.renderService.renderEditor).toHaveBeenCalled();
       expect(manager.updateJSON).toHaveBeenCalled();

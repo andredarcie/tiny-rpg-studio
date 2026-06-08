@@ -1,5 +1,7 @@
 
 import { EditorRendererBase } from './renderers/EditorRendererBase';
+import { EditorModal } from './EditorModal';
+import type { EditorModalButton } from './EditorModal';
 import type { EditorRenderService } from './EditorRenderService';
 
 type NpcDefinitionView = {
@@ -26,20 +28,11 @@ type EditorNpc = {
 class NpcEditModal extends EditorRendererBase {
     private currentNpcId: string | null = null;
     private conditionalExpanded = false;
+    private readonly modal: EditorModal;
 
     constructor(service: EditorRenderService) {
         super(service);
-        this.bindStaticEvents();
-    }
-
-    private bindStaticEvents(): void {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.dom.npcEditModal && !this.dom.npcEditModal.hidden) {
-                e.preventDefault();
-                this.close();
-            }
-        });
-
+        this.modal = new EditorModal(() => this.dom.npcEditModal);
     }
 
     open(npcId: string): void {
@@ -53,24 +46,34 @@ class NpcEditModal extends EditorRendererBase {
             npc.conditionText || npc.conditionVariableId || npc.conditionalRewardVariableId
         );
 
-        const modal = this.dom.npcEditModal;
-        if (!modal) return;
+        const def = this.getDefinition(npc);
 
-        const existing = modal.querySelector('.npc-edit-modal__panel');
-        if (existing) existing.remove();
-
-        modal.appendChild(this.buildPanel(npc));
-        modal.hidden = false;
+        this.modal.open({
+            panelClassName: 'npc-edit-modal__panel object-edit-modal__panel',
+            header: {
+                title: this.service.npcRenderer.getNpcName(def),
+                subtitle: (npc.x !== undefined && npc.y !== undefined) ? `(${npc.x}, ${npc.y})` : '',
+                drawPreview: (canvas) => this.service.npcRenderer.drawNpcPreview(canvas, def),
+            },
+            body: this.buildBody(npc),
+            buttons: this.buildButtons(npc),
+            closeLabel: this.t('buttons.close', 'Fechar'),
+            onClose: () => this.close(),
+        });
     }
 
     close(preserveNpcSelection = false): void {
-        const modal = this.dom.npcEditModal;
-        if (modal) modal.hidden = true;
+        this.modal.close();
         if (!preserveNpcSelection) {
             this.manager.state.selectedNpcId = null;
             this.manager.state.selectedNpcType = null;
         }
         this.currentNpcId = null;
+    }
+
+    private getDefinition(npc: EditorNpc): NpcDefinitionView {
+        const defs = (this.gameEngine.npcManager as { getDefinitions?(): NpcDefinitionView[] }).getDefinitions?.() || [];
+        return defs.find((d) => d.type === npc.type) || { type: npc.type };
     }
 
     private findNpc(id: string): EditorNpc | null {
@@ -80,54 +83,6 @@ class NpcEditModal extends EditorRendererBase {
 
     private refresh(): void {
         if (this.currentNpcId) this.open(this.currentNpcId);
-    }
-
-    private buildPanel(npc: EditorNpc): HTMLElement {
-        const panel = document.createElement('div');
-        panel.className = 'npc-edit-modal__panel object-edit-modal__panel';
-
-        panel.appendChild(this.buildHeader(npc));
-        panel.appendChild(this.buildBody(npc));
-        panel.appendChild(this.buildFooter(npc));
-        return panel;
-    }
-
-    private buildHeader(npc: EditorNpc): HTMLElement {
-        const header = document.createElement('div');
-        header.className = 'object-edit-modal__header';
-
-        const preview = document.createElement('canvas');
-        preview.width = 48;
-        preview.height = 48;
-        preview.className = 'object-preview object-edit-modal__preview';
-        const defs = (this.gameEngine.npcManager as { getDefinitions?(): NpcDefinitionView[] }).getDefinitions?.() || [];
-        const def = defs.find((d) => d.type === npc.type) || { type: npc.type };
-        this.service.npcRenderer.drawNpcPreview(preview, def);
-
-        const titleGroup = document.createElement('div');
-        titleGroup.className = 'object-edit-modal__title-group';
-
-        const title = document.createElement('h3');
-        title.className = 'object-edit-modal__title';
-        title.textContent = this.service.npcRenderer.getNpcName(def);
-
-        const pos = document.createElement('span');
-        pos.className = 'object-position';
-        if (npc.x !== undefined && npc.y !== undefined) {
-            pos.textContent = `(${npc.x}, ${npc.y})`;
-        }
-
-        titleGroup.append(title, pos);
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'object-edit-modal__close';
-        closeBtn.setAttribute('aria-label', this.t('buttons.close', 'Fechar'));
-        closeBtn.textContent = '✕';
-        closeBtn.addEventListener('click', () => this.close());
-
-        header.append(preview, titleGroup, closeBtn);
-        return header;
     }
 
     private buildBody(npc: EditorNpc): HTMLElement {
@@ -242,44 +197,29 @@ class NpcEditModal extends EditorRendererBase {
         container.appendChild(condRewardLabel);
     }
 
-    private buildFooter(npc: EditorNpc): HTMLElement {
-        const footer = document.createElement('div');
-        footer.className = 'object-edit-modal__footer';
+    private buildButtons(npc: EditorNpc): EditorModalButton[] {
+        if (!npc.placed) return [];
 
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'btn-secondary';
-        closeBtn.textContent = this.t('buttons.close', 'Fechar');
-        closeBtn.addEventListener('click', () => this.close());
-        footer.appendChild(closeBtn);
-
-        if (npc.placed) {
-            const moveBtn = document.createElement('button');
-            moveBtn.type = 'button';
-            moveBtn.className = 'btn-secondary object-edit-modal__move';
-            moveBtn.textContent = this.t('buttons.move', 'Mover');
-            moveBtn.addEventListener('click', () => {
-                const defs = (this.gameEngine.npcManager as { getDefinitions?(): NpcDefinitionView[] }).getDefinitions?.() || [];
-                const def = defs.find((d) => d.type === npc.type) || { type: npc.type };
-                const name = this.service.npcRenderer.getNpcName(def);
-                this.manager.npcService.updateNpcSelection(npc.type, npc.id);
-                this.manager.showRepositionIndicator(name);
-                this.close(true);
-            });
-            footer.appendChild(moveBtn);
-
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'btn-secondary object-edit-modal__remove';
-            removeBtn.textContent = this.t('npc.delete', 'Remover');
-            removeBtn.addEventListener('click', () => {
-                this.manager.npcService.removeSelectedNpc();
-                this.close();
-            });
-            footer.appendChild(removeBtn);
-        }
-
-        return footer;
+        return [
+            {
+                label: this.t('buttons.move', 'Mover'),
+                variant: 'move',
+                onClick: () => {
+                    const name = this.service.npcRenderer.getNpcName(this.getDefinition(npc));
+                    this.manager.npcService.updateNpcSelection(npc.type, npc.id);
+                    this.manager.showRepositionIndicator(name);
+                    this.close(true);
+                },
+            },
+            {
+                label: this.t('npc.delete', 'Remover'),
+                variant: 'remove',
+                onClick: () => {
+                    this.manager.npcService.removeSelectedNpc();
+                    this.close();
+                },
+            },
+        ];
     }
 }
 

@@ -16,70 +16,6 @@ type EditorGameData = {
 };
 
 class EditorEnemyRenderer extends EditorRendererBase {
-    renderEnemies(): void {
-        const list = this.dom.enemiesList;
-        if (!list) return;
-        list.innerHTML = '';
-
-        const activeRoom = this.state.activeRoomIndex;
-        const enemies = (this.gameEngine
-            .getActiveEnemies() as EnemyDefinition[])
-            .filter((enemy: EnemyDefinition) => enemy.roomIndex === activeRoom);
-        this.renderEnemyOverlay(enemies, activeRoom);
-        if (!enemies.length) return;
-
-        const definitions = EditorConstants.ENEMY_DEFINITIONS as EnemyDefinitionData[];
-        const definitionMap = new Map<string, EnemyDefinitionData>();
-        definitions.forEach((entry: EnemyDefinitionData) => {
-            definitionMap.set(entry.type, entry);
-            if (Array.isArray(entry.aliases)) {
-                entry.aliases.forEach((alias: string) => definitionMap.set(alias, entry));
-            }
-        });
-
-        const bosses = enemies.filter((enemy: EnemyDefinition) => definitionMap.get(enemy.type)?.boss);
-        if (!bosses.length) return;
-
-        bosses.forEach((enemy: EnemyDefinition) => {
-            const definition = definitionMap.get(enemy.type) ?? null;
-            const item = document.createElement('div');
-            item.className = 'enemy-item';
-
-            const label = document.createElement('span');
-            const displayName = this.getEnemyDisplayName(definition, enemy.type);
-            const livesInfo = Number.isFinite(definition?.lives)
-                ? ` - Vida: ${definition?.lives ?? 1}`
-                : '';
-            label.textContent = `${displayName} @ (${enemy.x}, ${enemy.y})${livesInfo}`;
-
-            const variableWrapper = document.createElement('label');
-            variableWrapper.className = 'enemy-variable-wrapper';
-            variableWrapper.textContent = `${this.t('enemies.variableLabel')} `;
-
-            const variableSelect = document.createElement('select');
-            variableSelect.className = 'enemy-variable-select';
-            variableSelect.dataset.enemyVariable = enemy.id;
-            this.manager.npcService.populateVariableSelect(
-                variableSelect,
-                enemy.defeatVariableId || ''
-            );
-            variableWrapper.appendChild(variableSelect);
-
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'enemy-remove';
-            removeBtn.dataset.removeEnemy = enemy.id;
-            removeBtn.textContent = this.t('buttons.remove');
-
-            const controls = document.createElement('div');
-            controls.className = 'enemy-controls';
-            controls.append(variableWrapper, removeBtn);
-
-            item.append(label, controls);
-            list.appendChild(item);
-        });
-    }
-
     renderEnemyCatalog(): void {
         const container = this.dom.enemyTypes;
         if (!container) return;
@@ -272,59 +208,6 @@ class EditorEnemyRenderer extends EditorRendererBase {
         return { currentCount, totalCount, ratio };
     }
 
-    renderEnemyOverlay(enemies: EnemyDefinition[], roomIndex: number): void {
-        const canvas = this.dom.editorCanvas;
-        if (!canvas) return;
-        const wrapper = canvas.parentElement;
-        if (!wrapper) return;
-
-        const roomEnemies = Array.isArray(enemies)
-            ? enemies.filter((enemy: EnemyDefinition) => enemy.roomIndex === roomIndex)
-            : [];
-
-        let overlay = wrapper.querySelector('.enemy-overlay');
-        if (!roomEnemies.length) {
-            if (overlay) {
-                overlay.innerHTML = '';
-                overlay.remove();
-            }
-            return;
-        }
-
-        if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.className = 'enemy-overlay';
-            wrapper.appendChild(overlay);
-        }
-
-        const roomSize = this.gameEngine.gameState.worldManager.roomSize;
-        const width = canvas.offsetWidth || canvas.clientWidth || canvas.width || 1;
-        const height = canvas.offsetHeight || canvas.clientHeight || canvas.height || 1;
-        const tileSizeX = width / roomSize;
-        const tileSizeY = height / roomSize;
-
-        const overlayElement = overlay as HTMLElement;
-        overlayElement.style.width = `${width}px`;
-        overlayElement.style.height = `${height}px`;
-        overlayElement.style.left = `${canvas.offsetLeft}px`;
-        overlayElement.style.top = `${canvas.offsetTop}px`;
-
-        overlay.innerHTML = '';
-
-        roomEnemies.forEach((enemy: EnemyDefinition) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'enemy-overlay-remove';
-            btn.textContent = '✕';
-            btn.style.left = `${(enemy.x + 1) * tileSizeX}px`;
-            btn.style.top = `${enemy.y * tileSizeY}px`;
-            btn.addEventListener('click', (ev: MouseEvent) => {
-                ev.stopPropagation();
-                this.manager.enemyService.removeEnemy(enemy.id);
-            });
-            overlay.appendChild(btn);
-        });
-    }
 }
 
 export { EditorEnemyRenderer };

@@ -8,6 +8,7 @@ class EditorState {
     placingEnemy: boolean;
     placingObjectType: string | null;
     repositioningObjectId: string | null;
+    repositioningEnemyId: string | null;
     selectedObjectType: string | null;
     selectedEnemyType: string | null;
     mapPainting: boolean;
@@ -35,6 +36,7 @@ class EditorState {
         this.placingEnemy = false;
         this.placingObjectType = null;
         this.repositioningObjectId = null;
+        this.repositioningEnemyId = null;
         this.selectedObjectType = null;
         this.selectedEnemyType = null;
         this.mapPainting = false;

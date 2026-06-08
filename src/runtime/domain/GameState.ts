@@ -773,6 +773,10 @@ class GameState {
         this.enemyManager.setEnemyPosition(enemyId, x, y, roomIndex);
     }
 
+    moveEnemyById(enemyId: string | number, x: number, y: number): boolean {
+        return this.enemyManager.moveEnemyById(enemyId, x, y);
+    }
+
     setEnemyVariable(enemyId: string | number, variableId: string | null = null): boolean {
         const normalized = this.normalizeVariableId(variableId);
         const normalizedEnemyId = typeof enemyId === 'string' ? enemyId : String(enemyId);

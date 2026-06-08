@@ -27,7 +27,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}, gameOverrides
     enemyService: { deactivatePlacement: vi.fn() },
     renderService: {
       renderWorldGrid: vi.fn(), renderObjects: vi.fn(), renderEditor: vi.fn(),
-      renderEnemies: vi.fn(), renderNpcs: vi.fn(),
+      renderNpcs: vi.fn(),
     },
     renderObjectCatalog: vi.fn(),
   };
@@ -59,7 +59,6 @@ describe('EditorWorldService', () => {
     expect(mgr.state.activeRoomIndex).toBe(2);
     expect(mgr.renderService.renderWorldGrid).toHaveBeenCalled();
     expect(mgr.renderService.renderEditor).toHaveBeenCalled();
-    expect(mgr.renderService.renderEnemies).toHaveBeenCalled();
     expect(mgr.renderService.renderNpcs).toHaveBeenCalled();
     expect(mgr.renderObjectCatalog).toHaveBeenCalled();
   });

@@ -18,7 +18,16 @@ vi.mock('../../runtime/adapters/renderer/RendererConstants', () => ({
 import { EditorEnemyRenderer } from '../../editor/modules/renderers/EditorEnemyRenderer';
 
 type EnemyRendererService = ConstructorParameters<typeof EditorEnemyRenderer>[0];
-type EnemyOverlayEnemy = Parameters<EditorEnemyRenderer['renderEnemyOverlay']>[0][number];
+type EnemyOverlayEnemy = {
+  id: string;
+  type: string;
+  roomIndex: number;
+  x: number;
+  y: number;
+  lastX: number;
+  defeatVariableId: string;
+  deathStartTime: number | null;
+};
 type EnemyDefinitionInput = Parameters<EditorEnemyRenderer['drawEnemyPreview']>[1];
 type EnemyDisplayNameDefinition = NonNullable<Parameters<EditorEnemyRenderer['getEnemyDisplayName']>[0]>;
 type EnemyGameDataMock = { world?: { rows?: number; cols?: number } } & Record<string, unknown>;
@@ -106,7 +115,6 @@ function makeEnemy(overrides: Partial<{
 }
 
 function createFixture() {
-  const enemiesList = document.createElement('div');
   const enemyTypes = document.createElement('div');
   const editorCanvas = document.createElement('canvas');
   const canvasWrapper = document.createElement('div');
@@ -151,14 +159,14 @@ function createFixture() {
 
   const service = {
     manager,
-    dom: { enemiesList, enemyTypes, editorCanvas },
+    dom: { enemyTypes, editorCanvas },
     state: { activeRoomIndex: 1 },
     gameEngine,
     t,
     tf
   };
 
-  return { service, manager, gameEngine, t, tf, enemiesList, enemyTypes, editorCanvas, canvasWrapper };
+  return { service, manager, gameEngine, t, tf, enemyTypes, editorCanvas, canvasWrapper };
 }
 
 describe('EditorEnemyRenderer', () => {
@@ -166,101 +174,6 @@ describe('EditorEnemyRenderer', () => {
     document.body.innerHTML = '';
     vi.clearAllMocks();
     mockData.enemyDefinitions = [];
-  });
-
-  // ─── renderEnemies ────────────────────────────────────────────────────────
-
-  it('returns early from renderEnemies when list element is missing', () => {
-    const fixture = createFixture();
-    fixture.service.dom.enemiesList = null as unknown as HTMLDivElement;
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-    expect(() => renderer.renderEnemies()).not.toThrow();
-  });
-
-  it('renders nothing when no enemies exist in active room', () => {
-    const fixture = createFixture();
-    fixture.gameEngine.getActiveEnemies.mockReturnValue([]);
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemies();
-
-    expect(fixture.enemiesList.children).toHaveLength(0);
-  });
-
-  it('renders nothing when enemies are non-boss types', () => {
-    const fixture = createFixture();
-    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'goblin', boss: false, lives: 3 })];
-    fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy({ type: 'goblin' })]);
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemies();
-
-    expect(fixture.enemiesList.children).toHaveLength(0);
-  });
-
-  it('renders boss enemy items with label, variable select and remove button', () => {
-    const fixture = createFixture();
-    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'dragon', boss: true, lives: 10, name: 'Dragão' })];
-    fixture.gameEngine.getActiveEnemies.mockReturnValue([
-      makeEnemy({ id: 'b1', type: 'dragon', roomIndex: 1, x: 4, y: 5, defeatVariableId: 'v1' })
-    ]);
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemies();
-
-    const items = fixture.enemiesList.querySelectorAll('.enemy-item');
-    expect(items).toHaveLength(1);
-    expect(fixture.enemiesList.textContent).toContain('Dragão');
-    expect(fixture.enemiesList.textContent).toContain('Vida: 10');
-    expect(fixture.enemiesList.querySelectorAll('.enemy-remove')).toHaveLength(1);
-    expect(fixture.enemiesList.querySelectorAll('.enemy-variable-select')).toHaveLength(1);
-    expect(fixture.manager.npcService.populateVariableSelect).toHaveBeenCalledWith(
-      expect.any(HTMLSelectElement),
-      'v1'
-    );
-  });
-
-  it('resolves enemy type via aliases', () => {
-    const fixture = createFixture();
-    mockData.enemyDefinitions = [
-      catalogEnemyDef({ type: 'boss_main', boss: true, lives: 5, aliases: ['dragon_alt'], name: 'Boss' })
-    ];
-    fixture.gameEngine.getActiveEnemies.mockReturnValue([
-      makeEnemy({ type: 'dragon_alt', roomIndex: 1 })
-    ]);
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemies();
-
-    const items = fixture.enemiesList.querySelectorAll('.enemy-item');
-    expect(items).toHaveLength(1);
-    expect(fixture.enemiesList.textContent).toContain('Boss');
-  });
-
-  it('renders boss without lives info when lives is not finite', () => {
-    const fixture = createFixture();
-    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'dragon', boss: true, lives: Infinity, name: 'Dragão' })];
-    fixture.gameEngine.getActiveEnemies.mockReturnValue([makeEnemy({ type: 'dragon' })]);
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemies();
-
-    expect(fixture.enemiesList.textContent).not.toContain('Vida:');
-  });
-
-  it('filters enemies to active room only', () => {
-    const fixture = createFixture();
-    mockData.enemyDefinitions = [catalogEnemyDef({ type: 'dragon', boss: true, lives: 5, name: 'Dragão' })];
-    fixture.gameEngine.getActiveEnemies.mockReturnValue([
-      makeEnemy({ id: 'r1', type: 'dragon', roomIndex: 1 }),
-      makeEnemy({ id: 'r2', type: 'dragon', roomIndex: 2 })
-    ]);
-    fixture.service.state.activeRoomIndex = 1;
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemies();
-
-    expect(fixture.enemiesList.querySelectorAll('.enemy-item')).toHaveLength(1);
   });
 
   // ─── renderEnemyCatalog ───────────────────────────────────────────────────
@@ -545,81 +458,6 @@ describe('EditorEnemyRenderer', () => {
     expect(xpBlock).not.toBeNull();
     if (!xpBlock) throw new Error('xp block missing');
     expect(children.indexOf(xpBlock)).toBeLessThan(children.indexOf(beforeNode));
-  });
-
-  // ─── renderEnemyOverlay ───────────────────────────────────────────────────
-
-  it('returns early when canvas is missing', () => {
-    const fixture = createFixture();
-    fixture.service.dom.editorCanvas = null as unknown as HTMLCanvasElement;
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-    expect(() => renderer.renderEnemyOverlay([], 1)).not.toThrow();
-  });
-
-  it('removes existing overlay when no room enemies exist', () => {
-    const fixture = createFixture();
-    const canvas = fixture.service.dom.editorCanvas;
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(canvas);
-    document.body.appendChild(wrapper);
-
-    const existingOverlay = document.createElement('div');
-    existingOverlay.className = 'enemy-overlay';
-    wrapper.appendChild(existingOverlay);
-
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemyOverlay([], 1);
-
-    expect(wrapper.querySelector('.enemy-overlay')).toBeNull();
-  });
-
-  it('creates overlay and renders remove buttons for room enemies', () => {
-    const fixture = createFixture();
-    const canvas = fixture.service.dom.editorCanvas;
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(canvas);
-    document.body.appendChild(wrapper);
-
-    const enemies: EnemyOverlayEnemy[] = [makeEnemy({ id: 'a', roomIndex: 1, x: 1, y: 1 })];
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    renderer.renderEnemyOverlay(enemies, 1);
-
-    const overlay = wrapper.querySelector('.enemy-overlay');
-    expect(overlay).not.toBeNull();
-    if (!overlay) throw new Error('overlay missing');
-    const buttons = overlay.querySelectorAll('.enemy-overlay-remove');
-    expect(buttons).toHaveLength(1);
-  });
-
-  it('calls removeEnemy when overlay button is clicked', () => {
-    const fixture = createFixture();
-    const canvas = fixture.service.dom.editorCanvas;
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(canvas);
-    document.body.appendChild(wrapper);
-
-    const enemy = makeEnemy({ id: 'enemy-click', roomIndex: 1 });
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-    renderer.renderEnemyOverlay([enemy] as EnemyOverlayEnemy[], 1);
-
-    const btn = wrapper.querySelector('.enemy-overlay-remove') as HTMLButtonElement;
-    btn.click();
-
-    expect(fixture.manager.enemyService.removeEnemy).toHaveBeenCalledWith('enemy-click');
-  });
-
-  it('handles non-array enemies gracefully in renderEnemyOverlay', () => {
-    const fixture = createFixture();
-    const canvas = fixture.service.dom.editorCanvas;
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(canvas);
-    document.body.appendChild(wrapper);
-    const renderer = new EditorEnemyRenderer(asEnemyRendererService(fixture.service));
-
-    expect(() => renderer.renderEnemyOverlay(null as unknown as EnemyOverlayEnemy[], 1)).not.toThrow();
-    expect(wrapper.querySelector('.enemy-overlay')).toBeNull();
   });
 });
 
