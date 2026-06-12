@@ -847,8 +847,20 @@ class GameState {
         return this.state.pickupOverlay;
     }
 
+    runPickupOverlayEffect(effect: (() => void) | null): void {
+        if (typeof effect !== 'function') return;
+        try {
+            effect();
+        } catch (err) {
+            console.error('Pickup overlay effect error:', err);
+        }
+    }
+
     showPickupOverlay(options: PickupOverlayOptions = {}): void {
         const overlay = this.getPickupOverlay();
+        const pendingEffect = overlay.active ? overlay.effect : null;
+        overlay.effect = null;
+        this.runPickupOverlayEffect(pendingEffect);
         overlay.active = true;
         overlay.name = options.name || options.title || '';
         overlay.spriteGroup = options.spriteGroup || null;
@@ -866,13 +878,7 @@ class GameState {
         overlay.name = '';
         overlay.spriteGroup = null;
         overlay.spriteType = null;
-        if (typeof effect === 'function') {
-            try {
-                effect();
-            } catch (err) {
-                console.error('Pickup overlay effect error:', err);
-            }
-        }
+        this.runPickupOverlayEffect(effect);
         this.resumeGame('pickup-overlay');
     }
 

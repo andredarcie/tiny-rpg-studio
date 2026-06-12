@@ -3,6 +3,7 @@ import { itemCatalog } from '../../runtime/domain/services/ItemCatalog';
 import { InteractionManager } from '../../runtime/services/engine/InteractionManager';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import type { ItemType } from '../../runtime/domain/constants/itemTypes';
+import { GameState } from '../../runtime/domain/GameState';
 import { createInteractionGameState } from '../helpers/createInteractionGameState';
 
 describe('InteractionManager', () => {
@@ -317,6 +318,27 @@ describe('InteractionManager', () => {
     const chest = { type: 'chest', opened: false, containsItemType: null, roomIndex: 0, x: 0, y: 0 };
 
     expect(manager.handleChest(chest as never)).toBe(false);
+  });
+
+  it('does not lose a collected sword when an XP pickup replaces the pending pickup overlay', () => {
+    const gameState = new GameState();
+    const manager = new InteractionManager(
+      gameState as unknown as ConstructorParameters<typeof InteractionManager>[0],
+      dialogManager
+    );
+    const sword = { type: 'sword', collected: false, roomIndex: 0, x: 0, y: 0 };
+    const xpScroll = { type: 'xp-scroll', collected: false, roomIndex: 0, x: 1, y: 0 };
+
+    expect(manager.handleCollectibleObject(sword as never)).toBe(true);
+    expect(sword.collected).toBe(true);
+    expect(gameState.getSwordType()).toBeNull();
+
+    expect(manager.handleCollectibleObject(xpScroll as never)).toBe(true);
+    gameState.hidePickupOverlay();
+
+    expect(gameState.getSwordType()).toBe('sword');
+    expect(gameState.getSwordDurability()).toBe(2);
+    expect(gameState.getPlayerDamage()).toBe(4);
   });
 
   // --- Pressure Plate ---

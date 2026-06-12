@@ -163,6 +163,19 @@ describe('GameState - Critical Path Tests', () => {
       expect(state.hasSkill('stealth')).toBe(false);
     });
 
+    it('keeps an equipped sword and its damage after gaining enough XP to level up', () => {
+      const state = new GameState();
+      state.setSwordType('sword');
+      state.setSwordDurability(5);
+
+      const result = state.addExperience(state.getExperienceToNext());
+
+      expect(result?.leveledUp).toBe(true);
+      expect(state.getSwordType()).toBe('sword');
+      expect(state.getSwordDurability()).toBe(5);
+      expect(state.getPlayerDamage()).toBe(4);
+    });
+
     it('heals player to full when max-life skill is selected', () => {
       const state = new GameState();
 
@@ -311,6 +324,27 @@ describe('GameState - Critical Path Tests', () => {
 
       expect(effectCalled).toBe(true);
       expect(state.isPickupOverlayActive()).toBe(false);
+    });
+
+    it('executes a pending effect before replacing an active pickup overlay', () => {
+      const state = new GameState();
+      const effects: string[] = [];
+
+      state.showPickupOverlay({
+        name: 'Iron Sword',
+        effect: () => effects.push('sword'),
+      });
+
+      state.showPickupOverlay({
+        name: 'XP Scroll',
+        effect: () => effects.push('xp'),
+      });
+
+      expect(effects).toEqual(['sword']);
+
+      state.hidePickupOverlay();
+
+      expect(effects).toEqual(['sword', 'xp']);
     });
 
     it('resumes game when overlay is hidden', () => {
