@@ -1,4 +1,5 @@
 import './styles.css';
+import { BootLoadingScreen } from './BootLoadingScreen';
 import { applyFontConfig } from './config/FontConfig';
 import { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
@@ -9,6 +10,7 @@ import { GameEngine } from './runtime/services/GameEngine';
 import { ShareUtils } from './runtime/infra/share/ShareUtils';
 import { getTinyRpgApi, setTinyRpgApi, type TinyRpgApi } from './runtime/infra/TinyRpgApi';
 import { TextResources } from './runtime/adapters/TextResources';
+import { soundEngine } from './runtime/services/SoundEngine';
 import { normalizeBackgroundMusicVolume } from './runtime/infra/share/BackgroundMusicVideoId';
 
 const getTextResource = (key: string, fallback = ''): string => {
@@ -21,8 +23,39 @@ type TabActivationDetail = { initial?: boolean };
 class TinyRPGApplication {
   static boot(): void {
     document.addEventListener('DOMContentLoaded', () => {
+      BootLoadingScreen.start();
+      this.setupWelcomeAudio();
       this.initializeApplication();
       this.setupResponsiveCanvas();
+      // Reveal the engine only once its core assets are loaded, so the user
+      // never sees the unstyled load happening underneath the boot screen.
+      void BootLoadingScreen.finishWhenReady();
+    });
+  }
+
+  /**
+   * Plays a short welcome jingle when the title screen appears and warms up the
+   * Web Audio system. Browsers keep audio suspended until the first user
+   * gesture, so we (a) play it on `boot-finished` if audio is already unlocked,
+   * and (b) otherwise unlock + play on the very first interaction. Either way the
+   * audio context is running before the first dialog, so its sounds never glitch.
+   */
+  static setupWelcomeAudio(): void {
+    let welcomed = false;
+    const events = ['pointerdown', 'keydown', 'touchstart'] as const;
+    const removeListeners = () => events.forEach((e) => globalThis.removeEventListener(e, onGesture));
+    const playWelcome = () => {
+      if (welcomed) return;
+      welcomed = true;
+      soundEngine.unlock();
+      soundEngine.play('gameStart');
+      removeListeners();
+    };
+    const onGesture = () => playWelcome();
+    events.forEach((e) => globalThis.addEventListener(e, onGesture, { passive: true }));
+    document.addEventListener('boot-finished', () => {
+      soundEngine.unlock();
+      if (soundEngine.isRunning()) playWelcome();
     });
   }
 
@@ -186,12 +219,7 @@ class TinyRPGApplication {
           btn.classList.add('is-pressed');
           const dialog = gameEngine.gameState.getDialog();
           if (dialog.active) {
-            if (dialog.page >= dialog.maxPages) {
-              gameEngine.closeDialog();
-            } else {
-              gameEngine.gameState.setDialogPage(dialog.page + 1);
-              gameEngine.renderer.draw();
-            }
+            gameEngine.advanceDialog();
             return;
           }
           const dir = btn.dataset.direction as Direction | undefined;

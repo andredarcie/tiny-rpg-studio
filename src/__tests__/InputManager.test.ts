@@ -9,6 +9,7 @@ type GameEngineStub = {
   renderer: { draw: () => void };
   tryMove: (dx: number, dy: number) => void;
   closeDialog: () => void;
+  advanceDialog: () => void;
   isEditorModeActive?: () => boolean;
   isGameOver?: () => boolean;
   handleGameOverInteraction?: () => void;
@@ -34,6 +35,7 @@ const createEngine = (overrides: Partial<GameEngineStub> = {}): GameEngineStub =
     renderer: { draw: vi.fn(), ...(overrides.renderer || {}) },
     tryMove: vi.fn(),
     closeDialog: vi.fn(),
+    advanceDialog: vi.fn(),
     isGameOver: () => false,
     handleGameOverInteraction: vi.fn(),
     isIntroVisible: () => false,
@@ -175,7 +177,7 @@ describe('InputManager', () => {
     expect(engine.handleGameOverInteraction).toHaveBeenCalled();
   });
 
-  it('handleKeyDown advances dialog pages', () => {
+  it('handleKeyDown advances dialog via the engine', () => {
     const engine = createEngine({
       gameState: {
         getDialog: () => ({ active: true, page: 1, maxPages: 2 }),
@@ -187,8 +189,7 @@ describe('InputManager', () => {
 
     manager.handleKeyDown(ev);
 
-    expect(engine.gameState.setDialogPage).toHaveBeenCalledWith(2);
-    expect(engine.renderer.draw).toHaveBeenCalled();
+    expect(engine.advanceDialog).toHaveBeenCalled();
   });
 
   it('handleKeyDown triggers movement for game keys', () => {
@@ -202,32 +203,11 @@ describe('InputManager', () => {
     expect(engine.tryMove).toHaveBeenCalledWith(-1, 0);
   });
 
-  it('handleTouchStart advances dialog page on tap', () => {
+  it('handleTouchStart advances dialog via the engine on tap', () => {
     document.body.classList.add('game-mode');
-    const setDialogPage = vi.fn();
-    const draw = vi.fn();
     const engine = createEngine({
       gameState: {
         getDialog: () => ({ active: true, page: 1, maxPages: 2 }),
-        setDialogPage,
-      },
-      renderer: { draw },
-    });
-    const manager = new InputManager(engine);
-    const ev = createTouchEvent(10, 20);
-
-    manager.handleTouchStart(ev);
-
-    expect(ev.preventDefault).toHaveBeenCalled();
-    expect(setDialogPage).toHaveBeenCalledWith(2);
-    expect(draw).toHaveBeenCalled();
-  });
-
-  it('handleTouchStart closes dialog on last page tap', () => {
-    document.body.classList.add('game-mode');
-    const engine = createEngine({
-      gameState: {
-        getDialog: () => ({ active: true, page: 2, maxPages: 2 }),
         setDialogPage: vi.fn(),
       },
     });
@@ -237,8 +217,7 @@ describe('InputManager', () => {
     manager.handleTouchStart(ev);
 
     expect(ev.preventDefault).toHaveBeenCalled();
-    expect(engine.closeDialog).toHaveBeenCalled();
-    expect(engine.gameState.setDialogPage).not.toHaveBeenCalled();
+    expect(engine.advanceDialog).toHaveBeenCalled();
   });
 
   it('handleTouchStart tracks initial touch', () => {
@@ -404,7 +383,8 @@ describe('InputManager', () => {
 
       padButton.remove();
 
-      // The first dialog page must not have been skipped
+      // The first dialog page must not have been advanced/skipped
+      expect(engine.advanceDialog).not.toHaveBeenCalled();
       expect(setDialogPage).not.toHaveBeenCalled();
     });
   });

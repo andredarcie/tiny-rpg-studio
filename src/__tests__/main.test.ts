@@ -4,6 +4,7 @@ import { TinyRPGApplication } from '../main';
 import { TextResources } from '../runtime/adapters/TextResources'; // Import TextResources
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
 import { setTinyRpgApi, type TinyRpgApi } from '../runtime/infra/TinyRpgApi';
+import { soundEngine } from '../runtime/services/SoundEngine';
 
 type BindResetGameEngine = Parameters<typeof TinyRPGApplication.bindResetButton>[0];
 type TouchPadGameEngine = Parameters<typeof TinyRPGApplication.bindTouchPad>[0];
@@ -424,6 +425,53 @@ describe('TinyRPGApplication.bindTouchPad', () => {
     button?.dispatchEvent(new Event('touchstart', { bubbles: true, cancelable: true }));
 
     expect(engine.tryMove).not.toHaveBeenCalled();
+  });
+});
+
+describe('TinyRPGApplication.setupWelcomeAudio', () => {
+  afterEach(() => {
+    // Flush any still-armed gesture listeners so they don't leak into later tests.
+    globalThis.dispatchEvent(new Event('keydown'));
+    vi.restoreAllMocks();
+  });
+
+  it('warms up audio and plays the welcome jingle once on the first gesture', () => {
+    const unlock = vi.spyOn(soundEngine, 'unlock').mockImplementation(() => {});
+    const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
+    vi.spyOn(soundEngine, 'isRunning').mockReturnValue(false);
+
+    TinyRPGApplication.setupWelcomeAudio();
+    globalThis.dispatchEvent(new Event('keydown'));
+
+    expect(unlock).toHaveBeenCalled();
+    expect(play).toHaveBeenCalledWith('gameStart');
+
+    // A second gesture must not replay the welcome.
+    play.mockClear();
+    globalThis.dispatchEvent(new Event('pointerdown'));
+    expect(play).not.toHaveBeenCalled();
+  });
+
+  it('plays the welcome on boot-finished when audio is already unlocked', () => {
+    vi.spyOn(soundEngine, 'unlock').mockImplementation(() => {});
+    const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
+    vi.spyOn(soundEngine, 'isRunning').mockReturnValue(true);
+
+    TinyRPGApplication.setupWelcomeAudio();
+    document.dispatchEvent(new CustomEvent('boot-finished'));
+
+    expect(play).toHaveBeenCalledWith('gameStart');
+  });
+
+  it('waits for a gesture when audio is still locked at boot-finished', () => {
+    vi.spyOn(soundEngine, 'unlock').mockImplementation(() => {});
+    const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
+    vi.spyOn(soundEngine, 'isRunning').mockReturnValue(false);
+
+    TinyRPGApplication.setupWelcomeAudio();
+    document.dispatchEvent(new CustomEvent('boot-finished'));
+
+    expect(play).not.toHaveBeenCalled();
   });
 });
 

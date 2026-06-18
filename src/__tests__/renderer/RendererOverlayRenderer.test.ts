@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { RendererOverlayRenderer } from '../../runtime/adapters/renderer/RendererOverlayRenderer';
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { bitmapFont } from '../../runtime/adapters/renderer/BitmapFont';
+import { TITLE_FONT_SIZE } from '../../config/FontConfig';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -651,7 +653,9 @@ describe('RendererOverlayRenderer – drawIntroOverlay', () => {
         const { overlay, ctx } = makeOverlay();
         overlay.introData = { title: '', author: '' };
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        expect(ctx.fillText).toHaveBeenCalledWith('TINY RPG STUDIO', expect.any(Number), expect.any(Number));
+        // The title is word-wrapped across lines, so check the joined output.
+        const texts = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
+        expect(texts.join(' ')).toContain('TINY RPG STUDIO');
     });
 
     it('draws byline when author is set', () => {
@@ -662,29 +666,46 @@ describe('RendererOverlayRenderer – drawIntroOverlay', () => {
         expect(texts.some((t: string) => t.includes('DEV'))).toBe(true);
     });
 
-    it('draws start label when canDismissIntroScreen is true (blink max phase)', () => {
-        vi.spyOn(Date, 'now').mockReturnValue(0);
-        const { renderer, ctx } = makeRenderer({ gameEngine: { canDismissIntroScreen: true } });
-        const overlay = new RendererOverlayRenderer(renderer as never);
+    it('shows a default author byline when none is set', () => {
+        const { overlay, ctx } = makeOverlay();
+        overlay.setIntroData({ title: 'My Game', author: '' });
         overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        vi.restoreAllMocks();
-        expect(ctx.fillText).toHaveBeenCalledTimes(2);
+        const texts = (ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.map((c: unknown[]) => c[0] as string);
+        expect(texts.join(' ')).toContain('TINY RPG STUDIO');
     });
 
-    it('draws start label with blink min phase', () => {
-        vi.spyOn(Date, 'now').mockReturnValue(750);
-        const { renderer, ctx } = makeRenderer({ gameEngine: { canDismissIntroScreen: true } });
-        const overlay = new RendererOverlayRenderer(renderer as never);
-        overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        vi.restoreAllMocks();
-        expect(ctx.fillText).toHaveBeenCalledTimes(2);
+    // The title input is capped at 18 characters; a max-length title (even one
+    // unbreakable word) must wrap onto the canvas without any line overflowing.
+    it('keeps a max-length (18-char) title within the canvas width', () => {
+        const { overlay } = makeOverlay();
+        const maxTextWidth = 128 * 0.9;
+        const titles = [
+            'ABCDEFGHIJKLMNOPQR', // 18 chars, no spaces (worst case → char-wrap)
+            'THE LEGEND OF ZELO', // 18 chars, multiple words
+            'WWWWWWWWWWWWWWWWWW', // 18 of the widest glyph
+        ];
+        for (const title of titles) {
+            const lines = overlay.wrapText(title, maxTextWidth, TITLE_FONT_SIZE, 4);
+            expect(lines.length).toBeGreaterThan(0);
+            for (const line of lines) {
+                expect(bitmapFont.measureText(line, TITLE_FONT_SIZE)).toBeLessThanOrEqual(maxTextWidth);
+            }
+        }
     });
 
-    it('skips start label when canDismissIntroScreen is false', () => {
-        const { renderer, ctx } = makeRenderer({ gameEngine: { canDismissIntroScreen: false } });
-        const overlay = new RendererOverlayRenderer(renderer as never);
-        overlay.drawIntroOverlay(ctx, { width: 128, height: 128 });
-        expect(ctx.fillText).toHaveBeenCalledTimes(1);
+    it('draws the pulsing start prompt only when the intro can be dismissed', () => {
+        const dismissable = makeRenderer({ gameEngine: { canDismissIntroScreen: true } });
+        new RendererOverlayRenderer(dismissable.renderer as never)
+            .drawIntroOverlay(dismissable.ctx, { width: 128, height: 128 });
+        const withStart = (dismissable.ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.length;
+
+        const locked = makeRenderer({ gameEngine: { canDismissIntroScreen: false } });
+        new RendererOverlayRenderer(locked.renderer as never)
+            .drawIntroOverlay(locked.ctx, { width: 128, height: 128 });
+        const withoutStart = (locked.ctx.fillText as ReturnType<typeof vi.fn>).mock.calls.length;
+
+        // The dismissable intro draws exactly one extra line — the start prompt.
+        expect(withStart).toBe(withoutStart + 1);
     });
 });
 

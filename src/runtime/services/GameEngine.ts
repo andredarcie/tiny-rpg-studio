@@ -173,6 +173,27 @@ export class GameEngine {
     this.dialogManager.closeDialog();
   }
 
+  /**
+   * Confirm-key handling for an open dialog: if the typewriter is still
+   * revealing the current page, reveal it instantly; otherwise advance to the
+   * next page (or close on the last page).
+   */
+  advanceDialog(): void {
+    const dialog = this.gameState.getDialog();
+    if (!dialog.active) return;
+    const dialogRenderer = this.renderer.dialogRenderer;
+    if (!dialogRenderer.isRevealComplete()) {
+      dialogRenderer.skipReveal();
+      return;
+    }
+    if (dialog.page >= dialog.maxPages) {
+      this.closeDialog();
+    } else {
+      this.gameState.setDialogPage(dialog.page + 1);
+      this.renderer.draw();
+    }
+  }
+
   isPickupOverlayActive(): boolean {
     return Boolean(this.gameState.isPickupOverlayActive());
   }

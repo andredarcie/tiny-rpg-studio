@@ -47,7 +47,7 @@ class ShareCoverPreview {
     if (this.ctx && this.dpr !== 1) {
       this.ctx.scale(this.dpr, this.dpr);
     }
-    bitmapFont.load('/pico8-font.png', () => this.render());
+    bitmapFont.load(() => this.render());
     this.gameData = null;
   }
 

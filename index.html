@@ -3,8 +3,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
+
+    <!-- Preload the engine font as early as possible so the boot screen and
+         the engine render in Pixel Operator without extra waits. -->
+    <link rel="preload" as="font" type="font/woff" href="pixel-operator.woff" crossorigin>
+
     <title>Tiny RPG Studio</title>
-    
+
     <!-- Essential SEO Meta Tags -->
     <meta name="description" content="Tiny RPG Studio is a small, deliberately limited game engine designed to spark creativity. Build micro-RPGs and short stories in minutes and share everything through a single URL.">
     <meta name="keywords" content="RPG maker, bitsy, game creation, browser game, browser, game engine, RPG studio, game design, pixel art, indie game, game development">
@@ -96,6 +101,81 @@
             background-color: #000;
             overflow: hidden;
         }
+
+        /* Engine pixel font (Pixel Operator 8), declared here too so the boot
+           screen can use it immediately — before the JS bundle injects the
+           same @font-face. */
+        @font-face {
+            font-family: "PixelOperator";
+            src: url("pixel-operator.woff") format("woff");
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+        }
+
+        /* Boot loading screen — engine-styled (black, blocky/pixel). It is the
+           very first paint and stays up until the engine and its assets are
+           ready, so the user never sees the unstyled "ugly" load underneath. */
+        #boot-loading {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 22px;
+            padding: 24px;
+            text-align: center;
+            background: #000;
+            color: #ffffff;
+            font-family: "PixelOperator", monospace;
+            opacity: 1;
+            transition: opacity 320ms ease;
+        }
+
+        #boot-loading.is-hiding {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #boot-loading .boot-title {
+            font-size: clamp(20px, 6vw, 34px);
+            letter-spacing: 4px;
+            line-height: 1.1;
+            text-transform: uppercase;
+        }
+
+        #boot-loading .boot-subtitle {
+            font-size: clamp(9px, 2.6vw, 13px);
+            letter-spacing: 2px;
+            color: #5bfa8e;
+            opacity: 0.85;
+        }
+
+        #boot-loading .boot-bar {
+            width: min(280px, 70vw);
+            height: 14px;
+            margin-top: 6px;
+            background: #0c0f15;
+            border: 2px solid #2a2f3a;
+            box-shadow: inset 0 2px 0 rgba(0, 0, 0, 0.6);
+            overflow: hidden;
+        }
+
+        #boot-loading .boot-bar__fill {
+            width: 0%;
+            height: 100%;
+            background: #5bfa8e;
+            box-shadow: inset 0 0 0 1px #05070b;
+            transition: width 200ms ease;
+        }
+
+        #boot-loading .boot-hint {
+            font-size: clamp(8px, 2.2vw, 11px);
+            letter-spacing: 1px;
+            color: #6a7280;
+        }
     </style>
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-D8S0K3NWFV"></script>
@@ -108,6 +188,22 @@
     </script>
 </head>
 <body>
+    <div id="boot-loading" role="status" aria-live="polite" aria-label="Loading Tiny RPG Studio">
+        <div class="boot-title">Tiny RPG Studio</div>
+        <div class="boot-subtitle">by André N. Darcie and Diguifi</div>
+        <div class="boot-bar"><div class="boot-bar__fill" id="boot-loading-fill"></div></div>
+        <div class="boot-hint">Carregando...</div>
+    </div>
+    <script>
+        // Safety net: if the bundle ever stalls, don't leave the user staring at
+        // a black screen forever. The boot controller clears this on success.
+        window.__bootLoadingSafety = window.setTimeout(function () {
+            var el = document.getElementById('boot-loading');
+            if (!el) return;
+            el.classList.add('is-hiding');
+            window.setTimeout(function () { el.remove(); }, 360);
+        }, 15000);
+    </script>
     <div class="app">
         <main role="main" aria-label="Aplicação principal - Editor e executor de RPG">
             <div class="tabs" role="tablist">

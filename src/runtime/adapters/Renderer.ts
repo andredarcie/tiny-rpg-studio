@@ -16,7 +16,6 @@ import { RendererAttackTelegraph } from './renderer/RendererAttackTelegraph';
 import { RendererSwordSwing } from './renderer/RendererSwordSwing';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
 import { GameConfig } from '../../config/GameConfig';
-import { FONT_BITMAP_SRC } from '../../config/FontConfig';
 import { bitmapFont } from './renderer/BitmapFont';
 import { DebugFlags } from '../debug/DebugFlags';
 
@@ -107,7 +106,7 @@ class Renderer {
         this.tileRenderer = new RendererTileRenderer(gameState as never, tileManager as never, this.paletteManager, this.canvasHelper);
         this.entityRenderer = new RendererEntityRenderer(gameState as never, tileManager as never, this.spriteFactory as never, this.canvasHelper as never, this.paletteManager);
         this.entityRenderer.setViewportOffset(this.gameplayOffsetY);
-        this.dialogRenderer = new RendererDialogRenderer(gameState as never, this.paletteManager);
+        this.dialogRenderer = new RendererDialogRenderer(gameState as never, this.paletteManager, () => this.draw());
         this.hudRenderer = new RendererHudRenderer(gameState as never, this.entityRenderer as never, this.paletteManager);
         this.effectsManager = new RendererEffectsManager(this as never);
         this.transitionManager = new RendererTransitionManager(this as never);
@@ -123,8 +122,8 @@ class Renderer {
         this.entityRenderer.attackTelegraph = this.attackTelegraph;
 
         // Load after renderer modules exist because load() may invoke the callback synchronously
-        // when the bitmap font sheet is already cached.
-        bitmapFont.load(FONT_BITMAP_SRC, () => this.draw());
+        // when the font face is already loaded.
+        bitmapFont.load(() => this.draw());
 
         this.drawIconIdNextFrame = '';
         this.timeIconOverPlayer = GameConfig.animation.iconOverPlayerDuration;

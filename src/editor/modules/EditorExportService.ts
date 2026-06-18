@@ -2,7 +2,7 @@ import { getTinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
-import { FONT_BITMAP_SRC, FONT_CSS_SRC } from '../../config/FontConfig';
+import { FONT_CSS_SRC } from '../../config/FontConfig';
 
 type GameExportData = {
     title?: string;
@@ -377,13 +377,8 @@ class EditorExportService {
                 return;
             }
             const fontWoffDataUrl = await this.fetchAssetAsDataUrl(FONT_CSS_SRC, downloadError);
-            const fontBitmapDataUrl = await this.fetchAssetAsDataUrl(FONT_BITMAP_SRC, downloadError);
-            const exportCssText = cssText
-                .replaceAll(FONT_CSS_SRC, fontWoffDataUrl)
-                .replaceAll(FONT_BITMAP_SRC, fontBitmapDataUrl);
-            const exportScriptsText = allScripts
-                .replaceAll(FONT_CSS_SRC, fontWoffDataUrl)
-                .replaceAll(FONT_BITMAP_SRC, fontBitmapDataUrl);
+            const exportCssText = cssText.replaceAll(FONT_CSS_SRC, fontWoffDataUrl);
+            const exportScriptsText = allScripts.replaceAll(FONT_CSS_SRC, fontWoffDataUrl);
 
             const html = `<!DOCTYPE html>
                 <html lang="${locale}">

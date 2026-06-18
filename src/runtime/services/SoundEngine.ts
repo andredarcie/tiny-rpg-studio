@@ -14,7 +14,8 @@ type SoundName =
   | 'doorUnlock'
   | 'victory'
   | 'gameStart'
-  | 'skillPick';
+  | 'skillPick'
+  | 'typewriter';
 
 class SoundEngine {
   private ctx: AudioContext | null = null;
@@ -73,6 +74,20 @@ class SoundEngine {
     osc.stop(startTime + duration + 0.01);
   }
 
+  /**
+   * Creates and resumes the AudioContext. Browsers keep it suspended until the
+   * first user gesture, so call this from a gesture handler to "unlock" audio
+   * ahead of time and avoid the first sound (e.g. the first dialog) glitching.
+   */
+  unlock(): void {
+    this.getCtx();
+  }
+
+  /** Whether audio is unlocked and able to play right now. */
+  isRunning(): boolean {
+    return this.ctx?.state === 'running';
+  }
+
   play(sound: SoundName): void {
     const ctx = this.getCtx();
     if (!ctx) return;
@@ -95,7 +110,13 @@ class SoundEngine {
       case 'victory':        this.sfxVictory(t);        break;
       case 'gameStart':      this.sfxGameStart(t);      break;
       case 'skillPick':      this.sfxSkillPick(t);      break;
+      case 'typewriter':     this.sfxTypewriter(t);     break;
     }
+  }
+
+  // Typewriter blip: a tiny, quiet tick played per revealed dialog letter.
+  private sfxTypewriter(t: number): void {
+    this.tone(720, 'square', t, 0.013, 0.05, 560);
   }
 
   // --- Combat ---

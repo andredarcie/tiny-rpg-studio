@@ -22,6 +22,7 @@ type GameEngineApi = {
   renderer: RendererApi;
   tryMove: (dx: number, dy: number) => void;
   closeDialog: () => void;
+  advanceDialog: () => void;
   isEditorModeActive?: () => boolean;
   isGameOver?: () => boolean;
   handleGameOverInteraction?: () => void;
@@ -114,12 +115,7 @@ class InputManager {
         case 'enter':
         case ' ':
           ev.preventDefault();
-          if (dialog.page >= dialog.maxPages) {
-            this.gameEngine.closeDialog();
-          } else {
-            this.gameEngine.gameState.setDialogPage(dialog.page + 1);
-            this.gameEngine.renderer.draw();
-          }
+          this.gameEngine.advanceDialog();
           break;
       }
       return;
@@ -196,12 +192,7 @@ class InputManager {
     const dialog = this.gameEngine.gameState.getDialog();
     if (dialog.active) {
       ev.preventDefault();
-      if (dialog.page >= dialog.maxPages) {
-        this.gameEngine.closeDialog();
-      } else {
-        this.gameEngine.gameState.setDialogPage(dialog.page + 1);
-        this.gameEngine.renderer.draw();
-      }
+      this.gameEngine.advanceDialog();
       this.touchStart = null;
       return;
     }

@@ -1,163 +1,143 @@
-import { LETTER_SPACING, SPACE_ADVANCE, LINE_HEIGHT, FONT_SIZE } from '../../../config/FontConfig';
+import { LINE_HEIGHT, FONT_SIZE, FONT_NAME } from '../../../config/FontConfig';
 
-const SOURCE_SHEET_SIZE = 512;
-const SOURCE_CHAR_PX = 32;
-const CHAR_PX = 8;
-const CHARS_PER_ROW = SOURCE_SHEET_SIZE / SOURCE_CHAR_PX;
-const NORMALIZED_SHEET_SIZE = CHARS_PER_ROW * CHAR_PX;
+/**
+ * Canvas text renderer for the engine's pixel font (Pixel Operator Mono HB 8).
+ *
+ * Text is drawn with the Canvas 2D text API at the font's native pixel size
+ * (FONT_SIZE) onto a reusable offscreen canvas, then blitted to the target
+ * with nearest-neighbor scaling (imageSmoothingEnabled = false) so it keeps
+ * hard pixel edges at any size — matching the rest of the pixel-art canvas.
+ *
+ * The public surface (load / isReady / setDisabled / measureText /
+ * getCharAdvance / truncateText / drawText) is unchanged from the previous
+ * bitmap-spritesheet implementation, so callers don't need to change.
+ */
 
-type GlyphMetric = {
-    left: number;
-    width: number;
-    advance: number;
-    top: number;
-    height: number;
+type DocumentWithFonts = Document & {
+    fonts?: { load: (font: string, text?: string) => Promise<unknown> };
+};
+
+const fontSpec = (px: number): string => `${px}px "${FONT_NAME}"`;
+
+type GlyphCacheEntry = {
+    canvas: HTMLCanvasElement;
+    w: number;
+    h: number;
+    logicalH: number;
 };
 
 export class BitmapFont {
-    private sheet: HTMLCanvasElement | null = null;
-    private glyphMetrics: GlyphMetric[] = [];
+    private ready = false;
     private loading = false;
-    private tmp: HTMLCanvasElement | null = null;
     private readyCallbacks = new Set<() => void>();
     private _disabled = false;
+    private measureCtx: CanvasRenderingContext2D | null = null;
+    private tmp: HTMLCanvasElement | null = null;
+    // Cache of fully-rasterized + tinted text bitmaps keyed by text|size|color.
+    // The expensive part of drawText (fillText, getImageData binarization and the
+    // source-in tint) is a pure function of those three inputs, so it only needs
+    // to run once per unique string instead of every frame. HUD labels, the "!"
+    // alert icon and player names are the same string for thousands of frames.
+    private glyphCache = new Map<string, GlyphCacheEntry>();
+    private static readonly GLYPH_CACHE_LIMIT = 320;
 
     setDisabled(disabled: boolean): void {
         this._disabled = disabled;
     }
 
-    load(src: string, onReady?: () => void): void {
-        if (this.sheet) {
+    /**
+     * Ensures the font face is loaded so canvas text renders correctly.
+     * Idempotent: fires immediately if already loaded, queues the callback if a
+     * load is in flight, otherwise starts the load. The @font-face itself is
+     * injected by applyFontConfig (and inlined in index.html).
+     */
+    load(onReady?: () => void): void {
+        if (this.ready) {
             onReady?.();
             return;
         }
         if (onReady) {
             this.readyCallbacks.add(onReady);
         }
-        if (this.loading || typeof Image === 'undefined' || typeof document === 'undefined') return;
+        if (this.loading) return;
         this.loading = true;
-        const img = new Image();
-        img.onload = () => {
-            const c = document.createElement('canvas');
-            c.width = NORMALIZED_SHEET_SIZE;
-            c.height = NORMALIZED_SHEET_SIZE;
-            const ctx = c.getContext('2d');
-            if (!ctx) {
-                this.loading = false;
-                this.readyCallbacks.clear();
-                console.error('[BitmapFont] Unable to create 2D context for font sheet.');
-                return;
-            }
-            // Read the full-resolution source pixels
-            const srcCanvas = document.createElement('canvas');
-            srcCanvas.width = SOURCE_SHEET_SIZE;
-            srcCanvas.height = SOURCE_SHEET_SIZE;
-            const srcCtx = srcCanvas.getContext('2d');
-            if (!srcCtx) {
-                this.loading = false;
-                this.readyCallbacks.clear();
-                console.error('[BitmapFont] Unable to create 2D context for source canvas.');
-                return;
-            }
-            srcCtx.drawImage(img, 0, 0);
-            const srcData = srcCtx.getImageData(0, 0, SOURCE_SHEET_SIZE, SOURCE_SHEET_SIZE);
-            const src = srcData.data;
 
-            // Max-pool each (ratio×ratio) source block into one normalized pixel.
-            // Nearest-neighbor drawImage only samples one corner of each block and silently
-            // drops pixels from thin strokes that don't fall on the sample point, making
-            // those characters appear smaller. Taking the max brightness of the whole block
-            // guarantees every source pixel is preserved.
-            const ratio = SOURCE_CHAR_PX / CHAR_PX;
-            const imageData = ctx.createImageData(NORMALIZED_SHEET_SIZE, NORMALIZED_SHEET_SIZE);
-            const px = imageData.data;
-            for (let dstY = 0; dstY < NORMALIZED_SHEET_SIZE; dstY += 1) {
-                for (let dstX = 0; dstX < NORMALIZED_SHEET_SIZE; dstX += 1) {
-                    let maxBright = 0;
-                    const sx0 = dstX * ratio;
-                    const sy0 = dstY * ratio;
-                    for (let sy = 0; sy < ratio; sy += 1) {
-                        for (let sx = 0; sx < ratio; sx += 1) {
-                            const i = ((sy0 + sy) * SOURCE_SHEET_SIZE + sx0 + sx) * 4;
-                            const bright = Math.max(src[i], src[i + 1], src[i + 2]);
-                            if (bright > maxBright) maxBright = bright;
-                        }
-                    }
-                    if (maxBright > 64) {
-                        const di = (dstY * NORMALIZED_SHEET_SIZE + dstX) * 4;
-                        px[di] = px[di + 1] = px[di + 2] = px[di + 3] = 255;
-                    }
-                }
-            }
-            ctx.putImageData(imageData, 0, 0);
-            this.glyphMetrics = this.buildGlyphMetrics(imageData);
-            this.sheet = c;
+        const finish = (): void => {
+            this.ready = true;
             this.loading = false;
             const callbacks = Array.from(this.readyCallbacks);
             this.readyCallbacks.clear();
             callbacks.forEach((callback) => callback());
         };
-        img.onerror = () => {
-            this.loading = false;
-            this.readyCallbacks.clear();
-            console.error(`[BitmapFont] Failed to load font sheet: ${src}`);
-        };
-        img.src = src;
+
+        const fonts =
+            typeof document !== 'undefined' ? (document as DocumentWithFonts).fonts : undefined;
+        if (fonts && typeof fonts.load === 'function') {
+            fonts.load(fontSpec(FONT_SIZE)).then(() => finish()).catch(() => finish());
+        } else {
+            finish();
+        }
     }
 
     isReady(): boolean {
-        return this._disabled || this.sheet !== null;
+        return this._disabled || this.ready;
     }
 
-    private static isAsciiUppercase(charCode: number): boolean {
-        return charCode >= 65 && charCode <= 90;
+    private getMeasureCtx(): CanvasRenderingContext2D | null {
+        if (this.measureCtx) return this.measureCtx;
+        if (typeof document === 'undefined') return null;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        this.measureCtx = ctx;
+        return ctx;
     }
 
-    private buildGlyphMetrics(imageData: ImageData): GlyphMetric[] {
-        const metrics: GlyphMetric[] = [];
-        const px = imageData.data;
-        for (let index = 0; index < CHARS_PER_ROW * CHARS_PER_ROW; index += 1) {
-            const col = index % CHARS_PER_ROW;
-            const row = Math.floor(index / CHARS_PER_ROW);
-            let left = CHAR_PX;
-            let right = -1;
-            let top = CHAR_PX;
-            let bottom = -1;
-            for (let y = 0; y < CHAR_PX; y += 1) {
-                for (let x = 0; x < CHAR_PX; x += 1) {
-                    const pxIndex = (((row * CHAR_PX) + y) * NORMALIZED_SHEET_SIZE + (col * CHAR_PX) + x) * 4;
-                    if (px[pxIndex + 3] > 0) {
-                        left = Math.min(left, x);
-                        right = Math.max(right, x);
-                        top = Math.min(top, y);
-                        bottom = Math.max(bottom, y);
-                    }
-                }
-            }
-            const width = right >= left ? right - left + 1 : 0;
-            const height = bottom >= top ? bottom - top + 1 : 0;
-            metrics[index] = {
-                left: width > 0 ? left : 0,
-                width,
-                advance: width > 0 ? Math.min(CHAR_PX, width + LETTER_SPACING) : SPACE_ADVANCE,
-                top: height > 0 ? top : 0,
-                height
-            };
+    /**
+     * Snaps a requested size to the nearest whole multiple of the native size
+     * (never below it). The pixel font is only crisp at its native size and
+     * integer multiples (8, 16, 24…); any in-between size renders distorted, so
+     * every measurement and render is forced onto the crisp grid here. This is
+     * the single guarantee that canvas text can never be drawn blurry/doubled.
+     */
+    snapSize(charSize: number): number {
+        const multiple = Math.max(1, Math.round(charSize / FONT_SIZE));
+        return multiple * FONT_SIZE;
+    }
+
+    /** Width (in target px) of the longest line at the given character size. */
+    measureText(text: string, charSize: number): number {
+        const value = String(text || '');
+        if (this._disabled) {
+            const lines = value.split('\n');
+            return lines.reduce((max, line) => Math.max(max, line.length * charSize * 0.6), 0);
         }
-        return metrics;
+        if (!this.ready || value === '') return 0;
+        const ctx = this.getMeasureCtx();
+        if (!ctx) return 0;
+        ctx.font = fontSpec(FONT_SIZE);
+        const scale = this.snapSize(charSize) / FONT_SIZE;
+        const lines = value.split('\n');
+        const nativeWidth = lines.reduce(
+            (max, line) => Math.max(max, ctx.measureText(line).width),
+            0,
+        );
+        return nativeWidth * scale;
     }
 
-    private getGlyphMetric(charCode: number): GlyphMetric {
-        return this.glyphMetrics[charCode] || { left: 0, width: 0, advance: SPACE_ADVANCE, top: 0, height: 0 };
-    }
-
+    /** Advance width (in target px) of a single character. */
     getCharAdvance(charCode: number, charSize: number): number {
-        const scale = charSize / CHAR_PX;
-        return this.getGlyphMetric(charCode).advance * scale;
+        if (this._disabled) return charSize * 0.6;
+        if (!this.ready) return 0;
+        const ctx = this.getMeasureCtx();
+        if (!ctx) return 0;
+        ctx.font = fontSpec(FONT_SIZE);
+        const char = String.fromCodePoint(charCode);
+        return ctx.measureText(char).width * (this.snapSize(charSize) / FONT_SIZE);
     }
 
     truncateText(text: string, maxWidth: number, charSize: number): string {
-        if (!this.sheet || this.measureText(text, charSize) <= maxWidth) return text;
+        if (!this.isReady() || this.measureText(text, charSize) <= maxWidth) return text;
         const ellipsis = '...';
         let truncated = text;
         while (truncated.length > 0 && this.measureText(truncated + ellipsis, charSize) > maxWidth) {
@@ -166,128 +146,126 @@ export class BitmapFont {
         return truncated + ellipsis;
     }
 
-    private static normalize(text: string): string {
-        return String(text || '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .normalize('NFC');
-    }
-
-    measureText(text: string, charSize: number): number {
-        if (this._disabled) {
-            const lines = BitmapFont.normalize(text).split('\n');
-            return lines.reduce((max, line) => Math.max(max, line.length * charSize * 0.6), 0);
-        }
-        const lines = BitmapFont.normalize(text).split('\n');
-        return lines.reduce((maxWidth, line) => {
-            let cursorX = 0;
-            let renderedWidth = 0;
-            Array.from(line).forEach((char) => {
-                const code = char.codePointAt(0) ?? 0;
-                const metric = this.getGlyphMetric(code);
-                if (metric.width > 0) {
-                    const scale = charSize / CHAR_PX;
-                    renderedWidth = Math.max(renderedWidth, cursorX + Math.ceil(metric.width * scale));
-                }
-                cursorX += this.getCharAdvance(code, charSize);
-            });
-            return Math.max(maxWidth, renderedWidth);
-        }, 0);
-    }
-
     drawText(
         ctx: CanvasRenderingContext2D,
         text: string,
         x: number,
         y: number,
         charSize: number,
-        color = '#ffffff'
+        color = '#ffffff',
     ): void {
         if (!text) return;
+
         if (this._disabled) {
             ctx.save();
             ctx.font = `${charSize}px monospace`;
             ctx.fillStyle = color;
-            ctx.textAlign = ctx.textAlign;
             ctx.textBaseline = 'top';
-            const lines = BitmapFont.normalize(text).split('\n');
+            const lines = String(text).split('\n');
             const lineH = Math.round(charSize * (LINE_HEIGHT / FONT_SIZE));
             lines.forEach((line, i) => ctx.fillText(line, x, y + i * lineH));
             ctx.restore();
             return;
         }
-        if (!this.sheet) return;
+        if (!this.ready) return;
 
-        const scale = charSize / CHAR_PX;
-        const lineHeight = Math.max(1, Math.round((LINE_HEIGHT / FONT_SIZE) * charSize));
-        const lines = BitmapFont.normalize(text).split('\n');
-        const w = Math.max(1, Math.ceil(this.measureText(text, charSize)));
-        const h = Math.max(1, Math.ceil((lines.length - 1) * lineHeight + charSize));
+        const measure = this.getMeasureCtx();
+        if (!measure) return;
 
-        // Apply ctx.textAlign
+        const size = this.snapSize(Math.round(charSize));
+        const cacheKey = `${text}|${size}|${color}`;
+        let entry = this.glyphCache.get(cacheKey);
+        if (!entry) {
+            const built = this.rasterize(String(text), size, color, measure);
+            if (!built) return;
+            if (this.glyphCache.size >= BitmapFont.GLYPH_CACHE_LIMIT) {
+                const oldest = this.glyphCache.keys().next().value;
+                if (oldest !== undefined) this.glyphCache.delete(oldest);
+            }
+            this.glyphCache.set(cacheKey, built);
+            entry = built;
+        }
+
+        const { canvas, w, h, logicalH } = entry;
+
         let dx = x;
-        const align = ctx.textAlign;
-        if (align === 'center') dx -= w / 2;
-        else if (align === 'right') dx -= w;
+        if (ctx.textAlign === 'center') dx -= w / 2;
+        else if (ctx.textAlign === 'right') dx -= w;
 
-        // Apply ctx.textBaseline
         let dy = y;
-        const baseline = ctx.textBaseline;
-        if (baseline === 'middle') dy -= h / 2;
-        else if (baseline === 'bottom' || baseline === 'alphabetic') dy -= h;
+        if (ctx.textBaseline === 'middle') dy -= logicalH / 2;
+        else if (ctx.textBaseline === 'bottom' || ctx.textBaseline === 'alphabetic') dy -= logicalH;
 
         dx = Math.round(dx);
         dy = Math.round(dy);
 
-        // Reuse temp canvas (grow if needed, never shrink)
+        // 1:1 blit of the cached bitmap — no scaling, so nothing reintroduces
+        // blur or doubling.
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, 0, 0, w, h, dx, dy, w, h);
+        ctx.restore();
+    }
+
+    /**
+     * Rasterizes text once into an immutable bitmap: render at the (snapped)
+     * crisp size, snap the alpha on/off to kill anti-aliasing, then tint. This
+     * is a pure function of (text, size, color), so the result is cached and
+     * reused every frame for repeated labels (HUD, names, the "!" alert).
+     */
+    private rasterize(
+        text: string,
+        size: number,
+        color: string,
+        measure: CanvasRenderingContext2D,
+    ): GlyphCacheEntry | null {
+        const lines = text.split('\n');
+        measure.font = fontSpec(size);
+        const w = Math.max(
+            1,
+            Math.ceil(lines.reduce((max, line) => Math.max(max, measure.measureText(line).width), 0)),
+        );
+        const lineHeight = Math.max(1, Math.round((LINE_HEIGHT / FONT_SIZE) * size));
+        const logicalH = (lines.length - 1) * lineHeight + size;
+        // Headroom for descenders (g, y, p, q).
+        const h = Math.max(1, logicalH + Math.ceil(size / 4) + 1);
+
         if (!this.tmp) this.tmp = document.createElement('canvas');
         if (this.tmp.width < w) this.tmp.width = Math.max(w, 256);
         if (this.tmp.height < h) this.tmp.height = h;
 
         const tctx = this.tmp.getContext('2d');
-        if (!tctx) return;
-        tctx.clearRect(0, 0, w, h);
+        if (!tctx) return null;
+        tctx.clearRect(0, 0, this.tmp.width, this.tmp.height);
         tctx.imageSmoothingEnabled = false;
-        tctx.globalCompositeOperation = 'source-over';
+        tctx.font = fontSpec(size);
+        tctx.textAlign = 'left';
+        tctx.textBaseline = 'top';
+        tctx.fillStyle = '#ffffff';
+        lines.forEach((line, i) => tctx.fillText(line, 0, i * lineHeight));
 
-        let cursorY = 0;
-        for (const line of lines) {
-            let cursorX = 0;
-            for (const char of Array.from(line)) {
-                const cc = char.codePointAt(0) ?? 0;
-                const glyphAdvance = this.getCharAdvance(cc, charSize);
-                const metric = this.getGlyphMetric(cc);
-                if (cc >= 0 && cc < CHARS_PER_ROW * CHARS_PER_ROW) {
-                    const col = cc % CHARS_PER_ROW;
-                    const row = Math.floor(cc / CHARS_PER_ROW);
-                    if (metric.width > 0) {
-                        const glyphWidth = Math.ceil(metric.width * scale);
-                        const isShortUppercase = BitmapFont.isAsciiUppercase(cc) && metric.height === 4;
-                        const glyphHeightPx = isShortUppercase ? 5 : metric.height;
-                        const glyphHeight = Math.max(1, Math.ceil(glyphHeightPx * scale));
-                        const glyphOffsetY = Math.round((isShortUppercase ? Math.max(0, metric.top - 1) : metric.top) * scale);
-                        tctx.drawImage(
-                            this.sheet,
-                            col * CHAR_PX + metric.left, row * CHAR_PX + metric.top, metric.width, metric.height,
-                            Math.round(cursorX), cursorY + glyphOffsetY, glyphWidth, glyphHeight
-                        );
-                    }
-                }
-                cursorX += glyphAdvance;
-            }
-            cursorY += lineHeight;
+        const pixels = tctx.getImageData(0, 0, w, h);
+        const data = pixels.data;
+        for (let i = 3; i < data.length; i += 4) {
+            data[i] = data[i] >= 128 ? 255 : 0;
         }
+        tctx.putImageData(pixels, 0, 0);
 
-        // Tint the white chars to the desired color
-        tctx.globalCompositeOperation = 'source-atop';
+        tctx.globalCompositeOperation = 'source-in';
         tctx.fillStyle = color;
         tctx.fillRect(0, 0, w, h);
         tctx.globalCompositeOperation = 'source-over';
 
-        ctx.save();
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(this.tmp, 0, 0, w, h, dx, dy, w, h);
-        ctx.restore();
+        // Copy into a dedicated, immutable canvas for the cache (the scratch
+        // `tmp` canvas is reused for the next string).
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const cctx = canvas.getContext('2d');
+        if (!cctx) return null;
+        cctx.imageSmoothingEnabled = false;
+        cctx.drawImage(this.tmp, 0, 0, w, h, 0, 0, w, h);
+        return { canvas, w, h, logicalH };
     }
 }
 

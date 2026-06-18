@@ -16,11 +16,15 @@ const formatOverlayText = (key: string, params: Record<string, string | number |
 
 const toDisplayCaps = (value: string): string => String(value || '').toLocaleUpperCase();
 
+/** Author shown on the intro byline when a game has not set its own. */
+const DEFAULT_INTRO_AUTHOR = 'Tiny RPG Studio';
+
 class RendererOverlayRenderer extends RendererModuleBase {
     introData: { title: string; author: string };
     pickupFx: { id: string | null; startTime: number };
     pickupAnimationHandle: number;
     levelUpAnimationHandle: number;
+    introPulseHandle: number;
 
     constructor(renderer: ConstructorParameters<typeof RendererModuleBase>[0]) {
         super(renderer);
@@ -28,6 +32,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
         this.pickupFx = { id: null, startTime: 0 };
         this.pickupAnimationHandle = 0;
         this.levelUpAnimationHandle = 0;
+        this.introPulseHandle = 0;
     }
 
     get overlayGameState(): OverlayGameState {
@@ -64,7 +69,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
     drawIntroOverlay(ctx: CanvasRenderingContext2D, gameplayCanvas: { width: number; height: number }) {
         this.overlayEntityRenderer.cleanupEnemyLabels();
         const title = toDisplayCaps(this.introData.title || 'Tiny RPG Studio');
-        const author = (this.introData.author || '').trim();
+        const author = (this.introData.author || '').trim() || DEFAULT_INTRO_AUTHOR;
         const width = gameplayCanvas.width;
         const height = gameplayCanvas.height;
         ctx.save();
@@ -73,20 +78,51 @@ class RendererOverlayRenderer extends RendererModuleBase {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         const centerX = width / 2;
-        const centerY = height / 2;
-        bitmapFont.drawText(ctx, title, centerX, centerY - height * 0.12, TITLE_FONT_SIZE, '#FFFFFF');
-        if (author) {
-            const byline = toDisplayCaps(formatOverlayText('intro.byline', { author }, `por ${author}`));
-            bitmapFont.drawText(ctx, byline, centerX, centerY, FONT_SIZE, 'rgba(255,255,255,0.8)');
-        }
+        const maxTextWidth = width * 0.9;
+
+        // Title: large (native 2x) and word-wrapped so it keeps side margins
+        // instead of running off both edges.
+        const titleSize = TITLE_FONT_SIZE;
+        const titleLineHeight = Math.round((LINE_HEIGHT / FONT_SIZE) * titleSize);
+        const titleLines = this.wrapText(title, maxTextWidth, titleSize, 4);
+        const titleTop = height * 0.33 - ((titleLines.length - 1) * titleLineHeight) / 2;
+        titleLines.forEach((line, i) => {
+            bitmapFont.drawText(ctx, line, centerX, titleTop + i * titleLineHeight, titleSize, '#FFFFFF');
+        });
+        const titleBottom = titleTop + (titleLines.length - 1) * titleLineHeight + titleLineHeight / 2;
+
+        // Author byline: native 8px (the only crisp small size for this font),
+        // word-wrapped so any name fits without overflowing the edges.
+        const byline = toDisplayCaps(formatOverlayText('intro.byline', { author }, `por ${author}`));
+        const bylineLines = this.wrapText(byline, maxTextWidth, FONT_SIZE, 2);
+        bylineLines.forEach((line, i) => {
+            bitmapFont.drawText(ctx, line, centerX, titleBottom + 8 + i * LINE_HEIGHT, FONT_SIZE, 'rgba(255, 255, 255, 0.72)');
+        });
 
         const renderer = this.overlayRenderer;
         if (renderer.gameEngine?.canDismissIntroScreen) {
-            const blink = ((Date.now() / GameConfig.animation.blinkInterval) % 2) > 1
-                ? GameConfig.animation.blinkMinOpacity
-                : GameConfig.animation.blinkMaxOpacity;
+            const { blinkInterval, blinkMinOpacity, blinkMaxOpacity } = GameConfig.animation;
+            // Smooth cosine "breathing" pulse instead of a hard on/off toggle, so
+            // the prompt eases between min/max opacity and never looks like the
+            // engine is stuttering.
+            const period = blinkInterval * 2;
+            const phase = (this.getNow() % period) / period;
+            const wave = (1 - Math.cos(phase * Math.PI * 2)) / 2;
+            const opacity = blinkMinOpacity + (blinkMaxOpacity - blinkMinOpacity) * wave;
             const startLabel = toDisplayCaps(getOverlayText('intro.startAdventure', 'Iniciar aventura'));
-            bitmapFont.drawText(ctx, startLabel, centerX, centerY + height * 0.18, FONT_SIZE, `rgba(100, 181, 246, ${blink.toFixed(2)})`);
+            // Native 8px (crisp, smaller than the 16px title), word-wrapped so it
+            // keeps side margins instead of touching the left/right edges.
+            const startColor = `rgba(100, 181, 246, ${opacity.toFixed(3)})`;
+            const startLines = this.wrapText(startLabel, maxTextWidth, FONT_SIZE, 2);
+            const startTop = height * 0.84 - ((startLines.length - 1) * LINE_HEIGHT) / 2;
+            startLines.forEach((line, i) => {
+                bitmapFont.drawText(ctx, line, centerX, startTop + i * LINE_HEIGHT, FONT_SIZE, startColor);
+            });
+            // Drive a smooth 60fps redraw while the prompt pulses (the engine
+            // otherwise only repaints on sparse tile-animation ticks).
+            this.scheduleIntroPulseFrame();
+        } else {
+            this.stopIntroPulseLoop();
         }
 
         ctx.restore();
@@ -528,6 +564,27 @@ class RendererOverlayRenderer extends RendererModuleBase {
         return setTimeout(fn, 1000 / GameConfig.animation.overlayFPS);
     }
 
+    /**
+     * Keeps repainting the intro screen so its "start" prompt pulses smoothly.
+     * Only one frame is ever pending; the loop self-terminates once the intro
+     * is dismissed (drawIntroOverlay stops being called, so it stops rescheduling).
+     */
+    scheduleIntroPulseFrame() {
+        if (this.introPulseHandle) return;
+        this.introPulseHandle = this.schedulePickupFrame(() => {
+            this.introPulseHandle = 0;
+            if (this.overlayRenderer.gameEngine?.canDismissIntroScreen) {
+                this.overlayRenderer.draw?.();
+            }
+        });
+    }
+
+    stopIntroPulseLoop() {
+        if (!this.introPulseHandle) return;
+        this.cancelPickupFrame(this.introPulseHandle);
+        this.introPulseHandle = 0;
+    }
+
     cancelPickupFrame(id: number) {
         if (typeof cancelAnimationFrame === 'function') {
             cancelAnimationFrame(id);
@@ -553,6 +610,8 @@ class RendererOverlayRenderer extends RendererModuleBase {
     }
 
     fitBitmapText(text: string, maxWidth: number, baseSize: number, minSize: number) {
+        // Step in whole native sizes (8, 16, 24…) so the result is always a size
+        // the pixel font renders crisply at.
         const normalizedMin = Math.max(8, Math.ceil(minSize / 8) * 8);
         let size = Math.max(normalizedMin, Math.floor(baseSize / 8) * 8);
         while (size > normalizedMin && bitmapFont.measureText(text, size) > maxWidth) {

@@ -593,6 +593,45 @@ body.editor-mode [class*='badge'] {
     background: var(--panel);
 }
 
+/* Desktop editor toolbar alignment (3-column layout, > 960px).
+   In editor mode the content spans the full window, but the top toolbar would
+   otherwise stay capped at 720px and centered, leaving it floating in the
+   middle and visibly misaligned with the columns below. Stretch both toolbar
+   rows to the same horizontal inset as .editor-layout so their edges line up
+   with the editor content, and left-align their contents into a proper bar.
+   Scoped to desktop so the single-column tablet/mobile editor keeps its own
+   tuned layout. */
+@media (min-width: 961px) {
+    body.editor-mode .tabs,
+    body.editor-mode .project-save-controls {
+        width: auto;
+        max-width: none;
+        margin-left: clamp(10px, 2.5vw, 20px);
+        margin-right: clamp(10px, 2.5vw, 20px);
+    }
+
+    body.editor-mode .tabs {
+        align-items: center;
+        gap: 8px;
+    }
+
+    body.editor-mode .tabs-title {
+        flex: 0 0 auto;
+        width: auto;
+        text-align: left;
+    }
+
+    body.editor-mode .tabs-links {
+        flex: 1 1 auto;
+        width: auto;
+        justify-content: flex-start;
+    }
+
+    body.editor-mode .project-save-controls {
+        justify-content: flex-start;
+    }
+}
+
 body.editor-mode .tile-card.selected,
 body.editor-mode .npc-card.selected,
 body.editor-mode .enemy-card.selected,
@@ -1261,15 +1300,12 @@ body.online-mode .online-chat__send {
 }
 
 /* ─── Mini D-pad — Game Boy styled, engine (blocky/pixel) theme ──
-   Always visible on touch screens. Rendered as a small overlay pinned to the
-   bottom of the screen, sitting in the empty space below the canvas so it
-   never steals room from the game. */
+   Always visible on touch screens. On mobile it flows in the normal column
+   directly below the canvas (which is pinned to the top of the container), so
+   it stays glued to the upper part of the screen and is never clipped behind
+   the mobile browser's bottom toolbar. */
 .game-touch-pad {
     display: none; /* shown on touch / mobile via the media query below */
-    position: absolute;
-    left: 50%;
-    bottom: clamp(8px, 2.5vw, 18px);
-    transform: translateX(-50%);
     z-index: 4;
     flex-direction: column;
     align-items: center;
@@ -1351,15 +1387,28 @@ body.online-mode .online-chat__send {
 .game-touch-pad .pad-right::before { content: '▶'; }
 
 @media (max-width: 720px) {
-    /* Mini D-pad is always visible on touch screens. */
+    /* Mini D-pad is always visible on touch screens. It flows directly below
+       the canvas so it stays glued to the upper part of the screen and is
+       never clipped off the bottom of the viewport. */
     .game-touch-pad {
         display: flex;
+        margin-top: clamp(8px, 2.5vw, 18px);
     }
 
-    /* Pin the canvas to the top so the D-pad overlay sits in the empty space
-       below it rather than over the game. */
+    /* Pin the canvas to the top so the D-pad sits just beneath it. */
     body.game-mode #game-container {
         justify-content: flex-start;
+    }
+
+    /* Online mode keeps the player list pinned to the bottom and anchors the
+       D-pad as a bottom overlay (beside the chat), so restore the absolute
+       placement there to preserve that layout. */
+    body.online-mode .game-touch-pad {
+        position: absolute;
+        left: 50%;
+        bottom: clamp(8px, 2.5vw, 18px);
+        transform: translateX(-50%);
+        margin-top: 0;
     }
 
     body.online-mode.touch-controls-visible .online-chat {
@@ -1466,6 +1515,10 @@ body.online-mode .online-chat__send {
     border: 4px solid var(--border);
     border-radius: 12px;
     background: var(--panel);
+    /* As a grid item, default min-width:auto would let wide inner content (e.g.
+       a card grid) push the section past its column. Allow it to shrink so it
+       always stays within the left/right column width. */
+    min-width: 0;
 }
 
 .editor-section h3 {
@@ -1481,6 +1534,9 @@ body.online-mode .online-chat__send {
     display: grid;
     gap: 16px;
     background: var(--bg);
+    /* As a grid item inside the section, keep it shrinkable so wide inner
+       content can never push it past the section's column. */
+    min-width: 0;
 }
 
 .editor-section details + details {
@@ -1874,62 +1930,34 @@ textarea {
 .project-actions {
     display: grid;
     gap: 0;
+    min-width: 0;
+}
+
+/* Keep every layer of the project panel shrinkable so a wide control (e.g. the
+   palette preset <select> with long option text) can never force the whole
+   block past its column. */
+.project-tab-panel,
+.project-group,
+.project-variables,
+.project-palette__panel {
+    min-width: 0;
 }
 
 .project-tabs {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
     gap: 4px;
-    padding: 8px 8px 0;
-    border-bottom: 2px solid var(--border);
-    background: linear-gradient(180deg, rgba(20, 26, 36, 0.96), rgba(17, 21, 29, 0.96));
+    padding: 0;
+    margin-bottom: 10px;
+    background: transparent;
 }
 
-.project-tab-button {
-    min-width: 0;
-    min-height: 0;
-    padding: 8px 12px 7px;
-    margin: 0;
-    border: 2px solid var(--border);
-    border-bottom: none;
-    background: #141a24;
-    color: var(--text);
-    cursor: pointer;
-    text-align: center;
-    line-height: var(--lh-text);
-    position: relative;
-    top: 2px;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-wrap: balance;
-}
-
-.project-tab-button.active {
-    background: var(--panel);
-    border-color: var(--accent);
-    color: #fff;
-    z-index: 1;
-}
-
-@media (hover: hover) {
-    .project-tab-button:hover {
-        background: #1b2230;
-        border-color: var(--accent);
-        color: #fff;
-    }
-}
-
-.project-tab-button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    z-index: 2;
-}
+/* .project-tab-button is styled by the unified in-block tab button rule
+   (grouped with the NPC variant and object category buttons) further down. */
 
 .project-tab-panel {
     display: none;
-    margin-top: -2px;
-    padding: 10px 0 0;
-    border-top: 2px solid var(--border);
+    padding: 4px 0 0;
     background: var(--panel);
 }
 
@@ -2976,6 +3004,9 @@ body.game-mode .tab-button.active {
     border-radius: 8px;
     cursor: pointer;
     position: relative;
+    /* Grid item in .npcs-list — keep shrinkable so its text content can wrap
+       instead of overflowing the card's column. */
+    min-width: 0;
 }
 
 
@@ -3016,6 +3047,9 @@ body.game-mode .tab-button.active {
     flex: 1;
     display: grid;
     gap: 8px;
+    /* Allow the text column to shrink so the name wraps/ellipsis inside the
+       card instead of pushing past its right edge. */
+    min-width: 0;
 }
 .tile-name {
     font-weight: var(--fw-medium);
@@ -3146,7 +3180,10 @@ body.game-mode .tab-button.active {
 
 .world-metrics-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    /* minmax(0, 1fr) lets each column shrink below its content so the nowrap
+       labels can ellipsis instead of forcing the metrics box (and the whole
+       World section) wider than its column. */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 3px 12px;
 }
 
@@ -3158,6 +3195,7 @@ body.game-mode .tab-button.active {
     padding: 2px 0;
     border-bottom: 1px solid var(--border);
     cursor: help;
+    min-width: 0;
 }
 
 .world-metric-row:last-child,
@@ -3172,6 +3210,7 @@ body.game-mode .tab-button.active {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .world-metric-value {
@@ -3185,6 +3224,11 @@ body.game-mode .tab-button.active {
 .npc-card .npc-name {
     font-weight: var(--fw-medium);
     color: var(--text);
+    /* Wrap long names (e.g. "Blacksmith") inside the card instead of pushing
+       the card grid wider than its column. break-word keeps whole words intact
+       where they fit, only splitting a word that is itself too long for a line. */
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
 .npc-card .npc-position,
@@ -3209,30 +3253,61 @@ body.game-mode .tab-button.active {
 }
 
 .npc-variant-buttons {
-    display: inline-flex;
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
 }
 
-.npc-variant-button {
+/* ── Unified in-block tab/filter buttons ──────────────────────────────────
+   NPC variant filters, object category filters and project section tabs all
+   act as "tabs" inside their panels. They share one look — matching the main
+   editor tabs (blocky 2px border, accent border + #1f2735 fill when active) —
+   so the whole engine reads as one consistent system. */
+.npc-variant-button,
+.object-category-button,
+.project-tab-button {
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
     padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 0;
+    background: #141a24;
     color: var(--text);
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    text-align: center;
+    line-height: var(--lh-text);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    box-shadow: none;
+    transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
 }
 
-.npc-variant-button:hover,
-.npc-variant-button:focus-visible {
+.npc-variant-button.active,
+.object-category-button.active,
+.project-tab-button.active {
     border-color: var(--accent);
-    outline: none;
+    background: #1f2735;
+    color: #fff;
+    box-shadow: none;
 }
 
-.npc-variant-button.active {
+@media (hover: hover) {
+    .npc-variant-button:hover,
+    .object-category-button:hover,
+    .project-tab-button:hover {
+        border-color: var(--accent);
+        background: #1f2735;
+        color: #fff;
+    }
+}
+
+.npc-variant-button:focus-visible,
+.object-category-button:focus-visible,
+.project-tab-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
     border-color: var(--accent);
-    background: rgba(100, 181, 246, 0.12);
-    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.18);
 }
 
 .object-category-selector {
@@ -3249,28 +3324,7 @@ body.game-mode .tab-button.active {
     gap: 4px;
 }
 
-.object-category-button {
-    padding: 4px 8px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--panel);
-    color: var(--text);
-    cursor: pointer;
-    font-size: var(--engine-font-size);
-    transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.object-category-button:hover,
-.object-category-button:focus-visible {
-    border-color: var(--accent);
-    outline: none;
-}
-
-.object-category-button.active {
-    border-color: var(--accent);
-    background: rgba(100, 181, 246, 0.12);
-    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.18);
-}
+/* .object-category-button shares the unified in-block tab button rule above. */
 
 .npc-editor {
     display: grid;
@@ -3519,7 +3573,11 @@ body.game-mode .tab-button.active {
 
 .tile-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(92px, max-content));
+    /* Fixed 92px tracks that reflow to the available width. The previous
+       `minmax(92px, max-content)` made the grid greedily grow to fit every card
+       at full size, which (combined with the section's default min-width:auto)
+       pushed the whole left column past its 360px cap and overlapped the map. */
+    grid-template-columns: repeat(auto-fill, 92px);
     gap: 8px;
     justify-content: flex-start;
 }
@@ -3542,6 +3600,21 @@ body.game-mode .tab-button.active {
     align-items: flex-start;
     margin-bottom: 12px;
     gap: 12px;
+}
+
+/* The preset dropdown has long option labels ("PICO-8 → Game Boy Green"). A
+   bare <select> refuses to shrink below its widest option, which dragged the
+   whole project block wider than its column. Constrain it to its field. */
+.palette-preset-field {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+}
+
+.palette-preset-field select {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .palette-description {
