@@ -597,12 +597,29 @@ class TinyRPGApplication {
     document.addEventListener('game-tab-activated', scheduleResize);
     document.addEventListener('fullscreenchange', scheduleResize);
 
+    // The boot rAF below can fire before the layout has fully settled (pixel font
+    // reflow, the chrome the canvas must fit around). When it measures too early,
+    // availableHeight collapses to its floor and the canvas locks in tiny until
+    // the next event. Re-fit once boot completes — it is dispatched only after the
+    // fonts, bitmap sheet and styles are ready, so the layout is final by then.
+    document.addEventListener('boot-finished', scheduleResize);
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(scheduleResize).catch(() => undefined);
+    }
+
     // Re-fit when layout-affecting body classes change — switching between
     // game/editor mode and toggling the mobile touch controls both alter the
     // chrome that surrounds the canvas.
     if (typeof MutationObserver === 'function') {
       const observer = new MutationObserver(scheduleResize);
       observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }
+
+    // Self-correct against any later layout shift of the container itself, so the
+    // canvas never stays mis-sized waiting for a resize/tab event that may not come.
+    if (typeof ResizeObserver === 'function') {
+      const resizeObserver = new ResizeObserver(scheduleResize);
+      resizeObserver.observe(gameContainer);
     }
 
     scheduleResize();

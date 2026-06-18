@@ -761,6 +761,18 @@ describe('TinyRPGApplication.setupResponsiveCanvas', () => {
 
     expect(globalThis.requestAnimationFrame).toHaveBeenCalled();
   });
+
+  it('re-fits the canvas once boot finishes, after the layout has settled', () => {
+    TinyRPGApplication.setupResponsiveCanvas();
+    const raf = globalThis.requestAnimationFrame as unknown as ReturnType<typeof vi.fn>;
+    const callsAfterSetup = raf.mock.calls.length;
+
+    // boot-finished is dispatched only after fonts/styles are ready, so a re-fit
+    // here corrects a too-early boot-time measurement (the tiny-canvas regression).
+    document.dispatchEvent(new CustomEvent('boot-finished'));
+
+    expect(raf.mock.calls.length).toBeGreaterThan(callsAfterSetup);
+  });
 });
 
 describe('TinyRPGApplication.setupTabs extra branches', () => {
