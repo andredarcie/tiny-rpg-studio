@@ -70,6 +70,7 @@ vi.mock('../../runtime/adapters/renderer/RendererEntityRenderer', () => ({
 vi.mock('../../runtime/adapters/renderer/RendererDialogRenderer', () => ({
   RendererDialogRenderer: class {
     drawDialog() {}
+    setViewportOffset() {}
   },
 }));
 

@@ -301,6 +301,29 @@ class ShareDecoder {
         const npcConditionalRewardIndexes = version >= ShareConstants.NPC_CONDITIONAL_REWARD_VERSION
             ? decodeVarRef(payload.h, npcPositions.length)
             : [];
+        type ChoiceDialogEntry = { p?: string; y?: string; n?: string; yv?: string | null; nv?: string | null };
+        let npcChoiceMap: Record<string, ChoiceDialogEntry | undefined> = {};
+        if (version >= ShareConstants.NPC_CHOICE_DIALOG_VERSION && payload['9']) {
+            try {
+                const parsed = JSON.parse(ShareTextCodec.decodeText(payload['9'], '')) as unknown;
+                if (parsed && typeof parsed === 'object') {
+                    npcChoiceMap = parsed as Record<string, ChoiceDialogEntry>;
+                }
+            } catch {
+                npcChoiceMap = {};
+            }
+        }
+        const buildChoiceFields = (index: number) => {
+            const choice = npcChoiceMap[String(index)];
+            return {
+                choiceEnabled: Boolean(choice),
+                choicePrompt: choice?.p ?? '',
+                choiceYesText: choice?.y ?? '',
+                choiceNoText: choice?.n ?? '',
+                choiceYesVariableId: choice?.yv ?? null,
+                choiceNoVariableId: choice?.nv ?? null
+            };
+        };
         const enemyPositions = SharePositionCodec.decodePositions(payload.e || '');
         const enemyTypeIndexes = version >= ShareConstants.ENEMY_TYPE_VERSION
             ? SharePositionCodec.decodeEnemyTypeIndexes(payload.f || '', enemyPositions.length)
@@ -442,7 +465,8 @@ class ShareDecoder {
                     conditionVariableId,
                     conditionText: npcConditionalTexts[index] ?? '',
                     rewardVariableId,
-                    conditionalRewardVariableId
+                    conditionalRewardVariableId,
+                    ...buildChoiceFields(index)
                 });
             }
         } else {
@@ -462,7 +486,8 @@ class ShareDecoder {
                     conditionVariableId,
                     conditionText: npcConditionalTexts[index] ?? '',
                     rewardVariableId,
-                    conditionalRewardVariableId
+                    conditionalRewardVariableId,
+                    ...buildChoiceFields(index)
                 });
             }
         }

@@ -337,6 +337,25 @@ class ShareEncoder {
             if (conditionCode) parts.push('c' + conditionCode);
             if (rewardCode) parts.push('r' + rewardCode);
             if (conditionalRewardCode) parts.push('h' + conditionalRewardCode);
+
+            // Choice dialog (prompt + Yes/No branches) — sparse JSON map keyed by sprite index.
+            // Single payload key '9' because almost every 1-char key is already taken; this
+            // follows the same JSON-blob pattern as `online` ('8') and skillCustomizations ('C').
+            const choiceMap: Record<number, { p: string; y: string; n: string; yv: string | null; nv: string | null }> = {};
+            sprites.forEach((npc, index) => {
+                if (npc.choiceEnabled) {
+                    choiceMap[index] = {
+                        p: typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '',
+                        y: typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '',
+                        n: typeof npc.choiceNoText === 'string' ? npc.choiceNoText : '',
+                        yv: npc.choiceYesVariableId ?? null,
+                        nv: npc.choiceNoVariableId ?? null
+                    };
+                }
+            });
+            if (Object.keys(choiceMap).length) {
+                parts.push('9' + ShareTextCodec.encodeText(JSON.stringify(choiceMap)));
+            }
         }
 
         if (enemies.length) {

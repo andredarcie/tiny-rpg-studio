@@ -84,6 +84,12 @@ export class GameEngine {
     this.npcManager.ensureDefaultNPCs();
     this.renderer = performanceProfiler.time('boot.rendererCtor', () =>
       new Renderer(canvas, this.gameState as never, this.tileManager, this.npcManager as never, this));
+    // Tapping/clicking an HTML option row selects and confirms it.
+    this.renderer.dialogRenderer.setChoiceHandler((index: number) => {
+      this.gameState.setChoiceSelection(index);
+      this.dialogManager.confirmChoiceSelection();
+      this.renderer.draw();
+    });
     this.dialogManager = new DialogManager(this.gameState as never, this.renderer);
     this.interactionManager = new InteractionManager(this.gameState as never, this.dialogManager, {
       onPlayerVictory: () => this.handleGameCompletion(),
@@ -186,16 +192,47 @@ export class GameEngine {
     const dialog = this.gameState.getDialog();
     if (!dialog.active) return;
     const dialogRenderer = this.renderer.dialogRenderer;
+    // First confirm finishes the typewriter on the current page.
     if (!dialogRenderer.isRevealComplete()) {
       dialogRenderer.skipReveal();
       return;
     }
-    if (dialog.page >= dialog.maxPages) {
-      this.closeDialog();
-    } else {
+    // Then advance through the message pages before acting on the dialog.
+    if (dialog.page < dialog.maxPages) {
       this.gameState.setDialogPage(dialog.page + 1);
       this.renderer.draw();
+      return;
     }
+    const choice = dialog.choice;
+    if (choice && choice.phase !== 'branch') {
+      // On the last page the Yes/No options are shown; confirm the highlighted one
+      // (a branch message, if any, follows).
+      this.dialogManager.confirmChoiceSelection();
+      this.renderer.draw();
+      return;
+    }
+    this.closeDialog();
+  }
+
+  /** Moves the Yes/No cursor while a choice dialog is showing its options. */
+  moveDialogChoice(direction: number): void {
+    const dialog = this.gameState.getDialog();
+    if (!dialog.active) return;
+    const choice = dialog.choice;
+    if (!choice || choice.phase === 'branch') return;
+    const next = choice.selectedIndex + (direction < 0 ? -1 : 1);
+    this.gameState.setChoiceSelection(next);
+    this.renderer.draw();
+  }
+
+  /**
+   * Pointer (touch/click) handling for an open dialog. The HTML option rows handle
+   * their own taps (select + confirm); any other tap on an open dialog advances it
+   * (confirming the highlighted option for a choice, or closing a simple dialog).
+   */
+  handleDialogPointer(): void {
+    if (!this.gameState.getDialog().active) return;
+    this.advanceDialog();
   }
 
   isPickupOverlayActive(): boolean {

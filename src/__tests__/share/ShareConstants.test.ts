@@ -4,9 +4,14 @@ import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
 
 describe('ShareConstants', () => {
   it('exposes current version and world metadata', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_33);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_34);
     expect(ShareConstants.WORLD_ROOM_COUNT).toBe(9);
     expect(ShareConstants.MATRIX_SIZE).toBe(8);
+  });
+
+  it('registers the choice-dialog version as supported', () => {
+    expect(ShareConstants.NPC_CHOICE_DIALOG_VERSION).toBe(ShareConstants.VERSION_34);
+    expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_34)).toBe(true);
   });
 
   it('exposes legacy/tier constants and returns a palette copy', () => {

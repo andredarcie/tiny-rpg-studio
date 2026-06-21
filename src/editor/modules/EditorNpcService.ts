@@ -16,6 +16,12 @@ type SpriteInstance = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    choiceEnabled?: boolean;
+    choicePrompt?: string | null;
+    choiceYesText?: string | null;
+    choiceNoText?: string | null;
+    choiceYesVariableId?: string | null;
+    choiceNoVariableId?: string | null;
 };
 
 class EditorNpcService {
@@ -292,6 +298,74 @@ class EditorNpcService {
         const npc = sprites.find((entry: SpriteInstance) => entry.id === this.state.selectedNpcId);
         if (!npc) return;
         npc.conditionalRewardVariableId = variableId || null;
+        this.manager.renderService.renderNpcs();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+    }
+
+    private getSelectedNpc(): SpriteInstance | null {
+        if (!this.state.selectedNpcId) return null;
+        const sprites = this.gameEngine.getSprites() as SpriteInstance[];
+        return sprites.find((entry: SpriteInstance) => entry.id === this.state.selectedNpcId) || null;
+    }
+
+    toggleChoiceEnabled(enabled: boolean) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        // Only flip the in-game flag; the prompt/branches/variables are kept so the
+        // author can re-enable the choice later without losing what they wrote.
+        npc.choiceEnabled = enabled;
+        this.manager.renderService.renderNpcs();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+    }
+
+    updateNpcChoicePrompt(text: string) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        npc.choicePrompt = text;
+        this.manager.renderService.renderNpcs();
+        this.manager.updateJSON();
+        this.scheduleNpcTextUpdate();
+    }
+
+    updateNpcChoiceYesText(text: string) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        npc.choiceYesText = text;
+        this.manager.renderService.renderNpcs();
+        this.manager.updateJSON();
+        this.scheduleNpcTextUpdate();
+    }
+
+    updateNpcChoiceNoText(text: string) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        npc.choiceNoText = text;
+        this.manager.renderService.renderNpcs();
+        this.manager.updateJSON();
+        this.scheduleNpcTextUpdate();
+    }
+
+    handleChoiceYesVariableChange(variableId: string) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        npc.choiceYesVariableId = variableId || null;
+        this.manager.renderService.renderNpcs();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+    }
+
+    handleChoiceNoVariableChange(variableId: string) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        npc.choiceNoVariableId = variableId || null;
         this.manager.renderService.renderNpcs();
         this.manager.renderService.renderWorldGrid();
         this.manager.renderService.renderEditor();

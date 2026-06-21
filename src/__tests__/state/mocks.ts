@@ -23,6 +23,7 @@ const baseRuntimeState: RuntimeState = {
     },
     dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null },
     npcDialogReadState: {},
+    npcChoiceAnswered: {},
     enemies: [],
     variables: [],
     gameOver: false,

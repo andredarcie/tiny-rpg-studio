@@ -23,6 +23,8 @@ type GameEngineApi = {
   tryMove: (dx: number, dy: number) => void;
   closeDialog: () => void;
   advanceDialog: () => void;
+  moveDialogChoice?: (direction: number) => void;
+  handleDialogPointer?: (clientX: number, clientY: number) => void;
   isEditorModeActive?: () => boolean;
   isGameOver?: () => boolean;
   handleGameOverInteraction?: () => void;
@@ -108,7 +110,7 @@ class InputManager {
     }
     const dialog = this.gameEngine.gameState.getDialog();
 
-    // When a dialog is open, only allow confirmation keys to handle it
+    // When a dialog is open, only allow confirmation/selection keys to handle it.
     if (dialog.active) {
       switch (ev.key.toLowerCase()) {
         case 'z':
@@ -116,6 +118,22 @@ class InputManager {
         case ' ':
           ev.preventDefault();
           this.gameEngine.advanceDialog();
+          break;
+        // Yes/No navigation during a choice dialog (no-op otherwise). The buttons
+        // sit side by side, so either axis moves between them.
+        case 'arrowup':
+        case 'w':
+        case 'arrowleft':
+        case 'a':
+          ev.preventDefault();
+          this.gameEngine.moveDialogChoice?.(-1);
+          break;
+        case 'arrowdown':
+        case 's':
+        case 'arrowright':
+        case 'd':
+          ev.preventDefault();
+          this.gameEngine.moveDialogChoice?.(1);
           break;
       }
       return;
@@ -192,7 +210,13 @@ class InputManager {
     const dialog = this.gameEngine.gameState.getDialog();
     if (dialog.active) {
       ev.preventDefault();
-      this.gameEngine.advanceDialog();
+      const dialogTouch = ev.changedTouches.item(0);
+      if (dialogTouch && this.gameEngine.handleDialogPointer) {
+        // Routes to the tapped Yes/No option while selecting; advances otherwise.
+        this.gameEngine.handleDialogPointer(dialogTouch.clientX, dialogTouch.clientY);
+      } else {
+        this.gameEngine.advanceDialog();
+      }
       this.touchStart = null;
       return;
     }

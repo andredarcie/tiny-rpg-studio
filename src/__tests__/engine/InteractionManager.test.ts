@@ -107,6 +107,72 @@ describe('InteractionManager', () => {
     });
   });
 
+  it('shows the default dialog first, then queues the Yes/No question', () => {
+    const gameState = createInteractionGameState();
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [],
+      exits: [],
+      rooms: [],
+      sprites: [{
+        id: 'npc-1',
+        placed: true,
+        roomIndex: 0,
+        x: 2,
+        y: 3,
+        text: 'Hello there',
+        choiceEnabled: true,
+        choicePrompt: 'Aceita?',
+        choiceYesText: 'Boa!',
+        choiceNoText: '',
+        choiceYesVariableId: 'var-3',
+        choiceNoVariableId: null,
+      }],
+    });
+    const dm = { showDialog: vi.fn(), showChoiceDialog: vi.fn(), setNextDialog: vi.fn() };
+    const manager = new InteractionManager(gameState, dm);
+
+    manager.handlePlayerInteractions();
+
+    // Default dialog shown first; the choice is NOT shown yet, only queued.
+    expect(dm.showDialog).toHaveBeenCalledWith('Hello there', expect.objectContaining({ npcId: 'npc-1' }));
+    expect(dm.showChoiceDialog).not.toHaveBeenCalled();
+    expect(dm.setNextDialog).toHaveBeenCalledTimes(1);
+
+    // Running the queued follow-up opens the choice question.
+    const followUp = dm.setNextDialog.mock.calls[0][0] as () => void;
+    followUp();
+
+    expect(dm.showChoiceDialog).toHaveBeenCalledTimes(1);
+    const call = dm.showChoiceDialog.mock.calls[0] as [string, Array<Record<string, unknown>>, Record<string, unknown>];
+    expect(call[0]).toBe('Aceita?');
+    expect(call[1][0]).toMatchObject({ key: 'yes', text: 'Boa!', rewardVariableId: 'var-3' });
+    expect(call[1][1]).toMatchObject({ key: 'no', text: '', rewardVariableId: null });
+    expect(call[2]).toMatchObject({ npcId: 'npc-1', npcDialogVariantKey: 'choice:Aceita?' });
+  });
+
+  it('opens the choice directly when there is no default dialog text', () => {
+    const gameState = createInteractionGameState();
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [],
+      exits: [],
+      rooms: [],
+      sprites: [{
+        id: 'npc-1', placed: true, roomIndex: 0, x: 2, y: 3, text: '',
+        choiceEnabled: true, choicePrompt: 'Aceita?', choiceYesText: 'Boa!', choiceNoText: 'Que pena',
+      }],
+    });
+    const dm = { showDialog: vi.fn(), showChoiceDialog: vi.fn(), setNextDialog: vi.fn() };
+    const manager = new InteractionManager(gameState, dm);
+
+    manager.handlePlayerInteractions();
+
+    expect(dm.showDialog).not.toHaveBeenCalled();
+    expect(dm.showChoiceDialog).toHaveBeenCalledTimes(1);
+    expect(dm.showChoiceDialog.mock.calls[0][0]).toBe('Aceita?');
+  });
+
   it('uses bard condition as the effective unread dialog variant', () => {
     const gameState = createInteractionGameState();
     (gameState.hasSkill as ReturnType<typeof vi.fn>).mockImplementation((skillId: string) => skillId === 'charisma');

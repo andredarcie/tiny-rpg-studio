@@ -24,16 +24,28 @@ type EditorNpc = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    choiceEnabled?: boolean;
+    choicePrompt?: string | null;
+    choiceYesText?: string | null;
+    choiceNoText?: string | null;
+    choiceYesVariableId?: string | null;
+    choiceNoVariableId?: string | null;
 };
 
 class NpcEditModal extends EditorRendererBase {
     private currentNpcId: string | null = null;
     private conditionalExpanded = false;
+    private choiceExpanded = false;
     private readonly modal: EditorModal;
 
     constructor(service: EditorRenderService) {
         super(service);
         this.modal = new EditorModal(() => this.dom.npcEditModal);
+        // Rebuild the open modal when the language changes so its variable selects
+        // (and labels) follow the new locale instead of keeping the old names.
+        if (typeof document !== 'undefined') {
+            document.addEventListener('language-changed', () => this.refresh());
+        }
     }
 
     open(npcId: string): void {
@@ -47,6 +59,9 @@ class NpcEditModal extends EditorRendererBase {
         this.conditionalExpanded = Boolean(
             npc.conditionText || npc.conditionVariableId || npc.conditionalRewardVariableId
         );
+        // The choice section tracks the active flag, not its content: hiding it
+        // disables the choice in-game but keeps the text/variables for later.
+        this.choiceExpanded = Boolean(npc.choiceEnabled);
 
         const def = this.getDefinition(npc);
 
@@ -148,7 +163,125 @@ class NpcEditModal extends EditorRendererBase {
         body.appendChild(toggleBtn);
         body.appendChild(conditionalSection);
 
+        // Choice dialog section (optional, mutually independent from the conditional one).
+        const choiceSection = document.createElement('div');
+        choiceSection.className = 'npc-choice-section';
+        choiceSection.hidden = !this.choiceExpanded;
+        this.buildChoiceSection(npc, choiceSection);
+
+        const choiceToggleBtn = document.createElement('button');
+        choiceToggleBtn.type = 'button';
+        choiceToggleBtn.className = 'btn-secondary npc-edit-modal__toggle';
+        choiceToggleBtn.textContent = this.choiceExpanded
+            ? this.t('npc.choice.hideButton', 'Remover diálogo de escolhas')
+            : this.t('npc.choice.createButton', 'Criar diálogo de escolhas');
+        choiceToggleBtn.setAttribute('aria-expanded', String(this.choiceExpanded));
+        choiceToggleBtn.addEventListener('click', () => {
+            this.choiceExpanded = !this.choiceExpanded;
+            choiceSection.hidden = !this.choiceExpanded;
+            choiceToggleBtn.textContent = this.choiceExpanded
+                ? this.t('npc.choice.hideButton', 'Ocultar diálogo de escolhas')
+                : this.t('npc.choice.createButton', 'Criar diálogo de escolhas');
+            choiceToggleBtn.setAttribute('aria-expanded', String(this.choiceExpanded));
+            // Toggle the in-game flag without rebuilding the modal, so the content
+            // (prompt, branches, variables) is preserved if the author reopens it.
+            this.manager.npcService.toggleChoiceEnabled(this.choiceExpanded);
+        });
+
+        body.appendChild(choiceToggleBtn);
+        body.appendChild(choiceSection);
+
         return body;
+    }
+
+    private buildChoiceSection(npc: EditorNpc, container: HTMLElement): void {
+        // Prompt (the question shown to the player above the Yes/No options).
+        const promptLabel = document.createElement('label');
+        promptLabel.className = 'object-config-label npc-choice-prompt';
+        promptLabel.textContent = this.t('npc.choice.promptLabel', 'Pergunta');
+
+        const promptTextarea = document.createElement('textarea');
+        promptTextarea.className = 'object-config-textarea';
+        promptTextarea.rows = 2;
+        promptTextarea.value = npc.choicePrompt || '';
+        promptTextarea.placeholder = this.t('npc.choice.promptPlaceholder', '');
+        promptTextarea.addEventListener('input', () => {
+            this.manager.npcService.updateNpcChoicePrompt(promptTextarea.value);
+        });
+        promptLabel.appendChild(promptTextarea);
+        container.appendChild(promptLabel);
+
+        // Each branch is its own colour-coded card: green = "Yes", red = "No".
+        container.appendChild(this.buildChoiceBranch({
+            kind: 'yes',
+            title: this.t('npc.choice.yesTitle', 'Se escolher "Sim"'),
+            messageLabel: this.t('npc.choice.messageLabel', 'Resposta'),
+            messageValue: npc.choiceYesText || '',
+            messagePlaceholder: this.t('npc.choice.yesPlaceholder', ''),
+            rewardLabel: this.t('npc.choice.branchRewardLabel', 'Ativar variável'),
+            rewardValue: npc.choiceYesVariableId || '',
+            onMessage: (value) => this.manager.npcService.updateNpcChoiceYesText(value),
+            onReward: (value) => this.manager.npcService.handleChoiceYesVariableChange(value),
+        }));
+
+        container.appendChild(this.buildChoiceBranch({
+            kind: 'no',
+            title: this.t('npc.choice.noTitle', 'Se escolher "Não"'),
+            messageLabel: this.t('npc.choice.messageLabel', 'Resposta'),
+            messageValue: npc.choiceNoText || '',
+            messagePlaceholder: this.t('npc.choice.noPlaceholder', ''),
+            rewardLabel: this.t('npc.choice.branchRewardLabel', 'Ativar variável'),
+            rewardValue: npc.choiceNoVariableId || '',
+            onMessage: (value) => this.manager.npcService.updateNpcChoiceNoText(value),
+            onReward: (value) => this.manager.npcService.handleChoiceNoVariableChange(value),
+        }));
+    }
+
+    private buildChoiceBranch(opts: {
+        kind: 'yes' | 'no';
+        title: string;
+        messageLabel: string;
+        messageValue: string;
+        messagePlaceholder: string;
+        rewardLabel: string;
+        rewardValue: string;
+        onMessage: (value: string) => void;
+        onReward: (value: string) => void;
+    }): HTMLElement {
+        const branch = document.createElement('div');
+        branch.className = `npc-choice-branch npc-choice-branch--${opts.kind}`;
+
+        const title = document.createElement('div');
+        title.className = 'npc-choice-branch__title';
+        title.textContent = opts.title;
+        branch.appendChild(title);
+
+        const messageLabel = document.createElement('label');
+        messageLabel.className = 'object-config-label';
+        messageLabel.textContent = opts.messageLabel;
+        const textarea = document.createElement('textarea');
+        textarea.className = 'object-config-textarea';
+        textarea.rows = 2;
+        textarea.value = opts.messageValue;
+        textarea.placeholder = opts.messagePlaceholder;
+        textarea.addEventListener('input', () => opts.onMessage(textarea.value));
+        messageLabel.appendChild(textarea);
+        branch.appendChild(messageLabel);
+
+        const rewardLabel = document.createElement('label');
+        rewardLabel.className = 'object-config-label';
+        rewardLabel.textContent = opts.rewardLabel;
+        const select = document.createElement('select');
+        select.className = 'object-config-select';
+        this.manager.npcService.populateVariableSelect(select, opts.rewardValue);
+        select.addEventListener('change', () => {
+            opts.onReward(select.value);
+            this.refresh();
+        });
+        rewardLabel.appendChild(select);
+        branch.appendChild(rewardLabel);
+
+        return branch;
     }
 
     private buildConditionalSection(npc: EditorNpc, container: HTMLElement): void {

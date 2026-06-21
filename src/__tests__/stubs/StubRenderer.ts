@@ -17,6 +17,14 @@ export class StubRenderer {
     getLevelUpCardLayout: () => ({ rects: this.overlayRects })
   }
 
+  dialogRenderer = {
+    setChoiceHandler: vi.fn(),
+    setViewportOffset: vi.fn(),
+    isRevealComplete: vi.fn(() => true),
+    skipReveal: vi.fn(),
+    pickChoiceFromPointer: vi.fn(() => null)
+  }
+
   constructor(
     _canvas: HTMLCanvasElement,
     _state: StubGameState,

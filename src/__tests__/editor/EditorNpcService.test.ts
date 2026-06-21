@@ -18,6 +18,12 @@ type TestNpcSprite = {
   conditionVariableId?: string | null;
   rewardVariableId?: string | null;
   conditionalRewardVariableId?: string | null;
+  choiceEnabled?: boolean;
+  choicePrompt?: string | null;
+  choiceYesText?: string | null;
+  choiceNoText?: string | null;
+  choiceYesVariableId?: string | null;
+  choiceNoVariableId?: string | null;
 };
 
 type CreatedNpc = {
@@ -162,6 +168,15 @@ describe('handleRewardVariableChange', () => {
 describe('handleConditionalRewardVariableChange', () => {
   it('sets conditionalRewardVariableId', () => { const npc={id:'npc-1',conditionalRewardVariableId:null}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.handleConditionalRewardVariableChange('var-1'); expect(npc.conditionalRewardVariableId).toBe('var-1'); expect(manager.renderService.renderNpcs).toHaveBeenCalled(); expect(manager.history.pushCurrentState).toHaveBeenCalled(); });
   it('sets to null on empty string', () => { const npc={id:'npc-1',conditionalRewardVariableId:'old'}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.handleConditionalRewardVariableChange(''); expect(npc.conditionalRewardVariableId).toBeNull(); });
+});
+
+describe('choice dialog handlers', () => {
+  it('toggleChoiceEnabled flips the flag and pushes history', () => { const npc={id:'npc-1',choiceEnabled:false}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.toggleChoiceEnabled(true); expect(npc.choiceEnabled).toBe(true); expect(manager.renderService.renderNpcs).toHaveBeenCalled(); expect(manager.updateJSON).toHaveBeenCalled(); expect(manager.history.pushCurrentState).toHaveBeenCalled(); });
+  it('updateNpcChoicePrompt sets the prompt', () => { const npc={id:'npc-1',choicePrompt:''}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.updateNpcChoicePrompt('Accept?'); expect(npc.choicePrompt).toBe('Accept?'); expect(manager.updateJSON).toHaveBeenCalled(); });
+  it('updateNpcChoiceYesText / NoText set the branch messages', () => { const npc={id:'npc-1',choiceYesText:'',choiceNoText:''}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.updateNpcChoiceYesText('Yay'); service.updateNpcChoiceNoText('Nope'); expect(npc.choiceYesText).toBe('Yay'); expect(npc.choiceNoText).toBe('Nope'); });
+  it('handleChoiceYesVariableChange sets and clears the branch variable', () => { const npc={id:'npc-1',choiceYesVariableId:null}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.handleChoiceYesVariableChange('var-2'); expect(npc.choiceYesVariableId).toBe('var-2'); service.handleChoiceYesVariableChange(''); expect(npc.choiceYesVariableId).toBeNull(); });
+  it('handleChoiceNoVariableChange sets the branch variable', () => { const npc={id:'npc-1',choiceNoVariableId:null}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.handleChoiceNoVariableChange('var-1'); expect(npc.choiceNoVariableId).toBe('var-1'); expect(manager.history.pushCurrentState).toHaveBeenCalled(); });
+  it('returns early when no NPC is selected', () => { const {service,manager} = makeService({selectedNpcId:null}); service.toggleChoiceEnabled(true); expect(manager.renderService.renderNpcs).not.toHaveBeenCalled(); });
 });
 
 describe('setVariantFilter', () => {

@@ -34,6 +34,12 @@ type NPCInstance = {
     conditionText: string;
     rewardVariableId: string | null;
     conditionalRewardVariableId: string | null;
+    choiceEnabled: boolean;
+    choicePrompt: string;
+    choiceYesText: string;
+    choiceNoText: string;
+    choiceYesVariableId: string | null;
+    choiceNoVariableId: string | null;
 };
 
 type NPCInput = {
@@ -59,6 +65,12 @@ type NPCInput = {
     onCompleteVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
     alternativeRewardVariableId?: string | null;
+    choiceEnabled?: boolean;
+    choicePrompt?: string;
+    choiceYesText?: string;
+    choiceNoText?: string;
+    choiceYesVariableId?: string | null;
+    choiceNoVariableId?: string | null;
     [key: string]: unknown;
 };
 
@@ -240,6 +252,12 @@ class NPCManager {
         const conditionText = typeof rawConditionText === 'string' ? rawConditionText : '';
         const rewardVariableId = this.gameState.normalizeVariableId(rawRewardId);
         const conditionalRewardVariableId = this.gameState.normalizeVariableId(rawConditionalRewardId);
+        const choiceEnabled = npc.choiceEnabled === true;
+        const choicePrompt = typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '';
+        const choiceYesText = typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '';
+        const choiceNoText = typeof npc.choiceNoText === 'string' ? npc.choiceNoText : '';
+        const choiceYesVariableId = this.gameState.normalizeVariableId(npc.choiceYesVariableId ?? null);
+        const choiceNoVariableId = this.gameState.normalizeVariableId(npc.choiceNoVariableId ?? null);
 
         return {
             id,
@@ -257,7 +275,13 @@ class NPCManager {
             conditionVariableId,
             conditionText,
             rewardVariableId,
-            conditionalRewardVariableId
+            conditionalRewardVariableId,
+            choiceEnabled,
+            choicePrompt,
+            choiceYesText,
+            choiceNoText,
+            choiceYesVariableId,
+            choiceNoVariableId
         };
     }
 
@@ -279,7 +303,13 @@ class NPCManager {
             conditionVariableId: null,
             conditionText: '',
             rewardVariableId: null,
-            conditionalRewardVariableId: null
+            conditionalRewardVariableId: null,
+            choiceEnabled: false,
+            choicePrompt: '',
+            choiceYesText: '',
+            choiceNoText: '',
+            choiceYesVariableId: null,
+            choiceNoVariableId: null
         };
     }
 

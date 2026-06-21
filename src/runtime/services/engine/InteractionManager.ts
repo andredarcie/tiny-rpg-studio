@@ -2,10 +2,13 @@ import { ITEM_TYPES, type ItemType } from '../../domain/constants/itemTypes';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
-import { resolveNpcDialog } from './resolveNpcDialog';
+import { resolveChoiceDialog, resolveNpcDialog, type ResolvedNpcDialog } from './resolveNpcDialog';
+import type { DialogChoiceOption } from '../../../types/gameState';
 
 type DialogManagerApi = {
   showDialog: (text: string, meta?: Record<string, unknown>) => void;
+  showChoiceDialog?: (prompt: string, options: DialogChoiceOption[], meta?: Record<string, unknown>) => void;
+  setNextDialog?: (open: (() => void) | null) => void;
 };
 
 type PlayerPosition = {
@@ -51,6 +54,12 @@ type NpcState = {
   conditionVariableId?: string | null;
   rewardVariableId?: string | null;
   conditionalRewardVariableId?: string | null;
+  choiceEnabled?: boolean;
+  choicePrompt?: string;
+  choiceYesText?: string;
+  choiceNoText?: string;
+  choiceYesVariableId?: string | null;
+  choiceNoVariableId?: string | null;
 };
 
 type ExitState = {
@@ -537,15 +546,68 @@ class InteractionManager {
       if (!npc.placed) continue;
       const sameTile = npc.roomIndex === player.roomIndex && npc.x === player.x && npc.y === player.y;
       if (!sameTile) continue;
-
-      const resolvedDialog = resolveNpcDialog(npc, this.gameState);
-      if (!resolvedDialog.hasDialog) continue;
-
-      const dialogText = resolvedDialog.text;
-      const meta = this.getNpcDialogMeta(npc);
-      this.dialogManager.showDialog(dialogText, meta);
-      break;
+      if (this.openNpcDialog(npc)) break;
     }
+  }
+
+  /**
+   * Opens the NPC's dialog sequence: the default dialog first, and only then the
+   * Yes/No choice question (when one is configured and available). Shared by the
+   * same-tile check and the movement "bump into NPC" path (MovementManager) so
+   * both entry points behave identically. Returns true when something was shown.
+   */
+  openNpcDialog(npc: NpcState): boolean {
+    const simple = resolveNpcDialog(npc, this.gameState);
+    const choice = resolveChoiceDialog(npc, this.gameState);
+    const showChoice = choice && choice.choices && this.dialogManager.showChoiceDialog
+      ? () => this.dialogManager.showChoiceDialog?.(
+          choice.text,
+          this.buildChoiceOptions(choice),
+          this.buildChoiceMeta(npc, choice),
+        )
+      : null;
+
+    if (simple.hasDialog) {
+      this.dialogManager.showDialog(simple.text, this.getNpcDialogMeta(npc));
+      // The question is queued to open right after the default dialog closes.
+      this.dialogManager.setNextDialog?.(showChoice);
+      return true;
+    }
+    if (showChoice) {
+      showChoice();
+      return true;
+    }
+    return false;
+  }
+
+  private buildChoiceOptions(choice: ResolvedNpcDialog): DialogChoiceOption[] {
+    const branches = choice.choices;
+    if (!branches) return [];
+    return [
+      {
+        key: 'yes',
+        label: this.getInteractionText('dialog.choice.yes', 'Sim'),
+        text: branches.yes.text,
+        rewardVariableId: branches.yes.rewardVariableId,
+      },
+      {
+        key: 'no',
+        label: this.getInteractionText('dialog.choice.no', 'Não'),
+        text: branches.no.text,
+        rewardVariableId: branches.no.rewardVariableId,
+      },
+    ];
+  }
+
+  private buildChoiceMeta(npc: NpcState, choice: ResolvedNpcDialog): Record<string, unknown> {
+    const meta: Record<string, unknown> = {};
+    if (typeof npc.id === 'string' && npc.id.trim()) {
+      meta.npcId = npc.id;
+    }
+    if (choice.variantKey) {
+      meta.npcDialogVariantKey = choice.variantKey;
+    }
+    return meta;
   }
 
   getNpcDialogText(npc: NpcState): string {

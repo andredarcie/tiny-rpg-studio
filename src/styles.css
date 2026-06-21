@@ -38,6 +38,33 @@
     box-sizing: border-box;
 }
 
+/* Themed scrollbars (engine palette) instead of the OS default, so large modals
+   and panels keep the dark theme on the scroll track/thumb. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 8px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
 html,
 body {
     height: 100%;
@@ -791,6 +818,50 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     /* JS (setupResponsiveCanvas) sets the real display size; it is centered in
        the container, so no top margin is needed. */
     margin-top: 0;
+}
+
+/* Dialog text is rendered as an HTML overlay (RendererDialogRenderer) so the pixel
+   font stays crisp at any device pixel ratio. Position/size/colors/font-size are
+   set inline by JS to track the canvas; this rule only handles layout + spacing. */
+.game-dialog-overlay {
+    z-index: 6;
+}
+
+/* Container (positioned by JS): the message box, with the Yes/No buttons below. */
+.game-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    image-rendering: auto;
+}
+
+.game-dialog-box {
+    box-sizing: border-box;
+    padding: 0.75em 0.85em;
+    text-align: left;
+    line-height: 1.3;
+}
+
+.game-dialog-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.game-dialog-buttons {
+    display: flex;
+    gap: 0.5em;
+}
+
+/* Large, finger-friendly Yes/No buttons styled like the dialog box. */
+.game-dialog-button {
+    flex: 1 1 0;
+    box-sizing: border-box;
+    padding: 0.55em 0.5em;
+    font: inherit;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
 }
 
 #editor-canvas {
@@ -1870,6 +1941,60 @@ textarea {
 }
 .npc-conditional-section[hidden] {
     display: none;
+}
+
+/* Choice-dialog editor section: prompt + two colour-coded branch cards. */
+.npc-choice-section {
+    display: grid;
+    gap: 12px;
+}
+.npc-choice-section[hidden] {
+    display: none;
+}
+.npc-choice-prompt {
+    margin-bottom: 2px;
+}
+.npc-choice-branch {
+    display: grid;
+    gap: 8px;
+    padding: 10px 12px 12px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background: rgba(255, 255, 255, 0.03);
+}
+.npc-choice-branch--yes {
+    border-color: #00b06b;
+    background: rgba(0, 176, 107, 0.08);
+}
+.npc-choice-branch--no {
+    border-color: #e0405a;
+    background: rgba(224, 64, 90, 0.08);
+}
+.npc-choice-branch__title {
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    margin-bottom: 2px;
+}
+.npc-choice-branch--yes .npc-choice-branch__title {
+    color: #2ee29a;
+}
+.npc-choice-branch--no .npc-choice-branch__title {
+    color: #ff7d92;
+}
+
+/* "About" button relocated into the Project > Info panel. */
+.project-about-button {
+    margin-top: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.05);
+    color: inherit;
+    cursor: pointer;
+}
+.project-about-button:hover {
+    background: rgba(255, 255, 255, 0.12);
 }
 .npc-conditional-toggle {
     margin: 8px 0;
@@ -4068,8 +4193,11 @@ body.game-mode .tab-button.active {
 }
 
 .npc-edit-modal__toggle {
-    align-self: flex-start;
-    padding: 4px 10px;
+    align-self: stretch;
+    width: 100%;
+    box-sizing: border-box;
+    text-align: center;
+    padding: 6px 10px;
     min-height: 26px;
     opacity: 0.75;
 }
@@ -5010,6 +5138,137 @@ body.game-mode .tab-button.active {
 
 @media (max-width: 640px) {
     .devlog-modal__panel {
+        max-height: 90vh;
+    }
+}
+
+/* ── About modal ─────────────────────────────────────────────── */
+.tab-action-button--about {
+    color: var(--accent);
+}
+
+.about-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.88);
+    z-index: 1000;
+    padding: 16px;
+}
+
+.about-modal[hidden] {
+    display: none;
+}
+
+.about-modal__panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 460px;
+    max-height: 85vh;
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    overflow: hidden;
+}
+
+.about-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+    gap: 12px;
+}
+
+.about-modal__title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.about-modal__title {
+    color: var(--accent);
+    margin: 0;
+}
+
+.about-modal__subtitle {
+    margin: 0;
+    color: var(--muted);
+    opacity: 0.55;
+    font-size: 0.85em;
+    line-height: var(--lh-text);
+}
+
+.about-modal__close {
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    font-family: var(--ui-font-family);
+    line-height: var(--lh-tight);
+    padding: 4px 8px;
+    opacity: 0.7;
+    flex-shrink: 0;
+}
+
+.about-modal__close:hover,
+.about-modal__close:focus {
+    opacity: 1;
+    color: var(--accent);
+    outline: none;
+}
+
+.about-modal__body {
+    overflow-y: auto;
+    padding: 16px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.about-modal__lead {
+    margin: 0;
+    color: var(--text);
+    opacity: 0.9;
+    line-height: var(--lh-text);
+    font-size: 0.92em;
+}
+
+.about-modal__creators {
+    margin: 0;
+    color: var(--text);
+    line-height: var(--lh-text);
+}
+
+.about-modal__free {
+    margin: 0;
+    color: var(--accent);
+    font-weight: var(--fw-medium);
+    line-height: var(--lh-text);
+}
+
+.about-modal__link {
+    align-self: flex-start;
+    margin-top: 4px;
+    color: var(--accent);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+}
+
+.about-modal__link:hover,
+.about-modal__link:focus-visible {
+    border-bottom-color: var(--accent);
+    outline: none;
+}
+
+@media (max-width: 640px) {
+    .about-modal__panel {
         max-height: 90vh;
     }
 }

@@ -8,6 +8,12 @@ type NpcState = {
   conditionVariableId?: string | null;
   rewardVariableId?: string | null;
   conditionalRewardVariableId?: string | null;
+  choiceEnabled?: boolean;
+  choicePrompt?: string;
+  choiceYesText?: string;
+  choiceNoText?: string;
+  choiceYesVariableId?: string | null;
+  choiceNoVariableId?: string | null;
 };
 
 type GameStateApi = {

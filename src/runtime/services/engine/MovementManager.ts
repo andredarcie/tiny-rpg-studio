@@ -55,6 +55,7 @@ type InteractionManagerApi = {
   handlePlayerInteractions: () => void;
   getNpcDialogText?: (npc: NpcState) => string;
   getNpcDialogMeta?: (npc: NpcState) => Record<string, unknown> | undefined;
+  openNpcDialog?: (npc: NpcState) => boolean;
 };
 
 type EnemyManagerApi = {
@@ -360,14 +361,23 @@ class MovementManager {
     const npcAtTarget = this.findNpcAt(targetRoomIndex, targetX, targetY);
     if (npcAtTarget) {
       if (!this.gameState.isInCombat?.()) {
-        const dialogText = this.interactionManager.getNpcDialogText
-          ? this.interactionManager.getNpcDialogText(npcAtTarget)
-          : npcAtTarget.text || '';
-        const dialogMeta = this.interactionManager.getNpcDialogMeta
-          ? this.interactionManager.getNpcDialogMeta(npcAtTarget)
-          : undefined;
-        if (dialogText) {
-          this.dialogManager.showDialog(dialogText, dialogMeta);
+        let shown = false;
+        if (this.interactionManager.openNpcDialog) {
+          // Preferred path: dispatches the default dialog then the Yes/No question.
+          shown = this.interactionManager.openNpcDialog(npcAtTarget);
+        } else {
+          const dialogText = this.interactionManager.getNpcDialogText
+            ? this.interactionManager.getNpcDialogText(npcAtTarget)
+            : npcAtTarget.text || '';
+          const dialogMeta = this.interactionManager.getNpcDialogMeta
+            ? this.interactionManager.getNpcDialogMeta(npcAtTarget)
+            : undefined;
+          if (dialogText) {
+            this.dialogManager.showDialog(dialogText, dialogMeta);
+            shown = true;
+          }
+        }
+        if (shown) {
           this.renderer.draw();
         }
       }

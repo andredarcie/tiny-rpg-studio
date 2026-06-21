@@ -1,107 +1,141 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { RendererDialogRenderer } from '../../runtime/adapters/renderer/RendererDialogRenderer';
-import { soundEngine } from '../../runtime/services/SoundEngine';
+import type { DialogChoiceState } from '../../types/gameState';
 
-const makeDialogCtx = () =>
-  ({
-    fillStyle: '',
-    fillRect: vi.fn(),
-    fillText: vi.fn(),
-    measureText: (text: string) => ({ width: text.length * 6 }),
-  }) as unknown as CanvasRenderingContext2D;
+type TestDialog = { active: boolean; text?: string; choice?: DialogChoiceState | null };
 
-describe('RendererDialogRenderer', () => {
-  it('splits dialog into pages and normalizes the page index', () => {
-    const dialog = {
-      active: true,
-      text: 'Hello world this is a dialog message that should wrap across lines.',
-      page: 0,
-      maxPages: 1,
-    };
-    const gameState = {
-      getDialog: () => dialog,
-    };
-    const paletteManager = {
-      getColor: () => '#fff',
-    };
+function setup(dialog: TestDialog) {
+  document.body.innerHTML = '';
+  const parent = document.createElement('div');
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 196;
+  // jsdom does not lay elements out, so stub the display metrics the overlay reads.
+  for (const [prop, value] of [['offsetWidth', 256], ['offsetHeight', 392], ['offsetLeft', 0], ['offsetTop', 0]] as const) {
+    Object.defineProperty(canvas, prop, { value, configurable: true });
+  }
+  parent.appendChild(canvas);
+  document.body.appendChild(parent);
 
-    const renderer = new RendererDialogRenderer(gameState, paletteManager);
-    const lines: string[] = [];
-    const ctx = {
-      fillStyle: '',
-      strokeStyle: '',
-      font: '',
-      fillRect: vi.fn(),
-      strokeRect: vi.fn(),
-      fillText: vi.fn((text: string) => lines.push(text)),
-      measureText: (text: string) => ({ width: text.length * 6 }),
-    } as unknown as CanvasRenderingContext2D;
+  const ctx = { canvas } as unknown as CanvasRenderingContext2D;
+  const gameState = { getDialog: () => dialog };
+  const palette = { getColor: () => '#ffffff' };
+  const renderer = new RendererDialogRenderer(gameState, palette);
+  // The dialog box anchors to the bottom of the gameplay viewport.
+  renderer.setViewportOffset(20);
+  return { renderer, ctx, parent };
+}
 
-    renderer.drawDialog(ctx, { width: 96, height: 72 });
+const makeChoice = (selectedIndex = 0): DialogChoiceState => ({
+  phase: 'prompt',
+  selectedIndex,
+  options: [
+    { key: 'yes', label: 'Yes', text: 'Great', rewardVariableId: null },
+    { key: 'no', label: 'No', text: '', rewardVariableId: null },
+  ],
+});
 
-    expect(dialog.page).toBe(1);
-    expect(dialog.maxPages).toBeGreaterThan(0);
-    expect(lines.length).toBeGreaterThan(0);
+describe('RendererDialogRenderer (HTML overlay)', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '';
   });
 
-  it('anchors text to the top so it keeps a margin from the box border', () => {
-    const dialog = { active: true, text: 'Hello there', page: 1, maxPages: 1 };
-    const renderer = new RendererDialogRenderer({ getDialog: () => dialog }, { getColor: () => '#fff' });
-    const ctx = makeDialogCtx();
-    ctx.textBaseline = 'alphabetic'; // default that previously pushed text to the edge
-    renderer.drawDialog(ctx, { width: 96, height: 72 });
-    expect(ctx.textBaseline).toBe('top');
+  it('renders the message text into an HTML box', () => {
+    const { renderer, ctx } = setup({ active: true, text: 'Hello there', choice: null });
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+    const box = document.querySelector('.game-dialog-box');
+    expect(box).not.toBeNull();
+    expect(box?.textContent).toContain('Hello there');
   });
 
-  it('reveals the full page immediately when no typewriter callback is provided', () => {
-    const dialog = { active: true, text: 'Hello world', page: 1, maxPages: 1 };
-    const renderer = new RendererDialogRenderer({ getDialog: () => dialog }, { getColor: () => '#fff' });
-    renderer.drawDialog(makeDialogCtx(), { width: 96, height: 72 });
+  it('hides the overlay when the dialog is inactive', () => {
+    const dialog: TestDialog = { active: true, text: 'Hi', choice: null };
+    const { renderer, ctx } = setup(dialog);
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+    expect((document.querySelector('.game-dialog-overlay') as HTMLElement).style.display).toBe('block');
+
+    dialog.active = false;
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+    expect((document.querySelector('.game-dialog-overlay') as HTMLElement).style.display).toBe('none');
+  });
+
+  it('renders Yes/No buttons with the selected one marked', () => {
+    const { renderer, ctx } = setup({ active: true, text: 'Accept?', choice: makeChoice(1) });
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+    const buttons = Array.from(document.querySelectorAll('.game-dialog-button'));
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].textContent).toBe('Yes');
+    expect(buttons[1].textContent).toBe('No');
+    // Only the selected button (index 1) carries the selected modifier.
+    expect(buttons[0].classList.contains('game-dialog-button--selected')).toBe(false);
+    expect(buttons[1].classList.contains('game-dialog-button--selected')).toBe(true);
+  });
+
+  it('hides the buttons once a branch message is shown', () => {
+    const choice = makeChoice(0);
+    const dialog: TestDialog = { active: true, text: 'Accept?', choice };
+    const { renderer, ctx } = setup(dialog);
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+    expect((document.querySelector('.game-dialog-buttons') as HTMLElement).style.display).toBe('flex');
+
+    choice.phase = 'branch';
+    dialog.text = 'Great';
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+    expect((document.querySelector('.game-dialog-buttons') as HTMLElement).style.display).toBe('none');
+  });
+
+  it('invokes the choice handler when an option button is clicked', () => {
+    const { renderer, ctx } = setup({ active: true, text: 'Accept?', choice: makeChoice(0) });
+    const handler = vi.fn();
+    renderer.setChoiceHandler(handler);
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+    const noButton = document.querySelectorAll('.game-dialog-button')[1] as HTMLElement;
+    noButton.dispatchEvent(new Event('click', { bubbles: true }));
+
+    expect(handler).toHaveBeenCalledWith(1);
+  });
+
+  it('scales the font size proportionally to the canvas display size', () => {
+    // canvas is 128x196 internal, displayed at 256x392 -> ratio 2 -> font 8 * 2 = 16px.
+    const { renderer, ctx } = setup({ active: true, text: 'Hi', choice: null });
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+    const container = document.querySelector('.game-dialog') as HTMLElement;
+    expect(container.style.fontSize).toBe('16px');
+  });
+
+  it('always keeps a positive, proportional font size across canvas sizes', () => {
+    for (const displayHeight of [196, 300, 392, 588, 800]) {
+      document.body.innerHTML = '';
+      const parent = document.createElement('div');
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 196;
+      Object.defineProperty(canvas, 'offsetWidth', { value: displayHeight * (128 / 196), configurable: true });
+      Object.defineProperty(canvas, 'offsetHeight', { value: displayHeight, configurable: true });
+      Object.defineProperty(canvas, 'offsetLeft', { value: 0, configurable: true });
+      Object.defineProperty(canvas, 'offsetTop', { value: 0, configurable: true });
+      parent.appendChild(canvas);
+      document.body.appendChild(parent);
+      const ctx = { canvas } as unknown as CanvasRenderingContext2D;
+      const renderer = new RendererDialogRenderer({ getDialog: () => ({ active: true, text: 'Hi', choice: null }) }, { getColor: () => '#fff' });
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+      const container = document.querySelector('.game-dialog') as HTMLElement;
+      const fontPx = parseFloat(container.style.fontSize);
+      // 8px font * (displayHeight / 196 internal height).
+      expect(fontPx).toBeCloseTo(8 * (displayHeight / 196), 3);
+      expect(fontPx).toBeGreaterThan(0);
+    }
+  });
+
+  it('reports reveal as complete (no canvas typewriter)', () => {
+    const { renderer } = setup({ active: true, text: 'Hi', choice: null });
     expect(renderer.isRevealComplete()).toBe(true);
-  });
-
-  it('types out the page over time and ticks a sound per letter', () => {
-    const playSpy = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
-    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
-    let now = 1000;
-    const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => now);
-
-    const dialog = { active: true, text: 'Hello world', page: 1, maxPages: 1 };
-    const redraw = vi.fn();
-    const renderer = new RendererDialogRenderer({ getDialog: () => dialog }, { getColor: () => '#fff' }, redraw);
-    const ctx = makeDialogCtx();
-
-    // First frame: nothing revealed yet, and it schedules the reveal loop.
-    renderer.drawDialog(ctx, { width: 96, height: 72 });
-    expect(renderer.isRevealComplete()).toBe(false);
-    expect(requestAnimationFrame).toHaveBeenCalled();
-
-    // After plenty of time the whole page is revealed and a tick has played.
-    now = 1000 + 100000;
-    renderer.drawDialog(ctx, { width: 96, height: 72 });
-    expect(renderer.isRevealComplete()).toBe(true);
-    expect(playSpy).toHaveBeenCalledWith('typewriter');
-
-    nowSpy.mockRestore();
-    vi.unstubAllGlobals();
-    playSpy.mockRestore();
-  });
-
-  it('skipReveal instantly completes the current page', () => {
-    vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
-    const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(5000);
-    const dialog = { active: true, text: 'Hello world this is long', page: 1, maxPages: 1 };
-    const renderer = new RendererDialogRenderer({ getDialog: () => dialog }, { getColor: () => '#fff' }, vi.fn());
-    const ctx = makeDialogCtx();
-
-    renderer.drawDialog(ctx, { width: 96, height: 72 });
-    expect(renderer.isRevealComplete()).toBe(false);
-
-    renderer.skipReveal();
-    renderer.drawDialog(ctx, { width: 96, height: 72 });
-    expect(renderer.isRevealComplete()).toBe(true);
-
-    nowSpy.mockRestore();
-    vi.unstubAllGlobals();
+    expect(() => renderer.skipReveal()).not.toThrow();
+    expect(renderer.pickChoiceFromPointer()).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ describe('StateDialogManager', () => {
       page: 1,
       maxPages: 1,
       meta: null,
+      choice: null,
     });
   });
 
@@ -90,5 +91,42 @@ describe('StateDialogManager', () => {
     dialogStateManager.resetNpcDialogReadState();
 
     expect(state.npcDialogReadState).toEqual({});
+  });
+
+  it('resets the choice sub-state when the dialog closes', () => {
+    const state = {
+      dialog: {
+        active: true,
+        text: 'Accept?',
+        page: 1,
+        maxPages: 1,
+        meta: null,
+        choice: { phase: 'selecting', selectedIndex: 1, options: [] },
+      },
+    } as unknown as RuntimeState;
+
+    const manager = new StateDialogManager(state);
+    manager.setDialog(false);
+
+    expect(state.dialog.choice).toBeNull();
+  });
+
+  it('tracks definitive answered choices and clears them only on reset', () => {
+    const state = {
+      dialog: { active: false, text: '', page: 1, maxPages: 1, meta: null, choice: null },
+      npcDialogReadState: {},
+      npcChoiceAnswered: {},
+    } as unknown as RuntimeState;
+
+    const manager = new StateDialogManager(state);
+
+    expect(manager.hasNpcChoiceAnswered('npc-7')).toBe(false);
+    manager.markNpcChoiceAnswered('npc-7');
+    expect(manager.hasNpcChoiceAnswered('npc-7')).toBe(true);
+
+    // A full restart routes through reset(), which clears the lock.
+    manager.reset();
+    expect(manager.hasNpcChoiceAnswered('npc-7')).toBe(false);
+    expect(state.npcChoiceAnswered).toEqual({});
   });
 });

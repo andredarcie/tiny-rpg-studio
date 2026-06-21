@@ -29,9 +29,9 @@ const makeGameState = (sprites: GameDefinition['sprites'] = []) => {
 describe('NPCManager', () => {
   it('keeps placed NPCs and allows duplicates per scene', () => {
     const sprites = [
-      { id: 'npc-999', type: 'invalid', name: 'Bad', text: '', textKey: null, roomIndex: 0, x: 1, y: 1, initialX: 1, initialY: 1, initialRoomIndex: 0, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null },
-      { id: 'npc-1', type: 'old-mage', name: 'Old', text: '', textKey: null, roomIndex: 0, x: 1, y: 1, initialX: 1, initialY: 1, initialRoomIndex: 0, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null },
-      { id: 'npc-2', type: 'old-mage', name: 'Duplicate', text: '', textKey: null, roomIndex: 1, x: 2, y: 2, initialX: 2, initialY: 2, initialRoomIndex: 1, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null },
+      { id: 'npc-999', type: 'invalid', name: 'Bad', text: '', textKey: null, roomIndex: 0, x: 1, y: 1, initialX: 1, initialY: 1, initialRoomIndex: 0, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null, choiceEnabled: false, choicePrompt: '', choiceYesText: '', choiceNoText: '', choiceYesVariableId: null, choiceNoVariableId: null },
+      { id: 'npc-1', type: 'old-mage', name: 'Old', text: '', textKey: null, roomIndex: 0, x: 1, y: 1, initialX: 1, initialY: 1, initialRoomIndex: 0, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null, choiceEnabled: false, choicePrompt: '', choiceYesText: '', choiceNoText: '', choiceYesVariableId: null, choiceNoVariableId: null },
+      { id: 'npc-2', type: 'old-mage', name: 'Duplicate', text: '', textKey: null, roomIndex: 1, x: 2, y: 2, initialX: 2, initialY: 2, initialRoomIndex: 1, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null, choiceEnabled: false, choicePrompt: '', choiceYesText: '', choiceNoText: '', choiceYesVariableId: null, choiceNoVariableId: null },
     ];
 
     const gameState = makeGameState(sprites);

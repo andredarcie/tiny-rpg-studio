@@ -28,6 +28,12 @@ type ShareSpriteInput = {
     onCompleteVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
     alternativeRewardVariableId?: string | null;
+    choiceEnabled?: boolean;
+    choicePrompt?: string;
+    choiceYesText?: string;
+    choiceNoText?: string;
+    choiceYesVariableId?: string | null;
+    choiceNoVariableId?: string | null;
 };
 
 type ShareEnemyInput = {
@@ -88,6 +94,12 @@ type NormalizedSprite = {
     conditionText: string;
     rewardVariableId: string | null;
     conditionalRewardVariableId: string | null;
+    choiceEnabled: boolean;
+    choicePrompt: string;
+    choiceYesText: string;
+    choiceNoText: string;
+    choiceYesVariableId: string | null;
+    choiceNoVariableId: string | null;
 };
 
 type NormalizedEnemy = {
@@ -163,6 +175,12 @@ class ShareDataNormalizer {
             const hasRewardId = typeof rewardId === 'string' && ShareConstants.VARIABLE_IDS.includes(rewardId);
             const hasConditionalRewardId =
                 typeof conditionalRewardId === 'string' && ShareConstants.VARIABLE_IDS.includes(conditionalRewardId);
+            const choiceYesVarId = typeof npc.choiceYesVariableId === 'string'
+                && ShareConstants.VARIABLE_IDS.includes(npc.choiceYesVariableId)
+                ? npc.choiceYesVariableId : null;
+            const choiceNoVarId = typeof npc.choiceNoVariableId === 'string'
+                && ShareConstants.VARIABLE_IDS.includes(npc.choiceNoVariableId)
+                ? npc.choiceNoVariableId : null;
             normalized.push({
                 type,
                 id: def.id,
@@ -179,7 +197,13 @@ class ShareDataNormalizer {
                     ? npc.conditionText
                     : (typeof npc.conditionalText === 'string' ? npc.conditionalText : ''),
                 rewardVariableId: hasRewardId ? rewardId : null,
-                conditionalRewardVariableId: hasConditionalRewardId ? conditionalRewardId : null
+                conditionalRewardVariableId: hasConditionalRewardId ? conditionalRewardId : null,
+                choiceEnabled: npc.choiceEnabled === true,
+                choicePrompt: typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '',
+                choiceYesText: typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '',
+                choiceNoText: typeof npc.choiceNoText === 'string' ? npc.choiceNoText : '',
+                choiceYesVariableId: choiceYesVarId,
+                choiceNoVariableId: choiceNoVarId
             });
         }
         return normalized;

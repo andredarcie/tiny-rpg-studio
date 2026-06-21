@@ -1,5 +1,5 @@
 
-import type { DialogMeta, DialogState, RuntimeState } from '../../../types/gameState';
+import type { DialogChoicePhase, DialogChoiceState, DialogMeta, DialogState, RuntimeState } from '../../../types/gameState';
 
 class StateDialogManager {
     state: RuntimeState | null;
@@ -20,8 +20,12 @@ class StateDialogManager {
         return this.state?.npcDialogReadState ?? null;
     }
 
+    get npcChoiceAnswered() {
+        return this.state?.npcChoiceAnswered ?? null;
+    }
+
     getDialog(): DialogState {
-        return this.dialog ?? { active: false, text: '', page: 1, maxPages: 1, meta: null };
+        return this.dialog ?? { active: false, text: '', page: 1, maxPages: 1, meta: null, choice: null };
     }
 
     setDialog(active: boolean, text: string = "", meta: DialogMeta | null = null) {
@@ -33,6 +37,8 @@ class StateDialogManager {
             dialog.page = 1;
             dialog.maxPages = 1;
             dialog.meta = null;
+            // A closed dialog never keeps a pending choice sub-state.
+            dialog.choice = null;
             return;
         }
         dialog.active = true;
@@ -40,6 +46,30 @@ class StateDialogManager {
         dialog.page = 1;
         dialog.maxPages = 1;
         dialog.meta = meta || null;
+        // NOTE: `choice` is intentionally left untouched here so the choice flow can
+        // call setDialog(true, branchText) to switch to a branch message without
+        // dropping the choice sub-state. Callers reset it explicitly when needed.
+    }
+
+    setDialogChoice(choice: DialogChoiceState | null) {
+        const dialog = this.dialog;
+        if (!dialog) return;
+        dialog.choice = choice;
+    }
+
+    setChoicePhase(phase: DialogChoicePhase) {
+        const choice = this.dialog?.choice;
+        if (!choice) return;
+        choice.phase = phase;
+    }
+
+    setChoiceSelection(index: number) {
+        const choice = this.dialog?.choice;
+        if (!choice) return;
+        const max = Math.max(0, choice.options.length - 1);
+        const numeric = Number(index);
+        if (!Number.isFinite(numeric)) return;
+        choice.selectedIndex = Math.min(Math.max(0, Math.floor(numeric)), max);
     }
 
     setPage(page: number) {
@@ -79,9 +109,31 @@ class StateDialogManager {
         });
     }
 
+    markNpcChoiceAnswered(npcId: string | null | undefined) {
+        const state = this.npcChoiceAnswered;
+        if (!state || !npcId) return;
+        state[npcId] = true;
+    }
+
+    hasNpcChoiceAnswered(npcId: string | null | undefined): boolean {
+        const state = this.npcChoiceAnswered;
+        if (!state || !npcId) return false;
+        return state[npcId] === true;
+    }
+
+    resetNpcChoiceAnswered() {
+        const state = this.npcChoiceAnswered;
+        if (!state) return;
+        Object.keys(state).forEach((npcId) => {
+            delete state[npcId];
+        });
+    }
+
     reset() {
         this.setDialog(false);
         this.resetNpcDialogReadState();
+        // A definitive choice only clears on a full restart, which routes through reset().
+        this.resetNpcChoiceAnswered();
     }
 }
 

@@ -631,6 +631,7 @@
                                                 <option value="en-US" data-text-key="language.option.enUS"></option>
                                             </select>
                                         </label>
+                                        <button id="btn-about" class="project-about-button" type="button" data-text-key="buttons.about" data-aria-label-key="about.openAria" aria-haspopup="dialog">About</button>
                                     </div>
                                     </div>
 
@@ -740,6 +741,25 @@
                 <button type="button" id="devlog-prev" class="devlog-pager-btn">← Prev</button>
                 <span id="devlog-page-indicator" class="devlog-page-indicator" aria-live="polite"></span>
                 <button type="button" id="devlog-next" class="devlog-pager-btn">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="about-modal" class="about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
+        <div class="about-modal__panel">
+            <div class="about-modal__header">
+                <div class="about-modal__title-group">
+                    <h2 id="about-modal-title" class="about-modal__title" data-text-key="about.title">About Tiny RPG Studio</h2>
+                    <p class="about-modal__subtitle" data-text-key="about.subtitle">A browser-native RPG maker</p>
+                </div>
+                <button type="button" id="about-close" class="about-modal__close" aria-label="Close about" data-aria-label-key="about.closeAria">✕</button>
+            </div>
+            <div class="about-modal__body">
+                <p class="about-modal__lead" data-text-key="about.description">Tiny RPG Studio lets you build and instantly play tiny RPGs right in your browser — no installation, no account. Every game is encoded into a single shareable URL.</p>
+                <p class="about-modal__creators" data-text-key="about.createdBy">Created by André N. Darcie and Diguifi.</p>
+                <p class="about-modal__free" data-text-key="about.free">An open-source, free, non-profit engine.</p>
+                <a class="about-modal__link" href="https://github.com/andredarcie/tiny-rpg-studio" target="_blank" rel="noopener noreferrer" data-text-key="about.viewSource">View source on GitHub ↗</a>
             </div>
         </div>
     </div>

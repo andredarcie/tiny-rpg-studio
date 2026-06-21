@@ -40,9 +40,10 @@ class ShareConstants {
     static get VERSION_31() { return 31; }
     static get VERSION_32() { return 32; }
     static get VERSION_33() { return 33; }
+    static get VERSION_34() { return 34; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_33;
+        return ShareConstants.VERSION_34;
     }
 
     static get LEGACY_VERSION() {
@@ -159,6 +160,13 @@ class ShareConstants {
         return ShareConstants.VERSION_33;
     }
 
+    // From this version on, NPCs can carry a choice dialog (prompt + Yes/No branches,
+    // each with its own message and optional reward variable), serialized as a single
+    // JSON blob under payload key '9'.
+    static get NPC_CHOICE_DIALOG_VERSION() {
+        return ShareConstants.VERSION_34;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -273,7 +281,8 @@ class ShareConstants {
                 ShareConstants.VERSION_30,
                 ShareConstants.VERSION_31,
                 ShareConstants.VERSION_32,
-                ShareConstants.VERSION_33
+                ShareConstants.VERSION_33,
+                ShareConstants.VERSION_34
             ]);
         }
         return this._supportedVersions;

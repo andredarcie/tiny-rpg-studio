@@ -19,6 +19,8 @@ import { GameConfig } from '../../config/GameConfig';
 import { DEFAULT_BACKGROUND_MUSIC_VOLUME } from '../infra/share/BackgroundMusicVideoId';
 import type { TileMap, Tileset } from './definitions/tileTypes';
 import type {
+    DialogChoicePhase,
+    DialogChoiceState,
     DialogMeta,
     DialogState,
     EnemyDefinition,
@@ -127,8 +129,9 @@ class GameState {
                 lastAttackTime: 0,
                 stunUntil: 0
             },
-            dialog: { active: false, text: "", page: 1, maxPages: 1, meta: null },
+            dialog: { active: false, text: "", page: 1, maxPages: 1, meta: null, choice: null },
             npcDialogReadState: {},
+            npcChoiceAnswered: {},
             enemies: [],
             variables: [],
             gameOver: false,
@@ -353,12 +356,32 @@ class GameState {
         this.dialogManager.setPage(page);
     }
 
+    setDialogChoice(choice: DialogChoiceState | null): void {
+        this.dialogManager.setDialogChoice(choice);
+    }
+
+    setChoicePhase(phase: DialogChoicePhase): void {
+        this.dialogManager.setChoicePhase(phase);
+    }
+
+    setChoiceSelection(index: number): void {
+        this.dialogManager.setChoiceSelection(index);
+    }
+
     markNpcDialogAsRead(npcId: string, variantKey: string | null): void {
         this.dialogManager.markNpcDialogAsRead(npcId, variantKey);
     }
 
     hasUnreadNpcDialog(npcId: string, variantKey: string | null): boolean {
         return this.dialogManager.hasUnreadNpcDialog(npcId, variantKey);
+    }
+
+    markNpcChoiceAnswered(npcId: string | null | undefined): void {
+        this.dialogManager.markNpcChoiceAnswered(npcId);
+    }
+
+    hasAnsweredChoice(npcId: string | null | undefined): boolean {
+        return this.dialogManager.hasNpcChoiceAnswered(npcId);
     }
 
     setEditorMode(active = false): void {

@@ -37,12 +37,28 @@ export type PlayerRuntimeState = {
     bootsEquipped?: boolean;
 };
 
+export type DialogChoiceOption = {
+    key: 'yes' | 'no';
+    label: string;
+    text: string;
+    rewardVariableId: string | null;
+};
+
+export type DialogChoicePhase = 'prompt' | 'selecting' | 'branch';
+
+export type DialogChoiceState = {
+    phase: DialogChoicePhase;
+    selectedIndex: number;
+    options: DialogChoiceOption[];
+};
+
 export type DialogState = {
     active: boolean;
     text: string;
     page: number;
     maxPages: number;
     meta: DialogMeta | null;
+    choice?: DialogChoiceState | null;
 };
 
 export type EnemyDefinition = {
@@ -215,10 +231,18 @@ export type GameDefinition = {
 
 export type NpcDialogReadState = Partial<Record<string, Partial<Record<string, true>>>>;
 
+/**
+ * Tracks which NPCs have already had their choice dialog answered in the CURRENT
+ * playthrough. A locked choice never re-prompts (the choice is definitive); it
+ * only clears on a full restart (resetGame), like the runtime variables.
+ */
+export type NpcChoiceAnsweredState = Partial<Record<string, true>>;
+
 export type RuntimeState = {
     player: PlayerRuntimeState;
     dialog: DialogState;
     npcDialogReadState: NpcDialogReadState;
+    npcChoiceAnswered: NpcChoiceAnsweredState;
     enemies: EnemyDefinition[];
     variables: VariableDefinition[];
     gameOver: boolean;

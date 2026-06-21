@@ -262,6 +262,7 @@ class Renderer {
         this.applyCanvasLayout();
         ctx.imageSmoothingEnabled = false;
         this.entityRenderer.setViewportOffset(this.gameplayOffsetY);
+        this.dialogRenderer.setViewportOffset(this.gameplayOffsetY);
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         const gameplayCanvas = this.gameplayCanvasBounds;

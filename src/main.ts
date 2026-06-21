@@ -5,6 +5,7 @@ import type { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
 import { ExploreModal } from './editor/modules/ExploreModal';
 import { DevlogModal } from './editor/modules/DevlogModal';
+import { AboutModal } from './editor/modules/AboutModal';
 import { GameEngine } from './runtime/services/GameEngine';
 import { ShareUtils } from './runtime/infra/share/ShareUtils';
 import { getTinyRpgApi, setTinyRpgApi, type TinyRpgApi } from './runtime/infra/TinyRpgApi';
@@ -150,6 +151,7 @@ class TinyRPGApplication {
     new EditorExportService();
     new ExploreModal();
     new DevlogModal();
+    new AboutModal();
     this.bindResetButton(gameEngine);
     this.bindTouchPad(gameEngine);
     this.bindFullscreenButton();
