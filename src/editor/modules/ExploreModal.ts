@@ -102,8 +102,8 @@ async function loadJamGames(): Promise<GameEntry[]> {
       return {
         id: String(i),
         url: e.sharedCode,
-        title: title || 'Untitled',
-        author: author || 'Anonymous',
+        title: title || TextResources.get('explore.untitled', 'Untitled'),
+        author: author || TextResources.get('explore.anonymous', 'Anonymous'),
         itchUrl: e.itchUrl,
         gameData,
       };

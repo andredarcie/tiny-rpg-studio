@@ -208,8 +208,8 @@ describe('EditorObjectRenderer', () => {
     expect(fixture.service.dom.objectTypes.textContent).toContain('t:objects.info.placed');
     expect(fixture.service.dom.objectTypes.textContent).toContain('t:objects.info.available');
     expect(fixture.service.dom.objectTypes.querySelector('.object-type-stats')).not.toBeNull();
-    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: 7');
-    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: 9');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('tf:editor.object.attackBadge:{"value":7}');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('tf:editor.object.defenseBadge:{"value":9}');
   });
 
   it('filters catalog by equipment category and handles stats partial/null cases', () => {
@@ -230,7 +230,7 @@ describe('EditorObjectRenderer', () => {
     const cards = fixture.service.dom.objectTypes.querySelectorAll('.object-type-card');
     expect(cards).toHaveLength(2);
     expect((cards[0] as HTMLElement).dataset.type).toBe(ITEM_TYPES.SWORD_BRONZE);
-    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('ATK: 4');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')?.textContent).toBe('tf:editor.object.attackBadge:{"value":4}');
     expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')).toBeNull();
   });
 
@@ -268,7 +268,7 @@ describe('EditorObjectRenderer', () => {
     renderer.renderObjectCatalog();
 
     expect(fixture.service.dom.objectTypes.querySelector('.object-stat-damage')).toBeNull();
-    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('DEF: 3');
+    expect(fixture.service.dom.objectTypes.querySelector('.object-stat-durability')?.textContent).toBe('tf:editor.object.defenseBadge:{"value":3}');
   });
 
   it('returns early in renderObjects when list is missing', () => {

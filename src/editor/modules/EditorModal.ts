@@ -1,4 +1,6 @@
 
+import { TextResources } from '../../runtime/adapters/TextResources';
+
 type EditorModalButtonVariant = 'default' | 'move' | 'remove';
 
 interface EditorModalButton {
@@ -150,7 +152,7 @@ class EditorModal {
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
         closeBtn.className = 'object-edit-modal__close';
-        closeBtn.setAttribute('aria-label', config.closeAriaLabel ?? config.closeLabel ?? 'Fechar');
+        closeBtn.setAttribute('aria-label', config.closeAriaLabel ?? config.closeLabel ?? TextResources.get('buttons.close', 'Fechar'));
         closeBtn.textContent = '✕';
         closeBtn.addEventListener('click', () => this.requestClose());
 
@@ -165,7 +167,7 @@ class EditorModal {
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
         closeBtn.className = 'btn-secondary';
-        closeBtn.textContent = config.closeLabel ?? 'Fechar';
+        closeBtn.textContent = config.closeLabel ?? TextResources.get('buttons.close', 'Fechar');
         closeBtn.addEventListener('click', () => this.requestClose());
         footer.appendChild(closeBtn);
 

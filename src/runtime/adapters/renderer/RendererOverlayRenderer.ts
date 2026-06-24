@@ -745,7 +745,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        bitmapFont.drawText(ctx, isVictory ? 'The End' : 'Game Over', centerX, centerY, FONT_SIZE, '#FFFFFF');
+        bitmapFont.drawText(ctx, isVictory ? TextResources.get('gameOver.titleVictory', 'The End') : TextResources.get('gameOver.titleDefeat', 'Game Over'), centerX, centerY, FONT_SIZE, '#FFFFFF');
 
         if (!gameState.canResetAfterGameOver) {
             ctx.restore();

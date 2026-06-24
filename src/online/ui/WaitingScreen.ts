@@ -1,3 +1,5 @@
+import { TextResources } from '../../runtime/adapters/TextResources';
+
 type WaitingScreenOptions = {
     onRespawn: () => void;
 };
@@ -41,14 +43,14 @@ export class WaitingScreen {
         });
 
         const title = document.createElement('div');
-        title.textContent = 'Você foi derrotado';
+        title.textContent = TextResources.get('online.waiting.title', 'Você foi derrotado');
         Object.assign(title.style, {
             color: '#ff4040',
             fontWeight: 'bold',
         });
 
         const label = document.createElement('div');
-        label.textContent = 'Voltando em';
+        label.textContent = TextResources.get('online.waiting.respawnIn', 'Voltando em');
         Object.assign(label.style, {
             color: 'rgba(255,255,255,0.5)',
         });

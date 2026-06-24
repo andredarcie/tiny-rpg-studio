@@ -2,6 +2,7 @@ import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
 import { FONT_SIZE } from '../../../config/FontConfig';
 import { bitmapFont } from './BitmapFont';
+import { TextResources } from '../TextResources';
 
 class RendererHudRenderer {
     gameState: GameStateApi;
@@ -236,7 +237,8 @@ class RendererHudRenderer {
         if (!Number.isFinite(level)) {
             return null;
         }
-        return `LVL ${Math.max(1, Math.floor(level))}`;
+        const value = Math.max(1, Math.floor(level));
+        return TextResources.format('hud.level', { value }, `LVL ${value}`);
     }
 
     drawMiniMap(ctx: CanvasRenderingContext2D, x: number, y: number, cellSize: number, mapSize: number) {

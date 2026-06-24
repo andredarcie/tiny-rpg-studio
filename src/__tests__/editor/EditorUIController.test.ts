@@ -5,6 +5,9 @@ vi.mock('../../runtime/adapters/TextResources', () => ({
   TextResources: {
     apply: vi.fn(() => Promise.resolve()),
     get: vi.fn<(key: string, fallback?: string) => string>((_key: string, fallback = ''): string => fallback),
+    format: vi.fn<(key: string, params?: Record<string, unknown>, fallback?: string) => string>(
+      (_key: string, _params?: Record<string, unknown>, fallback = ''): string => fallback,
+    ),
   }
 }));
 

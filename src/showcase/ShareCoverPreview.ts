@@ -3,6 +3,7 @@ import { FONT_SIZE } from '../config/FontConfig';
 import { bitmapFont } from '../runtime/adapters/renderer/BitmapFont';
 import { TILE_PRESETS } from '../runtime/domain/definitions/TileDefinitions';
 import { ShareDecoder } from '../runtime/infra/share/ShareDecoder';
+import { TextResources } from '../runtime/adapters/TextResources';
 
 type ShareCoverOptions = {
   width?: number;
@@ -244,7 +245,7 @@ class ShareCoverPreview {
         bitmapFont.drawText(ctx, titleText, centerX, centerY - height * 0.12, titleSize, '#FFFFFF');
 
         if (author) {
-            const authorLabel = this.toDisplayCaps(`por ${author}`);
+            const authorLabel = this.toDisplayCaps(TextResources.format('intro.byline', { author }, `por ${author}`));
             const authorSize = this.fitBitmapText(
                 authorLabel,
                 width * 0.8,
@@ -255,7 +256,7 @@ class ShareCoverPreview {
             bitmapFont.drawText(ctx, authorText, centerX, centerY - height * 0.02, authorSize, 'rgba(255,255,255,0.82)');
         }
 
-        const ctaLabel = this.toDisplayCaps('Iniciar aventura');
+        const ctaLabel = this.toDisplayCaps(TextResources.get('intro.startAdventure', 'Iniciar aventura'));
         const ctaSize = this.fitBitmapText(
             ctaLabel,
             width * 0.8,

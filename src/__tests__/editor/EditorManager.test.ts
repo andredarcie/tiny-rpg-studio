@@ -660,7 +660,7 @@ describe('EditorManager', () => {
     expect(gameEngine.importGameData).toHaveBeenCalled();
     const importMock = vi.mocked(gameEngine.importGameData);
     const data = importMock.mock.calls[0]?.[0] as { title: string; rooms: unknown[]; sprites: unknown[] };
-    expect(data.title).toBe('Novo Jogo');
+    expect(data.title).toBe('New Game');
     expect(data.rooms).toHaveLength(1);
     expect(data.sprites).toEqual([]);
   });

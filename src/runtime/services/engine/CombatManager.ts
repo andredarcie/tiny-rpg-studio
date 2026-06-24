@@ -715,7 +715,7 @@ class CombatManager {
 
   showMissFeedback(): void {
     soundEngine.play('miss');
-    this.renderer.showCombatIndicator('Miss', { duration: GameConfig.combat.messageDuration.standard });
+    this.renderer.showCombatIndicator(TextResources.get('combat.miss', 'Miss'), { duration: GameConfig.combat.messageDuration.standard });
   }
 }
 

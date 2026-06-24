@@ -1,4 +1,5 @@
 import { track } from '../../analytics/track';
+import { TextResources } from '../../runtime/adapters/TextResources';
 import type { ProjectSaveManager } from './ProjectSaveManager';
 
 type ShareGetter = () => string | null;
@@ -73,19 +74,19 @@ export class ProjectSaveUI {
       shareUrl = this.getShareUrl();
 
       if (!shareUrl) {
-        this.showNotification('Unable to generate share URL', 'error');
+        this.showNotification(TextResources.get('projectSave.error.noShareUrl', 'Unable to generate share URL'), 'error');
         return;
       }
 
       const result = await Promise.resolve(this.saveManager.manualSave(shareUrl, title));
       if (result.ok) {
-        this.showNotification('Project saved', 'success');
+        this.showNotification(TextResources.get('projectSave.saved', 'Project saved'), 'success');
         this.refreshHistoryUI();
       } else {
-        this.showNotification(result.reason || 'Save failed', 'error');
+        this.showNotification(result.reason || TextResources.get('projectSave.error.saveFailed', 'Save failed'), 'error');
       }
     } catch {
-      this.showNotification('Unexpected error during save', 'error');
+      this.showNotification(TextResources.get('projectSave.error.unexpected', 'Unexpected error during save'), 'error');
     } finally {
       this.manualSaveBtn.disabled = false;
     }
@@ -124,13 +125,13 @@ export class ProjectSaveUI {
         if (this.onLoadProject) {
           this.onLoadProject(project.shareUrl);
           track('project_restored');
-          this.showNotification('Game reloaded from save', 'success');
+          this.showNotification(TextResources.get('projectSave.restored', 'Game reloaded from save'), 'success');
         }
       } else {
-        this.showNotification('Project not found', 'error');
+        this.showNotification(TextResources.get('projectSave.error.notFound', 'Project not found'), 'error');
       }
     } catch {
-      this.showNotification('Failed to load project', 'error');
+      this.showNotification(TextResources.get('projectSave.error.loadFailed', 'Failed to load project'), 'error');
     }
   }
 

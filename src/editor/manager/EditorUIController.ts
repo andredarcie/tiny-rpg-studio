@@ -167,7 +167,7 @@ class EditorUIController extends EditorManagerModule {
         const spawn = game.online?.spawnPoints?.[0];
         if (this.dom.onlineP2SpawnLabel) {
             this.dom.onlineP2SpawnLabel.textContent = spawn
-                ? `sala ${spawn.roomIndex} (${spawn.x}, ${spawn.y})`
+                ? TextResources.format('project.online.spawnLabel', { room: spawn.roomIndex, x: spawn.x, y: spawn.y }, `sala ${spawn.roomIndex} (${spawn.x}, ${spawn.y})`)
                 : TextResources.get('project.online.spawnUnset', 'não definido') as string;
         }
     }

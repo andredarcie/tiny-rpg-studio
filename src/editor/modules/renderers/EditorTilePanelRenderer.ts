@@ -6,6 +6,7 @@ import type { CustomSpriteEntry } from '../../../types/gameState';
 type TileDefinitionView = {
     id: number | string;
     name?: string;
+    nameKey?: string;
     category?: string;
 };
 
@@ -98,7 +99,7 @@ class EditorTilePanelRenderer extends EditorRendererBase {
             this.gameEngine.renderer.drawTileOnCanvas(preview, tile);
         }
         if (this.dom.tileSummary) {
-            this.dom.tileSummary.textContent = tile.name || this.tf('tiles.summaryFallback', { id: tile.id });
+            this.dom.tileSummary.textContent = this.t(tile.nameKey ?? '', tile.name ?? '') || this.tf('tiles.summaryFallback', { id: tile.id });
         }
     }
 }

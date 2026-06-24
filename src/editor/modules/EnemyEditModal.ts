@@ -29,7 +29,9 @@ class EnemyEditModal extends EditorRendererBase {
             header: {
                 title: this.service.enemyRenderer.getEnemyDisplayName(definition, enemy.type),
                 subtitle: `(${enemy.x}, ${enemy.y})`,
-                description: definition?.description || '',
+                description: definition
+                    ? this.t(definition.descriptionKey ?? '', definition.description || '')
+                    : '',
                 drawPreview: definition
                     ? (canvas) => this.service.enemyRenderer.drawEnemyPreview(canvas, definition)
                     : undefined,

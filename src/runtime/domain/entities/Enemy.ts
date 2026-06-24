@@ -6,6 +6,7 @@ type EnemyDefinitionData = {
     name: string;
     nameKey: string;
     description: string;
+    descriptionKey?: string;
     lives: number;
     damage: number;
     missChance: number;
@@ -29,6 +30,7 @@ class Enemy {
     name: string;
     nameKey: string;
     description: string;
+    descriptionKey?: string;
     lives: number;
     damage: number;
     missChance: number;
@@ -51,6 +53,7 @@ class Enemy {
         this.name = data.name;
         this.nameKey = data.nameKey;
         this.description = data.description;
+        this.descriptionKey = data.descriptionKey;
         this.lives = data.lives;
         this.damage = data.damage;
         this.missChance = data.missChance;

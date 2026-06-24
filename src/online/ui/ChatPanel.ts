@@ -1,3 +1,4 @@
+import { TextResources } from '../../runtime/adapters/TextResources';
 import type { ChatEntry } from '../shared/protocol';
 import type { OnlineClient } from '../client/OnlineClient';
 
@@ -25,7 +26,7 @@ export class ChatPanel {
         this.toggleButton.id = 'online-chat-toggle';
         this.toggleButton.className = 'online-chat__toggle';
         this.toggleButton.type = 'button';
-        this.toggleButton.textContent = 'Chat';
+        this.toggleButton.textContent = TextResources.get('online.chat.label', 'Chat');
         this.toggleButton.setAttribute('aria-expanded', 'false');
         this.toggleButton.setAttribute('aria-controls', 'online-chat-panel');
 
@@ -37,12 +38,12 @@ export class ChatPanel {
         const header = document.createElement('div');
         header.className = 'online-chat__header';
         const title = document.createElement('span');
-        title.textContent = 'Chat';
+        title.textContent = TextResources.get('online.chat.label', 'Chat');
         const closeButton = document.createElement('button');
         closeButton.className = 'online-chat__close';
         closeButton.type = 'button';
         closeButton.textContent = 'X';
-        closeButton.setAttribute('aria-label', 'Fechar chat');
+        closeButton.setAttribute('aria-label', TextResources.get('online.chat.closeAria', 'Fechar chat'));
         header.append(title, closeButton);
 
         this.list = document.createElement('div');
@@ -56,13 +57,13 @@ export class ChatPanel {
         this.input.className = 'online-chat__input';
         this.input.type = 'text';
         this.input.maxLength = 180;
-        this.input.placeholder = 'Digite uma mensagem';
+        this.input.placeholder = TextResources.get('online.chat.placeholder', 'Digite uma mensagem');
         this.input.autocomplete = 'off';
 
         const sendButton = document.createElement('button');
         sendButton.className = 'online-chat__send';
         sendButton.type = 'submit';
-        sendButton.textContent = 'Enviar';
+        sendButton.textContent = TextResources.get('online.chat.send', 'Enviar');
 
         this.form.append(this.input, sendButton);
         this.panel.append(header, this.list, this.form);
@@ -191,7 +192,7 @@ export class ChatPanel {
         }
         const name = document.createElement('span');
         name.className = 'online-chat__name';
-        name.textContent = message.playerId === this.client.sessionToken ? 'Você' : message.playerName;
+        name.textContent = message.playerId === this.client.sessionToken ? TextResources.get('online.chat.you', 'Você') : message.playerName;
         const text = document.createElement('span');
         text.className = 'online-chat__text';
         text.textContent = message.text;
@@ -204,7 +205,7 @@ export class ChatPanel {
         if (this.messages.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'online-chat__empty';
-            empty.textContent = 'Nenhuma mensagem ainda.';
+            empty.textContent = TextResources.get('online.chat.empty', 'Nenhuma mensagem ainda.');
             this.list.appendChild(empty);
             return;
         }
@@ -215,7 +216,9 @@ export class ChatPanel {
     }
 
     private updateToggleLabel(): void {
-        this.toggleButton.textContent = this.unreadCount > 0 ? `Chat ${this.unreadCount}` : 'Chat';
+        this.toggleButton.textContent = this.unreadCount > 0
+            ? TextResources.format('online.chat.toggleUnread', { count: this.unreadCount }, `Chat ${this.unreadCount}`)
+            : TextResources.get('online.chat.label', 'Chat');
     }
 
     private scrollToLatest(): void {

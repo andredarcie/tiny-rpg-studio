@@ -3,6 +3,7 @@ type TileFrame = string[][];
 type TileDefinitionData = {
     id: string | number;
     name: string;
+    nameKey?: string;
     pixels: TileFrame;
     frames: TileFrame[];
     collision: boolean;
@@ -13,6 +14,7 @@ type TileDefinitionData = {
 class Tile {
     id: string | number;
     name: string;
+    nameKey?: string;
     pixels: TileFrame;
     frames: TileFrame[];
     animated: boolean;
@@ -23,6 +25,7 @@ class Tile {
     constructor(data: TileDefinitionData) {
         this.id = data.id;
         this.name = data.name;
+        this.nameKey = data.nameKey;
         this.pixels = data.pixels;
         this.frames = data.frames;
         this.animated = data.frames.length > 1;

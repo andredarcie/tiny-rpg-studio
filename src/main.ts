@@ -300,9 +300,12 @@ class TinyRPGApplication {
 
     const syncButtonState = () => {
       const active = isFullscreenActive();
-      button.setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+      const label = active
+        ? getTextResource('aria.fullscreenExit', 'Exit fullscreen')
+        : getTextResource('aria.fullscreenEnter', 'Enter fullscreen');
+      button.setAttribute('aria-label', label);
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
-      button.setAttribute('title', active ? 'Exit fullscreen' : 'Enter fullscreen');
+      button.setAttribute('title', label);
       button.dataset.state = active ? 'exit' : 'enter';
       button.classList.toggle('is-active', active);
     };
@@ -332,6 +335,7 @@ class TinyRPGApplication {
     document.addEventListener('fullscreenchange', updateVisibility);
     document.addEventListener('game-tab-activated', updateVisibility);
     document.addEventListener('editor-tab-activated', handleEditorActivation);
+    document.addEventListener('language-changed', syncButtonState);
 
     if (desktopQuery) {
       const onViewportChange = () => updateVisibility();

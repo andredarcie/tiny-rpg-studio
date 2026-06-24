@@ -96,10 +96,10 @@ export class ServerStatusModal {
 
         this.content.append(
             this.buildRow(text('server.modal.status', 'Status'), statusLabel),
-            this.buildRow('Host', this.state.partyHost),
+            this.buildRow(text('server.modal.host', 'Host'), this.state.partyHost),
             this.buildRow(text('server.modal.room', 'Sala'), this.state.roomId),
             this.buildRow(text('server.modal.role', 'Papel'), roleLabel),
-            this.buildRow('Session', this.state.sessionToken || text('server.modal.noSession', 'Sem sessão ativa')),
+            this.buildRow(text('server.modal.session', 'Session'), this.state.sessionToken || text('server.modal.noSession', 'Sem sessão ativa')),
             this.buildRow(text('server.modal.ping', 'Ping'), ping),
             this.buildPlayersSection(),
         );

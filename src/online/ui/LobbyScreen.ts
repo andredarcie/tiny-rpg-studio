@@ -1,3 +1,5 @@
+import { TextResources } from '../../runtime/adapters/TextResources';
+
 type LobbyScreenOptions = {
     playerName: string;
 };
@@ -37,7 +39,7 @@ export class LobbyScreen {
         });
 
         const title = document.createElement('div');
-        title.textContent = 'Aguardando jogadores';
+        title.textContent = TextResources.get('online.lobby.title', 'Aguardando jogadores');
         Object.assign(title.style, {
             color: 'var(--accent, #5bfa8e)',
             fontWeight: 'bold',
@@ -56,7 +58,7 @@ export class LobbyScreen {
         dot.textContent = '●';
         dot.style.color = 'var(--accent, #5bfa8e)';
         const nameEl = document.createElement('span');
-        nameEl.textContent = `${this.options.playerName} (Você)`;
+        nameEl.textContent = TextResources.format('online.youSuffix', { name: this.options.playerName }, `${this.options.playerName} (Você)`);
         playerRow.append(dot, nameEl);
 
         const waitRow = document.createElement('div');
@@ -69,7 +71,7 @@ export class LobbyScreen {
         const waitDot = document.createElement('span');
         waitDot.textContent = '○';
         const waitText = document.createElement('span');
-        waitText.textContent = 'Aguardando P2...';
+        waitText.textContent = TextResources.get('online.lobby.waitingP2', 'Aguardando P2...');
         waitRow.append(waitDot, waitText);
 
         box.append(title, playerRow, waitRow);

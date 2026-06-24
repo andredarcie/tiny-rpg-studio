@@ -68,7 +68,7 @@ class EditorExportService {
             }
             const api = getTinyRpgApi();
             if (!api) {
-                alert('Unable to import: engine API is not available.');
+                alert(TextResources.get('alerts.importHTML.apiUnavailable', 'Unable to import: engine API is not available.'));
                 return;
             }
             api.importGameData(gameData);
@@ -139,25 +139,25 @@ class EditorExportService {
             track('export_html_started');
             const api = getTinyRpgApi();
             if (!api) {
-                alert('Unable to export: engine API is not available.');
+                alert(TextResources.get('alerts.exportHTML.apiUnavailable', 'Unable to export: engine API is not available.'));
                 return;
             }
             const gameData = api.exportGameData();
 
             if (!gameData) {
-                alert('Unable to read current project data.');
+                alert(TextResources.get('alerts.exportHTML.noData', 'Unable to read current project data.'));
                 return;
             }
 
             const code = ShareUtils.encode(gameData as Record<string, unknown>);
-            const downloadError = 'Unable to download project assets. Please run Tiny RPG Studio from an HTTP/HTTPS server (not file://) to export HTML.';
+            const downloadError = TextResources.get('alerts.exportHTML.downloadError', 'Unable to download project assets. Please run Tiny RPG Studio from an HTTP/HTTPS server (not file://) to export HTML.');
 
             let cssText = '';
             const looksLikeHtmlDocument = (text: string): boolean => {
                 const trimmed = String(text || '').trimStart().toLowerCase();
                 return trimmed.startsWith('<!doctype html') || trimmed.startsWith('<html');
             };
-            const invalidScriptResponseMessage = 'Export failed: expected a JavaScript asset but received HTML. Rebuild the export bundle with "npm run build:export" and try again.';
+            const invalidScriptResponseMessage = TextResources.get('alerts.exportHTML.invalidScript', 'Export failed: expected a JavaScript asset but received HTML. Rebuild the export bundle with "npm run build:export" and try again.');
             // Collect CSS from all active non-external stylesheets.
             // Using document.styleSheets handles both prod mode (<link rel="stylesheet"> injected
             // by Vite build) and dev mode (<style> tags injected by Vite HMR).
@@ -364,7 +364,7 @@ class EditorExportService {
 
             const gameContainer = document.getElementById('game-container');
             if (!gameContainer) {
-                alert('game-container not found');
+                alert(TextResources.get('alerts.exportHTML.containerMissing', 'game-container not found'));
                 return;
             }
             const containerClone = gameContainer.cloneNode(true) as HTMLElement;
@@ -403,7 +403,7 @@ class EditorExportService {
                 </script>
                 </head>
                 <body class="game-mode">
-                <button id="btn-open-studio" style="position:absolute;top:10px;right:10px;z-index:9999;">Open Studio</button>
+                <button id="btn-open-studio" style="position:absolute;top:10px;right:10px;z-index:9999;">${TextResources.get('export.openStudio', 'Open Studio')}</button>
                 <script>
                 document.getElementById('btn-open-studio')?.addEventListener('click', function(){
                     const url = 'https://andredarcie.github.io/tiny-rpg-studio/#' + (globalThis.__TINY_RPG_SHARED_CODE|| '');
@@ -451,7 +451,7 @@ class EditorExportService {
             URL.revokeObjectURL(url);
         } catch (error) {
             console.error('Export failed', error);
-            alert('Export failed. See console for details.');
+            alert(TextResources.get('alerts.exportHTML.failed', 'Export failed. See console for details.'));
         }
     }
 }

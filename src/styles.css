@@ -4740,7 +4740,7 @@ body.game-mode .tab-button.active {
 
 .explore-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
 }
 
@@ -4961,18 +4961,53 @@ body.game-mode .tab-button.active {
 }
 
 @media (max-width: 640px) {
-    .explore-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .explore-modal {
+        padding: 8px;
     }
 
     .explore-modal__panel {
-        max-height: 90vh;
+        max-height: 94vh;
+    }
+
+    .explore-modal__header {
+        padding: 10px 12px;
+    }
+
+    /* Let the count subtitle wrap instead of hard-truncating on narrow screens. */
+    .explore-modal__subtitle {
+        white-space: normal;
+    }
+
+    .explore-modal__body {
+        padding: 12px;
+    }
+
+    .explore-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .explore-card__info {
+        padding: 8px;
+        gap: 4px;
     }
 }
 
-@media (max-width: 380px) {
+@media (max-width: 360px) {
     .explore-grid {
-        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .explore-modal__body {
+        padding: 10px;
+    }
+}
+
+/* Only collapse to a single column on very narrow viewports, so common
+   phones (≈360–414px) still show a 2-up grid instead of one huge card. */
+@media (max-width: 300px) {
+    .explore-grid {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

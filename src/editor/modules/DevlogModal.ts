@@ -11,6 +11,7 @@
  */
 import { DEVLOG_ENTRIES, LATEST_DEVLOG_ID, type DevlogEntry } from '../manager/devlogData';
 import { track } from '../../analytics/track';
+import { TextResources } from '../../runtime/adapters/TextResources';
 
 const SEEN_STORAGE_KEY = 'tiny-rpg-devlog-seen';
 const PAGE_SIZE = 5;
@@ -138,7 +139,9 @@ class DevlogModal {
       this.button.classList.toggle('has-updates', unseen);
       this.button.setAttribute(
         'aria-label',
-        unseen ? 'Engine updates and devlog (new updates available)' : 'Engine updates and devlog',
+        unseen
+          ? TextResources.get('devlog.buttonAriaUnseen', 'Engine updates and devlog (new updates available)')
+          : TextResources.get('devlog.buttonAria', 'Engine updates and devlog'),
       );
     }
   }
@@ -164,7 +167,11 @@ class DevlogModal {
     this.list.scrollTop = 0;
 
     if (this.pageIndicator) {
-      this.pageIndicator.textContent = `Page ${this.currentPage + 1} of ${this.totalPages}`;
+      this.pageIndicator.textContent = TextResources.format(
+        'devlog.pageIndicator',
+        { current: this.currentPage + 1, total: this.totalPages },
+        `Page ${this.currentPage + 1} of ${this.totalPages}`,
+      );
     }
     if (this.prevBtn) this.prevBtn.disabled = this.currentPage === 0;
     if (this.nextBtn) this.nextBtn.disabled = this.currentPage >= this.totalPages - 1;

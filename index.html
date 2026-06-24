@@ -209,11 +209,11 @@
     </script>
 </head>
 <body>
-    <div id="boot-loading" role="status" aria-live="polite" aria-label="Loading Tiny RPG Studio">
+    <div id="boot-loading" role="status" aria-live="polite" aria-label="Loading Tiny RPG Studio" data-aria-label-key="boot.loadingAria">
         <div class="boot-title">Tiny RPG Studio</div>
         <div class="boot-subtitle">by André N. Darcie and Diguifi</div>
         <div class="boot-bar"><div class="boot-bar__fill" id="boot-loading-fill"></div></div>
-        <div class="boot-hint">Carregando...</div>
+        <div class="boot-hint" data-text-key="boot.loadingHint">Carregando...</div>
     </div>
     <script>
         // Safety net: if the bundle ever stalls, don't leave the user staring at
@@ -226,7 +226,7 @@
         }, 15000);
     </script>
     <div class="app">
-        <main role="main" aria-label="Aplicação principal - Editor e executor de RPG">
+        <main role="main" aria-label="Aplicação principal - Editor e executor de RPG" data-aria-label-key="aria.mainApp">
             <div class="tabs" role="tablist">
                 <h1 class="tabs-title">Tiny RPG Studio</h1>
                 <div class="tabs-links">
@@ -237,14 +237,14 @@
                 </div>
             </div>
             <div class="project-save-controls">
-                <button id="btn-manual-save" class="btn-manual-save" type="button" title="Manual Save" aria-label="Save project manually">Save</button>
+                <button id="btn-manual-save" class="btn-manual-save" type="button" title="Manual Save" data-title-key="project.manualSaveTitle" aria-label="Save project manually" data-aria-label-key="project.manualSaveAria" data-text-key="project.manualSave">Save</button>
                 <div class="history-dropdown-wrapper">
-                    <button id="btn-history-dropdown" class="btn-history-dropdown" type="button" title="Project History" aria-label="Open project history" aria-expanded="false" aria-haspopup="listbox">Load</button>
-                    <div id="history-dropdown-menu" class="history-dropdown-menu" role="listbox" aria-label="Project history" hidden>
+                    <button id="btn-history-dropdown" class="btn-history-dropdown" type="button" title="Project History" data-title-key="project.historyTitle" aria-label="Open project history" data-aria-label-key="project.historyAria" aria-expanded="false" aria-haspopup="listbox" data-text-key="project.historyLoad">Load</button>
+                    <div id="history-dropdown-menu" class="history-dropdown-menu" role="listbox" aria-label="Project history" data-aria-label-key="project.historyMenuAria" hidden>
                         <div id="history-items-container" class="history-items-container"></div>
                     </div>
                 </div>
-                <button id="btn-devlog" class="btn-devlog" type="button" title="Engine updates" aria-label="Engine updates and devlog" aria-haspopup="dialog">Updates<span id="devlog-badge" class="devlog-badge" aria-hidden="true" hidden></span></button>
+                <button id="btn-devlog" class="btn-devlog" type="button" title="Engine updates" data-title-key="devlog.buttonTitle" aria-label="Engine updates and devlog" aria-haspopup="dialog"><span data-text-key="devlog.buttonLabel">Updates</span><span id="devlog-badge" class="devlog-badge" aria-hidden="true" hidden></span></button>
             </div>
 
             <div class="tab-content active" id="tab-game" role="tabpanel" aria-labelledby="tab-game">
@@ -271,7 +271,7 @@
             </div>
 
             <div class="tab-content" id="tab-editor" role="tabpanel" aria-labelledby="tab-editor">
-                <div class="editor-layout" role="group" aria-label="Game Engine Editor">
+                <div class="editor-layout" role="group" aria-label="Game Engine Editor" data-aria-label-key="aria.editorLayout">
                     <div class="editor-left">
                         <div class="editor-section editor-section--tiles" data-mobile-panel="tiles">
                             <details open>
@@ -403,13 +403,13 @@
                             <details open>
                                 <summary data-text-key="sections.project"></summary>
                                 <div class="project-actions">
-                                    <div class="project-tabs" role="tablist" aria-label="Project sections">
+                                    <div class="project-tabs" role="tablist" aria-label="Project sections" data-aria-label-key="project.tabsAria">
                                         <button class="project-tab-button active" type="button" role="tab" aria-selected="true" data-project-tab-button="development" data-text-key="project.group.development">Desenvolvimento</button>
                                         <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="testing" data-text-key="project.group.testing">Testes</button>
                                         <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="appearance" data-text-key="project.group.appearance">Aparência</button>
                                         <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="online" data-text-key="project.group.online">Online</button>
                                         <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="info" data-text-key="project.group.info">Informações</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="audio">Audio</button>
+                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="audio" data-text-key="project.group.audio">Audio</button>
                                         <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="export" data-text-key="project.group.export">Exportação</button>
                                     </div>
 
@@ -469,14 +469,15 @@
                                                 <div class="palette-header">
                                                     <p class="palette-description" data-text-key="project.paletteDescription"></p>
                                                     <div style="display:flex;gap:8px;margin-bottom:8px;">
-                                                        <button id="palette-import-button" class="palette-action-btn" type="button">import</button>
-                                                        <button id="palette-export-button" class="palette-action-btn" type="button">export</button>
+                                                        <button id="palette-import-button" class="palette-action-btn" type="button" data-text-key="project.paletteImport">import</button>
+                                                        <button id="palette-export-button" class="palette-action-btn" type="button" data-text-key="project.paletteExport">export</button>
                                                     </div>
                                                     <button
                                                         id="palette-reset-button"
                                                         class="palette-reset-btn"
                                                         data-text-key="project.paletteReset"
                                                         title="Reset to PICO-8 colors"
+                                                        data-title-key="project.paletteResetTitle"
                                                     ></button>
                                                 </div>
                                                 <div class="palette-preset-field">
@@ -629,6 +630,7 @@
                                             <select id="language-select">
                                                 <option value="pt-BR" data-text-key="language.option.ptBR"></option>
                                                 <option value="en-US" data-text-key="language.option.enUS"></option>
+                                                <option value="zh-CN" data-text-key="language.option.zhCN"></option>
                                             </select>
                                         </label>
                                         <button id="btn-about" class="project-about-button" type="button" data-text-key="buttons.about" data-aria-label-key="about.openAria" aria-haspopup="dialog">About</button>
@@ -638,12 +640,12 @@
                                     <!-- Grupo: Exportação -->
                                     <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="audio" hidden>
                                     <div class="project-group project-group--audio">
-                                        <h2 class="project-group__title">Audio</h2>
+                                        <h2 class="project-group__title" data-text-key="project.group.audio">Audio</h2>
                                         <div class="project-variables project-variables--music">
                                             <details open>
-                                                <summary>Background Music</summary>
+                                                <summary data-text-key="project.audio.backgroundMusic">Background Music</summary>
                                                 <label class="project-field">
-                                                    <span>YouTube URL</span>
+                                                    <span data-text-key="project.audio.youtubeUrl">YouTube URL</span>
                                                     <input
                                                         type="url"
                                                         id="project-background-music-url"
@@ -654,7 +656,7 @@
                                                     >
                                                 </label>
                                                 <label class="project-field project-field--music-volume">
-                                                    <span>Volume</span>
+                                                    <span data-text-key="project.audio.volume">Volume</span>
                                                     <div class="project-volume-control">
                                                         <input
                                                             type="range"
@@ -731,16 +733,16 @@
         <div class="devlog-modal__panel">
             <div class="devlog-modal__header">
                 <div class="devlog-modal__title-group">
-                    <h2 id="devlog-modal-title" class="devlog-modal__title">What's New</h2>
-                    <p class="devlog-modal__subtitle">Engine updates &amp; devlog</p>
+                    <h2 id="devlog-modal-title" class="devlog-modal__title" data-text-key="devlog.modalTitle">What's New</h2>
+                    <p class="devlog-modal__subtitle" data-text-key="devlog.modalSubtitle">Engine updates &amp; devlog</p>
                 </div>
-                <button type="button" id="devlog-close" class="devlog-modal__close" aria-label="Close updates">✕</button>
+                <button type="button" id="devlog-close" class="devlog-modal__close" aria-label="Close updates" data-aria-label-key="devlog.closeAria">✕</button>
             </div>
             <div id="devlog-list" class="devlog-modal__body"></div>
             <div class="devlog-modal__footer">
-                <button type="button" id="devlog-prev" class="devlog-pager-btn">← Prev</button>
+                <button type="button" id="devlog-prev" class="devlog-pager-btn" data-text-key="devlog.prev">← Prev</button>
                 <span id="devlog-page-indicator" class="devlog-page-indicator" aria-live="polite"></span>
-                <button type="button" id="devlog-next" class="devlog-pager-btn">Next →</button>
+                <button type="button" id="devlog-next" class="devlog-pager-btn" data-text-key="devlog.next">Next →</button>
             </div>
         </div>
     </div>

@@ -146,7 +146,7 @@ class EditorObjectRenderer extends EditorRendererBase {
                     if (damage !== null) {
                         const damageSpan = document.createElement('span');
                         damageSpan.className = 'object-stat-damage';
-                        damageSpan.textContent = `ATK: ${damage}`;
+                        damageSpan.textContent = this.tf('editor.object.attackBadge', { value: damage }, `ATK: ${damage}`);
                         stats.appendChild(damageSpan);
                     }
 
@@ -160,7 +160,7 @@ class EditorObjectRenderer extends EditorRendererBase {
                     if (durability !== null) {
                         const durabilitySpan = document.createElement('span');
                         durabilitySpan.className = 'object-stat-durability';
-                        durabilitySpan.textContent = `DEF: ${durability}`;
+                        durabilitySpan.textContent = this.tf('editor.object.defenseBadge', { value: durability }, `DEF: ${durability}`);
                         stats.appendChild(durabilitySpan);
                     }
 

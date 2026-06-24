@@ -1,3 +1,4 @@
+import { TextResources } from '../../runtime/adapters/TextResources';
 import type { PlayerInfo } from '../shared/protocol';
 
 export class PlayerList {
@@ -44,7 +45,7 @@ export class PlayerList {
         dotEl.style.flexShrink = '0';
 
         const nameEl = document.createElement('span');
-        nameEl.textContent = isSelf ? `${p.name} (Você)` : p.name;
+        nameEl.textContent = isSelf ? TextResources.format('online.youSuffix', { name: p.name }, `${p.name} (Você)`) : p.name;
         nameEl.style.color = isSelf ? 'var(--accent, #5bfa8e)' : 'var(--text, #fff)';
         nameEl.style.fontWeight = isSelf ? 'bold' : 'normal';
         nameEl.style.overflow = 'hidden';
@@ -64,7 +65,7 @@ export class PlayerList {
             }
         } else {
             const deadEl = document.createElement('span');
-            deadEl.textContent = '✕ morto';
+            deadEl.textContent = TextResources.get('online.playerList.dead', '✕ morto');
             deadEl.style.color = 'rgba(255,64,64,0.6)';
             deadEl.style.flexShrink = '0';
             el.appendChild(deadEl);

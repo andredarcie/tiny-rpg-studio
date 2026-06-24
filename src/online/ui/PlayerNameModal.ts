@@ -1,3 +1,5 @@
+import { TextResources } from '../../runtime/adapters/TextResources';
+
 type PlayerNameModalOptions = {
     onConfirm: (name: string) => void;
 };
@@ -41,7 +43,7 @@ export class PlayerNameModal {
         });
 
         const title = document.createElement('div');
-        title.textContent = 'Entrar na partida';
+        title.textContent = TextResources.get('online.nameModal.title', 'Entrar na partida');
         Object.assign(title.style, {
             color: 'var(--accent, #5bfa8e)',
             fontWeight: 'bold',
@@ -60,7 +62,7 @@ export class PlayerNameModal {
             outline: 'none',
         });
         this.input.maxLength = 16;
-        this.input.placeholder = 'Seu nome (2–16 chars)';
+        this.input.placeholder = TextResources.get('online.nameModal.placeholder', 'Seu nome (2–16 chars)');
         this.input.addEventListener('focus', () => {
             this.input.style.borderColor = 'var(--accent, #5bfa8e)';
         });
@@ -81,7 +83,7 @@ export class PlayerNameModal {
             fontWeight: 'bold',
             cursor: 'pointer',
         });
-        this.btn.textContent = 'Entrar';
+        this.btn.textContent = TextResources.get('online.nameModal.confirm', 'Entrar');
 
         this.btn.addEventListener('click', () => this.confirm());
         this.input.addEventListener('keydown', (ev) => {

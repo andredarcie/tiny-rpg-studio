@@ -1,6 +1,7 @@
 
 import { EnemyDefinitions } from '../runtime/domain/definitions/EnemyDefinitions';
 import { track } from '../analytics/track';
+import { TextResources } from '../runtime/adapters/TextResources';
 import type { GameEngine } from '../runtime/services/GameEngine';
 import type { TileDefinition } from '../runtime/domain/definitions/tileTypes';
 import { EditorConstants } from './modules/EditorConstants';
@@ -136,7 +137,7 @@ class EditorManager {
     showRepositionIndicator(name: string): void {
         const el = this.domCache.repositionIndicator;
         if (!el) return;
-        el.textContent = `Movendo ${name}`;
+        el.textContent = TextResources.format('editor.reposition.moving', { name }, `Movendo ${name}`);
         el.hidden = false;
         this.domCache.editorCanvas?.classList.add('is-repositioning');
     }
@@ -576,7 +577,7 @@ class EditorManager {
     createNewGame() {
         const emptyLayer = () => Array.from({ length: 8 }, () => Array(8).fill(null) as null[]);
         const data = {
-            title: 'Novo Jogo',
+            title: TextResources.get('editor.newGame.defaultTitle', 'Novo Jogo'),
             palette: ['#0e0f13', '#2e3140', '#f4f4f8'],
             roomSize: 8,
             rooms: [

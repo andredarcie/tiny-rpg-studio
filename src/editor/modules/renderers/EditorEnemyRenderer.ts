@@ -62,7 +62,7 @@ class EditorEnemyRenderer extends EditorRendererBase {
 
             const livesSpan = document.createElement('span');
             livesSpan.className = 'enemy-stat-lives';
-            livesSpan.textContent = `LIFE: ${livesValue}`;
+            livesSpan.textContent = this.tf('editor.enemy.lifeBadge', { value: livesValue }, `LIFE: ${livesValue}`);
 
             const separator = document.createElement('span');
             separator.className = 'enemy-stat-separator';
@@ -70,14 +70,14 @@ class EditorEnemyRenderer extends EditorRendererBase {
 
             const damageSpan = document.createElement('span');
             damageSpan.className = 'enemy-stat-damage';
-            damageSpan.textContent = `ATK: ${damageValue}`;
+            damageSpan.textContent = this.tf('editor.enemy.attackBadge', { value: damageValue }, `ATK: ${damageValue}`);
 
             stats.append(livesSpan, separator, damageSpan);
 
             if (definition.boss) {
                 const badge = document.createElement('span');
                 badge.className = 'enemy-boss-badge';
-                badge.textContent = 'Boss';
+                badge.textContent = this.t('enemies.stats.boss', 'Boss');
                 meta.appendChild(badge);
             }
 

@@ -296,7 +296,7 @@ export class OnlineModeApplication {
             positionSender?.sendNow(true);
         };
         gameEngine.online.onGameCompletion = () => {
-            const name = sessionStorage.getItem('tiny-rpg-player-name') ?? 'Jogador';
+            const name = sessionStorage.getItem('tiny-rpg-player-name') ?? getTextResource('online.defaultPlayerName', 'Jogador');
             manager.client.send({ type: 'game-over', winnerId: manager.client.sessionToken, winnerName: name });
         };
 
@@ -542,7 +542,7 @@ export class OnlineModeApplication {
             syncServerModal();
             connIndicator.setState(state);
             if (state === 'disconnected') {
-                toast.show('⚠️ Conexão perdida. Tentando reconectar...');
+                toast.show(getTextResource('online.toast.connectionLost', '⚠️ Conexão perdida. Tentando reconectar...'));
             }
         });
 
@@ -579,14 +579,14 @@ export class OnlineModeApplication {
                 if (p.sessionToken === manager.client.sessionToken) continue;
                 const wasPresent = prev.some((x) => x.sessionToken === p.sessionToken);
                 if (!wasPresent) {
-                    toast.show(`🟢 ${p.name} entrou na partida`);
+                    toast.show(TextResources.format('online.toast.playerJoined', { name: p.name }, `🟢 ${p.name} entrou na partida`));
                 }
             }
             for (const p of prev) {
                 if (p.sessionToken === manager.client.sessionToken) continue;
                 const stillPresent = incoming.some((x) => x.sessionToken === p.sessionToken);
                 if (!stillPresent) {
-                    toast.show(`🔴 ${p.name} saiu da partida`);
+                    toast.show(TextResources.format('online.toast.playerLeft', { name: p.name }, `🔴 ${p.name} saiu da partida`));
                 }
             }
         });
@@ -596,7 +596,7 @@ export class OnlineModeApplication {
             // different namespace) — match on sessionToken or the toast never shows.
             const name = manager.players.find((p) => p.sessionToken === msg.playerId)?.name;
             if (name && msg.playerId !== manager.client.sessionToken) {
-                toast.show(`✨ ${name} voltou!`);
+                toast.show(TextResources.format('online.toast.playerReturned', { name }, `✨ ${name} voltou!`));
             }
         });
 
@@ -752,7 +752,7 @@ export class OnlineModeApplication {
 
     private static showGameOverBanner(winnerName: string): void {
         const banner = document.createElement('div');
-        banner.textContent = `★ ${winnerName} completou o jogo!`;
+        banner.textContent = TextResources.format('online.banner.gameCompleted', { name: winnerName }, `★ ${winnerName} completou o jogo!`);
         Object.assign(banner.style, {
             position: 'fixed',
             top: 'clamp(8px, 2vw, 12px)',
@@ -833,9 +833,9 @@ export class OnlineModeApplication {
     private static showServerClosedOverlay(): void {
         this.buildBlockingOverlay(
             '#ff4040',
-            'Sala encerrada',
-            'O host encerrou a partida antes de ela começar.',
-            'Voltar ao início',
+            getTextResource('server.closed.title', 'Sala encerrada'),
+            getTextResource('server.closed.message', 'O host encerrou a partida antes de ela começar.'),
+            getTextResource('server.kicked.button', 'Voltar ao início'),
         );
     }
 

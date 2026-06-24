@@ -37,8 +37,8 @@ export class EditorPaletteService {
             button.className = 'palette-color-button';
             button.style.backgroundColor = color;
             button.dataset.colorIndex = String(index);
-            button.setAttribute('aria-label', `Color ${index}: ${color}`);
-            button.title = `Cor ${index}: ${color}`;
+            button.setAttribute('aria-label', TextResources.format('project.palette.colorAria', { index, color }, `Color ${index}: ${color}`));
+            button.title = TextResources.format('project.palette.colorTitle', { index, color }, `Cor ${index}: ${color}`);
 
             button.addEventListener('click', () => {
                 this.openColorPicker(index);

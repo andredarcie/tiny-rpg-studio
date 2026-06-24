@@ -31,7 +31,8 @@ class TileDefinitions {
         layouts: (number | null)[][][] | (number | null)[][],
         collision = false,
         category = 'Diversos',
-        palette?: string[]
+        palette?: string[],
+        nameKey?: string
     ) {
         const layoutList = Array.isArray(layouts) ? layouts.filter(Boolean) : [layouts];
         const frames = (layoutList.length ? layoutList : [this.createEmptyLayout()])
@@ -39,6 +40,7 @@ class TileDefinitions {
         const data: TileDefinitionData = {
             id,
             name,
+            nameKey,
             pixels: frames[0] as TileFrame,
             frames: frames as TileFrame[],
             collision,
@@ -65,13 +67,14 @@ class TileDefinitions {
         layout: (number | null)[][],
         collision = false,
         category = 'Diversos',
-        alternateLayout: (number | null)[][] | null = null
+        alternateLayout: (number | null)[][] | null = null,
+        nameKey?: string
     ) {
         const layouts = [layout];
         if (Array.isArray(alternateLayout)) {
             layouts.push(alternateLayout);
         }
-        return this.createTile(index, name, layouts, collision, category);
+        return this.createTile(index, name, layouts, collision, category, undefined, nameKey);
     }
 
     static TILE_PRESETS: Tile[] = [
@@ -84,7 +87,7 @@ class TileDefinitions {
             [  3,  3,  3,  3,  3,  3,  3,  3 ],
             [  3,  3,  3,  3,  3,  3,  3,  3 ],
             [  3,  3,  3,  3,  3,  3,  3,  3 ]
-        ], false, 'Terreno'),
+        ], false, 'Terreno', null, 'tiles.names.vibrantGrass'),
 
         this.tile(1, 'Grama Alta', [
             [  3,  3,  3,  3,  3,  3,  3,  3 ],
@@ -104,7 +107,7 @@ class TileDefinitions {
             [  3, 11,  3, 11,  3,  3,  3,  3 ],
             [  3,  3,  3,  3,  3,  3,  3,  3 ],
             [  3,  3,  3,  3,  3,  3,  3,  3 ]
-        ]),
+        ], 'tiles.names.tallGrass'),
 
         this.tile(2, 'Trilha de Terra', [
             [  4,  4,  4,  4,  4,  4,  4,  4 ],
@@ -115,7 +118,7 @@ class TileDefinitions {
             [  4,  4,  4,  4,  4,  4,  4,  4 ],
             [  4,  4,  4,  9,  4,  4,  4,  4 ],
             [  4,  4,  4,  4,  4,  4,  4,  4 ]
-        ], false, 'Terreno'),
+        ], false, 'Terreno', null, 'tiles.names.dirtPath'),
 
         this.tile(3, 'Cascalho', [
             [  3,  3,  3,  3,  3,  3,  3,  3 ],
@@ -126,7 +129,7 @@ class TileDefinitions {
             [  3,  3,  3,  5,  6,  6,  5,  3 ],
             [  3,  3,  3,  3,  3,  3,  3,  3 ],
             [  3,  3,  3,  3,  3,  3,  3,  3 ]
-        ], false, 'Terreno'),
+        ], false, 'Terreno', null, 'tiles.names.gravel'),
 
         this.tile(4, 'Areia Macia', [
             [15, 15, 15, 15, 15, 15, 15, 15],
@@ -137,7 +140,7 @@ class TileDefinitions {
             [15, 15, 10, 15, 15, 10, 15, 15],
             [15, 15, 15, 15, 15, 15, 15, 15],
             [15, 10, 15, 15, 15, 15, 10, 15]
-        ], false, 'Terreno'),
+        ], false, 'Terreno', null, 'tiles.names.softSand'),
 
         this.tile(16, 'Piso de madeira', [
             [  5,  5,  4,  4,  5,  5,  4,  4 ],
@@ -148,7 +151,7 @@ class TileDefinitions {
             [  5,  5,  4,  4,  5,  5,  4,  4 ],
             [  4,  4,  5,  5,  4,  4,  5,  5 ],
             [  4,  4,  5,  5,  4,  4,  5,  5 ]
-        ], false, 'Terreno'),
+        ], false, 'Terreno', null, 'tiles.names.woodFloor'),
 
         this.tile(17, 'Piso de pedra', [
             [ 13,  5,  5,  5,  5, 13,  5,  5 ],
@@ -159,7 +162,7 @@ class TileDefinitions {
             [  5,  5,  5,  5,  5,  5,  5, 13 ],
             [ 13,  5,  5,  5, 13,  5,  5,  5 ],
             [ 13,  5,  5,  5,  5, 13,  5, 13 ]
-        ], false, 'Terreno'),
+        ], false, 'Terreno', null, 'tiles.names.stoneFloor'),
 
         this.tile(5, 'Agua Brilhante', [
             [ 12, 12, 12, 12, 12, 12, 12,  7 ],
@@ -179,7 +182,7 @@ class TileDefinitions {
             [ 12,  7, 12, 12, 12, 12, 12,  7 ],
             [ 12, 12, 12, 12,  6,  7, 12, 12 ],
             [ 12, 12, 12, 12, 12, 12, 12, 12 ]
-        ]),
+        ], 'tiles.names.shinyWater'),
 
         this.tile(6, 'Lava Borbulhante', [
             [ 10, 10,  8,  8,  8,  8,  9,  8 ],
@@ -199,7 +202,7 @@ class TileDefinitions {
             [  8, 10,  9,  8, 10,  8,  9,  8 ],
             [ 10,  9, 10,  9, 10,  9,  8,  8 ],
             [ 10,  8,  8,  9,  8,  8, 10,  8 ]
-        ]),
+        ], 'tiles.names.bubblingLava'),
 
         this.tile(7, 'Pedra Grande', [
             [ null, null, null, null, null, null, null, null ],
@@ -210,7 +213,7 @@ class TileDefinitions {
             [ null,  5, 13,  6,  6,  6,  7,  5 ],
             [ null,  5, 13,  6,  6,  6,  6,  5 ],
             [ null, null, null, null, null, null, null, null ]
-        ], true, 'Natureza'),
+        ], true, 'Natureza', null, 'tiles.names.bigRock'),
 
         this.tile(8, 'Arvore Verde', [
             [ null, null,  1,  1,  1,  1, null, null ],
@@ -221,7 +224,7 @@ class TileDefinitions {
             [ null,  1,  1,  4,  4,  1,  1, null ],
             [ null, null, null,  4,  4, null, null, null ],
             [ null, null,  4,  4,  4,  4, null, null ]
-        ], true, 'Natureza'),
+        ], true, 'Natureza', null, 'tiles.names.greenTree'),
 
         this.tile(9, 'Arbusto Denso', [
             [ null, null, null, null, null, null, null, null ],
@@ -232,7 +235,7 @@ class TileDefinitions {
             [  1, 11, 11, 11, 11,  3, 11,  1 ],
             [  1, 11,  3, 11, 11, 11, 11,  1 ],
             [  1,  1,  1,  1,  1,  1,  1,  1 ]
-        ], true, 'Natureza'),
+        ], true, 'Natureza', null, 'tiles.names.denseBush'),
 
         this.tile(10, 'Parede de Pedra', [
             [  6,  7,  6,  5, 13,  5, 13,  6 ],
@@ -243,7 +246,7 @@ class TileDefinitions {
             [ 13,  5,  7, 13,  5,  5,  6,  5 ],
             [  5,  6,  6,  6,  7, 13, 13,  5 ],
             [  7,  6,  6, 13,  5,  5,  5,  6 ]
-        ], true, 'Construcoes'),
+        ], true, 'Construcoes', null, 'tiles.names.stoneWall'),
 
         this.tile(11, 'Parede de Madeira', [
             [  9,  9,  9,  9,  9,  9,  9,  9 ],
@@ -254,7 +257,7 @@ class TileDefinitions {
             [  4,  4,  4,  4,  4,  4,  4,  4 ],
             [  9,  9,  9,  9,  9,  9,  9,  9 ],
             [  4,  4,  4,  4,  4,  4,  4,  4 ]
-        ], true, 'Construcoes'),
+        ], true, 'Construcoes', null, 'tiles.names.woodWall'),
 
         this.tile(12, 'Telhado Classico', [
             [  2,  2,  8,  8,  2,  2,  8,  8 ],
@@ -265,7 +268,7 @@ class TileDefinitions {
             [  8,  8, 14, 14,  8,  8, 14, 14 ],
             [  8,  8,  2,  2,  8,  8,  2,  2 ],
             [ 14, 14,  8,  8, 14, 14,  8,  8 ]
-        ], true, 'Construcoes'),
+        ], true, 'Construcoes', null, 'tiles.names.classicRoof'),
 
         this.tile(13, 'Porta de Madeira', [
             [  4,  4,  4,  4,  4,  4,  4,  4 ],
@@ -276,7 +279,7 @@ class TileDefinitions {
             [  4,  9,  9,  9,  9,  9,  9,  4 ],
             [  4,  9,  9,  9,  9,  9,  9,  4 ],
             [  4,  9,  9,  9,  9,  9,  9,  4 ]
-        ], false, 'Construcoes'),
+        ], false, 'Construcoes', null, 'tiles.names.woodDoor'),
 
         this.tile(14, 'Janela Azul', [
             [  9,  9,  9,  9,  9,  9,  9,  9 ],
@@ -287,7 +290,7 @@ class TileDefinitions {
             [  4,  4,  4,  4,  4,  4,  4,  4 ],
             [  9,  9,  9,  9,  9,  9,  9,  9 ],
             [  4,  4,  4,  4,  4,  4,  4,  4 ]
-        ], true, 'Construcoes'),
+        ], true, 'Construcoes', null, 'tiles.names.blueWindow'),
 
         this.tile(15, 'Tocha de Parede', [
             [ null, null, null,  7, null, null, null, null ],
@@ -298,7 +301,7 @@ class TileDefinitions {
             [ null, null, null,  4, null, null, null, null ],
             [ null, null, null, null, null, null, null, null ],
             [ null, null, null, null, null, null, null, null ]
-        ], true, 'Decoracao')
+        ], true, 'Decoracao', null, 'tiles.names.wallTorch')
     ];
 
     static get presets() {
