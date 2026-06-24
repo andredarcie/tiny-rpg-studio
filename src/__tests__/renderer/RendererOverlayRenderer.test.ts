@@ -637,6 +637,42 @@ describe('RendererOverlayRenderer – drawLevelUpCard', () => {
         });
         expect(ctx.fillRect).toHaveBeenCalled();
     });
+
+    // ── BUG #6: level-up skill descriptions are clipped to 3 lines ────────────
+    // The card was drawing the description with a hardcoded 3-line cap, so on a
+    // normal/tall card longer descriptions were truncated with "..." and became
+    // unreadable. The cap must scale with the available card height instead.
+    it('BUG #6: gives the description more than 3 lines on a tall card', () => {
+        const { overlay, ctx } = makeOverlay();
+        const description = 'A long skill description that needs several lines to be fully readable.';
+        const spy = vi.spyOn(overlay, 'drawWrappedText');
+        overlay.drawLevelUpCard(ctx, {
+            x: 0, y: 0, width: 120, height: 120, active: true,
+            data: { id: 'pow', resolvedName: 'Power', resolvedDescription: description },
+        });
+        const descCall = spy.mock.calls.find((c) => c[1] === description);
+        expect(descCall).toBeDefined();
+        // Arg index 7 is `maxLines` in drawWrappedText(ctx, text, x, y, w, lh, charSize, maxLines).
+        expect(descCall?.[7]).toBeGreaterThan(3);
+    });
+
+    it('BUG #6: scales the description line budget with the card height', () => {
+        const { overlay, ctx } = makeOverlay();
+        const description = 'Another description used to compare line budgets across heights.';
+        const spy = vi.spyOn(overlay, 'drawWrappedText');
+        overlay.drawLevelUpCard(ctx, {
+            x: 0, y: 0, width: 120, height: 80, active: true,
+            data: { id: 'a', resolvedName: 'A', resolvedDescription: description },
+        });
+        overlay.drawLevelUpCard(ctx, {
+            x: 0, y: 0, width: 120, height: 200, active: true,
+            data: { id: 'b', resolvedName: 'B', resolvedDescription: description },
+        });
+        const calls = spy.mock.calls.filter((c) => c[1] === description);
+        const shortCardLines = Number(calls[0]?.[7]);
+        const tallCardLines = Number(calls[1]?.[7]);
+        expect(tallCardLines).toBeGreaterThan(shortCardLines);
+    });
 });
 
 // ─── drawIntroOverlay ────────────────────────────────────────────────────────

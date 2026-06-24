@@ -165,9 +165,22 @@ describe('EditorShareService', () => {
     expect((mgr.dom.shareUrlInput as HTMLInputElement).value).toBe('https://example.com#abc123');
   });
 
-  it('generateShareableUrl uses prompt when clipboard unavailable', async () => {
+  it('generateShareableUrl selects the share field when clipboard is unavailable', async () => {
     const mgr = makeManager();
     // Remove clipboard
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const selectSpy = vi.spyOn(mgr.dom.shareUrlInput as HTMLInputElement, 'select').mockImplementation(() => {});
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null);
+    const svc = new EditorShareService(asShareServiceManager(mgr));
+    await svc.generateShareableUrl();
+    expect((mgr.dom.shareUrlInput as HTMLInputElement).value).toBe('https://example.com#abc123');
+    expect(selectSpy).toHaveBeenCalled();
+    expect(promptSpy).not.toHaveBeenCalled();
+    promptSpy.mockRestore();
+  });
+
+  it('generateShareableUrl falls back to prompt only when there is no share field', async () => {
+    const mgr = makeManager({ shareUrlInput: null });
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
     const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue(null);
     const svc = new EditorShareService(asShareServiceManager(mgr));
@@ -187,22 +200,73 @@ describe('EditorShareService', () => {
     promptSpy.mockRestore();
   });
 
-  it('generateShareableUrl alerts on clipboard/write failure', async () => {
+  it('generateShareableUrl does NOT alert when clipboard write is blocked (itch.io sandbox)', async () => {
     const mgr = makeManager();
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: vi.fn(() => Promise.reject(new Error('denied'))) },
       configurable: true,
     });
+    const selectSpy = vi.spyOn(mgr.dom.shareUrlInput as HTMLInputElement, 'select').mockImplementation(() => {});
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const svc = new EditorShareService(asShareServiceManager(mgr));
+    await svc.generateShareableUrl();
+    // The URL is generated fine — only the copy was blocked — so no error popup.
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect((mgr.dom.shareUrlInput as HTMLInputElement).value).toBe('https://example.com#abc123');
+    expect(selectSpy).toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('generateShareableUrl warns (but still fills the field) when the URL exceeds the max length', async () => {
+    const mgr = makeManager();
+    const svc = new EditorShareService(asShareServiceManager(mgr));
+    // A URL past Chrome's ~32,779-char address-bar ceiling.
+    const longUrl = `https://example.com/#${'a'.repeat(40000)}`;
+    vi.spyOn(svc, 'buildShareUrl').mockReturnValue(longUrl as unknown as ReturnType<typeof svc.buildShareUrl>);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn(() => Promise.resolve()) },
+      configurable: true,
+    });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.mocked(TextResources.get).mockImplementation((key: string | null | undefined, fallback = '') => {
+      if (key === 'alerts.share.tooLong') return 'Too long';
+      return fallback || key || '';
+    });
+    await svc.generateShareableUrl();
+    // Non-blocking: the URL is still placed in the field, but the user is warned.
+    expect((mgr.dom.shareUrlInput as HTMLInputElement).value).toBe(longUrl);
+    expect(alertSpy).toHaveBeenCalledWith('Too long');
+    alertSpy.mockRestore();
+  });
+
+  it('generateShareableUrl does not warn for a normal-length URL', async () => {
+    const mgr = makeManager();
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn(() => Promise.resolve()) },
+      configurable: true,
+    });
+    const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    const svc = new EditorShareService(asShareServiceManager(mgr));
+    await svc.generateShareableUrl();
+    expect(alertSpy).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('generateShareableUrl alerts only on a genuine URL-generation failure', async () => {
+    const mgr = makeManager();
+    const svc = new EditorShareService(asShareServiceManager(mgr));
+    vi.spyOn(svc, 'buildShareUrl').mockImplementation(() => { throw new Error('encode failed'); });
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     vi.mocked(TextResources.get).mockImplementation((key: string | null | undefined, fallback = '') => {
       if (key === 'alerts.share.generateError') return 'Generate failed';
       return fallback || key || '';
     });
-    const svc = new EditorShareService(asShareServiceManager(mgr));
     await svc.generateShareableUrl();
     expect(errorSpy).toHaveBeenCalled();
     expect(alertSpy).toHaveBeenCalledWith('Generate failed');
+    errorSpy.mockRestore();
+    alertSpy.mockRestore();
   });
 
   // ─── trackShareUrl ────────────────────────────────────────────────────────

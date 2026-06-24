@@ -68,16 +68,24 @@ class StateWorldManager {
             if (index >= filled.length) return;
             const target = filled[index];
             target.bg = typeof room.bg === "number" ? room.bg : target.bg;
+            // Clamp to exactly `size` rows. Iterating the source rows directly
+            // would crash on an oversized matrix (more than `size` rows), since
+            // the empty `target` only has `size` rows and `target.tiles[y]` is
+            // undefined for y >= size — dereferencing it throws a TypeError.
             target.tiles = Array.isArray(room.tiles)
-                ? room.tiles.map((row, y) =>
-                    Array.from({ length: size }, (_, x) => {
+                ? Array.from({ length: size }, (_, y) => {
+                    const row = Array.isArray(room.tiles?.[y]) ? room.tiles[y] : [];
+                    return Array.from({ length: size }, (_, x) => {
                         const value = row[x];
                         return Number.isFinite(value) ? value : target.tiles[y][x];
-                    }))
+                    });
+                })
                 : target.tiles;
             target.walls = Array.isArray(room.walls)
-                ? room.walls.map((row, _y) =>
-                    Array.from({ length: size }, (_, x) => Boolean(row[x])))
+                ? Array.from({ length: size }, (_, y) => {
+                    const row = Array.isArray(room.walls?.[y]) ? room.walls[y] : [];
+                    return Array.from({ length: size }, (_, x) => Boolean(row[x]));
+                })
                 : target.walls;
         });
 

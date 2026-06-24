@@ -8,6 +8,7 @@ import { DevlogModal } from './editor/modules/DevlogModal';
 import { AboutModal } from './editor/modules/AboutModal';
 import { GameEngine } from './runtime/services/GameEngine';
 import { ShareUtils } from './runtime/infra/share/ShareUtils';
+import { ProjectSaveManager } from './editor/manager/ProjectSaveManager';
 import { getTinyRpgApi, setTinyRpgApi, type TinyRpgApi } from './runtime/infra/TinyRpgApi';
 import { TextResources } from './runtime/adapters/TextResources';
 import { soundEngine } from './runtime/services/SoundEngine';
@@ -545,10 +546,25 @@ class TinyRPGApplication {
         const decoded = ShareUtils.decode(sharedCode);
         if (decoded) {
           gameEngine.importGameData(decoded);
+          return;
         }
       } catch (error) {
         console.warn('[TinyRPG] Unable to decode shared game data from inline code.', error);
       }
+    }
+
+    // No game in the URL/inline code: restore the user's most recently saved
+    // project from localStorage so a plain reload keeps their work instead of
+    // resetting to the default Studio data. The editor "Save" persists there,
+    // and the page URL is not kept in sync with every edit.
+    try {
+      const savedUrl = ProjectSaveManager.getMostRecentShareUrl();
+      const restored = savedUrl ? ShareUtils.extractGameDataFromShareUrl(savedUrl) : null;
+      if (restored) {
+        gameEngine.importGameData(restored);
+      }
+    } catch (error) {
+      console.warn('[TinyRPG] Unable to restore the last saved project.', error);
     }
   }
 

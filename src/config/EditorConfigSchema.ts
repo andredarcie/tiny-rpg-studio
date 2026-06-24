@@ -32,6 +32,10 @@ export interface EditorExportConfig {
   readonly mimeType: string;
 }
 
+export interface EditorShareConfig {
+  readonly maxUrlLength: number;
+}
+
 /**
  * Type helpers for accessing nested config types
  */
@@ -41,6 +45,7 @@ export type EditorConfigShape = {
   grid: EditorGridConfig;
   history: EditorHistoryConfig;
   export: EditorExportConfig;
+  share: EditorShareConfig;
 };
 
 /**
@@ -52,6 +57,7 @@ export class EditorConfigSchema {
   private _grid: EditorGridConfig;
   private _history: EditorHistoryConfig;
   private _export: EditorExportConfig;
+  private _share: EditorShareConfig;
 
   constructor(config: {
     canvas: EditorCanvasConfig;
@@ -59,12 +65,14 @@ export class EditorConfigSchema {
     grid: EditorGridConfig;
     history: EditorHistoryConfig;
     export: EditorExportConfig;
+    share: EditorShareConfig;
   }) {
     this._canvas = this.validateCanvas(config.canvas);
     this._preview = this.validatePreview(config.preview);
     this._grid = this.validateGrid(config.grid);
     this._history = this.validateHistory(config.history);
     this._export = this.validateExport(config.export);
+    this._share = this.validateShare(config.share);
   }
 
   // Canvas getters
@@ -90,6 +98,11 @@ export class EditorConfigSchema {
   // Export getters
   get export(): EditorExportConfig {
     return { ...this._export };
+  }
+
+  // Share getters
+  get share(): EditorShareConfig {
+    return { ...this._share };
   }
 
   // Validation methods
@@ -149,6 +162,13 @@ export class EditorConfigSchema {
     return Object.freeze({ ...exportConfig });
   }
 
+  private validateShare(share: EditorShareConfig): EditorShareConfig {
+    if (!Number.isInteger(share.maxUrlLength) || share.maxUrlLength <= 0) {
+      throw new Error(`Invalid max URL length: ${share.maxUrlLength}. Must be a positive integer.`);
+    }
+    return Object.freeze({ ...share });
+  }
+
   private isValidColor(color: string): boolean {
     // Basic validation for hex colors and named colors
     return /^#[0-9A-Fa-f]{3}([0-9A-Fa-f]{3})?$/.test(color) ||
@@ -165,6 +185,7 @@ export class EditorConfigSchema {
       grid: this.grid,
       history: this.history,
       export: this.export,
+      share: this.share,
     };
   }
 }

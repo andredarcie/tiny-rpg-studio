@@ -134,10 +134,13 @@ class ShareEncoder {
         }
 
         if (changedCount === 0) {
+            // Frame is byte-identical to the base: emit only rows, cols and the
+            // all-zero changed-mask. The decoder reads exactly these bytes for a
+            // delta frame with no changes — emitting any extra byte here shifts
+            // the read offset and corrupts every following frame/sprite.
             bytes.push(rows & 0xff);
             bytes.push(cols & 0xff);
             bytes.push(...new Uint8Array(Math.ceil(pixelCount / 8)));
-            bytes.push(0);
             return true;
         }
 

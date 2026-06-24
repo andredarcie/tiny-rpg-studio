@@ -66,6 +66,20 @@ export const EditorConfig = new EditorConfigSchema({
     /** MIME type for download */
     mimeType: 'text/html',
   },
+
+  /**
+   * Share / URL configuration
+   */
+  share: {
+    /**
+     * Max share-URL length (in characters) before warning the user that the
+     * game is too large to share via URL. The game data lives in the URL
+     * fragment (never sent to a server), so the binding limit is the browser
+     * address bar — Chrome's is the most restrictive at ~32,779 chars. Above
+     * this the user should Export (HTML) instead, which has no URL limit.
+     */
+    maxUrlLength: 32000,
+  },
 });
 
 /**

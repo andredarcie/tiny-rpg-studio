@@ -15,6 +15,9 @@ function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 9)}`;
 }
 
+/** Default localStorage key for the saved-project history. */
+const DEFAULT_STORAGE_KEY = 'tiny-rpg-projects-history';
+
 export class ProjectSaveManager {
   private autoSaveIntervalMs: number;
   private storageKey: string;
@@ -24,8 +27,27 @@ export class ProjectSaveManager {
 
   constructor(options?: ProjectSaveManagerOptions) {
     this.autoSaveIntervalMs = options?.autoSaveIntervalMs ?? 120000;
-    this.storageKey = options?.storageKey ?? 'tiny-rpg-projects-history';
+    this.storageKey = options?.storageKey ?? DEFAULT_STORAGE_KEY;
     this.maxItems = options?.maxItems ?? 5;
+  }
+
+  /**
+   * The share URL of the most recently saved project, or null when none exists.
+   * Used by the boot path to restore the user's last work after a reload — the
+   * editor "Save" persists here, and the page URL is not kept in sync with every
+   * edit, so without this a plain reload would fall back to the default game.
+   */
+  static getMostRecentShareUrl(storageKey: string = DEFAULT_STORAGE_KEY): string | null {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored) as ProjectHistory | null;
+      const projects = Array.isArray(parsed?.projects) ? parsed.projects : [];
+      const url = projects[0]?.shareUrl;
+      return typeof url === 'string' && url ? url : null;
+    } catch {
+      return null;
+    }
   }
 
   /**

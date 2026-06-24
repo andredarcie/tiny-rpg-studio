@@ -276,9 +276,20 @@ class RendererOverlayRenderer extends RendererModuleBase {
 
         const descTopGap = Math.max(5, Math.floor(height * 0.06));
         const textY = y + padding + FONT_SIZE + descTopGap;
-        this.drawWrappedText(ctx, description, x + padding, textY, width - padding * 2, LINE_HEIGHT, FONT_SIZE, 3);
+        const descMaxLines = this.getDescriptionMaxLines(height, padding, descTopGap);
+        this.drawWrappedText(ctx, description, x + padding, textY, width - padding * 2, LINE_HEIGHT, FONT_SIZE, descMaxLines);
 
         ctx.restore();
+    }
+
+    /**
+     * How many description lines fit below the skill name within the card.
+     * Scales with the card height so long descriptions are not clipped to a
+     * fixed cap (which made them unreadable on normal/tall cards).
+     */
+    getDescriptionMaxLines(cardHeight: number, padding: number, descTopGap: number): number {
+        const available = cardHeight - padding * 2 - FONT_SIZE - descTopGap;
+        return Math.max(1, Math.floor(available / LINE_HEIGHT));
     }
 
     ellipsizeText(text: string, maxWidth: number, charSize: number): string {
