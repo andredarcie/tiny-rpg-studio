@@ -17,6 +17,9 @@ vi.mock('../../editor/modules/EditorRenderService', () => ({
 vi.mock('../../editor/modules/EditorPaletteService', () => ({
   EditorPaletteService: class { initialize = vi.fn(); renderPaletteGrid = vi.fn(); syncPaletteState = vi.fn(); }
 }));
+vi.mock('../../editor/modules/EditorCustomSpritesService', () => ({
+  EditorCustomSpritesService: class { initialize = vi.fn(); }
+}));
 vi.mock('../../editor/modules/EditorNavIcons', () => ({
   EditorNavIcons: class { renderAll = vi.fn(); }
 }));

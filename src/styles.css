@@ -3785,6 +3785,18 @@ body.game-mode .tab-button.active {
     margin-bottom: 16px;
 }
 
+.project-sprites {
+    margin-top: 4px;
+}
+
+.project-sprites__title {
+    margin: 0;
+    font-size: 0.85em;
+    font-weight: normal;
+    color: var(--text);
+    letter-spacing: 0.02em;
+}
+
 .project-palette__panel {
     padding: 12px;
     background: var(--panel);

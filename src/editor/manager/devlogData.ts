@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-11-custom-sprites-pack',
+    date: '2026-07-11',
+    title: 'Share custom pixel art as a pack',
+    description:
+      'Under Project → Visuals you can export all custom sprites as one file and import them into another project. Merge art in, restore a full pack, or clear overrides — palette colors stay on their own import/export.',
+  },
+  {
     id: '2026-07-05-pwa-auto-updates',
     date: '2026-07-05',
     title: 'Installed apps stay up to date',

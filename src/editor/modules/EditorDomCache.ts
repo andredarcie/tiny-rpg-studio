@@ -56,6 +56,9 @@ class EditorDomCache {
     paletteResetButton: HTMLButtonElement | null;
     paletteImportButton: HTMLButtonElement | null;
     paletteExportButton: HTMLButtonElement | null;
+    spritesImportButton: HTMLButtonElement | null;
+    spritesExportButton: HTMLButtonElement | null;
+    spritesClearButton: HTMLButtonElement | null;
     projectSkillsResetOrder: HTMLButtonElement | null;
     projectHideHud: HTMLInputElement | null;
     projectDisableSkills: HTMLInputElement | null;
@@ -164,6 +167,9 @@ class EditorDomCache {
             this.paletteResetButton = null;
             this.paletteImportButton = null;
             this.paletteExportButton = null;
+            this.spritesImportButton = null;
+            this.spritesExportButton = null;
+            this.spritesClearButton = null;
             this.projectSkillsResetOrder = null;
             this.projectHideHud = null;
             this.projectDisableSkills = null;
@@ -261,6 +267,9 @@ class EditorDomCache {
         this.paletteResetButton = root.querySelector('#palette-reset-button') as HTMLButtonElement | null;
         this.paletteImportButton = root.querySelector('#palette-import-button') as HTMLButtonElement | null;
         this.paletteExportButton = root.querySelector('#palette-export-button') as HTMLButtonElement | null;
+        this.spritesImportButton = root.querySelector('#sprites-import-button') as HTMLButtonElement | null;
+        this.spritesExportButton = root.querySelector('#sprites-export-button') as HTMLButtonElement | null;
+        this.spritesClearButton = root.querySelector('#sprites-clear-button') as HTMLButtonElement | null;
         this.projectSkillsResetOrder = root.querySelector('#project-skills-reset-order') as HTMLButtonElement | null;
         this.projectHideHud = root.querySelector('#project-hide-hud') as HTMLInputElement | null;
         this.projectDisableSkills = root.querySelector('#project-disable-skills') as HTMLInputElement | null;

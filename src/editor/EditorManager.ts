@@ -12,6 +12,7 @@ import { EditorNavIcons } from './modules/EditorNavIcons';
 import { EditorNpcService } from './modules/EditorNpcService';
 import { EditorObjectService } from './modules/EditorObjectService';
 import { EditorPaletteService } from './modules/EditorPaletteService';
+import { EditorCustomSpritesService } from './modules/EditorCustomSpritesService';
 import { EditorRenderService } from './modules/EditorRenderService';
 import { EditorShareService } from './modules/EditorShareService';
 import { EditorState } from './modules/EditorState';
@@ -44,6 +45,7 @@ class EditorManager {
     objectService: EditorObjectService;
     variableService: EditorVariableService;
     paletteService: EditorPaletteService;
+    customSpritesService: EditorCustomSpritesService;
     worldService: EditorWorldService;
     uiController: EditorUIController;
     eventBinder: EditorEventBinder;
@@ -75,6 +77,7 @@ class EditorManager {
         this.objectService = new EditorObjectService(this);
         this.variableService = new EditorVariableService(this);
         this.paletteService = new EditorPaletteService(this);
+        this.customSpritesService = new EditorCustomSpritesService(this);
         this.worldService = new EditorWorldService(this);
         this.uiController = new EditorUIController(this);
         this.eventBinder = new EditorEventBinder(this);
@@ -247,6 +250,7 @@ class EditorManager {
         this.activeRoomIndex = Math.max(0, Math.min(totalRooms - 1, startRoomIndex));
         this.gameEngine.npcManager.ensureDefaultNPCs();
         this.paletteService.initialize();
+        this.customSpritesService.initialize();
         this.renderService.initSkillEditModal();
 
         // Render navigation icons with engine tiles
