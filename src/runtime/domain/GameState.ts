@@ -1015,12 +1015,7 @@ class GameState {
         this.state.player.currentLives = maxLives;
         this.state.player.lives = maxLives;
 
-        // Kill only the enemy that killed the player (not all enemies in room)
-        // Use removeEnemyFromRuntime to preserve enemy for game reset
-        if (this.lastKillerEnemyId) {
-            this.enemyManager.removeEnemyFromRuntime(this.lastKillerEnemyId);
-            this.lastKillerEnemyId = null;
-        }
+        this.lastKillerEnemyId = null;
 
         this.lifecycle.setGameOver(false);
         this.lifecycle.resumeGame('game-over');
