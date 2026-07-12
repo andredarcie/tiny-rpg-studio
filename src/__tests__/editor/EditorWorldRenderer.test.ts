@@ -289,18 +289,31 @@ describe('EditorWorldRenderer', () => {
 
     // ── Items ─────────────────────────────────────────────────────────────────
 
-    it('Items: counts all entries in the items array', () => {
+    it('Items: counts legacy items array entries', () => {
       const { values } = renderMetrics({ items: [{}, {}] });
       expect(values[METRIC.Items]).toBe('2');
     });
 
+    it('Items: counts consumable objects (keys, potions, scrolls) from objects array', () => {
+      const { values } = renderMetrics({
+        objects: [
+          { type: 'key' },
+          { type: 'life-potion' },
+          { type: 'xp-scroll' },
+          { type: 'switch' },
+        ],
+      });
+      expect(values[METRIC.Items]).toBe('3');
+    });
+
     // ── Objects ───────────────────────────────────────────────────────────────
 
-    it('Objects: excludes player-end and player-start from count', () => {
+    it('Objects: excludes player-end, player-start, and consumable items from count', () => {
       const { values } = renderMetrics({
         objects: [
           { type: 'switch' },
           { type: 'door' },
+          { type: 'key' },
           { type: 'player-end' },
           { type: 'player-start' },
         ],
@@ -308,9 +321,9 @@ describe('EditorWorldRenderer', () => {
       expect(values[METRIC.Objects]).toBe('2');
     });
 
-    it('Objects: returns 0 when only special objects exist', () => {
+    it('Objects: returns 0 when only special objects and consumable items exist', () => {
       const { values } = renderMetrics({
-        objects: [{ type: 'player-end' }, { type: 'player-start' }],
+        objects: [{ type: 'player-end' }, { type: 'player-start' }, { type: 'key' }],
       });
       expect(values[METRIC.Objects]).toBe('0');
     });
@@ -345,6 +358,29 @@ describe('EditorWorldRenderer', () => {
         ],
       });
       expect(values[METRIC.CondDialogs]).toBe('2');
+    });
+
+    it('Cond. dialogs: counts placed sprites with choiceEnabled (branching dialogs)', () => {
+      const { values } = renderMetrics({
+        sprites: [
+          { placed: true, choiceEnabled: true },
+          { placed: true, choiceEnabled: true, conditionText: '' },
+          { placed: true, choiceEnabled: false },
+          { placed: false, choiceEnabled: true },
+        ],
+      });
+      expect(values[METRIC.CondDialogs]).toBe('2');
+    });
+
+    it('Cond. dialogs: does not double-count NPC with both conditionText and choice', () => {
+      const { values } = renderMetrics({
+        sprites: [
+          { placed: true, choiceEnabled: true, conditionText: 'Alt text' },
+          { placed: true, choiceEnabled: true },
+          { placed: true, conditionText: 'Only conditional' },
+        ],
+      });
+      expect(values[METRIC.CondDialogs]).toBe('3');
     });
 
     it('Cond. dialogs: whitespace-only conditionText does not count', () => {
@@ -482,9 +518,47 @@ describe('EditorWorldRenderer', () => {
       expect(values[METRIC.Walls]).toBe('3');
     });
 
+    it('Walls: counts collision tiles painted on the tile map', () => {
+      const { values } = renderMetrics({
+        rooms: [{ walls: [[false, false], [false, false]] }],
+        tileset: {
+          tiles: [
+            { id: 1, collision: false },
+            { id: 2, collision: true },
+            { id: 3, collision: true },
+          ],
+          maps: [
+            {
+              ground: [[1, 1], [1, 1]],
+              overlay: [[2, null], [3, 2]],
+            },
+          ],
+        },
+      });
+      expect(values[METRIC.Walls]).toBe('3');
+    });
+
+    it('Walls: sums legacy wall grids and collision tiles', () => {
+      const { values } = renderMetrics({
+        rooms: [{ walls: [[true, false], [false, false]] }],
+        tileset: {
+          tiles: [
+            { id: 1, collision: false },
+            { id: 9, collision: true },
+          ],
+          maps: [{ ground: [[1]], overlay: [[9]] }],
+        },
+      });
+      expect(values[METRIC.Walls]).toBe('2');
+    });
+
     it('Walls: returns 0 when no walls are painted', () => {
       const { values } = renderMetrics({
         rooms: [{ walls: [[false, false], [false, false]] }],
+        tileset: {
+          tiles: [{ id: 1, collision: false }],
+          maps: [{ ground: [[1, 1]], overlay: [[null, null]] }],
+        },
       });
       expect(values[METRIC.Walls]).toBe('0');
     });
@@ -511,6 +585,20 @@ describe('EditorWorldRenderer', () => {
         sprites: [{ placed: true, text: 'one two three', conditionText: 'four five' }],
       });
       expect(values[METRIC.DialogWords]).toBe('5');
+    });
+
+    it('Dialog words: counts choice prompt and branch texts', () => {
+      const { values } = renderMetrics({
+        sprites: [{
+          placed: true,
+          text: 'Hi',
+          choicePrompt: 'Accept quest?',
+          choiceYesText: 'Great choice',
+          choiceNoText: 'Maybe later',
+        }],
+      });
+      // Hi(1) + Accept quest?(2) + Great choice(2) + Maybe later(2) = 7
+      expect(values[METRIC.DialogWords]).toBe('7');
     });
 
     it('Dialog words: counts words from unplaced sprites too', () => {

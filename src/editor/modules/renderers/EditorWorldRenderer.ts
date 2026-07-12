@@ -1,6 +1,6 @@
-
 import { EditorRendererBase } from './EditorRendererBase';
-import { ITEM_TYPES } from '../../../runtime/domain/constants/itemTypes';
+import { ITEM_TYPES, type ItemType } from '../../../runtime/domain/constants/itemTypes';
+import { itemCatalog } from '../../../runtime/domain/services/ItemCatalog';
 
 type GameWithWorld = {
     world?: { rows?: number; cols?: number };
@@ -15,6 +15,12 @@ type NpcSprite = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    choiceEnabled?: boolean;
+    choicePrompt?: string;
+    choiceYesText?: string;
+    choiceNoText?: string;
+    choiceYesVariableId?: string | null;
+    choiceNoVariableId?: string | null;
 };
 
 type EnemyEntry = {
@@ -38,14 +44,25 @@ type RoomWithWalls = {
     walls?: boolean[][];
 };
 
+type TileDef = {
+    id?: TileId;
+    collision?: boolean;
+};
+
 type GameWithMetrics = {
     rooms?: RoomWithWalls[];
     sprites?: NpcSprite[];
     enemies?: EnemyEntry[];
     items?: unknown[];
     objects?: ObjectWithType[];
-    tileset?: { tiles?: { id?: TileId }[]; maps?: TileMapEntry[] };
+    tileset?: { tiles?: TileDef[]; maps?: TileMapEntry[] };
     customSprites?: unknown[];
+};
+
+/** Keys, potions, scrolls — matches metrics.tooltip.items. */
+const isMetricsItemType = (type: string | undefined): boolean => {
+    if (!type) return false;
+    return itemCatalog.hasTag(type as ItemType, 'consumables');
 };
 
 class EditorWorldRenderer extends EditorRendererBase {
@@ -190,11 +207,31 @@ class EditorWorldRenderer extends EditorRendererBase {
 
         const sprites = game.sprites ?? [];
         const tileMaps = game.tileset?.maps ?? [];
-        const defaultTileId = game.tileset?.tiles?.[0]?.id ?? null;
+        const tileDefs = game.tileset?.tiles ?? [];
+        const defaultTileId = tileDefs[0]?.id ?? null;
+
+        // Collision tile IDs — modern walls are painted as collision tiles (usually
+        // on the overlay layer), not the legacy room.walls boolean grid.
+        const collisionTileIds = new Set<string>();
+        for (const tile of tileDefs) {
+            if (tile.collision && tile.id != null) {
+                collisionTileIds.add(String(tile.id));
+            }
+        }
 
         const countTiles = (layer: TileLayer, exclude?: TileId): number => {
             let n = 0;
             for (const row of layer) for (const tile of row) if (tile != null && tile !== exclude) n++;
+            return n;
+        };
+
+        const countCollisionTiles = (layer: TileLayer): number => {
+            let n = 0;
+            for (const row of layer) {
+                for (const tile of row) {
+                    if (tile != null && collisionTileIds.has(String(tile))) n++;
+                }
+            }
             return n;
         };
 
@@ -203,13 +240,16 @@ class EditorWorldRenderer extends EditorRendererBase {
 
         let paintedTiles = 0;
         let roomsWithTiles = 0;
+        let wallCount = 0;
         for (const tileMap of tileMaps) {
             const painted = countTiles(tileMap.ground ?? [], defaultTileId) + countTiles(tileMap.overlay ?? []);
             paintedTiles += painted;
             if (painted > 0) roomsWithTiles++;
+            // Collision tiles may sit on ground or overlay (e.g. after collision flag toggles).
+            wallCount += countCollisionTiles(tileMap.ground ?? []) + countCollisionTiles(tileMap.overlay ?? []);
         }
 
-        let wallCount = 0;
+        // Legacy boolean wall grids (still honored by movement if present).
         for (const room of (game.rooms ?? [])) {
             for (const row of (room.walls ?? [])) {
                 for (const wall of row) {
@@ -225,20 +265,37 @@ class EditorWorldRenderer extends EditorRendererBase {
         for (const sprite of sprites) {
             if (sprite.placed) {
                 placedNpcs++;
-                if (sprite.conditionText?.trim()) conditionalDialogs++;
+                // Conditional alternate text OR choice (branching) dialog.
+                if (sprite.conditionText?.trim() || sprite.choiceEnabled === true) {
+                    conditionalDialogs++;
+                }
             }
-            dialogWords += countWords(sprite.text) + countWords(sprite.conditionText);
+            dialogWords += countWords(sprite.text)
+                + countWords(sprite.conditionText)
+                + countWords(sprite.choicePrompt)
+                + countWords(sprite.choiceYesText)
+                + countWords(sprite.choiceNoText);
             if (sprite.conditionVariableId) usedVariableIds.add(sprite.conditionVariableId);
             if (sprite.rewardVariableId) usedVariableIds.add(sprite.rewardVariableId);
             if (sprite.conditionalRewardVariableId) usedVariableIds.add(sprite.conditionalRewardVariableId);
+            if (sprite.choiceYesVariableId) usedVariableIds.add(sprite.choiceYesVariableId);
+            if (sprite.choiceNoVariableId) usedVariableIds.add(sprite.choiceNoVariableId);
         }
 
         const objects = game.objects ?? [];
         let endings = 0;
         let placedObjects = 0;
+        let placedItems = (game.items ?? []).length;
         for (const obj of objects) {
-            if (obj.type === ITEM_TYPES.PLAYER_END) { endings++; }
-            else if (obj.type !== ITEM_TYPES.PLAYER_START) { placedObjects++; }
+            if (obj.type === ITEM_TYPES.PLAYER_END) {
+                endings++;
+            } else if (obj.type === ITEM_TYPES.PLAYER_START) {
+                // Marker only — not counted as object or item.
+            } else if (isMetricsItemType(obj.type)) {
+                placedItems++;
+            } else {
+                placedObjects++;
+            }
             if (obj.variableId) usedVariableIds.add(obj.variableId);
         }
 
@@ -249,7 +306,7 @@ class EditorWorldRenderer extends EditorRendererBase {
         const metrics: { label: string; value: number; tooltip: string }[] = [
             { label: this.t('metrics.npcs', 'NPCs'), value: placedNpcs, tooltip: this.t('metrics.tooltip.npcs') },
             { label: this.t('metrics.enemies', 'Enemies'), value: (game.enemies ?? []).length, tooltip: this.t('metrics.tooltip.enemies') },
-            { label: this.t('metrics.items', 'Items'), value: (game.items ?? []).length, tooltip: this.t('metrics.tooltip.items') },
+            { label: this.t('metrics.items', 'Items'), value: placedItems, tooltip: this.t('metrics.tooltip.items') },
             { label: this.t('metrics.objects', 'Objects'), value: placedObjects, tooltip: this.t('metrics.tooltip.objects') },
             { label: this.t('metrics.endings', 'Endings'), value: endings, tooltip: this.t('metrics.tooltip.endings') },
             { label: this.t('metrics.conditionalDialogs', 'Cond. dialogs'), value: conditionalDialogs, tooltip: this.t('metrics.tooltip.conditionalDialogs') },

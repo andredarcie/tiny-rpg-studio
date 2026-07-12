@@ -6,7 +6,12 @@ type CanvasRendererMockInstance = { renderEditor: MockFn };
 type TilePanelRendererMockInstance = { renderTileList: MockFn; updateSelectedTilePreview: MockFn };
 type NpcRendererMockInstance = { renderNpcs: MockFn; updateNpcForm: MockFn };
 type EnemyRendererMockInstance = { renderEnemyCatalog: MockFn };
-type WorldRendererMockInstance = { renderWorldGrid: MockFn; renderMapNavigation: MockFn; updateMapPosition: MockFn };
+type WorldRendererMockInstance = {
+  renderWorldGrid: MockFn;
+  renderMapNavigation: MockFn;
+  updateMapPosition: MockFn;
+  renderWorldMetrics: MockFn;
+};
 type ObjectRendererMockInstance = { renderObjectCatalog: MockFn; renderObjects: MockFn };
 type SkillListInput = Parameters<EditorRenderServiceType['groupSkillsByLevel']>[0];
 type SkillListItem = SkillListInput[number];
@@ -381,6 +386,7 @@ describe('EditorRenderService', () => {
     expect(mocks.tilePanelInstances[0].renderTileList).toHaveBeenCalled();
     expect(mocks.tilePanelInstances[0].updateSelectedTilePreview).toHaveBeenCalled();
     expect(mocks.npcInstances[0].renderNpcs).toHaveBeenCalled();
+    expect(mocks.worldInstances[0].renderWorldMetrics).toHaveBeenCalled();
     expect(mocks.npcInstances[0].updateNpcForm).toHaveBeenCalled();
     expect(mocks.enemyInstances[0].renderEnemyCatalog).toHaveBeenCalled();
     expect(mocks.objectInstances[0].renderObjectCatalog).toHaveBeenCalled();

@@ -27,7 +27,10 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     state,
     domCache: { editorCanvas: canvas },
     renderService: {
-      renderEditor: vi.fn(), renderTileList: vi.fn(), updateSelectedTilePreview: vi.fn(),
+      renderEditor: vi.fn(),
+      renderTileList: vi.fn(),
+      updateSelectedTilePreview: vi.fn(),
+      renderWorldMetrics: vi.fn(),
     },
     gameEngine: { setMapTile: vi.fn(), draw: vi.fn(), getObjectsForRoom: vi.fn(() => []), getSprites: vi.fn(() => []), getActiveEnemies: vi.fn((): Array<{ id: string; roomIndex: number; x: number; y: number }> => []) },
     objectEditModal: { open: vi.fn() },
@@ -172,6 +175,7 @@ describe('EditorTileService', () => {
     svc.finishPaint(makePointer(80, 80, 3));
     expect(canvas.releasePointerCapture).toHaveBeenCalledWith(3);
     expect(mgr.renderService.renderEditor).toHaveBeenCalled();
+    expect(mgr.renderService.renderWorldMetrics).toHaveBeenCalled();
     expect(mgr.history.pushCurrentState).toHaveBeenCalled();
   });
 

@@ -122,6 +122,13 @@ class EditorRenderService {
 
     renderNpcs() {
         this.npcRenderer.renderNpcs();
+        // Keep Game Metrics in sync when dialog text / choice data changes
+        // (those paths call renderNpcs but not renderWorldGrid).
+        this.worldRenderer.renderWorldMetrics();
+    }
+
+    renderWorldMetrics() {
+        this.worldRenderer.renderWorldMetrics();
     }
 
     updateNpcForm() {

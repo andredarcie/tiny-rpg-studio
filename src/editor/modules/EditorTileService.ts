@@ -162,6 +162,8 @@ class EditorTileService {
             return;
         }
         this.manager.renderService.renderEditor();
+        // Tile paint changes wall/painted-tile metrics; refresh without rebuilding the world grid.
+        this.manager.renderService.renderWorldMetrics();
         this.manager.gameEngine.draw();
         this.manager.updateJSON();
         this.manager.history.pushCurrentState();
