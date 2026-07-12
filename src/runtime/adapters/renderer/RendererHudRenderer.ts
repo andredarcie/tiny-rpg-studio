@@ -175,6 +175,14 @@ class RendererHudRenderer {
         if (swordType && swordSprite) {
             equipX -= equipSize;
             this.canvasHelper.drawSprite(ctx, swordSprite, equipX, equipY, equipStep);
+            // Current remaining hits — same square markers as enemy lives, above the icon.
+            this.drawSwordDurabilityMarkers(
+                ctx,
+                equipX,
+                equipY,
+                equipSize,
+                this.gameState.getSwordDurability?.() ?? 0,
+            );
             equipX -= gap;
         }
 
@@ -200,6 +208,40 @@ class RendererHudRenderer {
             return sprites[swordType];
         }
         return null;
+    }
+
+    /**
+     * Draw remaining sword durability as small squares above the inventory sword,
+     * matching the enemy lives markers (one square per remaining hit).
+     */
+    drawSwordDurabilityMarkers(
+        ctx: CanvasRenderingContext2D,
+        px: number,
+        py: number,
+        iconSize: number,
+        durability: number,
+    ): void {
+        if (!Number.isFinite(durability) || durability <= 0) return;
+
+        const markers = Math.max(1, Math.floor(durability));
+        const size = Math.max(3, Math.floor(iconSize / 5));
+        const gap = Math.max(2, Math.floor(size * 0.4));
+        const totalWidth = markers * size + (markers - 1) * gap;
+        const startX = Math.round(px + iconSize / 2 - totalWidth / 2);
+        const startY = Math.round(py - size - gap * 2);
+
+        const fill = this.paletteManager.getColor(6) || '#C2C3C7';
+        const stroke = '#000000';
+
+        ctx.fillStyle = fill;
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i < markers; i++) {
+            const mx = startX + i * (size + gap);
+            ctx.fillRect(mx, startY, size, size);
+            ctx.strokeRect(mx + 0.5, startY + 0.5, size - 1, size - 1);
+        }
     }
 
     drawHealth(ctx: CanvasRenderingContext2D, options: HealthOptions = {}) {
@@ -335,6 +377,7 @@ type GameStateApi = {
     getDamageShield: () => number;
     getDamageShieldMax: () => number;
     getSwordType: () => string | null;
+    getSwordDurability?: () => number;
     hasBoots?: () => boolean;
     hasArmor?: () => boolean;
     getLevel: () => number;
