@@ -36,8 +36,30 @@ export interface AppUpdateManagerOptions {
 
 const FORCED_VERSION_KEY = 'tiny-rpg:pwa-update:forced-version';
 const LAST_CHECK_KEY = 'tiny-rpg:pwa-update:last-check';
+/** Session token used when a hashed chunk is missing after a deploy. */
+export const CHUNK_LOAD_FAILURE_TOKEN = 'chunk-load-failure';
 const DEFAULT_NORMAL_UPDATE_TIMEOUT_MS = 4_000;
 const DEFAULT_THROTTLE_MS = 5 * 60_000;
+
+/**
+ * Detects the browser / Vite errors that mean a code-split asset is gone
+ * (typical after a deploy while an older bundle is still running from cache).
+ */
+export function isDynamicImportFailure(error: unknown): boolean {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'string'
+      ? error
+      : error && typeof error === 'object' && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : '';
+  return (
+    /Failed to fetch dynamically imported module/i.test(message)
+    || /error loading dynamically imported module/i.test(message)
+    || /Importing a module script failed/i.test(message)
+    || /Unable to preload CSS/i.test(message)
+  );
+}
 
 type NavigatorWithOptionalServiceWorker = Navigator & {
   serviceWorker?: ServiceWorkerContainer;
@@ -59,6 +81,7 @@ export class AppUpdateManager {
   private readonly dirtyState?: DirtyStateGuard;
   private started = false;
   private inFlight: Promise<AppUpdateCheckResult> | null = null;
+  private chunkRecoveryInFlight: Promise<AppUpdateCheckResult> | null = null;
 
   constructor(options: AppUpdateManagerOptions) {
     this.appBaseUrl = options.appBaseUrl;
@@ -99,6 +122,38 @@ export class AppUpdateManager {
       document.addEventListener('visibilitychange', scheduleCheck);
     }
     addEventListener('online', scheduleCheck);
+  }
+
+  /**
+   * Hard-recovers when a code-split chunk fails to load (stale PWA/cache after
+   * deploy). Unregisters scoped service workers, deletes app caches, and
+   * reloads with a cache-bypass query. Guarded against infinite reload loops.
+   */
+  async recoverFromStaleChunkFailure(error?: unknown): Promise<AppUpdateCheckResult> {
+    if (error !== undefined && !isDynamicImportFailure(error)) {
+      return { status: 'current' };
+    }
+    if (this.chunkRecoveryInFlight) return this.chunkRecoveryInFlight;
+    this.chunkRecoveryInFlight = this.runChunkRecovery();
+    try {
+      return await this.chunkRecoveryInFlight;
+    } finally {
+      this.chunkRecoveryInFlight = null;
+    }
+  }
+
+  private async runChunkRecovery(): Promise<AppUpdateCheckResult> {
+    if (!this.online()) return { status: 'offline' };
+
+    if (this.wasVersionAlreadyForced(CHUNK_LOAD_FAILURE_TOKEN)) {
+      return { status: 'reload-loop-blocked' };
+    }
+
+    const dirtyStateSaved = await this.saveDirtyWorkIfNeeded();
+    if (!dirtyStateSaved) return { status: 'dirty-work-blocked' };
+
+    await this.forceScopedReload(CHUNK_LOAD_FAILURE_TOKEN);
+    return { status: 'hard-reload' };
   }
 
   private async runCheck(): Promise<AppUpdateCheckResult> {

@@ -16,7 +16,7 @@ import { normalizeBackgroundMusicVolume } from './runtime/infra/share/Background
 import { PerformanceProfiler, performanceProfiler } from './runtime/debug/PerformanceProfiler';
 import { loadAnalyticsWhenIdle } from './analytics/loadAnalytics';
 import { track } from './analytics/track';
-import { installPwaUpdateChecks } from './pwa/installPwaUpdateChecks';
+import { installPwaUpdateChecks, recoverFromDynamicImportFailure } from './pwa/installPwaUpdateChecks';
 
 const getTextResource = (key: string, fallback = ''): string => {
   const value = TextResources.get(key, fallback) as string;
@@ -75,6 +75,17 @@ class TinyRPGApplication {
     // normal, online and export — restoring the coverage the old <head> gtag had.
     loadAnalyticsWhenIdle();
 
+    // Mutable dirty-state guard so PWA recovery can be installed before the
+    // editor module exists, and still protect unsaved work once it does.
+    let editorManager: EditorManager | null = null;
+    const pwaDirtyState = {
+      hasUnsavedChanges: () => editorManager?.hasUnsavedChangesForUpdate() ?? false,
+      saveBeforeUpdate: () => editorManager?.saveBeforePwaUpdate() ?? true,
+    };
+    // Install early so vite:preloadError / missing-chunk recovery is armed before
+    // any code-split import (editor or online mode).
+    installPwaUpdateChecks({ dirtyState: pwaDirtyState });
+
     const onlineGuid = this.detectOnlineMode();
     if (onlineGuid) {
       this.bootOnlineMode(onlineGuid);
@@ -95,7 +106,6 @@ class TinyRPGApplication {
     performanceProfiler.time('boot.loadShared', () => this.loadSharedGameIfAvailable(gameEngine));
     this.setupPerformanceProfiler(gameEngine);
     const isExportMode = Boolean((globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE);
-    let editorManager: EditorManager | null = null;
     let editorLoad: Promise<void> | null = null;
     // The editor bundle is code-split and loaded on first editor activation, so a
     // player who only opens a shared game never downloads it. See AP-8.
@@ -108,6 +118,12 @@ class TinyRPGApplication {
         })
         .catch((error: unknown) => {
           console.error('[TinyRPG] Failed to load the editor module.', error);
+          // Stale PWA cache after deploy: hashed chunk is gone — auto-reload.
+          if (recoverFromDynamicImportFailure(error)) {
+            return;
+          }
+          // Non-stale failure: allow a later tab switch to retry the import.
+          editorLoad = null;
         });
       return editorLoad;
     };
@@ -160,12 +176,6 @@ class TinyRPGApplication {
     this.bindFullscreenButton();
     this.bindBackgroundMusicVolumeControl(gameEngine);
     this.bindLanguageSelector();
-    installPwaUpdateChecks({
-      dirtyState: {
-        hasUnsavedChanges: () => editorManager?.hasUnsavedChangesForUpdate() ?? false,
-        saveBeforeUpdate: () => editorManager?.saveBeforePwaUpdate() ?? true,
-      },
-    });
 
     console.log(getTextResource('log.engineReady'));
   }
@@ -549,9 +559,14 @@ class TinyRPGApplication {
 
   static bootOnlineMode(guid: string): void {
     // Multiplayer is code-split: only fetched when the URL requests online mode.
-    void import('./online/OnlineModeApplication').then(({ OnlineModeApplication }) => {
-      OnlineModeApplication.boot(guid, (gameEngine) => this.loadSharedGameIfAvailable(gameEngine));
-    });
+    void import('./online/OnlineModeApplication')
+      .then(({ OnlineModeApplication }) => {
+        OnlineModeApplication.boot(guid, (gameEngine) => this.loadSharedGameIfAvailable(gameEngine));
+      })
+      .catch((error: unknown) => {
+        console.error('[TinyRPG] Failed to load the online mode module.', error);
+        recoverFromDynamicImportFailure(error);
+      });
   }
 
   static loadSharedGameIfAvailable(gameEngine: GameEngine): void {

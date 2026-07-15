@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppUpdateManager } from '../../pwa/AppUpdateManager';
+import {
+  AppUpdateManager,
+  CHUNK_LOAD_FAILURE_TOKEN,
+  isDynamicImportFailure,
+} from '../../pwa/AppUpdateManager';
 
 type UpdateManagerOptions = ConstructorParameters<typeof AppUpdateManager>[0];
 
@@ -161,5 +165,90 @@ describe('AppUpdateManager.start', () => {
     window.dispatchEvent(new Event('online'));
 
     await vi.waitFor(() => expect(checkSpy).toHaveBeenCalledTimes(3));
+  });
+});
+
+describe('isDynamicImportFailure', () => {
+  it('recognizes common stale-chunk browser and Vite error messages', () => {
+    expect(
+      isDynamicImportFailure(
+        new TypeError(
+          'Failed to fetch dynamically imported module: https://example.com/assets/EditorManager-DYInJlt7.js',
+        ),
+      ),
+    ).toBe(true);
+    expect(isDynamicImportFailure(new TypeError('Importing a module script failed.'))).toBe(true);
+    expect(isDynamicImportFailure(new Error('error loading dynamically imported module'))).toBe(true);
+    expect(isDynamicImportFailure(new Error('Unable to preload CSS for /assets/style.css'))).toBe(true);
+    expect(isDynamicImportFailure(new Error('NetworkError when attempting to fetch resource.'))).toBe(false);
+    expect(isDynamicImportFailure('Failed to fetch dynamically imported module')).toBe(true);
+  });
+});
+
+describe('AppUpdateManager.recoverFromStaleChunkFailure', () => {
+  it('ignores errors that are not dynamic import failures', async () => {
+    const { manager, reload, unregister } = createManager();
+
+    await expect(
+      manager.recoverFromStaleChunkFailure(new Error('something else')),
+    ).resolves.toEqual({ status: 'current' });
+    expect(unregister).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('clears scoped caches and hard-reloads when a hashed chunk is missing', async () => {
+    const { manager, unregister, deleteCache, reload, sessionStorage } = createManager();
+    const error = new TypeError(
+      'Failed to fetch dynamically imported module: https://example.com/assets/EditorManager-DYInJlt7.js',
+    );
+
+    await expect(manager.recoverFromStaleChunkFailure(error)).resolves.toEqual({
+      status: 'hard-reload',
+    });
+    expect(unregister).toHaveBeenCalledTimes(1);
+    expect(deleteCache).toHaveBeenCalledWith(
+      'workbox-precache-v2-https://example.com/tiny-rpg-studio/',
+    );
+    expect(reload).toHaveBeenCalledWith(
+      new URL(`https://example.com/tiny-rpg-studio/?pwa-update=${CHUNK_LOAD_FAILURE_TOKEN}`),
+    );
+    expect(sessionStorage.get('tiny-rpg:pwa-update:forced-version')).toBe(CHUNK_LOAD_FAILURE_TOKEN);
+  });
+
+  it('prevents a reload loop after chunk recovery already ran this session', async () => {
+    const { manager, reload, sessionStorage } = createManager();
+    sessionStorage.set('tiny-rpg:pwa-update:forced-version', CHUNK_LOAD_FAILURE_TOKEN);
+    const error = new TypeError('Failed to fetch dynamically imported module: x.js');
+
+    await expect(manager.recoverFromStaleChunkFailure(error)).resolves.toEqual({
+      status: 'reload-loop-blocked',
+    });
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('skips recovery while offline', async () => {
+    const { manager, reload } = createManager({ online: () => false });
+    const error = new TypeError('Failed to fetch dynamically imported module: x.js');
+
+    await expect(manager.recoverFromStaleChunkFailure(error)).resolves.toEqual({
+      status: 'offline',
+    });
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('blocks recovery when dirty editor work cannot be saved', async () => {
+    const dirtyState = {
+      hasUnsavedChanges: vi.fn(() => true),
+      saveBeforeUpdate: vi.fn(() => Promise.resolve(false)),
+    };
+    const { manager, reload, unregister } = createManager({ dirtyState });
+    const error = new TypeError('Failed to fetch dynamically imported module: x.js');
+
+    await expect(manager.recoverFromStaleChunkFailure(error)).resolves.toEqual({
+      status: 'dirty-work-blocked',
+    });
+    expect(dirtyState.saveBeforeUpdate).toHaveBeenCalled();
+    expect(unregister).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
   });
 });
