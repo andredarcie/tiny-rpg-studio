@@ -90,6 +90,10 @@ function makeDom() {
     projectTestDebugVision.type = 'checkbox';
     const projectHideHud = document.createElement('input');
     projectHideHud.type = 'checkbox';
+    const projectSpriteOutline = document.createElement('input');
+    projectSpriteOutline.type = 'checkbox';
+    projectSpriteOutline.checked = true;
+    const projectSpriteOutlineColor = document.createElement('select');
     const projectDisableSkills = document.createElement('input');
     projectDisableSkills.type = 'checkbox';
     const projectBackgroundMusicUrl = document.createElement('input');
@@ -131,6 +135,8 @@ function makeDom() {
         projectTestGodMode,
         projectTestDebugVision,
         projectHideHud,
+        projectSpriteOutline,
+        projectSpriteOutlineColor,
         projectDisableSkills,
         projectBackgroundMusicUrl,
         projectBackgroundMusicVolume,
@@ -227,6 +233,8 @@ function makeManager() {
         setTestStartLevel: vi.fn(),
         setGodMode: vi.fn(),
         setHideHud: vi.fn(),
+        setSpriteOutline: vi.fn(),
+        setSpriteOutlineColor: vi.fn(),
         setDisableSkills: vi.fn(),
         setBackgroundMusicUrl: vi.fn(),
         setBackgroundMusicVolume: vi.fn(),

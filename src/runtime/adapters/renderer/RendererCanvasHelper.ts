@@ -7,31 +7,133 @@ type TileManagerApi = {
     getTilePixels?: (tile: TileDefinition, frameOverride?: number | null) => TilePixels | null;
 };
 
+type PaletteApi = {
+    getColor: (index: number) => string;
+};
+
+type GameStateApi = {
+    getGame?: () => { spriteOutline?: boolean; spriteOutlineColor?: number };
+} | null;
+
+/** Fallback when no palette is wired (PICO-8 dark blue / palette index 1). */
+const DEFAULT_SPRITE_OUTLINE_COLOR = '#1D2B53';
+
+/** Default outline palette index when game setting is missing. */
+const DEFAULT_SPRITE_OUTLINE_COLOR_INDEX = 1;
+
+/** Cardinal offsets used to expand opaque pixels into a 1px outline. */
+const OUTLINE_DIRS: ReadonlyArray<readonly [number, number]> = [
+    [-1, 0],
+    [1, 0],
+    [0, -1],
+    [0, 1],
+];
+
 class RendererCanvasHelper {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     tileManager: TileManagerApi | null;
+    paletteManager: PaletteApi | null;
+    gameState: GameStateApi;
 
-    constructor(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D, tileManager: TileManagerApi | null) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        context: CanvasRenderingContext2D,
+        tileManager: TileManagerApi | null,
+        paletteManager: PaletteApi | null = null,
+        gameState: GameStateApi = null
+    ) {
         this.canvas = canvas;
         this.ctx = context;
         this.tileManager = tileManager;
+        this.paletteManager = paletteManager;
+        this.gameState = gameState;
     }
 
     getTilePixelSize() {
         return Math.floor(this.canvas.width / 8);
     }
 
-    drawSprite(ctx: CanvasRenderingContext2D, sprite: (string | null)[][], px: number, py: number, step: number) {
-        for (let y = 0; y < sprite.length; y++) {
-            const row = sprite[y];
+    /** Palette index for outline (game setting, default 1). */
+    getSpriteOutlineColorIndex(): number {
+        const game = this.gameState?.getGame?.();
+        const raw = game?.spriteOutlineColor;
+        if (typeof raw === 'number' && Number.isFinite(raw)) {
+            return Math.max(0, Math.min(15, Math.floor(raw)));
+        }
+        return DEFAULT_SPRITE_OUTLINE_COLOR_INDEX;
+    }
+
+    /** Outline uses the selected palette index so custom palettes recolor the silhouette. */
+    getSpriteOutlineColor(): string {
+        const index = this.getSpriteOutlineColorIndex();
+        return this.paletteManager?.getColor(index) ?? DEFAULT_SPRITE_OUTLINE_COLOR;
+    }
+
+    /** Project Visuals checkbox; defaults to on when unset. */
+    isSpriteOutlineEnabled(): boolean {
+        const game = this.gameState?.getGame?.();
+        if (!game) return true;
+        return game.spriteOutline !== false;
+    }
+
+    /** Empty / transparent cells are not filled and may receive outline. */
+    isEmptyPixel(col: string | null | undefined): boolean {
+        return !col || col === 'transparent';
+    }
+
+    /**
+     * Draw an 8x8-style pixel matrix with optional in-bounds silhouette outline.
+     * Used for both entity sprites and tiles that contain transparent cells.
+     * Outline never expands outside the matrix bounds (no bleed into neighbors).
+     */
+    drawPixelGrid(
+        ctx: CanvasRenderingContext2D,
+        pixels: (string | null)[][],
+        px: number,
+        py: number,
+        step: number
+    ) {
+        if (pixels.length === 0) return;
+
+        const height = pixels.length;
+        const width = pixels[0]?.length ?? 0;
+        if (width === 0) return;
+
+        if (this.isSpriteOutlineEnabled()) {
+            ctx.fillStyle = this.getSpriteOutlineColor();
+            for (let y = 0; y < height; y++) {
+                const row = pixels[y];
+                for (let x = 0; x < row.length; x++) {
+                    if (this.isEmptyPixel(row[x])) continue;
+                    for (const [dx, dy] of OUTLINE_DIRS) {
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+                        if (!this.isEmptyPixel(pixels[ny][nx])) continue;
+                        ctx.fillRect(px + nx * step, py + ny * step, step, step);
+                    }
+                }
+            }
+        }
+
+        for (let y = 0; y < height; y++) {
+            const row = pixels[y];
             for (let x = 0; x < row.length; x++) {
                 const col = row[x];
-                if (!col) continue;
-                ctx.fillStyle = col;
+                if (this.isEmptyPixel(col)) continue;
+                ctx.fillStyle = col as string;
                 ctx.fillRect(px + x * step, py + y * step, step, step);
             }
         }
+    }
+
+    /**
+     * Draw a pixel sprite with optional 1px outline (palette color 0).
+     * Outline is clamped to the sprite grid so it never leaks into neighbors.
+     */
+    drawSprite(ctx: CanvasRenderingContext2D, sprite: (string | null)[][], px: number, py: number, step: number) {
+        this.drawPixelGrid(ctx, sprite, px, py, step);
     }
 
     resolveTilePixels(tile: TileDefinition | null, frameOverride: number | null = null) {
@@ -52,14 +154,7 @@ class RendererCanvasHelper {
         if (!pixels) return;
 
         const step = Math.max(1, Math.floor(size / 8));
-        for (let y = 0; y < 8; y++) {
-            for (let x = 0; x < 8; x++) {
-                const col = pixels[y]?.[x];
-                if (!col || col === 'transparent') continue;
-                this.ctx.fillStyle = col;
-                this.ctx.fillRect(px + x * step, py + y * step, step, step);
-            }
-        }
+        this.drawPixelGrid(this.ctx, pixels, px, py, step);
     }
 
     drawTileOnCanvas(canvas: HTMLCanvasElement, tile: TileDefinition | null, frameOverride: number | null = null) {
@@ -71,14 +166,7 @@ class RendererCanvasHelper {
         if (!pixels) return;
 
         const step = Math.max(1, Math.floor(canvas.width / 8));
-        for (let y = 0; y < 8; y++) {
-            for (let x = 0; x < 8; x++) {
-                const col = pixels[y]?.[x];
-                if (!col || col === 'transparent') continue;
-                ctx.fillStyle = col;
-                ctx.fillRect(x * step, y * step, step, step);
-            }
-        }
+        this.drawPixelGrid(ctx, pixels, 0, 0, step);
     }
 
     drawTilePreview(
@@ -96,14 +184,7 @@ class RendererCanvasHelper {
         if (!pixels) return;
 
         const step = Math.max(1, Math.floor(size / 8));
-        for (let y = 0; y < 8; y++) {
-            for (let x = 0; x < 8; x++) {
-                const col = pixels[y]?.[x];
-                if (!col || col === 'transparent') continue;
-                ctx.fillStyle = col;
-                ctx.fillRect(px + x * step, py + y * step, step, step);
-            }
-        }
+        this.drawPixelGrid(ctx, pixels, px, py, step);
     }
 }
 

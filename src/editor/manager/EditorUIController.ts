@@ -11,6 +11,11 @@ import {
 } from '../../runtime/infra/share/BackgroundMusicVideoId';
 import { ShareUrlHelper } from '../../runtime/infra/share/ShareUrlHelper';
 import { ONLINE_PLAYER_START_2_TYPE } from '../modules/EditorObjectService';
+import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
+import {
+    DEFAULT_SPRITE_OUTLINE_COLOR_INDEX,
+    normalizeSpriteOutlineColor,
+} from '../../runtime/domain/state/StateDataManager';
 
 type SpriteInstance = {
     id: string;
@@ -26,6 +31,8 @@ type ProjectGameSettings = {
     title?: string;
     author?: string;
     hideHud?: boolean;
+    spriteOutline?: boolean;
+    spriteOutlineColor?: number;
     disableSkills?: boolean;
     disablePixelFont?: boolean;
     backgroundMusicVideoId?: string;
@@ -99,6 +106,76 @@ class EditorUIController extends EditorManagerModule {
     setHideHud(active: boolean = false) {
         this.gameEngine.setHideHud(Boolean(active));
         this.updateJSON();
+    }
+
+    setSpriteOutline(active: boolean = true) {
+        this.gameEngine.setSpriteOutline(Boolean(active));
+        if (this.dom.projectSpriteOutlineColor) {
+            this.dom.projectSpriteOutlineColor.disabled = !active;
+        }
+        this.updateJSON();
+        this.refreshOutlineViews();
+    }
+
+    setSpriteOutlineColor(colorIndex: number = DEFAULT_SPRITE_OUTLINE_COLOR_INDEX) {
+        this.gameEngine.setSpriteOutlineColor(normalizeSpriteOutlineColor(colorIndex));
+        this.syncSpriteOutlineColorSelect();
+        this.updateJSON();
+        this.refreshOutlineViews();
+    }
+
+    /** Redraw editor surfaces that use the shared outline (game canvas already redraws via GameEngine). */
+    private refreshOutlineViews() {
+        this.renderService.renderEditor();
+        this.renderService.renderTileList();
+        this.renderService.updateSelectedTilePreview();
+        this.renderService.renderObjectCatalog();
+        this.renderService.renderObjects();
+    }
+
+    /** Rebuild outline color options from the current 16-color palette. */
+    refreshSpriteOutlineColorSelect() {
+        const select = this.dom.projectSpriteOutlineColor;
+        if (!select) return;
+
+        const game = this.gameEngine.getGame() as ProjectGameSettings;
+        const selected = normalizeSpriteOutlineColor(game.spriteOutlineColor);
+        const customPalette = this.gameEngine.getCustomPalette();
+        const colors = Array.isArray(customPalette) && customPalette.length >= 16
+            ? customPalette
+            : [...TileDefinitions.PICO8_COLORS];
+
+        select.innerHTML = '';
+        for (let i = 0; i < 16; i++) {
+            const color = colors[i] ?? '#000000';
+            const option = document.createElement('option');
+            option.value = String(i);
+            option.textContent = `${i}: ${String(color).toUpperCase()}`;
+            option.style.backgroundColor = color;
+            // Light text on dark swatches improves readability in native selects.
+            option.style.color = '#ffffff';
+            if (i === selected) option.selected = true;
+            select.appendChild(option);
+        }
+        select.value = String(selected);
+        select.style.backgroundColor = colors[selected] ?? '#000000';
+        select.style.color = '#ffffff';
+        select.disabled = game.spriteOutline === false;
+    }
+
+    private syncSpriteOutlineColorSelect() {
+        const select = this.dom.projectSpriteOutlineColor;
+        if (!select) return;
+        const game = this.gameEngine.getGame() as ProjectGameSettings;
+        const selected = normalizeSpriteOutlineColor(game.spriteOutlineColor);
+        if (select.options.length !== 16) {
+            this.refreshSpriteOutlineColorSelect();
+            return;
+        }
+        select.value = String(selected);
+        const option = select.selectedOptions.item(0);
+        select.style.backgroundColor = option?.style.backgroundColor ?? select.style.backgroundColor;
+        select.disabled = game.spriteOutline === false;
     }
 
     setDisableSkills(active: boolean = false) {
@@ -216,6 +293,10 @@ class EditorUIController extends EditorManagerModule {
         if (this.dom.projectHideHud) {
             this.dom.projectHideHud.checked = Boolean(game.hideHud);
         }
+        if (this.dom.projectSpriteOutline) {
+            this.dom.projectSpriteOutline.checked = game.spriteOutline !== false;
+        }
+        this.refreshSpriteOutlineColorSelect();
         if (this.dom.projectDisableSkills) {
             this.dom.projectDisableSkills.checked = Boolean(game.disableSkills);
         }

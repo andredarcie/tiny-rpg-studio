@@ -3022,6 +3022,57 @@ body.game-mode .tab-button.active {
     margin-top: 10px;
 }
 
+/* Match .project-variables card chrome so the outline controls sit with palette/sprites. */
+.project-appearance__outline-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg, rgba(33, 38, 53, 0.8), rgba(24, 28, 40, 0.9));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+/* Nested checkbox already lives inside the card — drop the second panel shell. */
+.project-appearance__outline-row .project-appearance__checkbox {
+    margin-top: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 0;
+}
+
+.project-appearance__outline-color {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: inherit;
+}
+
+.project-appearance__outline-color-label {
+    color: var(--muted, #fff);
+    opacity: 0.85;
+}
+
+.project-outline-color-select {
+    min-width: 7.5rem;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    color: var(--text, #fff);
+    font-family: inherit;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.project-outline-color-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .project-test__skills {
     display: flex;
     flex-direction: column;

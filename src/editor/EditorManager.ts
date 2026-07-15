@@ -362,6 +362,14 @@ class EditorManager {
         this.uiController.setHideHud(active);
     }
 
+    setSpriteOutline(active: boolean) {
+        this.uiController.setSpriteOutline(active);
+    }
+
+    setSpriteOutlineColor(colorIndex: number) {
+        this.uiController.setSpriteOutlineColor(colorIndex);
+    }
+
     setDisableSkills(active: boolean) {
         this.uiController.setDisableSkills(active);
     }

@@ -21,6 +21,8 @@ type EditorGameFixture = {
   title: string;
   author: string;
   hideHud: boolean;
+  spriteOutline?: boolean;
+  spriteOutlineColor?: number;
   disableSkills: boolean;
   disablePixelFont?: boolean;
   backgroundMusicVideoId?: string;
@@ -50,6 +52,10 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const authorInput = makeInput('');
   const projectHideHud = document.createElement('input');
   projectHideHud.type = 'checkbox';
+  const projectSpriteOutline = document.createElement('input');
+  projectSpriteOutline.type = 'checkbox';
+  projectSpriteOutline.checked = true;
+  const projectSpriteOutlineColor = document.createElement('select');
   const projectDisableSkills = document.createElement('input');
   projectDisableSkills.type = 'checkbox';
   const projectBackgroundMusicUrl = makeInput('');
@@ -79,6 +85,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       titleInput,
       authorInput,
       projectHideHud,
+      projectSpriteOutline,
+      projectSpriteOutlineColor,
       projectDisableSkills,
       projectBackgroundMusicUrl,
       projectOnlineControls,
@@ -95,6 +103,10 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
     renderService: {
       renderVariableUsage: vi.fn(), renderSkillList: vi.fn(), renderTestTools: vi.fn(),
       renderEditor: vi.fn(),
+      renderTileList: vi.fn(),
+      updateSelectedTilePreview: vi.fn(),
+      renderObjectCatalog: vi.fn(),
+      renderObjects: vi.fn(),
       updateNpcForm: vi.fn(),
     },
     gameEngine: {
@@ -102,6 +114,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
         title: 'Test Title',
         author: 'Test Author',
         hideHud: false,
+        spriteOutline: true,
+        spriteOutlineColor: 1,
         disableSkills: false,
         backgroundMusicVideoId: undefined,
         backgroundMusicVolume: 100,
@@ -116,6 +130,9 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       getMaxPlayerLevel: vi.fn(() => 20),
       updateTestSettings: vi.fn(),
       setHideHud: vi.fn(),
+      setSpriteOutline: vi.fn(),
+      setSpriteOutlineColor: vi.fn(),
+      getCustomPalette: vi.fn(() => undefined),
       setDisableSkills: vi.fn(),
       getSprites: vi.fn(() => []),
       npcManager: { getDefinitions: vi.fn(() => []) },
@@ -279,6 +296,33 @@ describe('EditorUIController', () => {
     expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
   });
 
+  it('setSpriteOutline updates engine state, JSON, and editor views', () => {
+    const mgr = makeManager();
+    const ctrl = makeController(mgr);
+    ctrl.setSpriteOutline(false);
+    expect(mgr.gameEngine.setSpriteOutline).toHaveBeenCalledWith(false);
+    expect(mgr.domCache.projectSpriteOutlineColor.disabled).toBe(true);
+    expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
+    expect(mgr.renderService.renderEditor).toHaveBeenCalled();
+    expect(mgr.renderService.renderTileList).toHaveBeenCalled();
+    expect(mgr.renderService.updateSelectedTilePreview).toHaveBeenCalled();
+    expect(mgr.renderService.renderObjectCatalog).toHaveBeenCalled();
+    expect(mgr.renderService.renderObjects).toHaveBeenCalled();
+  });
+
+  it('setSpriteOutlineColor updates engine state, JSON, and editor views', () => {
+    const mgr = makeManager();
+    const ctrl = makeController(mgr);
+    ctrl.setSpriteOutlineColor(5);
+    expect(mgr.gameEngine.setSpriteOutlineColor).toHaveBeenCalledWith(5);
+    expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
+    expect(mgr.renderService.renderEditor).toHaveBeenCalled();
+    expect(mgr.renderService.renderTileList).toHaveBeenCalled();
+    expect(mgr.renderService.updateSelectedTilePreview).toHaveBeenCalled();
+    expect(mgr.renderService.renderObjectCatalog).toHaveBeenCalled();
+    expect(mgr.renderService.renderObjects).toHaveBeenCalled();
+  });
+
   it('setDisableSkills updates engine state and JSON', () => {
     const mgr = makeManager();
     const ctrl = makeController(mgr);
@@ -388,6 +432,7 @@ describe('EditorUIController', () => {
       title: 'My RPG',
       author: 'Dev',
       hideHud: true,
+      spriteOutline: false,
       disableSkills: true,
       backgroundMusicVideoId: 't0ihNLLZNi0',
       backgroundMusicVolume: 73,
@@ -397,6 +442,7 @@ describe('EditorUIController', () => {
     expect(mgr.domCache.titleInput.value).toBe('My RPG');
     expect(mgr.domCache.authorInput.value).toBe('Dev');
     expect(mgr.domCache.projectHideHud.checked).toBe(true);
+    expect(mgr.domCache.projectSpriteOutline.checked).toBe(false);
     expect(mgr.domCache.projectDisableSkills.checked).toBe(true);
     expect(mgr.domCache.projectBackgroundMusicUrl.value).toBe('https://www.youtube.com/watch?v=t0ihNLLZNi0');
     expect(mgr.domCache.projectBackgroundMusicVolume.value).toBe('73');

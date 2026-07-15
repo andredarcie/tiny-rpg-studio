@@ -210,6 +210,10 @@ export type GameDefinition = {
     backgroundMusicVideoId?: string;
     backgroundMusicVolume?: number;
     hideHud?: boolean;
+    /** When true (default), entity sprites/tiles get a 1px palette outline. */
+    spriteOutline?: boolean;
+    /** Palette index for outline color (0–15). Defaults to 1 (dark blue). */
+    spriteOutlineColor?: number;
     disableSkills?: boolean;
     disablePixelFont?: boolean;
     roomSize: number;

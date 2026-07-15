@@ -44,6 +44,7 @@ type PaletteManagerFixture = {
     };
     historyManager: { pushCurrentState: ReturnType<typeof vi.fn> };
     renderAll: ReturnType<typeof vi.fn>;
+    uiController: { refreshSpriteOutlineColorSelect: ReturnType<typeof vi.fn> };
     dom: PaletteDomFixture;
     state: {
         editingColorIndex: number | null;
@@ -92,6 +93,9 @@ function createManager(overrides: {
         gameEngine,
         historyManager,
         renderAll,
+        uiController: {
+            refreshSpriteOutlineColorSelect: vi.fn(),
+        },
         dom: {
             paletteGrid,
             projectPalettePanel,

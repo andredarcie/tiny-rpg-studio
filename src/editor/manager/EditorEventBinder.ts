@@ -40,6 +40,8 @@ class EditorEventBinder extends EditorManagerModule {
             projectTestGodMode,
             projectTestDebugVision,
             projectHideHud,
+            projectSpriteOutline,
+            projectSpriteOutlineColor,
             projectDisableSkills,
             projectBackgroundMusicUrl,
             projectBackgroundMusicVolume,
@@ -99,6 +101,14 @@ class EditorEventBinder extends EditorManagerModule {
         projectHideHud?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setHideHud(target.checked);
+        });
+        projectSpriteOutline?.addEventListener('change', (ev: Event) => {
+            const target = ev.target as HTMLInputElement;
+            manager.setSpriteOutline(target.checked);
+        });
+        projectSpriteOutlineColor?.addEventListener('change', (ev: Event) => {
+            const target = ev.target as HTMLSelectElement;
+            manager.setSpriteOutlineColor(Number(target.value));
         });
         projectDisableSkills?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;

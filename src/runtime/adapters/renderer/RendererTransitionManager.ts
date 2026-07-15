@@ -249,6 +249,12 @@ class RendererTransitionManager extends RendererModuleBase {
         const pixels = this.transitionTileManager.getTilePixels(tileId);
         if (!pixels) return;
         const step = Math.max(1, Math.floor(size / 8));
+        const helper = this.transitionCanvasHelper as CanvasHelperApi;
+        if (helper.drawPixelGrid) {
+            helper.drawPixelGrid(ctx, pixels, px, py, step);
+            return;
+        }
+        // Fallback when an older/mocked helper has no pixel-grid path.
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
                 const col = pixels[y]?.[x];
@@ -303,6 +309,13 @@ type CanvasHelperApi = {
     drawSprite: (
         ctx: CanvasRenderingContext2D,
         sprite: (number | null)[][] | null,
+        x: number,
+        y: number,
+        step: number
+    ) => void;
+    drawPixelGrid?: (
+        ctx: CanvasRenderingContext2D,
+        pixels: (string | null)[][],
         x: number,
         y: number,
         step: number

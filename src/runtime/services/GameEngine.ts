@@ -42,6 +42,8 @@ type GameData = {
   title?: string;
   author?: string;
   hideHud?: boolean;
+  spriteOutline?: boolean;
+  spriteOutlineColor?: number;
   disableSkills?: boolean;
   disablePixelFont?: boolean;
   backgroundMusicVideoId?: string;
@@ -430,6 +432,21 @@ export class GameEngine {
   setHideHud(active = false): void {
     const game = this.gameState.getGame();
     game.hideHud = Boolean(active);
+    this.draw();
+  }
+
+  setSpriteOutline(active = true): void {
+    const game = this.gameState.getGame();
+    game.spriteOutline = Boolean(active);
+    this.draw();
+  }
+
+  setSpriteOutlineColor(colorIndex = 1): void {
+    const game = this.gameState.getGame();
+    const n = Number(colorIndex);
+    game.spriteOutlineColor = Number.isFinite(n)
+      ? Math.max(0, Math.min(15, Math.floor(n)))
+      : 1;
     this.draw();
   }
 

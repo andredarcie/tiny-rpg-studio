@@ -61,6 +61,8 @@ class EditorDomCache {
     spritesClearButton: HTMLButtonElement | null;
     projectSkillsResetOrder: HTMLButtonElement | null;
     projectHideHud: HTMLInputElement | null;
+    projectSpriteOutline: HTMLInputElement | null;
+    projectSpriteOutlineColor: HTMLSelectElement | null;
     projectDisableSkills: HTMLInputElement | null;
     projectOnlineEnabled: HTMLInputElement | null;
     projectOnlineControls: HTMLElement | null;
@@ -172,6 +174,8 @@ class EditorDomCache {
             this.spritesClearButton = null;
             this.projectSkillsResetOrder = null;
             this.projectHideHud = null;
+            this.projectSpriteOutline = null;
+            this.projectSpriteOutlineColor = null;
             this.projectDisableSkills = null;
             this.projectOnlineEnabled = null;
             this.projectOnlineControls = null;
@@ -272,6 +276,8 @@ class EditorDomCache {
         this.spritesClearButton = root.querySelector('#sprites-clear-button') as HTMLButtonElement | null;
         this.projectSkillsResetOrder = root.querySelector('#project-skills-reset-order') as HTMLButtonElement | null;
         this.projectHideHud = root.querySelector('#project-hide-hud') as HTMLInputElement | null;
+        this.projectSpriteOutline = root.querySelector('#project-sprite-outline') as HTMLInputElement | null;
+        this.projectSpriteOutlineColor = root.querySelector('#project-sprite-outline-color') as HTMLSelectElement | null;
         this.projectDisableSkills = root.querySelector('#project-disable-skills') as HTMLInputElement | null;
         this.projectOnlineEnabled = root.querySelector('#project-online-enabled') as HTMLInputElement | null;
         this.projectOnlineControls = root.querySelector('#project-online-controls') as HTMLElement | null;

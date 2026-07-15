@@ -56,6 +56,42 @@ describe('ShareEncoder', () => {
     expect(decoded?.hideHud).toBe(true);
   });
 
+  it('preserves spriteOutline false through an encode/decode round trip', () => {
+    const code = ShareEncoder.buildShareCode({ spriteOutline: false });
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ spriteOutline?: boolean; spriteOutlineColor?: number } | null);
+
+    expect(code.split('.').some((segment) => segment === '10')).toBe(true);
+    expect(decoded?.spriteOutline).toBe(false);
+    expect(decoded?.spriteOutlineColor).toBe(1);
+  });
+
+  it('defaults spriteOutline to true when not encoded', () => {
+    const code = ShareEncoder.buildShareCode({});
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ spriteOutline?: boolean; spriteOutlineColor?: number } | null);
+
+    expect(code.split('.').some((segment) => /^1(0|c|$)/.test(segment) || segment === '10')).toBe(false);
+    expect(decoded?.spriteOutline).toBe(true);
+    expect(decoded?.spriteOutlineColor).toBe(1);
+  });
+
+  it('preserves spriteOutlineColor through an encode/decode round trip', () => {
+    const code = ShareEncoder.buildShareCode({ spriteOutline: true, spriteOutlineColor: 10 });
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ spriteOutline?: boolean; spriteOutlineColor?: number } | null);
+
+    expect(code.split('.').some((segment) => segment === '1ca')).toBe(true);
+    expect(decoded?.spriteOutline).toBe(true);
+    expect(decoded?.spriteOutlineColor).toBe(10);
+  });
+
+  it('preserves disabled outline with a custom color', () => {
+    const code = ShareEncoder.buildShareCode({ spriteOutline: false, spriteOutlineColor: 3 });
+    const decoded = ShareDecoder.decodeShareCode(code) as ({ spriteOutline?: boolean; spriteOutlineColor?: number } | null);
+
+    expect(code.split('.').some((segment) => segment === '10c3')).toBe(true);
+    expect(decoded?.spriteOutline).toBe(false);
+    expect(decoded?.spriteOutlineColor).toBe(3);
+  });
+
   it('preserves disableSkills through an encode/decode round trip', () => {
     const code = ShareEncoder.buildShareCode({ disableSkills: true });
     const decoded = ShareDecoder.decodeShareCode(code) as ({ disableSkills?: boolean } | null);

@@ -31,6 +31,8 @@ type ShareGameData = {
     backgroundMusicVideoId?: unknown;
     backgroundMusicVolume?: unknown;
     hideHud?: unknown;
+    spriteOutline?: unknown;
+    spriteOutlineColor?: unknown;
     disableSkills?: unknown;
     disablePixelFont?: unknown;
     start?: unknown;
@@ -569,6 +571,24 @@ class ShareEncoder {
 
         if (gameData?.hideHud) {
             parts.push('H1');
+        }
+        // Outline payload key '1' (VERSION_35+):
+        //   missing     → on, color 1 (default)
+        //   "0"         → off, color 1
+        //   "0cN"       → off, color N (hex digit)
+        //   "cN"        → on, color N (hex digit, only when N !== 1)
+        {
+            const outlineOn = gameData?.spriteOutline !== false;
+            const colorRaw = Number(gameData?.spriteOutlineColor);
+            const color = Number.isFinite(colorRaw)
+                ? Math.max(0, Math.min(15, Math.floor(colorRaw)))
+                : 1;
+            const colorPart = color === 1 ? '' : `c${color.toString(16)}`;
+            if (!outlineOn) {
+                parts.push('1' + '0' + colorPart);
+            } else if (colorPart) {
+                parts.push('1' + colorPart);
+            }
         }
         if (gameData?.disableSkills) {
             parts.push('R1');

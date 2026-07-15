@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-15-sprite-outlines',
+    date: '2026-07-15',
+    title: 'Sprite outlines',
+    description:
+      'Characters, objects, and tiles with empty pixels now get a crisp 1-pixel outline. Under Project → Visuals you can turn it on or off and pick the outline color from your palette. The choice is saved with your share link and HTML export.',
+  },
+  {
     id: '2026-07-14-export-hide-open-studio',
     date: '2026-07-14',
     title: 'Optional Open Studio on HTML export',

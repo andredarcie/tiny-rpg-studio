@@ -8,6 +8,16 @@ import {
     normalizeBackgroundMusicVolume,
 } from '../../infra/share/BackgroundMusicVideoId';
 
+/** Default outline palette index (PICO-8 dark blue). */
+export const DEFAULT_SPRITE_OUTLINE_COLOR_INDEX = 1;
+
+/** Clamp outline palette index to 0–15; invalid values become the default. */
+export function normalizeSpriteOutlineColor(value: unknown): number {
+    const n = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(n)) return DEFAULT_SPRITE_OUTLINE_COLOR_INDEX;
+    return Math.max(0, Math.min(15, Math.floor(n)));
+}
+
 type StateDataManagerOptions = {
     game: GameDefinition;
     worldManager: StateWorldManager;
@@ -23,6 +33,8 @@ type ImportData = {
     backgroundMusicVideoId?: string;
     backgroundMusicVolume?: unknown;
     hideHud?: boolean;
+    spriteOutline?: boolean;
+    spriteOutlineColor?: number;
     disableSkills?: boolean;
     disablePixelFont?: boolean;
     roomSize?: number;
@@ -84,6 +96,8 @@ class StateDataManager {
             backgroundMusicVideoId: this.game.backgroundMusicVideoId,
             backgroundMusicVolume: normalizeBackgroundMusicVolume(this.game.backgroundMusicVolume),
             hideHud: Boolean(this.game.hideHud),
+            spriteOutline: this.game.spriteOutline !== false,
+            spriteOutlineColor: normalizeSpriteOutlineColor(this.game.spriteOutlineColor),
             disableSkills: Boolean(this.game.disableSkills),
             disablePixelFont: Boolean(this.game.disablePixelFont),
             roomSize: this.game.roomSize,
@@ -147,6 +161,8 @@ class StateDataManager {
             backgroundMusicVideoId: normalizeBackgroundMusicVideoId(data.backgroundMusicVideoId),
             backgroundMusicVolume: normalizeBackgroundMusicVolume(data.backgroundMusicVolume),
             hideHud: Boolean(data.hideHud),
+            spriteOutline: data.spriteOutline !== false,
+            spriteOutlineColor: normalizeSpriteOutlineColor(data.spriteOutlineColor),
             disableSkills: Boolean(data.disableSkills),
             disablePixelFont: Boolean(data.disablePixelFont),
             roomSize: 8,

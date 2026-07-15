@@ -3,22 +3,22 @@ type SpriteMatrix = (number | null)[][];
 const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
     'player-start': [
         [ null, null, null, null, null, null, null, null ],
-        [ null,  1,  1,  1,  1,  1,  1, null ],
-        [ null,  1,  3,  3,  3,  3,  1, null ],
-        [ null,  1,  3,  3, 11,  3,  1, null ],
-        [ null,  1,  3, 11,  3,  3,  1, null ],
-        [ null,  1,  3,  3,  3,  3,  1, null ],
-        [ null,  1,  1,  1,  1,  1,  1, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null,  3,  3,  3,  3, null, null ],
+        [ null, null,  3,  3, 11,  3, null, null ],
+        [ null, null,  3, 11,  3,  3, null, null ],
+        [ null, null,  3,  3,  3,  3, null, null ],
+        [ null, null, null, null, null, null, null, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
     'player-end': [
         [ null, null, null, null, null, null, null, null ],
-        [ null,  1,  1,  1,  1,  1,  1, null ],
-        [ null,  1,  2,  2,  2,  2,  1, null ],
-        [ null,  1,  2,  2, 14,  2,  1, null ],
-        [ null,  1,  2, 14,  2,  2,  1, null ],
-        [ null,  1,  2,  2,  2,  2,  1, null ],
-        [ null,  1,  1,  1,  1,  1,  1, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null,  2,  2,  2,  2, null, null ],
+        [ null, null,  2,  2, 14,  2, null, null ],
+        [ null, null,  2, 14,  2,  2, null, null ],
+        [ null, null,  2,  2,  2,  2, null, null ],
+        [ null, null, null, null, null, null, null, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
     switch: [
@@ -27,7 +27,7 @@ const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
         [ null,  6, null, null, null, null, null, null ],
         [ null, null,  6, null, null, null, null, null ],
         [ null, null, null,  6, null, null, null, null ],
-        [ null, null,  6,  1,  1,  6, null, null ],
+        [ null, null,  6, null, null,  6, null, null ],
         [ null,  6,  6,  6,  6,  6,  6, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
@@ -37,7 +37,7 @@ const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
         [ null, null, null, null, null, null,  6, null ],
         [ null, null, null, null, null,  6, null, null ],
         [ null, null, null, null,  6, null, null, null ],
-        [ null, null,  6,  1,  1,  6, null, null ],
+        [ null, null,  6, null, null,  6, null, null ],
         [ null,  6,  6,  6,  6,  6,  6, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
@@ -82,14 +82,14 @@ const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
         [ null, null,  6,  6,  6,  6, null, null ]
     ],
     'xp-scroll': [
-        [ null, null, null, null, null, null, null, null ],
         [ null, null,  6,  6,  6,  6,  6,  6 ],
-        [ null, null,  6,  1,  1,  1,  6,  0 ],
+        [ null, null,  6,  1,  1,  1,  6,  5 ],
         [ null, null,  6,  6,  6,  6,  6, null ],
         [ null, null,  6,  1,  1,  1,  6, null ],
         [ null, null,  6,  6,  6,  6,  6, null ],
-        [ null,  0,  6,  1,  1,  6,  6, null ],
-        [ null,  6,  6,  6,  6,  6,  6, null ]
+        [ null, null,  6,  1,  1,  6,  6, null ],
+        [ null,  6,  6,  6,  6,  6,  6, null ],
+        [ null,  5,  5,  5,  5,  5,  5, null ]
     ],
     sword: [
         [ null, null, null, null, null, null, null, null ],
@@ -200,101 +200,101 @@ const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
     ],
     // Armor: silver breastplate with shoulder guards
     armor: [
-        [ null,  null,   1,   1,   1,   1,  null,  null ],
-        [  1,   1,   1,   6,   6,   1,   1,   1 ],
-        [  1,   6,   6,   6,   6,   6,   6,   1 ],
-        [  1,   6,   6,   6,   6,   6,   6,   1 ],
-        [  1,   1,   6,   6,   6,   6,   1,   1 ],
-        [ null,   1,   7,   5,   5,   7,   1,  null ],
-        [ null,   1,   6,   6,   6,   6,   1,  null ],
-        [ null,   1,   1,   1,   1,   1,   1,  null ]
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null,  6,  6, null, null, null ],
+        [ null,  6,  6,  6,  6,  6,  6, null ],
+        [ null,  6,  6,  6,  6,  6,  6, null ],
+        [ null, null,  6,  6,  6,  6, null, null ],
+        [ null, null,  7,  5,  5,  7, null, null ],
+        [ null, null,  6,  6,  6,  6, null, null ],
+        [ null, null, null, null, null, null, null, null ]
     ],
     // Boots: brown boot silhouette
     boots: [
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [  1,   1,   1,  null,   1,   1,   1,  null ],
-        [  1,   4,   1,   1,   1,   4,   1,   1 ],
-        [  1,   4,  15,   1,   1,   4,  15,   1 ],
-        [  1,   4,   4,   1,   1,   4,   4,   1 ],
-        [  1,   1,   1,   1,   1,   1,   1,   1 ]
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  4, null, null, null,  4, null, null ],
+        [ null,  4, 15, null, null,  4, 15, null ],
+        [ null,  4,  4, null, null,  4,  4, null ],
+        [ null, null, null, null, null, null, null, null ]
     ],
     // Trap inactive (variable ON)
     trap: [
         [ null, null, null, null, null, null, null, null ],
-        [ null, null,  1, null, null, null,  1, null ],
-        [ null,  1,  5,  1, null,  1,  5,  1 ],
-        [ null,  5,  5,  5, null,  5,  5,  5 ],
-        [ null, null,  1, null, null, null,  1, null ],
-        [ null,  1,  5,  1, null,  1,  5,  1 ],
-        [ null,  5,  5,  5, null,  5,  5,  5 ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null,  6, null, null, null,  6, null ],
+        [ null,  1,  1, null, null,  1,  1, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null,  6, null, null, null,  6, null ],
+        [ null,  1,  1, null, null,  1,  1, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
     // Trap active (default, variable OFF)
     'trap--on': [
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,   1,   1,   1,  null,   1,   1,   1 ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,   1,   1,   1,  null,   1,   1,   1 ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ]
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  5,  5, null, null,  5,  5, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  5,  5, null, null,  5,  5, null ],
+        [ null, null, null, null, null, null, null, null ]
     ],
-    // Push box: wooden crate
+    // Push box: wooden crate (dark band is material, not a silhouette outline)
     'push-box': [
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,   1,   1,   1,   1,   1,   1,  null ],
-        [ null,   1,   4,   4,   4,   4,   1,  null ],
-        [ null,   1,   4,   4,   4,   4,   1,  null ],
-        [ null,   1,   1,   1,   1,   1,   1,  null ],
-        [ null,   1,   4,   4,   4,   4,   1,  null ],
-        [ null,   1,   1,   1,   1,   1,   1,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ]
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  4,  4,  4,  4,  4, null, null ],
+        [ null,  4,  5,  4,  5,  4, null, null ],
+        [ null,  4,  4,  4,  4,  4, null, null ],
+        [ null,  4,  5,  4,  5,  4, null, null ],
+        [ null,  4,  4,  4,  4,  4, null, null ],
+        [ null, null, null, null, null, null, null, null ]
     ],
     // Pressure plate: flat stone slab (inactive)
     'pressure-plate': [
-        [ null,  null,  null,  null,  null,  null,  null,  null ],
-        [ null,   1,   1,   1,   1,   1,   1,  null ],
-        [ null,   1,   6,   6,   6,   6,   1,  null ],
-        [ null,   1,   6,   7,   6,   6,   1,  null ],
-        [ null,   1,   6,   6,   7,   6,   1,  null ],
-        [ null,   1,   6,   6,   6,   6,   1,  null ],
-        [ null,   1,   1,   1,   1,   1,   1,  null ],
-        [ null,  null,  null,  null,  null,  null,  null,  null ]
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  6,  6,  6,  6,  6,  6, null ],
+        [ null,  6,  7,  7,  6,  6,  6, null ],
+        [ null,  6,  7,  6,  6,  6,  6, null ],
+        [ null,  6,  6,  6,  6,  6,  6, null ],
+        [ null,  6,  6,  6,  6,  6,  6, null ],
+        [ null, 13, 13, 13, 13, 13, 13, null ],
+        [ null, null, null, null, null, null, null, null ]
     ],
     // Pressure plate: glowing blue when activated
     'pressure-plate--on': [
         [ null, null, null, null, null, null, null, null ],
         [ null, null, null, null, null, null, null, null ],
-        [  1,  1,  1,  1,  1,  1,  1,  1 ],
-        [  1, 12, 12, 12, 12, 12, 12,  1 ],
-        [  1, 12, 12, 12, 12, 12, 12,  1 ],
-        [  1,  1,  1,  1,  1,  1,  1,  1 ],
-        [ null, null, null, null, null, null, null, null ],
+        [ null, 13, 13, 13, 13, 13, 13, null ],
+        [ null, 13,  7,  7, 13, 13, 13, null ],
+        [ null, 13,  7, 13, 13, 13, 13, null ],
+        [ null, 13, 13, 13, 13, 13, 13, null ],
+        [ null, 13, 13, 13, 13, 13, 13, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
     // Chest: wooden box with gold clasp (closed)
     chest: [
         [ null, null, null, null, null, null, null, null ],
-        [  5,  5,  5,  5,  5,  5,  5,  5 ],
-        [  4,  9,  9,  9,  9,  9,  9,  4 ],
-        [  4,  4,  4, 10, 10,  4,  4,  4 ],
-        [  4,  4,  4,  4,  4,  4,  4,  4 ],
-        [  4,  9,  9,  9,  9,  9,  9,  4 ],
-        [  5,  5,  5,  5,  5,  5,  5,  5 ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  9,  9,  9,  9,  9,  9, null ],
+        [ null,  9,  4, 10, 10,  4,  9, null ],
+        [ null,  9,  4,  4,  4,  4,  9, null ],
+        [ null,  9,  4,  4,  4,  4,  9, null ],
+        [ null,  9,  9,  9,  9,  9,  9, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
     // Chest: open (lid raised, interior visible)
     'chest--on': [
-        [  5,   9,   9,  10,  10,   9,   9,   5 ],
-        [  4,   1,   1,   1,   1,   1,   1,   4 ],
-        [  4,   4,   1,   1,   1,   1,   4,   4 ],
-        [  4,   4,   4,   1,   1,   4,   4,   4 ],
-        [  4,   4,   4,   4,   4,   4,   4,   4 ],
-        [  4,   9,   9,   9,   9,   9,   9,   4 ],
-        [  5,   5,   5,   5,   5,   5,   5,   5 ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null,  4,  4, 10, 10,  4,  4, null ],
+        [ null,  4,  5,  5,  5,  5,  4, null ],
+        [ null,  4,  5,  5,  5,  5,  4, null ],
+        [ null,  9,  4,  4,  4,  4,  9, null ],
+        [ null,  9,  4,  4,  4,  4,  9, null ],
+        [ null,  9,  9,  9,  9,  9,  9, null ],
         [ null, null, null, null, null, null, null, null ]
     ]
 };

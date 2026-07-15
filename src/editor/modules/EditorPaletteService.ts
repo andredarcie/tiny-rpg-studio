@@ -46,6 +46,9 @@ export class EditorPaletteService {
 
             grid.appendChild(button);
         });
+
+        // Keep outline color picker swatches in sync with palette edits.
+        this.manager.uiController.refreshSpriteOutlineColorSelect();
     }
 
     private getCurrentPalette(): string[] {

@@ -21,6 +21,8 @@ class TinyRPGBuilder {
     private _title?: string;
     private _author?: string;
     private _hideHud = false;
+    private _spriteOutline = true;
+    private _spriteOutlineColor = 1;
     private _disableSkills = false;
     private _disablePixelFont = false;
     private _backgroundMusicVideoId?: string;
@@ -50,6 +52,21 @@ class TinyRPGBuilder {
 
     hideHUD(hide = true): this {
         this._hideHud = hide;
+        return this;
+    }
+
+    /** Draws a 1px palette outline around entity sprites (default on). */
+    spriteOutline(enabled = true): this {
+        this._spriteOutline = enabled;
+        return this;
+    }
+
+    /** Palette index (0–15) used for the sprite outline color (default 1). */
+    spriteOutlineColor(index: number): this {
+        if (!Number.isInteger(index) || index < 0 || index > 15) {
+            throw new Error(`spriteOutlineColor must be an integer in [0, 15], got ${index}`);
+        }
+        this._spriteOutlineColor = index;
         return this;
     }
 
@@ -229,6 +246,8 @@ class TinyRPGBuilder {
             title: this._title,
             author: this._author,
             hideHud: this._hideHud || undefined,
+            spriteOutline: this._spriteOutline === false ? false : undefined,
+            spriteOutlineColor: this._spriteOutlineColor !== 1 ? this._spriteOutlineColor : undefined,
             disableSkills: this._disableSkills || undefined,
             disablePixelFont: this._disablePixelFont || undefined,
             backgroundMusicVideoId: this._backgroundMusicVideoId,

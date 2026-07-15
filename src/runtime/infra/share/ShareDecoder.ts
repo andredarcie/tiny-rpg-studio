@@ -431,6 +431,25 @@ class ShareDecoder {
             ? normalizeBackgroundMusicVolume(parseInt(payload['2'], 36))
             : DEFAULT_BACKGROUND_MUSIC_VOLUME;
         const hideHud = version >= ShareConstants.HIDE_HUD_VERSION && payload.H === '1';
+        // Outline (VERSION_35+): see ShareEncoder for payload key '1' value formats.
+        let spriteOutline = true;
+        let spriteOutlineColor = 1;
+        if (version >= ShareConstants.SPRITE_OUTLINE_VERSION) {
+            const outlineRaw = payload['1'];
+            if (typeof outlineRaw === 'string' && outlineRaw.length > 0) {
+                let rest = outlineRaw;
+                if (rest.startsWith('0')) {
+                    spriteOutline = false;
+                    rest = rest.slice(1);
+                }
+                if (rest.startsWith('c') && rest.length >= 2) {
+                    const parsed = parseInt(rest.charAt(1), 16);
+                    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 15) {
+                        spriteOutlineColor = parsed;
+                    }
+                }
+            }
+        }
         const disableSkills = version >= ShareConstants.DISABLE_SKILLS_VERSION && payload.R === '1';
         const disablePixelFont = version >= ShareConstants.DISABLE_PIXEL_FONT_VERSION && payload.F === '1';
         const buildNpcId = (index: number) => `npc-${index + 1}`;
@@ -590,6 +609,8 @@ class ShareDecoder {
             backgroundMusicVideoId,
             backgroundMusicVolume,
             hideHud,
+            spriteOutline,
+            spriteOutlineColor,
             disableSkills,
             disablePixelFont,
             start: startPosition,

@@ -41,9 +41,10 @@ class ShareConstants {
     static get VERSION_32() { return 32; }
     static get VERSION_33() { return 33; }
     static get VERSION_34() { return 34; }
+    static get VERSION_35() { return 35; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_34;
+        return ShareConstants.VERSION_35;
     }
 
     static get LEGACY_VERSION() {
@@ -167,6 +168,12 @@ class ShareConstants {
         return ShareConstants.VERSION_34;
     }
 
+    // Sprite silhouette outline (default on, palette color 1). Payload key '1':
+    //   missing → on + color 1; "0" / "0cN" → off; "cN" → on with color N (hex).
+    static get SPRITE_OUTLINE_VERSION() {
+        return ShareConstants.VERSION_35;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -282,7 +289,8 @@ class ShareConstants {
                 ShareConstants.VERSION_31,
                 ShareConstants.VERSION_32,
                 ShareConstants.VERSION_33,
-                ShareConstants.VERSION_34
+                ShareConstants.VERSION_34,
+                ShareConstants.VERSION_35
             ]);
         }
         return this._supportedVersions;

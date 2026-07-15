@@ -4,7 +4,7 @@ import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
 
 describe('ShareConstants', () => {
   it('exposes current version and world metadata', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_34);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_35);
     expect(ShareConstants.WORLD_ROOM_COUNT).toBe(9);
     expect(ShareConstants.MATRIX_SIZE).toBe(8);
   });
@@ -12,6 +12,11 @@ describe('ShareConstants', () => {
   it('registers the choice-dialog version as supported', () => {
     expect(ShareConstants.NPC_CHOICE_DIALOG_VERSION).toBe(ShareConstants.VERSION_34);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_34)).toBe(true);
+  });
+
+  it('registers sprite outline version as supported', () => {
+    expect(ShareConstants.SPRITE_OUTLINE_VERSION).toBe(ShareConstants.VERSION_35);
+    expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_35)).toBe(true);
   });
 
   it('exposes legacy/tier constants and returns a palette copy', () => {

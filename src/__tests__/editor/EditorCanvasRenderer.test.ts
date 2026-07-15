@@ -32,6 +32,10 @@ type RendererMock = {
   npcSprites: Record<string, (string | null)[][]>;
   enemySprites: Record<string, (string | null)[][]>;
   enemySprite: (string | null)[][];
+  canvasHelper: {
+    drawPixelGrid: ReturnType<typeof vi.fn>;
+    drawSprite: ReturnType<typeof vi.fn>;
+  };
 };
 type CanvasGameEngineFixture = {
   getTileMap: ReturnType<typeof vi.fn<() => TileMapMock>>;
@@ -112,6 +116,10 @@ function makeService(overrides: Record<string, unknown> = {}) {
         npcSprites: { default: [['#FF0000']] },
         enemySprites: {},
         enemySprite: [['#0000FF']],
+        canvasHelper: {
+          drawPixelGrid: vi.fn(),
+          drawSprite: vi.fn(),
+        },
       },
     },
     ...overrides,
@@ -327,7 +335,7 @@ describe('EditorCanvasRenderer', () => {
     expect(ctx.fillRect).not.toHaveBeenCalled();
   });
 
-  it('draws each non-transparent pixel', () => {
+  it('draws tiles through canvasHelper.drawPixelGrid so outlines match the game', () => {
     const { service, ctx } = makeService();
     const pixels: (string | null)[][] = [
       ['#FF0000', 'transparent'],
@@ -336,8 +344,15 @@ describe('EditorCanvasRenderer', () => {
     service.gameEngine.tileManager.getTilePixels.mockReturnValue(pixels);
     const renderer = new EditorCanvasRenderer(asEditorCanvasService(service));
     renderer.drawTile(asCanvasCtx(ctx), 1, 0, 0, 16);
-    // fillRect for '#FF0000' and '#00FF00', not for transparent/null
-    expect(ctx.fillRect).toHaveBeenCalledTimes(2);
+    expect(service.gameEngine.renderer.canvasHelper.drawPixelGrid).toHaveBeenCalledWith(
+      ctx,
+      pixels,
+      0,
+      0,
+      2
+    );
+    // Pixel painting is owned by drawPixelGrid (shared with the game renderer).
+    expect(ctx.fillRect).not.toHaveBeenCalled();
   });
 
   // ─── getVariableColor ───────────────────────────────────────────────────

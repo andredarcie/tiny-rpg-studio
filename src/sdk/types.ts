@@ -97,6 +97,8 @@ export type SdkSharePayload = {
     title?: string;
     author?: string;
     hideHud?: boolean;
+    spriteOutline?: boolean;
+    spriteOutlineColor?: number;
     disableSkills?: boolean;
     disablePixelFont?: boolean;
     backgroundMusicVideoId?: string;

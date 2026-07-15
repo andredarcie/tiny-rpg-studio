@@ -206,22 +206,22 @@ class TileDefinitions {
 
         this.tile(7, 'Pedra Grande', [
             [ null, null, null, null, null, null, null, null ],
-            [ null, null, null, null,  5, null, null, null ],
-            [ null, null, null,  5,  7,  5, null, null ],
-            [ null, null,  5, 13,  6,  7,  5, null ],
-            [ null,  5, 13,  6,  6,  6,  5, null ],
-            [ null,  5, 13,  6,  6,  6,  7,  5 ],
-            [ null,  5, 13,  6,  6,  6,  6,  5 ],
+            [ null, null, null, null,null, null, null, null ],
+            [ null, null, null, null,  7, null, null, null ],
+            [ null, null, null, 13,  6,  7, null, null ],
+            [ null, null, 13,  6,  6,  6, null, null ],
+            [ null, null, 13,  6,  6,  6,  7, null ],
+            [ null, null, 13,  6,  6,  6,  6, null ],
             [ null, null, null, null, null, null, null, null ]
         ], true, 'Natureza', null, 'tiles.names.bigRock'),
 
         this.tile(8, 'Arvore Verde', [
-            [ null, null,  1,  1,  1,  1, null, null ],
-            [ null,  1, 11, 11, 11, 11,  1, null ],
-            [  1, 11,  3, 11, 11, 11, 11,  1 ],
-            [  1, 11, 11, 11, 11,  3, 11,  1 ],
-            [  1, 11, 11, 11, 11, 11, 11,  1 ],
-            [ null,  1,  1,  4,  4,  1,  1, null ],
+            [ null, null, null, null, null, null, null, null ],
+            [ null, null, 11, 11, 11, 11, null, null ],
+            [ null, 11,  3, 11, 11, 11, 11, null ],
+            [ null, 11, 11, 11, 11,  3, 11, null ],
+            [ null, 11, 11, 11, 11, 11, 11, null ],
+            [ null, null, null,  4,  4, null, null, null ],
             [ null, null, null,  4,  4, null, null, null ],
             [ null, null,  4,  4,  4,  4, null, null ]
         ], true, 'Natureza', null, 'tiles.names.greenTree'),
@@ -230,11 +230,11 @@ class TileDefinitions {
             [ null, null, null, null, null, null, null, null ],
             [ null, null, null, null, null, null, null, null ],
             [ null, null, null, null, null, null, null, null ],
-            [ null, null,  1,  1,  1,  1, null, null ],
-            [ null,  1, 11, 11, 11, 11,  1, null ],
-            [  1, 11, 11, 11, 11,  3, 11,  1 ],
-            [  1, 11,  3, 11, 11, 11, 11,  1 ],
-            [  1,  1,  1,  1,  1,  1,  1,  1 ]
+            [ null, null, null, null, null, null, null, null ],
+            [ null, null, 11, 11, 11, 11, null, null ],
+            [ null, 11, 11, 11, 11,  3, 11, null ],
+            [ null, 11,  3, 11, 11, 11, 11, null ],
+            [ null, null, null, null, null, null, null, null ]
         ], true, 'Natureza', null, 'tiles.names.denseBush'),
 
         this.tile(10, 'Parede de Pedra', [

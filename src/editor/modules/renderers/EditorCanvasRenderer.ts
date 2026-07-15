@@ -320,6 +320,15 @@ class EditorCanvasRenderer extends EditorRendererBase {
         const pixels = tileManager.getTilePixels(tile);
         if (!Array.isArray(pixels)) return;
         const step = Math.max(1, Math.floor(size / 8));
+        // Use the runtime pixel-grid path so placed editor tiles get the same
+        // in-bounds silhouette outline as the game view.
+        const canvasHelper = this.gameEngine.renderer.canvasHelper as {
+            drawPixelGrid?: (ctx: CanvasRenderingContext2D, pixels: (string | null)[][], px: number, py: number, step: number) => void;
+        };
+        if (canvasHelper.drawPixelGrid) {
+            canvasHelper.drawPixelGrid(ctx, pixels, px, py, step);
+            return;
+        }
         for (let y = 0; y < 8; y++) {
             for (let x = 0; x < 8; x++) {
                 const col = pixels[y]?.[x];

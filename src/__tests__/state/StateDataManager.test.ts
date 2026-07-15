@@ -14,6 +14,8 @@ const makeGame = (): GameDefinition => ({
   backgroundMusicVideoId: undefined,
   backgroundMusicVolume: 100,
   hideHud: false,
+  spriteOutline: true,
+  spriteOutlineColor: 1,
   disableSkills: false,
   roomSize: 8,
   world: { rows: 1, cols: 1 },
@@ -58,6 +60,8 @@ describe('StateDataManager', () => {
       backgroundMusicVideoId: undefined,
       backgroundMusicVolume: 100,
       hideHud: false,
+      spriteOutline: true,
+      spriteOutlineColor: 1,
       disableSkills: false,
       disablePixelFont: false,
       roomSize: game.roomSize,
@@ -185,6 +189,36 @@ describe('StateDataManager', () => {
     manager.importGameData({ hideHud: true });
 
     expect(game.hideHud).toBe(true);
+  });
+
+  it('imports spriteOutline false and defaults missing to true', () => {
+    const game = makeGame();
+    const deps = {
+      worldManager: {
+        normalizeRooms: vi.fn(() => []),
+        normalizeTileMaps: vi.fn(() => [{ ground: [[null]], overlay: [[null]] }]),
+        clampCoordinate: vi.fn((v: number) => v),
+        clampRoomIndex: vi.fn((v: number) => v),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: {
+        normalizeObjects: vi.fn(() => []),
+        setGame: vi.fn(),
+      } as unknown as StateObjectManager,
+      variableManager: {
+        normalizeVariables: vi.fn(() => []),
+        setGame: vi.fn(),
+      } as unknown as StateVariableManager,
+    };
+
+    const manager = new StateDataManager({ game, ...deps });
+    manager.importGameData({ spriteOutline: false, spriteOutlineColor: 9 });
+    expect(game.spriteOutline).toBe(false);
+    expect(game.spriteOutlineColor).toBe(9);
+
+    manager.importGameData({});
+    expect(game.spriteOutline).toBe(true);
+    expect(game.spriteOutlineColor).toBe(1);
   });
 
   it('imports disableSkills when present', () => {

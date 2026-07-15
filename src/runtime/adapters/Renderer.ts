@@ -104,7 +104,13 @@ class Renderer {
 
         this.paletteManager = new RendererPalette(gameState as never);
         this.spriteFactory = new RendererSpriteFactory(this.paletteManager, gameState as never);
-        this.canvasHelper = new RendererCanvasHelper(canvas, this.ctx as CanvasRenderingContext2D, tileManager as never);
+        this.canvasHelper = new RendererCanvasHelper(
+            canvas,
+            this.ctx as CanvasRenderingContext2D,
+            tileManager as never,
+            this.paletteManager,
+            gameState as never
+        );
         this.tileRenderer = new RendererTileRenderer(gameState as never, tileManager as never, this.paletteManager, this.canvasHelper);
         this.entityRenderer = new RendererEntityRenderer(gameState as never, tileManager as never, this.spriteFactory as never, this.canvasHelper as never, this.paletteManager);
         this.entityRenderer.setViewportOffset(this.gameplayOffsetY);
