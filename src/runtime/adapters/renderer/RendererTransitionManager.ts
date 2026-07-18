@@ -179,9 +179,6 @@ class RendererTransitionManager extends RendererModuleBase {
         }
         this.drawTransitionPlayer(ctx, gameplayCanvas, progress);
         ctx.restore();
-        if (progress >= 1) {
-            this.finish();
-        }
     }
 
     removePlayerFromFrame(frameCanvas: HTMLCanvasElement, coords: TileCoords | null | undefined) {

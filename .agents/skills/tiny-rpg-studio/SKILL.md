@@ -1,3 +1,7 @@
+---
+name: tiny-rpg-studio
+description: Project-specific guidance for working in the Tiny RPG Studio repository.
+---
 # Tiny RPG Studio Project Skill
 
 Use this skill when working in the Tiny RPG Studio repository.
@@ -35,7 +39,7 @@ Small bug fixes do not need devlog entries.
 
 ## Required Checks
 
-A task is only finished when all required checks pass perfectly:
+An implementation task is only finished when all required checks pass perfectly:
 
 ```bash
 npx tsc --noEmit
@@ -44,6 +48,8 @@ npm run lint
 ```
 
 If any required check cannot be run, do not report the task as fully complete. State exactly which check was not run and why.
+
+Plans are not considered implementation tasks, so if the task is about creating or reviewing a plan, these checks can be ignored.
 
 ## Implementation Guidance
 

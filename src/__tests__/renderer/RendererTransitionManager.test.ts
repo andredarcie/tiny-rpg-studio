@@ -199,6 +199,7 @@ describe('RendererTransitionManager', () => {
     manager.scheduleTick();
     shiftRaf()(0);
     expect(finishSpy).toHaveBeenCalledTimes(1);
+    expect(renderer.draw).not.toHaveBeenCalled();
 
     finishSpy.mockClear();
     progressSpy.mockReturnValue(0.5);
@@ -230,7 +231,7 @@ describe('RendererTransitionManager', () => {
     expect(manager.getProgress()).toBe(0);
   });
 
-  it('drawFrame renders transition for all directions and default, and finishes when complete', () => {
+  it('drawFrame renders transition for all directions and default without finishing during paint', () => {
     const { renderer, paletteManager, gameState } = createRendererFixture();
     const manager = new RendererTransitionManager(asRendererInput(renderer));
     const ctx = createCtxMock();
@@ -253,7 +254,51 @@ describe('RendererTransitionManager', () => {
     expect(ctx.drawImage).toHaveBeenCalled();
     expect(drawPlayerSpy).toHaveBeenCalledTimes(5);
     expect(paletteManager.getColor).toHaveBeenCalledWith(gameState.getCurrentRoom().bg);
-    expect(finishSpy).toHaveBeenCalledTimes(1);
+    expect(finishSpy).not.toHaveBeenCalled();
+  });
+
+  it('defers completion to the next tick when progress reaches one during a draw', () => {
+    const { renderer, gameState } = createRendererFixture();
+    const manager = new RendererTransitionManager(asRendererInput(renderer));
+    const ctx = createCtxMock();
+    const gameplayCanvas: DrawFrameCanvas = { width: 80, height: 40 };
+    const fromFrame: FrameCanvas = document.createElement('canvas');
+    const toFrame: FrameCanvas = document.createElement('canvas');
+    const onComplete = vi.fn(() => {
+      renderer.draw();
+    });
+
+    manager.transition = {
+      active: true,
+      direction: 'right',
+      fromFrame,
+      toFrame,
+      onComplete,
+      rafId: null
+    };
+    vi.spyOn(manager, 'drawTransitionPlayer').mockImplementation(() => {});
+    vi.spyOn(manager, 'getProgress')
+      .mockReturnValueOnce(0.99)
+      .mockReturnValueOnce(1)
+      .mockReturnValueOnce(1);
+    renderer.draw.mockImplementation(() => {
+      manager.drawFrame(asCanvasCtx(ctx), gameplayCanvas);
+    });
+
+    manager.scheduleTick();
+    shiftRaf()(0);
+
+    expect(renderer.draw).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(gameState.resumeGame).not.toHaveBeenCalled();
+    expect(manager.isActive()).toBe(true);
+
+    shiftRaf()(16);
+
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(gameState.resumeGame).toHaveBeenCalledWith('room-transition');
+    expect(renderer.draw).toHaveBeenCalledTimes(2);
+    expect(manager.isActive()).toBe(false);
   });
 
   it('drawFrame returns early when inactive', () => {
