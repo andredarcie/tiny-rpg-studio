@@ -103,6 +103,10 @@ type GameEngineApi = {
   online: { onRespawned: (() => void) | null };
   awaitingRestart: boolean;
   enemyManager: { stop: { mock: { calls: unknown[] } }; start: { mock: { calls: unknown[] } } };
+  inputManager: {
+    cancelHeldMovement: { mock: { calls: unknown[] } };
+    destroy: { mock: { calls: unknown[] } };
+  };
   dialogManager: { lastMessage?: string };
   chooseLevelUpSkill: (index: number | null) => void;
   moveLevelUpCursor: (delta: number) => void;
@@ -449,6 +453,7 @@ describe('GameEngine business rules (legacy)', () => {
     engine.importGameData({ title: 'Music Test' })
 
     expect(engine.backgroundMusicEngine?.syncFromGame).toHaveBeenCalledWith(engine.gameState.state.game)
+    expect(engine.inputManager.cancelHeldMovement.mock.calls).toHaveLength(1)
   })
 
   it('stops background music when the intro screen is shown again', () => {
@@ -457,6 +462,7 @@ describe('GameEngine business rules (legacy)', () => {
     engine.resetGame()
 
     expect(engine.backgroundMusicEngine?.stop).toHaveBeenCalled()
+    expect(engine.inputManager.cancelHeldMovement.mock.calls).toHaveLength(1)
   })
 
   it('starts background music after the intro screen is dismissed', () => {
@@ -473,6 +479,7 @@ describe('GameEngine business rules (legacy)', () => {
     engine.destroy()
 
     expect(engine.backgroundMusicEngine?.destroy).toHaveBeenCalled()
+    expect(engine.inputManager.destroy.mock.calls).toHaveLength(1)
   })
 
   it('does not start background music when the intro is dismissed in editor mode', () => {

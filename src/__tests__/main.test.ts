@@ -7,7 +7,6 @@ import { setTinyRpgApi, type TinyRpgApi } from '../runtime/infra/TinyRpgApi';
 import { soundEngine } from '../runtime/services/SoundEngine';
 
 type BindResetGameEngine = Parameters<typeof TinyRPGApplication.bindResetButton>[0];
-type TouchPadGameEngine = Parameters<typeof TinyRPGApplication.bindTouchPad>[0];
 type VolumeControlGameEngine = Parameters<typeof TinyRPGApplication.bindBackgroundMusicVolumeControl>[0];
 type SharedLoadGameEngine = Parameters<typeof TinyRPGApplication.loadSharedGameIfAvailable>[0];
 
@@ -15,16 +14,6 @@ type SharedLoadGameEngine = Parameters<typeof TinyRPGApplication.loadSharedGameI
 class MockGameEngine {
   resetGame = vi.fn();
   // Add other methods if bindResetButton eventually calls them
-}
-
-class MockTouchGameEngine {
-  tryMove = vi.fn();
-  gameState = {
-    getDialog: vi.fn(() => ({ active: false, page: 1, maxPages: 1 })),
-    setDialogPage: vi.fn(),
-  };
-  closeDialog = vi.fn();
-  renderer = { draw: vi.fn() };
 }
 
 class MockSharedLoadEngine {
@@ -42,10 +31,6 @@ class MockVolumeControlEngine {
 
 function asBindResetGameEngine(engine: MockGameEngine): BindResetGameEngine {
   return engine as unknown as BindResetGameEngine;
-}
-
-function asTouchPadGameEngine(engine: MockTouchGameEngine): TouchPadGameEngine {
-  return engine as unknown as TouchPadGameEngine;
 }
 
 function asSharedLoadGameEngine(engine: MockSharedLoadEngine): SharedLoadGameEngine {
@@ -411,66 +396,6 @@ describe('TinyRPGApplication.loadSharedGameIfAvailable', () => {
 
     expect(warnSpy).toHaveBeenCalled();
     expect(engine.importGameData).not.toHaveBeenCalled();
-  });
-});
-
-describe('TinyRPGApplication.bindTouchPad', () => {
-  let engine: MockTouchGameEngine;
-
-  beforeEach(() => {
-    engine = new MockTouchGameEngine();
-    document.body.innerHTML = `
-      <div id="mobile-touch-pad" class="game-touch-pad">
-        <button class="pad-button" data-direction="left"></button>
-        <button class="pad-button" data-direction="up"></button>
-      </div>
-    `;
-  });
-
-  afterEach(() => {
-    document.body.innerHTML = '';
-    vi.restoreAllMocks();
-  });
-
-  it('returns early when there are no direction buttons', () => {
-    document.body.innerHTML = `<div id="mobile-touch-pad"></div>`;
-    expect(() => TinyRPGApplication.bindTouchPad(asTouchPadGameEngine(engine))).not.toThrow();
-  });
-
-  it('moves player on pointerdown using direction map', () => {
-    TinyRPGApplication.bindTouchPad(asTouchPadGameEngine(engine));
-    const leftButton = document.querySelector<HTMLButtonElement>('.pad-button[data-direction="left"]');
-    // jsdom has no PointerEvent; MouseEvent is enough for button + type.
-    leftButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
-    expect(engine.tryMove).toHaveBeenCalledWith(-1, 0);
-  });
-
-  it('moves player on mouse pointerdown (not only touch)', () => {
-    TinyRPGApplication.bindTouchPad(asTouchPadGameEngine(engine));
-    const upButton = document.querySelector<HTMLButtonElement>('.pad-button[data-direction="up"]');
-    upButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
-    expect(engine.tryMove).toHaveBeenCalledWith(0, -1);
-  });
-
-  it('ignores non-primary mouse buttons', () => {
-    TinyRPGApplication.bindTouchPad(asTouchPadGameEngine(engine));
-    const leftButton = document.querySelector<HTMLButtonElement>('.pad-button[data-direction="left"]');
-    leftButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 2 }));
-    expect(engine.tryMove).not.toHaveBeenCalled();
-  });
-
-  it('ignores touch buttons without data-direction', () => {
-    document.body.innerHTML = `
-      <div id="mobile-touch-pad" class="game-touch-pad">
-        <button class="pad-button"></button>
-      </div>
-    `;
-    TinyRPGApplication.bindTouchPad(asTouchPadGameEngine(engine));
-    const button = document.querySelector<HTMLButtonElement>('.pad-button');
-
-    button?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
-
-    expect(engine.tryMove).not.toHaveBeenCalled();
   });
 });
 

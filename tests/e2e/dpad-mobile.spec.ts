@@ -54,3 +54,37 @@ test('mobile D-pad is glued below the canvas and fully visible', async ({ page }
   // Capture the mobile layout for visual inspection.
   await page.screenshot({ path: 'test-results/dpad-mobile.png' });
 });
+
+test('holding the mobile D-pad continues through a room transition and stops on release', async ({ page }) => {
+  await page.goto('/?profile');
+  await page.waitForFunction(() => Boolean((window as Window & {
+    __TINY_RPG_PROFILER?: { isEnabled: boolean };
+  }).__TINY_RPG_PROFILER?.isEnabled));
+
+  await page.keyboard.press('Enter');
+  const snapshot = () => page.evaluate(() => (window as Window & {
+    __TINY_RPG_PROFILER?: {
+      getGameSnapshot: () => { playerX: number; playerY: number; playerRoom: number };
+    };
+  }).__TINY_RPG_PROFILER?.getGameSnapshot());
+  const before = await snapshot();
+  if (!before) throw new Error('game snapshot unavailable');
+
+  const right = page.locator('.pad-button[data-direction="right"]');
+  await right.dispatchEvent('pointerdown', { pointerId: 42, pointerType: 'touch', button: 0 });
+  await page.waitForTimeout(1300);
+  await right.dispatchEvent('pointerup', { pointerId: 42, pointerType: 'touch', button: 0 });
+
+  const afterHold = await snapshot();
+  if (!afterHold) throw new Error('game snapshot unavailable after hold');
+  const heldDistance = Math.abs(afterHold.playerX - before.playerX)
+    + Math.abs(afterHold.playerY - before.playerY)
+    + (afterHold.playerRoom === before.playerRoom ? 0 : 8);
+  expect(heldDistance).toBeGreaterThanOrEqual(2);
+  expect(afterHold.playerRoom).not.toBe(before.playerRoom);
+  expect(afterHold.playerX).toBeGreaterThan(0);
+
+  await page.waitForTimeout(250);
+  const afterRelease = await snapshot();
+  expect(afterRelease).toEqual(afterHold);
+});

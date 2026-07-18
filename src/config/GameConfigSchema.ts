@@ -136,6 +136,7 @@ export interface GameTimingConfig {
 
 export interface GameInputConfig {
   readonly maxDuration: number;
+  readonly heldMoveIntervalMs: number;
 }
 
 export interface GameHudConfig {
@@ -488,6 +489,7 @@ export class GameConfigSchema {
 
   private validateInput(input: GameInputConfig): GameInputConfig {
     this.assertPositiveInteger(input.maxDuration, 'input max duration');
+    this.assertPositiveInteger(input.heldMoveIntervalMs, 'held move interval');
     return Object.freeze({ ...input });
   }
 

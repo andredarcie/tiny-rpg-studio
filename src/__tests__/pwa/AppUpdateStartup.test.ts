@@ -61,7 +61,6 @@ describe('TinyRPGApplication PWA update startup', () => {
     vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
-    vi.spyOn(TinyRPGApplication, 'bindTouchPad').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindFullscreenButton').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindBackgroundMusicVolumeControl').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindLanguageSelector').mockImplementation(() => {});

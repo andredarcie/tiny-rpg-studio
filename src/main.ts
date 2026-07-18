@@ -172,7 +172,6 @@ class TinyRPGApplication {
     new AboutModal();
     this.bindResetButton(gameEngine);
     this.bindExportResetButton(gameEngine);
-    this.bindTouchPad(gameEngine);
     this.bindFullscreenButton();
     this.bindBackgroundMusicVolumeControl(gameEngine);
     this.bindLanguageSelector();
@@ -266,51 +265,6 @@ class TinyRPGApplication {
     button.addEventListener('click', () => {
       gameEngine.resetGame();
       button.blur();
-    });
-  }
-
-  static bindTouchPad(gameEngine: GameEngine): void {
-    // The mini D-pad is always visible on touch screens (CSS-driven); here we
-    // only wire its arrows to player movement / dialog advancing.
-    const touchButtons = document.querySelectorAll<HTMLButtonElement>(
-      '.game-touch-pad .pad-button[data-direction]',
-    );
-    if (!touchButtons.length) return;
-
-    type Direction = 'left' | 'right' | 'up' | 'down';
-    const directionMap: Record<Direction, [number, number]> = {
-      left: [-1, 0],
-      right: [1, 0],
-      up: [0, -1],
-      down: [0, 1],
-    };
-
-    touchButtons.forEach((btn) => {
-      // Pointer events cover both touch and mouse. Touch can't rely on CSS
-      // :active (and our preventDefault suppresses it), so we drive the
-      // "pressed" visual with a class while the pointer is down.
-      const release = () => btn.classList.remove('is-pressed');
-      btn.addEventListener(
-        'pointerdown',
-        (ev) => {
-          // Ignore non-primary mouse buttons; touch/pen report button 0.
-          if (ev.button !== 0) return;
-          ev.preventDefault();
-          btn.classList.add('is-pressed');
-          const dialog = gameEngine.gameState.getDialog();
-          if (dialog.active) {
-            gameEngine.advanceDialog();
-            return;
-          }
-          const dir = btn.dataset.direction as Direction | undefined;
-          if (!dir) return;
-          const delta = directionMap[dir];
-          gameEngine.tryMove(delta[0], delta[1]);
-        },
-      );
-      btn.addEventListener('pointerup', release);
-      btn.addEventListener('pointercancel', release);
-      btn.addEventListener('pointerleave', release);
     });
   }
 

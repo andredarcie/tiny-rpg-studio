@@ -8,16 +8,19 @@ type DialogState = {
 };
 
 type GameStateApi = {
+  playing?: boolean;
   getDialog: () => DialogState;
   setDialogPage: (page: number) => void;
 };
 
 type RendererApi = {
   draw: () => void;
+  isRoomTransitionActive?: () => boolean;
 };
 
 type GameEngineApi = {
   isDestroyed?: boolean;
+  canvas?: HTMLCanvasElement;
   gameState: GameStateApi;
   renderer: RendererApi;
   tryMove: (dx: number, dy: number) => void;
@@ -30,6 +33,7 @@ type GameEngineApi = {
   handleGameOverInteraction?: () => void;
   isIntroVisible?: () => boolean;
   dismissIntroScreen?: () => void;
+  isLevelUpCelebrationActive?: () => boolean;
   isLevelUpOverlayActive?: () => boolean;
   isPickupOverlayActive?: () => boolean;
   dismissPickupOverlay?: () => void;
@@ -40,24 +44,108 @@ type GameEngineApi = {
   pickLevelUpChoiceFromPointer?: (x: number, y: number) => number | null | undefined;
 };
 
-type TouchStart = {
-  x: number;
-  y: number;
-  time: number;
-  prevented: boolean;
+type DirectionName = 'left' | 'right' | 'up' | 'down';
+
+type HeldDirection = {
+  direction: DirectionName;
+  order: number;
 };
 
+type TouchStart = {
+  identifier: number;
+  x: number;
+  y: number;
+  prevented: boolean;
+  direction: DirectionName | null;
+};
+
+type DPadBinding = {
+  button: HTMLButtonElement;
+  activePointers: Set<number>;
+  pointerDown: (ev: PointerEvent) => void;
+  pointerEnd: (ev: PointerEvent) => void;
+};
+
+const DIRECTION_DELTAS: Record<DirectionName, readonly [number, number]> = {
+  left: [-1, 0],
+  right: [1, 0],
+  up: [0, -1],
+  down: [0, 1],
+};
+
+const MOVEMENT_KEYS: Record<string, DirectionName | undefined> = {
+  arrowleft: 'left',
+  a: 'left',
+  arrowright: 'right',
+  d: 'right',
+  arrowup: 'up',
+  w: 'up',
+  arrowdown: 'down',
+  s: 'down',
+};
+
+const SCROLL_LOCK_DISTANCE = 12;
+const MOVEMENT_START_DISTANCE = 24;
+const DIRECTION_SWITCH_MARGIN = 8;
+
 /**
- * InputManager wires keyboard and editor pointer interactions.
+ * InputManager owns playable keyboard, D-pad, and touch input.
  */
 class InputManager {
   private gameEngine: GameEngineApi;
-  private touchStart: TouchStart | null;
+  private touchStart: TouchStart | null = null;
+  private heldDirections = new Map<string, HeldDirection>();
+  private pressOrder = 0;
+  private lastMovementTime = 0;
+  private frameHandle: number | null = null;
+  private frameUsesTimeout = false;
+  private destroyed = false;
+  private dPadBindings: DPadBinding[] = [];
+
+  private readonly keyDownListener = (ev: KeyboardEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleKeyDown(ev);
+  };
+
+  private readonly keyUpListener = (ev: KeyboardEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleKeyUp(ev);
+  };
+
+  private readonly touchStartListener = (ev: TouchEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleTouchStart(ev);
+  };
+
+  private readonly touchMoveListener = (ev: TouchEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleTouchMove(ev);
+  };
+
+  private readonly touchEndListener = (ev: TouchEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleTouchEnd(ev);
+  };
+
+  private readonly touchCancelListener = (ev: TouchEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleTouchCancel(ev);
+  };
+
+  private readonly clickListener = (ev: MouseEvent) => {
+    if (!this.gameEngine.isDestroyed) this.handleClick(ev);
+  };
+
+  private readonly blurListener = () => this.cancelHeldMovement();
+
+  private readonly visibilityListener = () => {
+    if (document.hidden) this.cancelHeldMovement();
+  };
+
+  private readonly focusInListener = (ev: FocusEvent) => {
+    if (this.isEditableTarget(ev.target)) this.cancelHeldMovement();
+  };
+
+  private readonly editorActivatedListener = () => this.cancelHeldMovement();
 
   constructor(gameEngine: GameEngineApi) {
     this.gameEngine = gameEngine;
-    this.touchStart = null;
     this.setupEventListeners();
+    this.setupDPadListeners();
   }
 
   isGameModeActive(): boolean {
@@ -68,20 +156,209 @@ class InputManager {
   }
 
   setupEventListeners(): void {
-    document.addEventListener('keydown', (ev) => { if (!this.gameEngine.isDestroyed) this.handleKeyDown(ev); });
-    document.addEventListener('touchstart', (ev) => { if (!this.gameEngine.isDestroyed) this.handleTouchStart(ev); }, { passive: false });
-    document.addEventListener('touchmove', (ev) => { if (!this.gameEngine.isDestroyed) this.handleTouchMove(ev); }, { passive: false });
-    document.addEventListener('touchend', (ev) => { if (!this.gameEngine.isDestroyed) this.handleTouchEnd(ev); }, { passive: false });
-    document.addEventListener('click', (ev) => { if (!this.gameEngine.isDestroyed) this.handleClick(ev); });
+    document.addEventListener('keydown', this.keyDownListener);
+    document.addEventListener('keyup', this.keyUpListener);
+    document.addEventListener('touchstart', this.touchStartListener, { passive: false });
+    document.addEventListener('touchmove', this.touchMoveListener, { passive: false });
+    document.addEventListener('touchend', this.touchEndListener, { passive: false });
+    document.addEventListener('touchcancel', this.touchCancelListener, { passive: false });
+    document.addEventListener('click', this.clickListener);
+    document.addEventListener('visibilitychange', this.visibilityListener);
+    document.addEventListener('focusin', this.focusInListener);
+    document.addEventListener('editor-tab-activated', this.editorActivatedListener);
+    globalThis.addEventListener('blur', this.blurListener);
+  }
+
+  private setupDPadListeners(): void {
+    const buttons = document.querySelectorAll<HTMLButtonElement>(
+      '.game-touch-pad .pad-button[data-direction]',
+    );
+
+    buttons.forEach((button) => {
+      const activePointers = new Set<number>();
+      const pointerDown = (ev: PointerEvent) => {
+        if (this.destroyed || this.gameEngine.isDestroyed || ev.button !== 0) return;
+        const direction = button.dataset.direction as DirectionName | undefined;
+        if (!direction) return;
+
+        ev.preventDefault();
+        const pointerId = this.getPointerId(ev);
+        activePointers.add(pointerId);
+        button.classList.add('is-pressed');
+        try {
+          const capturePointer = (button as unknown as {
+            setPointerCapture?: (id: number) => void;
+          }).setPointerCapture;
+          capturePointer?.call(button, pointerId);
+        } catch {
+          // Pointer capture may be unavailable for synthetic or already-ended pointers.
+        }
+
+        if (this.gameEngine.gameState.getDialog().active) {
+          this.cancelHeldMovement();
+          activePointers.add(pointerId);
+          button.classList.add('is-pressed');
+          this.gameEngine.advanceDialog();
+          return;
+        }
+
+        this.beginHeldDirection(`pointer:${pointerId}`, direction);
+      };
+      const pointerEnd = (ev: PointerEvent) => {
+        const pointerId = this.getPointerId(ev);
+        if (!activePointers.delete(pointerId)) return;
+        this.endHeldDirection(`pointer:${pointerId}`);
+        if (activePointers.size === 0) button.classList.remove('is-pressed');
+      };
+
+      button.addEventListener('pointerdown', pointerDown);
+      button.addEventListener('pointerup', pointerEnd);
+      button.addEventListener('pointercancel', pointerEnd);
+      button.addEventListener('lostpointercapture', pointerEnd);
+      this.dPadBindings.push({ button, activePointers, pointerDown, pointerEnd });
+    });
+  }
+
+  private getPointerId(ev: PointerEvent): number {
+    return Number.isFinite(ev.pointerId) ? ev.pointerId : 1;
+  }
+
+  private isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    const tag = target.tagName.toLowerCase();
+    return tag === 'input' || tag === 'textarea' || tag === 'select' || target.isContentEditable;
+  }
+
+  private keyboardSource(ev: KeyboardEvent): string {
+    const key = ev.key.toLowerCase();
+    return `keyboard:${ev.code || key}`;
+  }
+
+  private getEffectiveDirection(): DirectionName | null {
+    let effectiveDirection: DirectionName | null = null;
+    let effectiveOrder = -1;
+    for (const held of this.heldDirections.values()) {
+      if (held.order > effectiveOrder) {
+        effectiveDirection = held.direction;
+        effectiveOrder = held.order;
+      }
+    }
+    return effectiveDirection;
+  }
+
+  private canAcceptHeldMovement(): boolean {
+    if (this.destroyed || this.gameEngine.isDestroyed) return false;
+    if (!this.isGameModeActive() || this.gameEngine.isEditorModeActive?.()) return false;
+    if (this.isEditableTarget(document.activeElement)) return false;
+    const transitionActive = this.gameEngine.renderer.isRoomTransitionActive?.() ?? false;
+    if (this.gameEngine.gameState.playing === false && !transitionActive) return false;
+    if (this.gameEngine.isIntroVisible?.() || this.gameEngine.isGameOver?.()) return false;
+    if (this.gameEngine.isPickupOverlayActive?.()) return false;
+    if (this.gameEngine.isLevelUpCelebrationActive?.()) return false;
+    if (this.gameEngine.isLevelUpOverlayActive?.()) return false;
+    return !this.gameEngine.gameState.getDialog().active;
+  }
+
+  beginHeldDirection(sourceId: string, direction: DirectionName): void {
+    if (this.destroyed) return;
+    const previousDirection = this.getEffectiveDirection();
+    const existing = this.heldDirections.get(sourceId);
+    if (existing?.direction === direction) return;
+
+    this.heldDirections.set(sourceId, { direction, order: ++this.pressOrder });
+    const nextDirection = this.getEffectiveDirection();
+    if (!this.canAcceptHeldMovement()) {
+      this.cancelHeldMovement();
+      return;
+    }
+
+    if (previousDirection !== nextDirection) {
+      this.moveEffectiveDirection(this.now());
+    }
+    if (this.heldDirections.size > 0) this.scheduleFrame();
+  }
+
+  endHeldDirection(sourceId: string): void {
+    const previousDirection = this.getEffectiveDirection();
+    if (!this.heldDirections.delete(sourceId)) return;
+    const nextDirection = this.getEffectiveDirection();
+
+    if (!nextDirection) {
+      this.stopFrame();
+      return;
+    }
+    if (previousDirection !== nextDirection) {
+      if (!this.canAcceptHeldMovement()) {
+        this.cancelHeldMovement();
+        return;
+      }
+      this.moveEffectiveDirection(this.now());
+    }
+    if (this.heldDirections.size > 0) this.scheduleFrame();
+  }
+
+  cancelHeldMovement(): void {
+    this.heldDirections.clear();
+    this.touchStart = null;
+    this.stopFrame();
+    this.dPadBindings.forEach(({ button, activePointers }) => {
+      activePointers.clear();
+      button.classList.remove('is-pressed');
+    });
+  }
+
+  private moveEffectiveDirection(timestamp: number): void {
+    const direction = this.getEffectiveDirection();
+    if (!direction) return;
+    const [dx, dy] = DIRECTION_DELTAS[direction];
+    this.gameEngine.tryMove(dx, dy);
+    this.lastMovementTime = timestamp;
+    if (!this.canAcceptHeldMovement()) this.cancelHeldMovement();
+  }
+
+  private now(): number {
+    return typeof performance !== 'undefined' ? performance.now() : Date.now();
+  }
+
+  private scheduleFrame(): void {
+    if (this.frameHandle !== null || this.heldDirections.size === 0 || this.destroyed) return;
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      this.frameUsesTimeout = false;
+      this.frameHandle = globalThis.requestAnimationFrame((timestamp) => this.handleFrame(timestamp));
+      return;
+    }
+    this.frameUsesTimeout = true;
+    this.frameHandle = globalThis.setTimeout(
+      () => this.handleFrame(this.now()),
+      GameConfig.input.heldMoveIntervalMs,
+    );
+  }
+
+  private handleFrame(timestamp: number): void {
+    this.frameHandle = null;
+    if (!this.canAcceptHeldMovement()) {
+      this.cancelHeldMovement();
+      return;
+    }
+    if (timestamp - this.lastMovementTime >= GameConfig.input.heldMoveIntervalMs) {
+      this.moveEffectiveDirection(timestamp);
+    }
+    if (this.heldDirections.size > 0) this.scheduleFrame();
+  }
+
+  private stopFrame(): void {
+    if (this.frameHandle === null) return;
+    if (this.frameUsesTimeout) {
+      globalThis.clearTimeout(this.frameHandle);
+    } else if (typeof globalThis.cancelAnimationFrame === 'function') {
+      globalThis.cancelAnimationFrame(this.frameHandle);
+    }
+    this.frameHandle = null;
   }
 
   handleKeyDown(ev: KeyboardEvent): void {
-    // Every branch below drives the live game. While editing, ignore keyboard
-    // input entirely (without calling preventDefault) so editor keystrokes can
-    // never dismiss the intro, resume gameplay, start music, or be swallowed.
     if (this.gameEngine.isEditorModeActive?.()) return;
 
-    // Debug toggle: V key (works in any game state)
     if (ev.key.toLowerCase() === 'v' && ev.shiftKey && ev.ctrlKey) {
       ev.preventDefault();
       this.toggleEnemyVisionDebug();
@@ -89,29 +366,33 @@ class InputManager {
     }
 
     if (this.gameEngine.isGameOver?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.gameEngine.handleGameOverInteraction?.();
       return;
     }
     if (this.gameEngine.isIntroVisible?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.gameEngine.dismissIntroScreen?.();
       return;
     }
     if (this.gameEngine.isLevelUpOverlayActive?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.handleLevelUpKey(ev);
       return;
     }
     if (this.gameEngine.isPickupOverlayActive?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.gameEngine.dismissPickupOverlay?.();
       return;
     }
     const dialog = this.gameEngine.gameState.getDialog();
 
-    // When a dialog is open, only allow confirmation/selection keys to handle it.
     if (dialog.active) {
+      this.cancelHeldMovement();
       switch (ev.key.toLowerCase()) {
         case 'z':
         case 'enter':
@@ -119,8 +400,6 @@ class InputManager {
           ev.preventDefault();
           this.gameEngine.advanceDialog();
           break;
-        // Yes/No navigation during a choice dialog (no-op otherwise). The buttons
-        // sit side by side, so either axis moves between them.
         case 'arrowup':
         case 'w':
         case 'arrowleft':
@@ -139,191 +418,151 @@ class InputManager {
       return;
     }
 
-    // Player movement via arrows and WASD (game tab only, avoid typing fields)
-    const target = ev.target as HTMLElement | null;
-    const targetTag = target?.tagName.toLowerCase() || '';
-    const isTypingTarget =
-      targetTag === 'input' ||
-      targetTag === 'textarea' ||
-      targetTag === 'select' ||
-      target?.isContentEditable;
-    const isGameTabActive = this.isGameModeActive();
-    if (!isGameTabActive || isTypingTarget) {
-      return;
-    }
+    if (!this.isGameModeActive() || this.isEditableTarget(ev.target)) return;
+    const direction = MOVEMENT_KEYS[ev.key.toLowerCase()];
+    if (!direction) return;
 
-    const movementKey = ev.key.toLowerCase();
-    const movementMap: Record<string, [number, number] | undefined> = {
-      arrowleft: [-1, 0],
-      a: [-1, 0],
-      arrowright: [1, 0],
-      d: [1, 0],
-      arrowup: [0, -1],
-      w: [0, -1],
-      arrowdown: [0, 1],
-      s: [0, 1],
-    };
-    const delta = movementMap[movementKey];
-    if (delta) {
-      ev.preventDefault();
-      this.gameEngine.tryMove(delta[0], delta[1]);
-    }
+    ev.preventDefault();
+    if (ev.repeat) return;
+    this.beginHeldDirection(this.keyboardSource(ev), direction);
+  }
+
+  handleKeyUp(ev: KeyboardEvent): void {
+    const direction = MOVEMENT_KEYS[ev.key.toLowerCase()];
+    if (!direction) return;
+    if (this.isGameModeActive()) ev.preventDefault();
+    this.endHeldDirection(this.keyboardSource(ev));
   }
 
   handleTouchStart(ev: TouchEvent): void {
     if (!this.isGameModeActive()) {
-      this.touchStart = null;
+      this.cancelHeldMovement();
       return;
     }
     const target = ev.target as HTMLElement | null;
-    if (target?.closest('.pad-button[data-direction]')) {
-      this.touchStart = null;
-      return;
-    }
+    if (target?.closest('.pad-button[data-direction]')) return;
     if (this.gameEngine.isGameOver?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.gameEngine.handleGameOverInteraction?.();
-      this.touchStart = null;
       return;
     }
     if (this.gameEngine.isIntroVisible?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.gameEngine.dismissIntroScreen?.();
-      this.touchStart = null;
       return;
     }
     if (this.gameEngine.isLevelUpOverlayActive?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       const touch = ev.changedTouches.item(0);
-      if (touch) {
-        this.chooseLevelUpByPointer(touch.clientX, touch.clientY);
-      }
-      this.touchStart = null;
+      if (touch) this.chooseLevelUpByPointer(touch.clientX, touch.clientY);
       return;
     }
     if (this.gameEngine.isPickupOverlayActive?.()) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       this.gameEngine.dismissPickupOverlay?.();
-      this.touchStart = null;
       return;
     }
     const dialog = this.gameEngine.gameState.getDialog();
     if (dialog.active) {
+      this.cancelHeldMovement();
       ev.preventDefault();
       const dialogTouch = ev.changedTouches.item(0);
       if (dialogTouch && this.gameEngine.handleDialogPointer) {
-        // Routes to the tapped Yes/No option while selecting; advances otherwise.
         this.gameEngine.handleDialogPointer(dialogTouch.clientX, dialogTouch.clientY);
       } else {
         this.gameEngine.advanceDialog();
       }
-      this.touchStart = null;
       return;
     }
+    if (this.touchStart || ev.target !== this.gameEngine.canvas) return;
+
     const touch = ev.changedTouches.item(0);
     if (!touch) return;
     this.touchStart = {
+      identifier: touch.identifier,
       x: touch.clientX,
       y: touch.clientY,
-      time: Date.now(),
       prevented: false,
+      direction: null,
     };
   }
 
   handleTouchMove(ev: TouchEvent): void {
     if (!this.isGameModeActive()) {
-      this.touchStart = null;
+      this.cancelHeldMovement();
       return;
     }
     const start = this.touchStart;
     if (!start) return;
-    const touch = ev.changedTouches.item(0);
+    const touch = this.findTouch(ev.changedTouches, start.identifier);
     if (!touch) return;
-
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const MOVE_THRESHOLD = 12;
-
-    if (distance >= MOVE_THRESHOLD) {
-      ev.preventDefault();
-      start.prevented = true;
-    } else if (start.prevented) {
-      ev.preventDefault();
-    }
+    this.updateTouchGesture(ev, start, touch);
   }
 
   handleTouchEnd(ev: TouchEvent): void {
-    if (!this.isGameModeActive()) {
-      this.touchStart = null;
-      return;
-    }
-    if (this.gameEngine.isGameOver?.()) {
-      ev.preventDefault();
-      this.gameEngine.handleGameOverInteraction?.();
-      this.touchStart = null;
-      return;
-    }
-    if (this.gameEngine.isIntroVisible?.()) {
-      ev.preventDefault();
-      this.gameEngine.dismissIntroScreen?.();
-      this.touchStart = null;
-      return;
-    }
-    if (this.gameEngine.isLevelUpOverlayActive?.()) {
-      ev.preventDefault();
-      const touch = ev.changedTouches.item(0);
-      if (touch) {
-        this.chooseLevelUpByPointer(touch.clientX, touch.clientY);
-      }
-      this.touchStart = null;
-      return;
-    }
-    if (this.gameEngine.isPickupOverlayActive?.()) {
-      ev.preventDefault();
-      this.gameEngine.dismissPickupOverlay?.();
-      this.touchStart = null;
-      return;
-    }
     const start = this.touchStart;
     if (!start) return;
+    const touch = this.findTouch(ev.changedTouches, start.identifier);
+    if (!touch) return;
 
-    const touch = ev.changedTouches.item(0);
-    if (!touch) {
-      this.touchStart = null;
-      return;
+    this.updateTouchGesture(ev, start, touch);
+    if (start.prevented || start.direction) ev.preventDefault();
+    this.touchStart = null;
+    this.endHeldDirection(`touch:${start.identifier}`);
+  }
+
+  handleTouchCancel(ev: TouchEvent): void {
+    const start = this.touchStart;
+    if (!start || !this.findTouch(ev.changedTouches, start.identifier)) return;
+    this.touchStart = null;
+    this.endHeldDirection(`touch:${start.identifier}`);
+  }
+
+  private findTouch(touches: TouchList, identifier: number): Touch | null {
+    for (let index = 0; index < touches.length; index += 1) {
+      const touch = touches.item(index);
+      if (touch?.identifier === identifier) return touch;
     }
+    return null;
+  }
 
+  private updateTouchGesture(ev: TouchEvent, start: TouchStart, touch: Touch): void {
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
     const absX = Math.abs(dx);
     const absY = Math.abs(dy);
     const distance = Math.sqrt(dx * dx + dy * dy);
-    const duration = Date.now() - start.time;
 
-    this.touchStart = null;
-
-    const MIN_DISTANCE = 24;
-    const MAX_DURATION = GameConfig.input.maxDuration;
-    if (distance < MIN_DISTANCE || duration > MAX_DURATION) {
-      return;
+    if (distance >= SCROLL_LOCK_DISTANCE || start.prevented) {
+      ev.preventDefault();
+      start.prevented = true;
     }
+    if (distance < MOVEMENT_START_DISTANCE) return;
 
-    ev.preventDefault();
+    const direction = this.resolveTouchDirection(dx, dy, absX, absY, start.direction);
+    if (direction === start.direction) return;
+    start.direction = direction;
+    this.beginHeldDirection(`touch:${start.identifier}`, direction);
+  }
 
-    if (absX > absY) {
-      if (dx > 0) {
-        this.gameEngine.tryMove(1, 0);
-      } else {
-        this.gameEngine.tryMove(-1, 0);
-      }
-    } else {
-      if (dy > 0) {
-        this.gameEngine.tryMove(0, 1);
-      } else {
-        this.gameEngine.tryMove(0, -1);
-      }
-    }
+  private resolveTouchDirection(
+    dx: number,
+    dy: number,
+    absX: number,
+    absY: number,
+    current: DirectionName | null,
+  ): DirectionName {
+    const currentIsHorizontal = current === 'left' || current === 'right';
+    const currentIsVertical = current === 'up' || current === 'down';
+    let horizontal = absX > absY;
+    if (currentIsHorizontal && absY <= absX + DIRECTION_SWITCH_MARGIN) horizontal = true;
+    if (currentIsVertical && absX <= absY + DIRECTION_SWITCH_MARGIN) horizontal = false;
+    if (horizontal) return dx >= 0 ? 'right' : 'left';
+    return dy >= 0 ? 'down' : 'up';
   }
 
   handleClick(ev: MouseEvent): void {
@@ -365,51 +604,61 @@ class InputManager {
     this.gameEngine.chooseLevelUpSkill?.(index);
   }
 
-  // Map editor canvas interactions
   setupEditorInputs(editorCanvas: HTMLCanvasElement, paintCallback: (event: MouseEvent) => void): void {
     let painting = false;
-
     editorCanvas.addEventListener('mousedown', (e) => {
       painting = true;
       paintCallback(e);
     });
-
     editorCanvas.addEventListener('mousemove', (e) => {
       if (painting) paintCallback(e);
     });
-
     document.addEventListener('mouseup', () => {
-      if (painting) {
-        painting = false;
-        // Hook to finalize painting (for example, push to history)
-      }
+      if (painting) painting = false;
     });
   }
 
-  /**
-   * Toggle enemy vision debug overlay
-   */
   toggleEnemyVisionDebug(): void {
     DebugFlags.toggleEnemyVision();
     this.gameEngine.draw?.();
   }
 
-  // Tile editor canvas interactions
   setupTileEditorInputs(tileCanvas: HTMLCanvasElement, paintCallback: (event: MouseEvent) => void): void {
     let tilePainting = false;
-
     tileCanvas.addEventListener('mousedown', (e) => {
       tilePainting = true;
       paintCallback(e);
     });
-
     tileCanvas.addEventListener('mousemove', (e) => {
       if (tilePainting) paintCallback(e);
     });
-
     document.addEventListener('mouseup', () => {
       tilePainting = false;
     });
+  }
+
+  destroy(): void {
+    if (this.destroyed) return;
+    this.cancelHeldMovement();
+    this.destroyed = true;
+    document.removeEventListener('keydown', this.keyDownListener);
+    document.removeEventListener('keyup', this.keyUpListener);
+    document.removeEventListener('touchstart', this.touchStartListener);
+    document.removeEventListener('touchmove', this.touchMoveListener);
+    document.removeEventListener('touchend', this.touchEndListener);
+    document.removeEventListener('touchcancel', this.touchCancelListener);
+    document.removeEventListener('click', this.clickListener);
+    document.removeEventListener('visibilitychange', this.visibilityListener);
+    document.removeEventListener('focusin', this.focusInListener);
+    document.removeEventListener('editor-tab-activated', this.editorActivatedListener);
+    globalThis.removeEventListener('blur', this.blurListener);
+    this.dPadBindings.forEach(({ button, pointerDown, pointerEnd }) => {
+      button.removeEventListener('pointerdown', pointerDown);
+      button.removeEventListener('pointerup', pointerEnd);
+      button.removeEventListener('pointercancel', pointerEnd);
+      button.removeEventListener('lostpointercapture', pointerEnd);
+    });
+    this.dPadBindings = [];
   }
 }
 

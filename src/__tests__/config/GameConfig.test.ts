@@ -12,6 +12,7 @@ describe('GameConfig', () => {
     expect(GameConfig.player.startLevel).toBe(1);
     expect(GameConfig.player.maxLevel).toBe(10);
     expect(GameConfig.enemy.vision.alertDuration).toBe(1000);
+    expect(GameConfig.input.heldMoveIntervalMs).toBe(110);
     expect(GameConfig.palette.colors).toHaveLength(16);
     expect(GameConfig.palette.colors[0]).toBe('#000000');
     expect(GameConfig.palette.colors[15]).toBe('#FFCCAA');

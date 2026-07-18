@@ -118,7 +118,6 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
 
     const loadSharedSpy = vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
     const bindResetSpy = vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
-    const bindTouchSpy = vi.spyOn(TinyRPGApplication, 'bindTouchPad').mockImplementation(() => {});
     const bindLangSpy = vi.spyOn(TinyRPGApplication, 'bindLanguageSelector').mockImplementation(() => {});
     const setupTabsSpy = vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -133,7 +132,6 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     expect(mocks.EditorManagerCtor).not.toHaveBeenCalled();
     expect(mocks.EditorExportServiceCtor).toHaveBeenCalledTimes(1);
     expect(bindResetSpy).toHaveBeenCalledWith(mocks.engine);
-    expect(bindTouchSpy).toHaveBeenCalledWith(mocks.engine);
     expect(bindLangSpy).toHaveBeenCalledTimes(1);
     expect(logSpy).toHaveBeenCalled();
 
@@ -184,7 +182,6 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
-    vi.spyOn(TinyRPGApplication, 'bindTouchPad').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindLanguageSelector').mockImplementation(() => {});
     vi.spyOn(console, 'log').mockImplementation(() => {});
 

@@ -113,6 +113,7 @@ describe('GameConfigSchema', () => {
     },
     input: {
       maxDuration: 600,
+      heldMoveIntervalMs: 110,
     },
     hud: {
       padding: 4,
@@ -280,6 +281,15 @@ describe('GameConfigSchema', () => {
       expect(() => new GameConfigSchema(configData)).toThrow(
         'Celebration min duration (5000) cannot exceed max duration (3000)'
       );
+    });
+  });
+
+  describe('Input validation', () => {
+    it('should reject a non-positive held movement interval', () => {
+      const configData = createValidConfig();
+      configData.input.heldMoveIntervalMs = 0;
+
+      expect(() => new GameConfigSchema(configData)).toThrow('Invalid held move interval');
     });
   });
 

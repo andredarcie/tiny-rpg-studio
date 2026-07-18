@@ -247,6 +247,8 @@ export const GameConfig = new GameConfigSchema({
   input: {
     /** Maximum input duration (ms) */
     maxDuration: 600,
+    /** Interval between repeated tile moves while a direction is held (ms) */
+    heldMoveIntervalMs: 110,
   },
 
   /**

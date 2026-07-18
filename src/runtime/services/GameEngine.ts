@@ -357,6 +357,7 @@ export class GameEngine {
   }
 
   resetGame(): void {
+    this.inputManager.cancelHeldMovement();
     this.awaitingRestart = false;
     this.backgroundMusicEngine.stop();
     this.gameState.setGameOver(false);
@@ -374,6 +375,7 @@ export class GameEngine {
   }
 
   importGameData(data: unknown): void {
+    this.inputManager.cancelHeldMovement();
     this.gameState.importGameData(data);
     this.npcManager.ensureDefaultNPCs();
     this.tileManager.ensureDefaultTiles();
@@ -811,6 +813,7 @@ export class GameEngine {
 
   destroy(): void {
     this.isDestroyed = true;
+    this.inputManager.destroy();
     this.enemyManager.stop();
     this.backgroundMusicEngine.destroy();
     // Releases the tile-animation interval AND every overlay rAF loop (intro
