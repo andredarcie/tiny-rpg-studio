@@ -111,6 +111,29 @@ class RendererEntityRenderer {
         ctx.restore();
     }
 
+    private drawWorldSprite(
+        ctx: CanvasRenderingContext2D,
+        sprite: Sprite,
+        px: number,
+        py: number,
+        step: number,
+        roomIndex: number,
+        tileX: number,
+        tileY: number
+    ): void {
+        this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+        this.canvasHelper.drawWaterReflectionForSprite?.(
+            ctx,
+            sprite,
+            px,
+            py,
+            step,
+            roomIndex,
+            tileX,
+            tileY
+        );
+    }
+
     drawObjects(ctx: CanvasRenderingContext2D) {
         const game = this.gameState.getGame();
         const player = this.gameState.getPlayer();
@@ -172,7 +195,7 @@ class RendererEntityRenderer {
                 ? this.getFloatingOffset(object.x, object.y, tileSize)
                 : 0;
             const py = Math.round(object.y * tileSize + floatOffset);
-            this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+            this.drawWorldSprite(ctx, sprite, px, py, step, object.roomIndex, object.x, object.y);
         }
     }
 
@@ -211,7 +234,7 @@ class RendererEntityRenderer {
             let sprite = npcSprites[npc.type] || npcSprites.default;
             if (!sprite) continue;
             sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
-            this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+            this.drawWorldSprite(ctx, sprite, px, py, step, npc.roomIndex, npc.x, npc.y);
             if (shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
                 drawUnreadNpcDialogMarker(ctx, this.paletteManager, px, py, tileSize);
             }
@@ -276,11 +299,11 @@ class RendererEntityRenderer {
                     ctx.translate(-centerX, -centerY);
                 }
 
-                this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+                this.drawWorldSprite(ctx, sprite, px, py, step, enemy.roomIndex, visX, visY);
                 ctx.restore();
             } else {
                 // Normal rendering (not dying)
-                this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+                this.drawWorldSprite(ctx, sprite, px, py, step, enemy.roomIndex, visX, visY);
 
                 // Apply hit flash effect (only if not dying)
                 const flashColor = this.getFlashColor(enemyId);
@@ -339,7 +362,7 @@ class RendererEntityRenderer {
         const fadeStealth = this.shouldFadePlayerForStealth();
         if (fadeStealth) ctx.save();
         if (fadeStealth) ctx.globalAlpha = 0.45;
-        this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+        this.drawWorldSprite(ctx, sprite, px, py, step, player.roomIndex, player.x, player.y);
 
         // In online mode, apply player-index tint over the sprite
         if (this.localPlayerName) {
@@ -423,7 +446,7 @@ class RendererEntityRenderer {
             const tint = RendererEntityRenderer.PLAYER_TINTS[remote.playerIndex] ?? RendererEntityRenderer.PLAYER_TINTS[1];
 
             // Draw sprite
-            this.canvasHelper.drawSprite(ctx, sprite, px, py, step);
+            this.drawWorldSprite(ctx, sprite, px, py, step, remote.roomIndex, remote.x, remote.y);
             // Apply player-index tint
             ctx.save();
             ctx.globalCompositeOperation = 'source-atop';
@@ -720,6 +743,16 @@ type SpriteFactoryApi = {
 type CanvasHelperApi = {
     getTilePixelSize: () => number;
     drawSprite: (ctx: CanvasRenderingContext2D, sprite: Sprite | null, x: number, y: number, step: number) => void;
+    drawWaterReflectionForSprite?: (
+        ctx: CanvasRenderingContext2D,
+        sprite: Sprite,
+        sourcePx: number,
+        sourcePy: number,
+        step: number,
+        roomIndex: number,
+        sourceTileX: number,
+        sourceTileY: number
+    ) => void;
 };
 
 type PaletteManagerApi = {

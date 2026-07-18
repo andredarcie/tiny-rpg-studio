@@ -11,6 +11,7 @@ const SOFT_LIGHT_TINT = 'rgba(90, 170, 230, 0.18)';
 const CAUSTIC_COLOR = 'rgba(200, 245, 255, 0.5)';
 const SPECULAR_COLOR = 'rgba(255, 255, 255, 0.75)';
 const WAVE_PERIOD_MS = 900;
+const REFLECTION_ALPHA = 0.2;
 
 function matchesHeuristic(tile: TileEffectSource): boolean {
     const category = normalizeTileLabel(tile.category || '');
@@ -129,6 +130,32 @@ function paintSurfaceFx(
         }
     }
 
+    ctx.restore();
+}
+
+/** Paint a faint, vertically mirrored sprite inside a water tile. */
+export function paintWaterReflection(
+    ctx: CanvasRenderingContext2D,
+    host: TileEffectPaintContext['host'],
+    sprite: (string | null)[][],
+    sourcePx: number,
+    sourcePy: number,
+    step: number,
+    waterPx: number,
+    waterPy: number,
+    size: number
+): void {
+    if (sprite.length === 0) return;
+
+    const spriteHeight = sprite.length * step;
+    const reflectedPy = waterPy + (waterPy - (sourcePy + spriteHeight));
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(waterPx, waterPy, size, size);
+    ctx.clip();
+    ctx.globalAlpha *= REFLECTION_ALPHA;
+    host.drawPixelGrid(ctx, [...sprite].reverse(), sourcePx, reflectedPy, step);
     ctx.restore();
 }
 

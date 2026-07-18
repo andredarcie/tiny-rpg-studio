@@ -115,7 +115,8 @@ function makeFixture() {
   };
   const canvasHelper: EntityRendererCanvasHelper = {
     getTilePixelSize: vi.fn(() => 16) as EntityRendererCanvasHelper['getTilePixelSize'],
-    drawSprite: vi.fn() as EntityRendererCanvasHelper['drawSprite']
+    drawSprite: vi.fn() as EntityRendererCanvasHelper['drawSprite'],
+    drawWaterReflectionForSprite: vi.fn() as NonNullable<EntityRendererCanvasHelper['drawWaterReflectionForSprite']>
   };
   const paletteManager: EntityRendererPalette = {
     getColor: vi.fn((i: number) => `#${i}`) as EntityRendererPalette['getColor']
@@ -354,6 +355,7 @@ describe('RendererEntityRenderer', () => {
     renderer.drawEnemies(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
+    expect(canvasHelper.drawWaterReflectionForSprite).toHaveBeenCalledTimes(1);
     expect(overlaySpy).toHaveBeenCalledTimes(1);
     expect(alertSpy).toHaveBeenCalledTimes(1);
     const attackTelegraph = renderer.attackTelegraph;
@@ -455,6 +457,24 @@ describe('RendererEntityRenderer', () => {
     expect(adjustSpy).toHaveBeenCalledWith(player.x, player.x, expect.anything());
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
     expect(overlaySpy).not.toHaveBeenCalled();
+  });
+
+  it('offers world sprites to the water reflection pass with their room and tile position', () => {
+    const { renderer, player, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+
+    renderer.drawPlayer(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawWaterReflectionForSprite).toHaveBeenCalledWith(
+      ctx,
+      expect.anything(),
+      32,
+      48,
+      2,
+      player.roomIndex,
+      player.x,
+      player.y
+    );
   });
 
   it('drawTileIconOnPlayer returns early without sprite and draws icon when available', () => {

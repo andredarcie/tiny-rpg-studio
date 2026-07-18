@@ -8,12 +8,17 @@ import {
     RendererTileEffects,
     type TileVisualEffectId,
 } from './tileEffects/RendererTileEffects';
+import { paintWaterReflection } from './tileEffects/waterEffect';
 
 type TilePixels = (string | null)[][];
 
 type TileManagerApi = {
     getTile: (tileId: string | number) => TileDefinition | null;
     getTilePixels?: (tile: TileDefinition, frameOverride?: number | null) => TilePixels | null;
+    getTileMap?: (roomIndex: number) => {
+        ground: ((string | number) | null)[][];
+        overlay: ((string | number) | null)[][];
+    } | null;
 };
 
 type PaletteApi = {
@@ -222,6 +227,49 @@ class RendererCanvasHelper {
      */
     drawSprite(ctx: CanvasRenderingContext2D, sprite: (string | null)[][], px: number, py: number, step: number) {
         this.drawPixelGrid(ctx, sprite, px, py, step);
+    }
+
+    /** Reflect a world sprite only when the cell immediately below it is water. */
+    drawWaterReflectionForSprite(
+        ctx: CanvasRenderingContext2D,
+        sprite: (string | null)[][],
+        sourcePx: number,
+        sourcePy: number,
+        step: number,
+        roomIndex: number,
+        sourceTileX: number,
+        sourceTileY: number
+    ): void {
+        const tileManager = this.tileManager;
+        const tileMap = tileManager?.getTileMap?.(roomIndex);
+        if (!tileMap || !tileManager) return;
+
+        const waterTileX = Math.round(sourceTileX);
+        const waterTileY = Math.round(sourceTileY) + 1;
+        if (waterTileX < 0 || waterTileY < 0) return;
+
+        const tileIds = [
+            tileMap.overlay[waterTileY]?.[waterTileX],
+            tileMap.ground[waterTileY]?.[waterTileX],
+        ];
+        const hasWater = tileIds.some((tileId) => {
+            if (tileId === null) return false;
+            return this.getTileVisualEffect(tileManager.getTile(tileId)) === 'water';
+        });
+        if (!hasWater) return;
+
+        const size = this.getTilePixelSize();
+        paintWaterReflection(
+            ctx,
+            this,
+            sprite,
+            sourcePx,
+            sourcePy,
+            step,
+            waterTileX * size,
+            waterTileY * size,
+            size
+        );
     }
 
     resolveTilePixels(tile: TileDefinition | null, frameOverride: number | null = null) {

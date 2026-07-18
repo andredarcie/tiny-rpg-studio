@@ -12,6 +12,9 @@ type TestCtx = {
   clearRect: ReturnType<typeof vi.fn>;
   save: ReturnType<typeof vi.fn>;
   restore: ReturnType<typeof vi.fn>;
+  beginPath: ReturnType<typeof vi.fn>;
+  rect: ReturnType<typeof vi.fn>;
+  clip: ReturnType<typeof vi.fn>;
 };
 
 function makeCtx(): TestCtx {
@@ -25,6 +28,9 @@ function makeCtx(): TestCtx {
     clearRect: vi.fn(),
     save: vi.fn(),
     restore: vi.fn(),
+    beginPath: vi.fn(),
+    rect: vi.fn(),
+    clip: vi.fn(),
   };
 }
 
@@ -425,6 +431,50 @@ describe('RendererCanvasHelper', () => {
     expect(new Set(bodyAlphas.map((a) => a.toFixed(3))).size).toBeGreaterThan(1);
     expect(ctx.save).toHaveBeenCalled();
     expect(ctx.restore).toHaveBeenCalled();
+  });
+
+  it('reflects a sprite faintly and vertically flipped only into water directly below', () => {
+    const ctx = makeCtx();
+    const water = makeTile({ visualEffect: 'water' });
+    const ground = makeTile({ visualEffect: 'none' });
+    const map = {
+      ground: Array.from({ length: 8 }, () => Array<string | number | null>(8).fill(null)),
+      overlay: Array.from({ length: 8 }, () => Array<string | number | null>(8).fill(null)),
+    };
+    map.ground[4][2] = 'water';
+    const tileManager = {
+      getTile: vi.fn((id: string | number) => (id === 'water' ? water : ground)),
+      getTileMap: vi.fn(() => map),
+    };
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    const helper = new RendererCanvasHelper(canvas, asCanvasCtx(ctx), tileManager);
+    const sprite = Array.from({ length: 8 }, (_, y) => [y === 0 ? '#top' : y === 7 ? '#bottom' : null]);
+    const alphas: number[] = [];
+    Object.defineProperty(ctx, 'globalAlpha', {
+      configurable: true,
+      get() {
+        return (this as { _alpha?: number })._alpha ?? 1;
+      },
+      set(value: number) {
+        (this as { _alpha?: number })._alpha = value;
+        alphas.push(value);
+      },
+    });
+
+    helper.drawWaterReflectionForSprite(asCanvasCtx(ctx), sprite, 32, 48, 2, 0, 2, 3);
+
+    expect(ctx.rect).toHaveBeenCalledWith(32, 64, 16, 16);
+    expect(ctx.clip).toHaveBeenCalled();
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(1, 32, 64, 2, 2);
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(2, 32, 78, 2, 2);
+    expect(alphas).toContain(0.2);
+
+    ctx.fillRect.mockClear();
+    map.ground[4][2] = null;
+    map.ground[3][2] = 'water';
+    helper.drawWaterReflectionForSprite(asCanvasCtx(ctx), sprite, 32, 48, 2, 0, 2, 3);
+    expect(ctx.fillRect).not.toHaveBeenCalled();
   });
 
   it('draws lava with glow, wave-lit body, and ridge/shadow overlays', () => {
