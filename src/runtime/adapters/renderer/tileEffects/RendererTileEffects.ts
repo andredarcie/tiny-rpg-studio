@@ -5,7 +5,7 @@ import {
     modulateColor,
     parseColor,
 } from './colorUtils';
-import { buildLavaHeightField } from './lavaEffect';
+import { buildHeightField } from './baseEffects/proceduralField';
 import { getTileEffectDefinition, TILE_EFFECT_DEFINITIONS } from './registry';
 import type {
     TileEffectHost,
@@ -105,7 +105,7 @@ export {
     RendererTileEffects,
     TILE_EFFECT_DEFINITIONS,
     getTileEffectDefinition,
-    buildLavaHeightField,
+    buildHeightField,
     parseColor,
     colorLuminance,
     modulateColor,

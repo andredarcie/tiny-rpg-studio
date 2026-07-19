@@ -43,6 +43,9 @@ export type TileEffectPaintContext = {
     timeMs: number;
 };
 
+/** One independently composable tile paint pass. */
+export type TileEffectPainter = (context: TileEffectPaintContext) => void;
+
 export type TileEffectDefinition = {
     /** Unique id; must match TileVisualEffectId (except 'none'). */
     id: Exclude<TileVisualEffectId, 'none'>;

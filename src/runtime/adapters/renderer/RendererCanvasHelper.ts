@@ -1,6 +1,6 @@
 import type { TileDefinition } from '../../domain/definitions/tileTypes';
 import {
-    buildLavaHeightField,
+    buildHeightField,
     colorLuminance,
     mixColors,
     modulateColor,
@@ -8,7 +8,7 @@ import {
     RendererTileEffects,
     type TileVisualEffectId,
 } from './tileEffects/RendererTileEffects';
-import { paintWaterReflection } from './tileEffects/waterEffect';
+import { paintReflectionTop } from './tileEffects/baseEffects/reflectionTopEffect';
 
 type TilePixels = (string | null)[][];
 
@@ -150,7 +150,7 @@ class RendererCanvasHelper {
     colorLuminance = colorLuminance;
     modulateColor = modulateColor;
     mixColors = mixColors;
-    buildLavaHeightField = buildLavaHeightField;
+    buildHeightField = buildHeightField;
 
     /**
      * Draw an 8x8-style pixel matrix with optional in-bounds silhouette outline.
@@ -259,7 +259,7 @@ class RendererCanvasHelper {
         if (!hasWater) return;
 
         const size = this.getTilePixelSize();
-        paintWaterReflection(
+        paintReflectionTop(
             ctx,
             this,
             sprite,

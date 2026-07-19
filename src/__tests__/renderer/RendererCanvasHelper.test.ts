@@ -500,7 +500,7 @@ describe('RendererCanvasHelper', () => {
     const fillStyles = (ctx as TestCtx & { fillStyle: string }).fillStyle;
     expect(typeof fillStyles).toBe('string');
 
-    const field = helper.buildLavaHeightField(8, 8, 0);
+    const field = helper.buildHeightField(8, 8, 0);
     expect(field).toHaveLength(8);
     expect(field[0]).toHaveLength(8);
     // Flowing field is not flat.
