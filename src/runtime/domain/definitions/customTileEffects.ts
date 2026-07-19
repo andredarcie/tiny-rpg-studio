@@ -38,7 +38,7 @@ export type CustomTileEffectDefinition = {
 };
 
 export const CUSTOM_TILE_EFFECT_LIMITS = {
-    maxNameLength: 24,
+    maxNameLength: 8,
     maxDefinitions: 16,
     maxPasses: BASE_TILE_EFFECT_IDS.length,
 } as const;

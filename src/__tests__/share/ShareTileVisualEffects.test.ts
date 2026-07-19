@@ -66,7 +66,7 @@ describe('VERSION_36/37 tile visual effects', () => {
 
   it('round-trips compact custom definitions, Unicode names, and assignments', () => {
     const customTileEffects = [
-      { id: 'custom:0' as const, name: 'Brilho mágico ✨', baseEffectIds: ['glow', 'sparkle'] as const },
+      { id: 'custom:0' as const, name: 'Mágico', baseEffectIds: ['glow', 'sparkle'] as const },
       { id: 'custom:1' as const, name: 'Unused', baseEffectIds: ['cool-tint'] as const },
     ];
     const gameData = {

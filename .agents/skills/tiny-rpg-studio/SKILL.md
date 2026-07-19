@@ -45,7 +45,12 @@ An implementation task is only finished when all required checks pass perfectly:
 npx tsc --noEmit
 npm run test:run
 npm run lint
+npm run build:export
 ```
+
+`npm run build:export` regenerates both `public/export.bundle.js` and
+`public/tiny-rpg-studio-sdk.css`. It must be run so exported HTML does not use
+stale runtime code or styles.
 
 If any required check cannot be run, do not report the task as fully complete. State exactly which check was not run and why.
 

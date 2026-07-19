@@ -27,7 +27,7 @@ export const DEVLOG_ENTRIES: DevlogEntry[] = [
     date: '2026-07-19',
     title: 'Create your own tile effects',
     description:
-      'Under Project → Visuals, you can now combine reusable visual passes into a named tile effect, preview the animation, and apply it to any tile. Custom effects travel with project files, share links, undo history, and HTML exports, and unwanted effects can be deleted safely.',
+      'Under Project → Visuals, you can now combine reusable visual passes into a named tile effect, preview the animation, and apply it to any tile. Custom effects travel with project files, share links, load projects, and HTML exports.',
   },
   {
     id: '2026-07-18-smoother-movement-room-transitions',

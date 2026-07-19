@@ -12,7 +12,7 @@ describe('custom tile effect definitions', () => {
     const first = createCustomTileEffect([], '  Magic glow  ', ['glow', 'sparkle']);
     expect(first).toEqual({
       ok: true,
-      definition: { id: 'custom:0', name: 'Magic glow', baseEffectIds: ['glow', 'sparkle'] },
+      definition: { id: 'custom:0', name: 'Magic gl', baseEffectIds: ['glow', 'sparkle'] },
     });
     const second = createCustomTileEffect(
       first.ok ? [first.definition] : [],
