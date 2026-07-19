@@ -7,6 +7,11 @@ import type {
   TileMapLayer,
   TileVisualEffectKind,
 } from '../domain/definitions/tileTypes';
+import {
+  getCustomTileEffect,
+  isCustomTileEffectId,
+  normalizeTileVisualEffect,
+} from '../domain/definitions/customTileEffects';
 import { TILE_PRESETS_SOURCE } from '../domain/definitions/tilePresets';
 import { TileDefinitions } from '../domain/definitions/TileDefinitions';
 import { CustomSpriteLookup } from '../domain/sprites/CustomSpriteLookup';
@@ -156,21 +161,31 @@ class TileManager {
       if (tile.id === undefined) continue;
       const key = String(tile.id);
       if (!Object.prototype.hasOwnProperty.call(effects, key)) continue;
-      tile.visualEffect = effects[key];
+      tile.visualEffect = normalizeTileVisualEffect(
+        effects[key],
+        this.gameState.game.customTileEffects
+      );
     }
   }
 
   setTileVisualEffect(tileId: TileId, effect: TileVisualEffectKind): void {
     const tile = this.gameState.game.tileset.tiles.find((t) => t.id === tileId);
     if (!tile) return;
-    tile.visualEffect = effect === 'water' || effect === 'lava' ? effect : 'none';
+    tile.visualEffect = normalizeTileVisualEffect(effect, this.gameState.game.customTileEffects);
   }
 
   getTileVisualEffect(tileId: TileId): TileVisualEffectKind {
     const tile = this.getTile(tileId);
     if (!tile) return 'none';
-    if (tile.visualEffect === 'water' || tile.visualEffect === 'lava' || tile.visualEffect === 'none') {
-      return tile.visualEffect;
+    const explicitEffect = (tile as { visualEffect?: unknown }).visualEffect;
+    if (explicitEffect === 'water' || explicitEffect === 'lava' || explicitEffect === 'none') {
+      return explicitEffect;
+    }
+    if (isCustomTileEffectId(explicitEffect)) {
+      return getCustomTileEffect(this.gameState.game.customTileEffects, explicitEffect)?.id ?? 'none';
+    }
+    if (typeof explicitEffect === 'string' && explicitEffect.startsWith('custom:')) {
+      return 'none';
     }
     // Legacy heuristics when property is unset (pre-VERSION_36 games).
     const normalize = (value = '') =>

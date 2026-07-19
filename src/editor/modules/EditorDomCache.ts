@@ -61,6 +61,8 @@ class EditorDomCache {
     spritesClearButton: HTMLButtonElement | null;
     projectSkillsResetOrder: HTMLButtonElement | null;
     projectEnableEffects: HTMLInputElement | null;
+    customTileEffectOpen: HTMLButtonElement | null = null;
+    customTileEffectModal: HTMLElement | null = null;
     projectHideHud: HTMLInputElement | null;
     projectSpriteOutline: HTMLInputElement | null;
     projectSpriteOutlineColor: HTMLSelectElement | null;
@@ -282,6 +284,8 @@ class EditorDomCache {
         this.spritesClearButton = root.querySelector('#sprites-clear-button') as HTMLButtonElement | null;
         this.projectSkillsResetOrder = root.querySelector('#project-skills-reset-order') as HTMLButtonElement | null;
         this.projectEnableEffects = root.querySelector('#project-enable-effects') as HTMLInputElement | null;
+        this.customTileEffectOpen = root.querySelector('#custom-effect-open') as HTMLButtonElement | null;
+        this.customTileEffectModal = root.querySelector('#custom-effect-modal') as HTMLElement | null;
         this.projectHideHud = root.querySelector('#project-hide-hud') as HTMLInputElement | null;
         this.projectSpriteOutline = root.querySelector('#project-sprite-outline') as HTMLInputElement | null;
         this.projectSpriteOutlineColor = root.querySelector('#project-sprite-outline-color') as HTMLSelectElement | null;

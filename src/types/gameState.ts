@@ -1,4 +1,5 @@
 import type { Tileset } from '../runtime/domain/definitions/tileTypes';
+import type { CustomTileEffectDefinition } from '../runtime/domain/definitions/customTileEffects';
 import type { ObjectEntry } from '../runtime/domain/state/StateObjectManager';
 import type { DialogMeta } from '../runtime/services/engine/DialogManager';
 import type { ExitState } from '../runtime/services/engine/InteractionManager';
@@ -211,10 +212,11 @@ export type GameDefinition = {
     backgroundMusicVolume?: number;
     hideHud?: boolean;
     /**
-     * When false, water/lava canvas tile effects are disabled for the whole game.
+     * When false, canvas tile effects are disabled for the whole game.
      * Default true (VERSION_36+). Missing/undefined is treated as enabled.
      */
     enableEffects?: boolean;
+    customTileEffects?: CustomTileEffectDefinition[];
     /** When true, entity sprites/tiles get a 1px palette outline (default off). */
     spriteOutline?: boolean;
     /** Palette index for outline color (0–15). Defaults to 1 (dark blue). */

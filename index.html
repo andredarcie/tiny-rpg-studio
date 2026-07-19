@@ -520,6 +520,7 @@
                                             <input type="checkbox" id="project-enable-effects" checked>
                                             <span data-text-key="project.enableEffects"></span>
                                         </label>
+                                        <button id="custom-effect-open" class="palette-action-btn" type="button" data-text-key="customEffects.open">Create effect</button>
                                         <label class="project-test__field project-test__checkbox project-appearance__checkbox">
                                             <input type="checkbox" id="project-hide-hud">
                                             <span data-text-key="project.hideHud"></span>
@@ -797,6 +798,40 @@
                 <p class="about-modal__creators" data-text-key="about.createdBy">Created by André N. Darcie and Diguifi.</p>
                 <p class="about-modal__free" data-text-key="about.free">An open-source, free, non-profit engine.</p>
                 <a class="about-modal__link" href="https://github.com/andredarcie/tiny-rpg-studio" target="_blank" rel="noopener noreferrer" data-text-key="about.viewSource">View source on GitHub ↗</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="custom-effect-modal" class="custom-effect-modal" hidden role="dialog" aria-modal="true" aria-labelledby="custom-effect-title">
+        <div class="custom-effect-dialog">
+            <div class="pae-header">
+                <h2 id="custom-effect-title" class="pae-title" data-text-key="customEffects.title">Create tile effect</h2>
+                <button type="button" id="custom-effect-close" class="pae-close" data-aria-label-key="customEffects.closeAria">X</button>
+            </div>
+            <section class="custom-effect-saved-section">
+                <h3 data-text-key="customEffects.saved">Created effects</h3>
+                <div id="custom-effect-saved" class="custom-effect-list custom-effect-saved-list"></div>
+            </section>
+            <div class="custom-effect-layout">
+                <section>
+                    <h3 data-text-key="customEffects.available">Available effects</h3>
+                    <div id="custom-effect-catalog" class="custom-effect-list"></div>
+                </section>
+                <section class="custom-effect-preview-column">
+                    <h3 data-text-key="customEffects.preview">Preview</h3>
+                    <canvas id="custom-effect-preview" width="192" height="192"></canvas>
+                    <label for="custom-effect-name" data-text-key="customEffects.name">Effect name</label>
+                    <input id="custom-effect-name" maxlength="24" autocomplete="off" data-placeholder-key="customEffects.namePlaceholder" placeholder="My effect">
+                </section>
+                <section>
+                    <h3 data-text-key="customEffects.selected">Selected order</h3>
+                    <div id="custom-effect-selected" class="custom-effect-list"></div>
+                </section>
+            </div>
+            <p id="custom-effect-status" class="custom-effect-status" role="status" aria-live="polite"></p>
+            <div class="pae-actions">
+                <button type="button" id="custom-effect-cancel" data-text-key="customEffects.cancel">Cancel</button>
+                <button type="button" id="custom-effect-save" class="pae-save-btn" data-text-key="customEffects.save">Save effect</button>
             </div>
         </div>
     </div>

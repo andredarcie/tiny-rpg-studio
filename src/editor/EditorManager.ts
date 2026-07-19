@@ -26,6 +26,7 @@ import { NpcEditModal } from './modules/NpcEditModal';
 import { ObjectEditModal } from './modules/ObjectEditModal';
 import { EnemyEditModal } from './modules/EnemyEditModal';
 import { PixelArtEditorController } from './modules/PixelArtEditorController';
+import { CustomTileEffectEditorController } from './modules/CustomTileEffectEditorController';
 import { ProjectSaveManager } from './manager/ProjectSaveManager';
 import { ProjectSaveUI } from './manager/ProjectSaveUI';
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
@@ -54,6 +55,7 @@ class EditorManager {
     objectEditModal: ObjectEditModal;
     enemyEditModal: EnemyEditModal;
     pixelArtEditorController: PixelArtEditorController;
+    customTileEffectEditorController: CustomTileEffectEditorController;
     private projectSaveManager?: ProjectSaveManager;
     private projectSaveUI?: ProjectSaveUI;
 
@@ -87,6 +89,8 @@ class EditorManager {
         this.enemyEditModal = new EnemyEditModal(this.renderService);
         this.pixelArtEditorController = new PixelArtEditorController();
         this.pixelArtEditorController.init(this, this.domCache);
+        this.customTileEffectEditorController = new CustomTileEffectEditorController();
+        this.customTileEffectEditorController.init(this, this.domCache);
 
             this.bindEvents();
             this.initialize();

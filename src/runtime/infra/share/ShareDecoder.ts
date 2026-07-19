@@ -16,6 +16,12 @@ import {
     normalizeBackgroundMusicVideoId,
     normalizeBackgroundMusicVolume,
 } from './BackgroundMusicVideoId';
+import {
+    BASE_TILE_EFFECT_IDS,
+    normalizeCustomTileEffects,
+    type CustomTileEffectDefinition,
+    type TileVisualEffectKind,
+} from '../../domain/definitions/customTileEffects';
 
 type SharePayload = Record<string, string>;
 
@@ -614,11 +620,15 @@ class ShareDecoder {
         // Skill Customizations
         const skillCustomizations = payload.C ? this.decodeSkillCustomizations(payload.C) : undefined;
 
-        // Per-tile liquid visual effects (VERSION_36+), payload key '0'
-        const tileVisualEffects =
-            version >= ShareConstants.TILE_VISUAL_EFFECT_VERSION && payload['0']
-                ? this.decodeTileVisualEffects(payload['0'])
-                : undefined;
+        const decodedEffects = version >= ShareConstants.CUSTOM_TILE_EFFECT_VERSION && payload['0']
+            ? this.decodeCustomTileEffectsEnvelope(payload['0'])
+            : {
+                tileVisualEffects: version >= ShareConstants.TILE_VISUAL_EFFECT_VERSION && payload['0']
+                    ? this.decodeTileVisualEffects(payload['0'])
+                    : undefined,
+                customTileEffects: undefined,
+            };
+        const { tileVisualEffects, customTileEffects } = decodedEffects;
 
         const result: Record<string, unknown> = {
             title,
@@ -649,6 +659,9 @@ class ShareDecoder {
 
         if (tileVisualEffects && Object.keys(tileVisualEffects).length > 0) {
             result.tileVisualEffects = tileVisualEffects;
+        }
+        if (customTileEffects && customTileEffects.length > 0) {
+            result.customTileEffects = customTileEffects;
         }
 
         if (customPalette) {
@@ -709,6 +722,52 @@ class ShareDecoder {
             return Object.keys(map).length > 0 ? map : undefined;
         } catch {
             return undefined;
+        }
+    }
+
+    private static decodeCustomTileEffectsEnvelope(encoded: string): {
+        tileVisualEffects?: Record<string, TileVisualEffectKind>;
+        customTileEffects?: CustomTileEffectDefinition[];
+    } {
+        try {
+            const json = ShareTextCodec.decodeText(encoded, '');
+            const parsed = JSON.parse(json) as unknown;
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+            const envelope = parsed as Record<string, unknown>;
+            const rawDefinitions = Array.isArray(envelope.d)
+                ? envelope.d.map((tuple) => {
+                    if (!Array.isArray(tuple) || tuple.length < 3 || !Array.isArray(tuple[2])) return null;
+                    const values = tuple as unknown[];
+                    const suffix = values[0];
+                    const name = values[1];
+                    if (typeof suffix !== 'string' || typeof name !== 'string') return null;
+                    const passes = (values[2] as unknown[])
+                        .map((index) => typeof index === 'number' && Number.isInteger(index)
+                            ? BASE_TILE_EFFECT_IDS[index]
+                            : undefined)
+                        .filter((id): id is (typeof BASE_TILE_EFFECT_IDS)[number] => Boolean(id));
+                    return { id: `custom:${suffix}`, name, baseEffectIds: passes };
+                })
+                : [];
+            const customTileEffects = normalizeCustomTileEffects(rawDefinitions);
+            const customIds = new Set(customTileEffects.map((definition) => definition.id));
+            const tileVisualEffects = Object.create(null) as Record<string, TileVisualEffectKind>;
+            if (envelope.a && typeof envelope.a === 'object' && !Array.isArray(envelope.a)) {
+                for (const [key, value] of Object.entries(envelope.a as Record<string, unknown>)) {
+                    if (
+                        value === 'water' || value === 'lava' || value === 'none' ||
+                        (typeof value === 'string' && customIds.has(value as `custom:${string}`))
+                    ) {
+                        tileVisualEffects[String(key)] = value as TileVisualEffectKind;
+                    }
+                }
+            }
+            return {
+                customTileEffects: customTileEffects.length ? customTileEffects : undefined,
+                tileVisualEffects: Object.keys(tileVisualEffects).length ? tileVisualEffects : undefined,
+            };
+        } catch {
+            return {};
         }
     }
 

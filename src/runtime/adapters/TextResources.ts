@@ -1,6 +1,58 @@
+const CUSTOM_TILE_EFFECT_TEXT = {
+    'customEffects.open': 'Create effect',
+    'customEffects.title': 'Create tile effect',
+    'customEffects.closeAria': 'Close custom effect editor',
+    'customEffects.available': 'Available effects',
+    'customEffects.preview': 'Preview',
+    'customEffects.name': 'Effect name',
+    'customEffects.namePlaceholder': 'My effect',
+    'customEffects.selected': 'Selected order',
+    'customEffects.add': 'Add',
+    'customEffects.remove': 'Remove',
+    'customEffects.delete': 'Delete',
+    'customEffects.deleted': 'Effect deleted.',
+    'customEffects.saved': 'Created effects',
+    'customEffects.savedEmpty': 'No custom effects created yet.',
+    'customEffects.empty': 'Add effects from the catalog.',
+    'customEffects.cancel': 'Cancel',
+    'customEffects.save': 'Save effect',
+    'customEffects.reflectionHelp': 'Mirrors the tile inward from the selected edge.',
+    'customEffects.outlineHelp': 'Uses the Project → Visuals Sprite outline setting and color.',
+    'customEffects.error.empty-name': 'Enter an effect name.',
+    'customEffects.error.duplicate-name': 'That effect name is already in use.',
+    'customEffects.error.empty-passes': 'Add at least one base effect.',
+    'customEffects.error.invalid-passes': 'The selected effects are invalid.',
+    'customEffects.error.project-limit': 'A project can have up to 16 custom effects.',
+    'customEffects.base.calmWave': 'Calm wave',
+    'customEffects.base.caustic': 'Caustic light',
+    'customEffects.base.choppyWave': 'Choppy wave',
+    'customEffects.base.coolTint': 'Cool tint',
+    'customEffects.base.deepTint': 'Deep tint',
+    'customEffects.base.diagonalOutline': 'Diagonal outline',
+    'customEffects.base.embers': 'Embers',
+    'customEffects.base.emissive': 'Emissive',
+    'customEffects.base.gentleRidge': 'Gentle ridge',
+    'customEffects.base.glow': 'Glow',
+    'customEffects.base.heightFieldBody': 'Height-field body',
+    'customEffects.base.innerOutline': 'Inner outline',
+    'customEffects.base.intenseGlow': 'Intense glow',
+    'customEffects.base.murkyTint': 'Murky tint',
+    'customEffects.base.outline': 'Outline',
+    'customEffects.base.ridgeWave': 'Ridge wave',
+    'customEffects.base.sharpRidge': 'Sharp ridge',
+    'customEffects.base.softGlow': 'Soft glow',
+    'customEffects.base.sparkle': 'Sparkle',
+    'customEffects.base.specular': 'Specular highlight',
+    'customEffects.base.translucentWave': 'Translucent wave',
+    'customEffects.base.reflectionTop': 'Reflection from top',
+    'customEffects.base.reflectionBottom': 'Reflection from bottom',
+    'customEffects.base.reflectionLeft': 'Reflection from left',
+    'customEffects.base.reflectionRight': 'Reflection from right',
+} as const;
 
 const TEXT_BUNDLES = {
     'pt-BR': {
+        ...CUSTOM_TILE_EFFECT_TEXT,
         'intro.byline': 'por {author}',
         'intro.startAdventure': 'Iniciar aventura',
         'tabs.game': 'Jogo',
@@ -621,6 +673,7 @@ const TEXT_BUNDLES = {
         'enemies.desc.ancientDemon': 'o mal primordial e final.'
     },
     'en-US': {
+        ...CUSTOM_TILE_EFFECT_TEXT,
         'intro.byline': 'by {author}',
         'intro.startAdventure': 'Start adventure',
         'tabs.game': 'Game',
@@ -1241,6 +1294,7 @@ const TEXT_BUNDLES = {
         'enemies.desc.ancientDemon': 'the primordial and final evil.'
     },
     'zh-CN': {
+        ...CUSTOM_TILE_EFFECT_TEXT,
         'intro.byline': '作者：{author}',
         'intro.startAdventure': '开始冒险',
         'tabs.game': '游戏',
@@ -1861,6 +1915,7 @@ const TEXT_BUNDLES = {
         'enemies.desc.ancientDemon': '原初而最终的邪恶。'
     },
     'pl-PL': {
+        ...CUSTOM_TILE_EFFECT_TEXT,
         'intro.byline': 'autor: {author}',
         'intro.startAdventure': 'Rozpocznij przygodę',
         'tabs.game': 'Gra',
@@ -2481,6 +2536,7 @@ const TEXT_BUNDLES = {
         'enemies.desc.ancientDemon': 'pradawne i ostateczne zło.'
     },
     'es-ES': {
+        ...CUSTOM_TILE_EFFECT_TEXT,
         'intro.byline': 'por {author}',
         'intro.startAdventure': 'Iniciar aventura',
         'tabs.game': 'Juego',

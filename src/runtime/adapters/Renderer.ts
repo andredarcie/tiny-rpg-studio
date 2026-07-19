@@ -16,6 +16,7 @@ import { RendererParticleSystem } from './renderer/RendererParticleSystem';
 import { RendererAttackTelegraph } from './renderer/RendererAttackTelegraph';
 import { RendererSwordSwing } from './renderer/RendererSwordSwing';
 import type { TileDefinition } from '../domain/definitions/tileTypes';
+import type { BaseTileEffectId } from '../domain/definitions/customTileEffects';
 import { GameConfig } from '../../config/GameConfig';
 import { bitmapFont } from './renderer/BitmapFont';
 import { DebugFlags } from '../debug/DebugFlags';
@@ -391,6 +392,16 @@ class Renderer {
 
     drawTileOnCanvas(canvas: HTMLCanvasElement, tile: TileDefinition | null) {
         this.canvasHelper.drawTileOnCanvas(canvas, tile);
+    }
+
+    drawCustomTileEffectPreview(
+        canvas: HTMLCanvasElement,
+        tile: TileDefinition | null,
+        baseEffectIds: readonly BaseTileEffectId[],
+        frameOverride = 0,
+        timeMs?: number
+    ): void {
+        this.canvasHelper.drawCustomTileEffectPreview(canvas, tile, baseEffectIds, frameOverride, timeMs);
     }
 
     drawTileIconOnPlayer(ctx: CanvasRenderingContext2D, tileId: string) {

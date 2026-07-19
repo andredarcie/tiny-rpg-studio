@@ -1,6 +1,7 @@
 export type TileFrame = string[][];
 export type TileId = string | number;
-export type TileVisualEffectKind = 'none' | 'water' | 'lava';
+export type { TileVisualEffectKind } from './customTileEffects';
+import type { CustomTileEffectDefinition, TileVisualEffectKind } from './customTileEffects';
 
 export type TileDefinition = {
   id?: TileId;
@@ -12,7 +13,7 @@ export type TileDefinition = {
   category?: string;
   animated?: boolean;
   layouts?: (number | null)[][][];
-  /** Explicit liquid visual effect (VERSION_36+). */
+  /** Explicit built-in or project-defined visual effect. */
   visualEffect?: TileVisualEffectKind;
 };
 
@@ -31,6 +32,7 @@ export type Tileset = {
 export type GameStateApi = {
   game: {
     tileset: Tileset;
+    customTileEffects?: CustomTileEffectDefinition[];
     roomSize?: number;
     world?: { rows?: number; cols?: number };
   };

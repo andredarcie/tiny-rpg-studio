@@ -5,8 +5,11 @@ import { RendererConstants } from '../../runtime/adapters/renderer/RendererConst
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 import { SpriteMatrixRegistry } from '../../runtime/domain/sprites/SpriteMatrixRegistry';
-
-type TileVisualEffectKind = 'none' | 'water' | 'lava';
+import {
+    normalizeCustomTileEffects,
+    type CustomTileEffectDefinition,
+    type TileVisualEffectKind,
+} from '../../runtime/domain/definitions/customTileEffects';
 
 type ManagerDeps = {
     gameEngine: {
@@ -60,6 +63,7 @@ export class PixelArtEditorController {
     private dom: DomDeps | null = null;
     private eventsReady = false;
     private languageEventsReady = false;
+    private tileEffectDraft: TileVisualEffectKind = 'none';
 
     init(manager: ManagerDeps, dom: DomDeps): void {
         this.manager = manager;
@@ -77,6 +81,7 @@ export class PixelArtEditorController {
         this.activeFrameIndex = 0;
         this.tool = 'paint';
         this.selectedColor = 0;
+        this.tileEffectDraft = 'none';
 
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
 
@@ -108,7 +113,7 @@ export class PixelArtEditorController {
         track('pixel_sprite_saved', { group: this.group });
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
 
-        // Persist liquid visual effect for tiles (VERSION_36).
+        // Commit the tile's draft visual effect together with the sprite.
         if (this.group === 'tile') {
             this.persistTileVisualEffect();
         }
@@ -143,17 +148,19 @@ export class PixelArtEditorController {
         this.frames = this.loadBaseFrames(this.group, this.key, this.variant);
         this.activeFrameIndex = 0;
         if (this.group === 'tile') {
-            // Restore preset default liquid effect when available.
+            // Restore the preset effect in draft state; Save commits it.
             const presetEffect = this.getPresetTileVisualEffect(this.key);
             const select = this.dom?.paeTileEffect;
             if (select) select.value = presetEffect;
-            this.manager?.gameEngine.tileManager.setTileVisualEffect?.(
-                this.resolveTileId(this.key),
-                presetEffect
-            );
+            this.tileEffectDraft = presetEffect;
         }
         this.renderFrameBar();
-        this.syncTileEffectSelect();
+        if (this.group === 'tile' && this.dom?.paeTileEffect) {
+            this.rebuildTileEffectOptions();
+            this.dom.paeTileEffect.value = this.tileEffectDraft;
+        } else {
+            this.syncTileEffectSelect();
+        }
         this.renderCanvas();
     }
 
@@ -326,31 +333,43 @@ export class PixelArtEditorController {
         }
 
         row.removeAttribute('hidden');
+        this.rebuildTileEffectOptions();
         const tileId = this.resolveTileId(this.key);
         const effect =
             this.manager?.gameEngine.tileManager.getTileVisualEffect?.(tileId) ??
             this.readTileVisualEffectFromGame(tileId);
+        this.tileEffectDraft = effect;
         select.value = effect;
-        this.refreshTileEffectOptionLabels();
     }
 
-    private refreshTileEffectOptionLabels(): void {
+    private rebuildTileEffectOptions(): void {
         const select = this.dom?.paeTileEffect;
         if (!select) return;
-        for (const option of Array.from(select.options)) {
-            const key = option.getAttribute('data-text-key');
-            if (!key) continue;
-            const fallback =
-                option.value === 'water' ? 'Water' : option.value === 'lava' ? 'Lava' : 'None';
+        const builtIns: Array<[TileVisualEffectKind, string, string]> = [
+            ['none', 'pixelArtEditor.visualEffect.none', 'None'],
+            ['water', 'pixelArtEditor.visualEffect.water', 'Water'],
+            ['lava', 'pixelArtEditor.visualEffect.lava', 'Lava'],
+        ];
+        select.replaceChildren();
+        for (const [value, key, fallback] of builtIns) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.dataset.textKey = key;
             option.textContent = this.t(key, fallback);
+            select.appendChild(option);
+        }
+        const game = this.manager?.gameEngine.getGame() as { customTileEffects?: CustomTileEffectDefinition[] } | undefined;
+        for (const definition of normalizeCustomTileEffects(game?.customTileEffects)) {
+            const option = document.createElement('option');
+            option.value = definition.id;
+            option.textContent = definition.name;
+            select.appendChild(option);
         }
     }
 
     private persistTileVisualEffect(): void {
         if (!this.manager || this.group !== 'tile') return;
-        const raw = this.dom?.paeTileEffect?.value ?? 'none';
-        const effect: TileVisualEffectKind =
-            raw === 'water' || raw === 'lava' ? raw : 'none';
+        const effect = this.tileEffectDraft;
         const tileId = this.resolveTileId(this.key);
         if (this.manager.gameEngine.tileManager.setTileVisualEffect) {
             this.manager.gameEngine.tileManager.setTileVisualEffect(tileId, effect);
@@ -419,9 +438,7 @@ export class PixelArtEditorController {
 
         this.dom?.paeTileEffect?.addEventListener('change', () => {
             if (this.group !== 'tile') return;
-            this.persistTileVisualEffect();
-            this.manager?.renderAll();
-            this.manager?.updateJSON();
+            this.tileEffectDraft = (this.dom?.paeTileEffect?.value ?? 'none') as TileVisualEffectKind;
         });
 
         this.dom?.paePalette?.addEventListener('click', (e) => {
@@ -510,7 +527,11 @@ export class PixelArtEditorController {
                 this.renderPalette();
                 this.renderFrameBar();
             }
-            this.refreshTileEffectOptionLabels();
+            if (this.group === 'tile') {
+                const draft = this.tileEffectDraft;
+                this.rebuildTileEffectOptions();
+                if (this.dom?.paeTileEffect) this.dom.paeTileEffect.value = draft;
+            }
         });
     }
 

@@ -46,6 +46,29 @@ describe('TileManager business rules', () => {
     ] as TileDefinition[];
   });
 
+  it('accepts defined custom effects and rejects dangling assignments without heuristics', () => {
+    const gameState = createGameState();
+    gameState.game.customTileEffects = [
+      { id: 'custom:0', name: 'Glow', baseEffectIds: ['glow'] },
+    ];
+    gameState.game.tileset.tiles = [
+      { id: 1, name: 'Water', category: 'Agua', visualEffect: 'none' },
+    ];
+    const manager = new TileManager(gameState);
+
+    manager.setTileVisualEffect(1, 'custom:0');
+    expect(manager.getTileVisualEffect(1)).toBe('custom:0');
+    manager.setTileVisualEffect(1, 'custom:missing');
+    expect(manager.getTileVisualEffect(1)).toBe('none');
+
+    gameState.game.tileset.tiles[0].visualEffect = 'custom:missing';
+    expect(manager.getTileVisualEffect(1)).toBe('none');
+    gameState.game.tileset.tiles[0].visualEffect = 'custom:INVALID' as never;
+    expect(manager.getTileVisualEffect(1)).toBe('none');
+    manager.applyTileVisualEffects({ '1': 'custom:0' });
+    expect(manager.getTileVisualEffect(1)).toBe('custom:0');
+  });
+
   it('initializes default tiles and maps when empty', () => {
     const gameState = createGameState();
     const manager = new TileManager(gameState);

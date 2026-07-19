@@ -7,6 +7,12 @@ import {
     normalizeBackgroundMusicVideoId,
     normalizeBackgroundMusicVolume,
 } from '../../infra/share/BackgroundMusicVideoId';
+import {
+    normalizeCustomTileEffects,
+    normalizeTileVisualEffect,
+    type CustomTileEffectDefinition,
+    type TileVisualEffectKind,
+} from '../definitions/customTileEffects';
 
 /** Default outline palette index (PICO-8 dark blue). */
 export const DEFAULT_SPRITE_OUTLINE_COLOR_INDEX = 1;
@@ -57,8 +63,9 @@ type ImportData = {
     skillOrder?: string[];
     skillCustomizations?: SkillCustomizationMap;
     online?: OnlineConfig;
+    customTileEffects?: CustomTileEffectDefinition[];
     /** VERSION_36 share map: tileId → water|lava (applied after default tiles load). */
-    tileVisualEffects?: Record<string, 'water' | 'lava' | 'none'>;
+    tileVisualEffects?: Record<string, TileVisualEffectKind>;
 };
 
 class StateDataManager {
@@ -101,6 +108,9 @@ class StateDataManager {
             hideHud: Boolean(this.game.hideHud),
             // Default on; only persist explicit false so exports stay compact.
             enableEffects: this.game.enableEffects === false ? false : true,
+            ...(normalizeCustomTileEffects(this.game.customTileEffects).length
+                ? { customTileEffects: normalizeCustomTileEffects(this.game.customTileEffects) }
+                : {}),
             spriteOutline: Boolean(this.game.spriteOutline),
             spriteOutlineColor: normalizeSpriteOutlineColor(this.game.spriteOutlineColor),
             disableSkills: Boolean(this.game.disableSkills),
@@ -143,8 +153,17 @@ class StateDataManager {
         const worldCols = 3;
         const totalRooms = worldRows * worldCols;
 
+        const customTileEffects = normalizeCustomTileEffects(data.customTileEffects);
         const existingTiles = Array.isArray(this.game.tileset.tiles) ? this.game.tileset.tiles : [];
-        const tilesetTiles = Array.isArray(data.tileset?.tiles) ? data.tileset.tiles : existingTiles;
+        const rawTiles = Array.isArray(data.tileset?.tiles) ? data.tileset.tiles : existingTiles;
+        const tilesetTiles = rawTiles.map((tile) => {
+            if (!tile || typeof tile !== 'object' || Array.isArray(tile)) return tile;
+            const clone = { ...(tile as Record<string, unknown>) };
+            if (Object.prototype.hasOwnProperty.call(clone, 'visualEffect')) {
+                clone.visualEffect = normalizeTileVisualEffect(clone.visualEffect, customTileEffects);
+            }
+            return clone;
+        });
         const normalizedRooms = this.worldManager.normalizeRooms(data.rooms, totalRooms, worldCols);
         const normalizedMaps = this.worldManager.normalizeTileMaps(
             data.tileset?.maps ?? data.tileset?.map ?? null,
@@ -168,6 +187,7 @@ class StateDataManager {
             hideHud: Boolean(data.hideHud),
             // Missing means enabled (default true for pre-v36 and new games).
             enableEffects: data.enableEffects === false ? false : true,
+            customTileEffects: customTileEffects.length ? customTileEffects : undefined,
             spriteOutline: Boolean(data.spriteOutline),
             spriteOutlineColor: normalizeSpriteOutlineColor(data.spriteOutlineColor),
             disableSkills: Boolean(data.disableSkills),
@@ -218,7 +238,7 @@ class StateDataManager {
 
         // Stash share map for GameEngine/TileManager after ensureDefaultTiles().
         if (data.tileVisualEffects && typeof data.tileVisualEffects === 'object') {
-            (this.game as GameDefinition & { tileVisualEffects?: Record<string, 'water' | 'lava' | 'none'> }).tileVisualEffects =
+            (this.game as GameDefinition & { tileVisualEffects?: Record<string, TileVisualEffectKind> }).tileVisualEffects =
                 data.tileVisualEffects;
         } else {
             delete (this.game as GameDefinition & { tileVisualEffects?: unknown }).tileVisualEffects;

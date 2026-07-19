@@ -43,9 +43,10 @@ class ShareConstants {
     static get VERSION_34() { return 34; }
     static get VERSION_35() { return 35; }
     static get VERSION_36() { return 36; }
+    static get VERSION_37() { return 37; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_36;
+        return ShareConstants.VERSION_37;
     }
 
     static get LEGACY_VERSION() {
@@ -181,6 +182,10 @@ class ShareConstants {
         return ShareConstants.VERSION_36;
     }
 
+    static get CUSTOM_TILE_EFFECT_VERSION() {
+        return ShareConstants.VERSION_37;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -298,7 +303,8 @@ class ShareConstants {
                 ShareConstants.VERSION_33,
                 ShareConstants.VERSION_34,
                 ShareConstants.VERSION_35,
-                ShareConstants.VERSION_36
+                ShareConstants.VERSION_36,
+                ShareConstants.VERSION_37
             ]);
         }
         return this._supportedVersions;

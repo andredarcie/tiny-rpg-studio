@@ -17,6 +17,11 @@ import {
     normalizeBackgroundMusicVideoId,
     normalizeBackgroundMusicVolume,
 } from './BackgroundMusicVideoId';
+import {
+    BASE_TILE_EFFECT_IDS,
+    normalizeCustomTileEffects,
+    type TileVisualEffectKind,
+} from '../../domain/definitions/customTileEffects';
 
 type CustomSpriteEntryLike = {
     group: string;
@@ -53,6 +58,7 @@ type ShareGameData = {
     skillOrder?: string[];
     skillCustomizations?: SkillCustomizationMap;
     online?: unknown;
+    customTileEffects?: unknown;
 };
 
 class ShareEncoder {
@@ -76,15 +82,20 @@ class ShareEncoder {
      * Includes water/lava/none when explicitly set so "none" can override preset liquids.
      */
     static collectTileVisualEffects(
-        tiles: Array<{ id?: string | number; visualEffect?: string }> | undefined
-    ): Record<string, 'water' | 'lava' | 'none'> {
-        const map: Record<string, 'water' | 'lava' | 'none'> = {};
+        tiles: Array<{ id?: string | number; visualEffect?: string }> | undefined,
+        customTileEffects: unknown = []
+    ): Record<string, TileVisualEffectKind> {
+        const map = Object.create(null) as Record<string, TileVisualEffectKind>;
+        const customIds = new Set(normalizeCustomTileEffects(customTileEffects).map((definition) => definition.id));
         if (!Array.isArray(tiles)) return map;
         for (const tile of tiles) {
             if (tile.id === undefined) continue;
             const effect = tile.visualEffect;
-            if (effect === 'water' || effect === 'lava' || effect === 'none') {
-                map[String(tile.id)] = effect;
+            if (
+                effect === 'water' || effect === 'lava' || effect === 'none' ||
+                (typeof effect === 'string' && customIds.has(effect as `custom:${string}`))
+            ) {
+                map[String(tile.id)] = effect as TileVisualEffectKind;
             }
         }
         return map;
@@ -630,9 +641,16 @@ class ShareEncoder {
                 Array.isArray((gameData.tileset as { tiles?: unknown }).tiles)
                     ? (gameData.tileset as { tiles: Array<{ id?: string | number; visualEffect?: string }> }).tiles
                     : undefined;
-            const effectMap = ShareEncoder.collectTileVisualEffects(tiles);
-            if (Object.keys(effectMap).length > 0) {
-                parts.push('0' + ShareTextCodec.encodeText(JSON.stringify(effectMap)));
+            const definitions = normalizeCustomTileEffects(gameData?.customTileEffects);
+            const effectMap = ShareEncoder.collectTileVisualEffects(tiles, definitions);
+            if (Object.keys(effectMap).length > 0 || definitions.length > 0) {
+                const compactDefinitions = definitions.map((definition) => [
+                    definition.id.slice('custom:'.length),
+                    definition.name,
+                    definition.baseEffectIds.map((id) => BASE_TILE_EFFECT_IDS.indexOf(id)),
+                ]);
+                const envelope = { a: effectMap, d: compactDefinitions };
+                parts.push('0' + ShareTextCodec.encodeText(JSON.stringify(envelope)));
             }
         }
         if (gameData?.disableSkills) {

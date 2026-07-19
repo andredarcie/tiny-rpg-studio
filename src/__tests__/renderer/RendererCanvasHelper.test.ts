@@ -64,6 +64,20 @@ function setOpaqueGrid(color: string): string[][] {
 }
 
 describe('RendererCanvasHelper', () => {
+  it('resolves valid custom effects and makes dangling custom IDs explicit none', () => {
+    const gameState = {
+      getGame: () => ({
+        enableEffects: true,
+        customTileEffects: [{ id: 'custom:0' as const, name: 'Glow', baseEffectIds: ['glow' as const] }],
+      }),
+    };
+    const helper = new RendererCanvasHelper(
+      document.createElement('canvas'), asCanvasCtx(makeCtx()), null, null, gameState,
+    );
+    expect(helper.getTileVisualEffect({ name: 'Grass', visualEffect: 'custom:0' })).toBe('custom:0');
+    expect(helper.getTileVisualEffect({ name: 'Water', category: 'Agua', visualEffect: 'custom:missing' })).toBe('none');
+    expect(helper.getTileVisualEffect({ name: 'Water', category: 'Agua', visualEffect: 'custom:INVALID' })).toBe('none');
+  });
   it('computes tile pixel size from canvas width', () => {
     const canvas = document.createElement('canvas');
     canvas.width = 80;

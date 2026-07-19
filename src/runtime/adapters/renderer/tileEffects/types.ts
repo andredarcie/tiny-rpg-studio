@@ -2,12 +2,16 @@
  * Tile canvas effects — shared types.
  *
  * To add a new effect:
- * 1. Extend TileVisualEffectId
- * 2. Implement TileEffectDefinition in its own file (see waterEffect / lavaEffect)
- * 3. Register it in registry.ts
+ * Built-ins are registered in registry.ts. Project-defined effects compose the
+ * fixed base-effect catalog and never register executable project code.
  */
 
-export type TileVisualEffectId = 'none' | 'water' | 'lava';
+import type {
+    BuiltInTileVisualEffectKind,
+    TileVisualEffectKind,
+} from '../../../domain/definitions/customTileEffects';
+
+export type TileVisualEffectId = TileVisualEffectKind;
 
 /** Minimal tile fields used to resolve which effect applies. */
 export type TileEffectSource = {
@@ -48,7 +52,7 @@ export type TileEffectPainter = (context: TileEffectPaintContext) => void;
 
 export type TileEffectDefinition = {
     /** Unique id; must match TileVisualEffectId (except 'none'). */
-    id: Exclude<TileVisualEffectId, 'none'>;
+    id: Exclude<BuiltInTileVisualEffectKind, 'none'>;
     /**
      * Legacy/heuristic match when tile.visualEffect is unset.
      * Explicit visualEffect on the tile always wins over this.

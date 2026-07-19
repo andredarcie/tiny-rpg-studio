@@ -1,7 +1,5 @@
 type TileFrame = string[][];
-
-/** Canvas liquid treatment for a tile (VERSION_36+ share / editor). */
-type TileVisualEffectKind = 'none' | 'water' | 'lava';
+import type { TileVisualEffectKind } from '../definitions/customTileEffects';
 
 type TileDefinitionData = {
     id: string | number;

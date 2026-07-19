@@ -9,6 +9,7 @@ import {
     type TileVisualEffectId,
 } from './tileEffects/RendererTileEffects';
 import { paintReflectionTop } from './tileEffects/baseEffects/reflectionTopEffect';
+import type { BaseTileEffectId, CustomTileEffectDefinition } from '../../domain/definitions/customTileEffects';
 
 type TilePixels = (string | null)[][];
 
@@ -31,6 +32,7 @@ type GameStateApi = {
         spriteOutlineColor?: number;
         /** Global master switch for water/lava canvas effects (default true). */
         enableEffects?: boolean;
+        customTileEffects?: CustomTileEffectDefinition[];
     };
 } | null;
 
@@ -135,6 +137,10 @@ class RendererCanvasHelper {
         return this.gameState.getGame().enableEffects;
     }
 
+    private readCustomTileEffects(): CustomTileEffectDefinition[] | undefined {
+        return this.gameState?.getGame?.().customTileEffects;
+    }
+
     isTileEffectsEnabled(): boolean {
         return this.tileEffects.isEnabled(this.readEnableEffectsFlag());
     }
@@ -142,7 +148,7 @@ class RendererCanvasHelper {
     getTileVisualEffect(
         tile: { category?: string; name?: string; visualEffect?: string } | null | undefined
     ): TileVisualEffect {
-        return this.tileEffects.resolveEffect(tile, this.readEnableEffectsFlag());
+        return this.tileEffects.resolveEffect(tile, this.readEnableEffectsFlag(), this.readCustomTileEffects());
     }
 
     // Re-exported color helpers (used by tests / callers that previously lived here).
@@ -217,8 +223,27 @@ class RendererCanvasHelper {
             px,
             py,
             size,
-            this.readEnableEffectsFlag()
+            this.readEnableEffectsFlag(),
+            this.readCustomTileEffects()
         );
+    }
+
+    drawCustomTileEffectPreview(
+        canvas: HTMLCanvasElement,
+        tile: TileDefinition | null,
+        baseEffectIds: readonly BaseTileEffectId[],
+        frameOverride = 0,
+        timeMs = this.tileEffects.getTimeMs()
+    ): void {
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const pixels = this.resolveTilePixels(tile, frameOverride);
+        if (!pixels) return;
+        const size = Math.max(8, Math.floor(Math.min(canvas.width, canvas.height) * 0.6 / 8) * 8);
+        const px = Math.floor((canvas.width - size) / 2);
+        const py = Math.floor((canvas.height - size) / 2);
+        this.tileEffects.paintCustomPreview(this, ctx, pixels, px, py, size, baseEffectIds, timeMs);
     }
 
     /**

@@ -18,6 +18,15 @@ import { GameConfig } from '../../config/GameConfig';
 import type { OnlineConfig, SkillCustomizationMap } from '../../types/gameState';
 import { BackgroundMusicEngine } from './BackgroundMusicEngine';
 import { performanceProfiler } from '../debug/PerformanceProfiler';
+import {
+  createCustomTileEffect,
+  normalizeCustomTileEffects,
+  type BaseTileEffectId,
+  type CreateCustomTileEffectResult,
+  type CustomTileEffectDefinition,
+  type CustomTileEffectId,
+  type TileVisualEffectKind,
+} from '../domain/definitions/customTileEffects';
 
 type IntroData = { title: string; author: string };
 
@@ -52,6 +61,7 @@ type GameData = {
   skillCustomizations?: SkillCustomizationMap;
   rooms?: unknown[];
   online?: OnlineConfig;
+  customTileEffects?: CustomTileEffectDefinition[];
 };
 
 export class GameEngine {
@@ -374,13 +384,38 @@ export class GameEngine {
     return this.gameState.exportGameData();
   }
 
+  createCustomTileEffect(name: string, baseEffectIds: readonly BaseTileEffectId[]): CreateCustomTileEffectResult {
+    const game = this.gameState.getGame();
+    const result = createCustomTileEffect(game.customTileEffects, name, Array.from(baseEffectIds));
+    if (result.ok) {
+      game.customTileEffects = [
+        ...normalizeCustomTileEffects(game.customTileEffects),
+        result.definition,
+      ];
+    }
+    return result;
+  }
+
+  deleteCustomTileEffect(id: CustomTileEffectId): boolean {
+    const game = this.gameState.getGame();
+    const definitions = normalizeCustomTileEffects(game.customTileEffects);
+    if (!definitions.some((definition) => definition.id === id)) return false;
+
+    const remaining = definitions.filter((definition) => definition.id !== id);
+    game.customTileEffects = remaining.length ? remaining : undefined;
+    for (const tile of game.tileset.tiles) {
+      if (tile.visualEffect === id) tile.visualEffect = 'none';
+    }
+    return true;
+  }
+
   importGameData(data: unknown): void {
     this.inputManager.cancelHeldMovement();
     this.gameState.importGameData(data);
     this.npcManager.ensureDefaultNPCs();
     this.tileManager.ensureDefaultTiles();
     const game = this.gameState.getGame() as ReturnType<GameEngine['gameState']['getGame']> & {
-      tileVisualEffects?: Record<string, 'water' | 'lava' | 'none'>;
+      tileVisualEffects?: Record<string, TileVisualEffectKind>;
     };
     // VERSION_36: apply share-encoded liquid effects after presets exist.
     if (game.tileVisualEffects) {
