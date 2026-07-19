@@ -504,6 +504,7 @@ describe('RendererCanvasHelper', () => {
       ['bottom', makeTile({ visualEffect: 'custom:1' })],
       ['left', makeTile({ visualEffect: 'custom:2' })],
       ['right', makeTile({ visualEffect: 'custom:3' })],
+      ['plain', makeTile({ visualEffect: 'none' })],
     ]);
     const map = {
       ground: Array.from({ length: 8 }, () => Array<string | number | null>(8).fill(null)),
@@ -539,6 +540,15 @@ describe('RendererCanvasHelper', () => {
     expect(ctx.rect).toHaveBeenCalledWith(64, 48, 16, 16);
     expect(ctx.rect).toHaveBeenCalledWith(32, 48, 16, 16);
     expect(ctx.clip).toHaveBeenCalledTimes(4);
+
+    ctx.rect.mockClear();
+    map.ground[2][3] = null;
+    map.ground[3][4] = null;
+    map.ground[3][2] = null;
+    map.overlay[4][3] = 'plain';
+    helper.drawWaterReflectionForSprite(asCanvasCtx(ctx), sprite, 48, 48, 2, 0, 3, 3);
+
+    expect(ctx.rect).not.toHaveBeenCalled();
   });
 
   it('draws lava with glow, wave-lit body, and ridge/shadow overlays', () => {

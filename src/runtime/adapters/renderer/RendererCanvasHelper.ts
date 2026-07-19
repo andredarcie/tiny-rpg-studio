@@ -292,13 +292,16 @@ class RendererCanvasHelper {
                 tileMap.overlay[targetY]?.[targetX],
                 tileMap.ground[targetY]?.[targetX],
             ];
-            return tileIds.some((tileId) => {
+            if (builtInId && tileIds.some((tileId) => {
                 if (tileId === null) return false;
-                const effectId = this.getTileVisualEffect(tileManager.getTile(tileId));
-                if (builtInId && effectId === builtInId) return true;
-                return getCustomTileEffect(customTileEffects, effectId)?.baseEffectIds.includes(baseEffectId)
-                    ?? false;
-            });
+                return this.getTileVisualEffect(tileManager.getTile(tileId)) === builtInId;
+            })) return true;
+
+            const visibleTileId = tileIds[0] ?? tileIds[1];
+            if (visibleTileId === null) return false;
+            const effectId = this.getTileVisualEffect(tileManager.getTile(visibleTileId));
+            return getCustomTileEffect(customTileEffects, effectId)?.baseEffectIds.includes(baseEffectId)
+                ?? false;
         };
 
         if (hasEffectAt(tileX, tileY + 1, 'reflection-top', 'water')) {
