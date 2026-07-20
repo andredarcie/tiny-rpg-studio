@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-20-custom-effects-packs',
+    date: '2026-07-20',
+    title: 'Move custom effects between projects',
+    description:
+      'Under Project → Visuals, you can now export your full custom tile-effect library as one file and import it into another project. Custom sprite packs also include every custom effect currently applied to a tile; importing the sprite pack restores those effects and applies them to the intended tiles, so your pixel art and visual effects travel together.',
+  },
+  {
     id: '2026-07-19-custom-tile-effects',
     date: '2026-07-19',
     title: 'Create your own tile effects',

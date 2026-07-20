@@ -29,6 +29,10 @@ export type CustomEffectsSerializeResult =
     | { ok: true; text: string }
     | { ok: false; error: string };
 
+export type PortableRecipesResult =
+    | { ok: true; recipes: PortableCustomEffectRecipe[] }
+    | { ok: false; error: string };
+
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -52,6 +56,21 @@ export class CustomEffectsIO {
         definitions: readonly CustomTileEffectDefinition[],
         meta?: { exportedAt?: string }
     ): CustomEffectsSerializeResult {
+        const portable = CustomEffectsIO.toPortableRecipes(definitions);
+        if (!portable.ok) return portable;
+
+        const pack: CustomEffectsPackV1 = {
+            format: CustomEffectsIO.FORMAT,
+            version: CustomEffectsIO.VERSION,
+            exportedAt: meta?.exportedAt ?? new Date().toISOString(),
+            effects: portable.recipes,
+        };
+        return { ok: true, text: JSON.stringify(pack, null, 2) };
+    }
+
+    static toPortableRecipes(
+        definitions: readonly CustomTileEffectDefinition[]
+    ): PortableRecipesResult {
         if (!Array.isArray(definitions) || definitions.length === 0) {
             return { ok: false, error: CustomEffectsIO.ERROR_NOTHING_TO_IMPORT };
         }
@@ -64,17 +83,43 @@ export class CustomEffectsIO {
             return { ok: false, error: CustomEffectsIO.ERROR_INVALID_RECIPE };
         }
 
-        const pack: CustomEffectsPackV1 = {
-            format: CustomEffectsIO.FORMAT,
-            version: CustomEffectsIO.VERSION,
-            exportedAt: meta?.exportedAt ?? new Date().toISOString(),
-            effects: normalized.map(({ name, baseEffectIds, color }) => ({
+        return {
+            ok: true,
+            recipes: normalized.map(({ name, baseEffectIds, color }) => ({
                 name,
                 baseEffectIds: baseEffectIds.slice(),
                 ...(color ? { color } : {}),
             })),
         };
-        return { ok: true, text: JSON.stringify(pack, null, 2) };
+    }
+
+    static validatePortableRecipes(value: unknown): PortableRecipesResult {
+        if (!Array.isArray(value)) {
+            return { ok: false, error: CustomEffectsIO.ERROR_EFFECTS_NOT_ARRAY };
+        }
+        if (value.length === 0) {
+            return { ok: false, error: CustomEffectsIO.ERROR_NOTHING_TO_IMPORT };
+        }
+        if (value.length > CUSTOM_TILE_EFFECT_LIMITS.maxDefinitions) {
+            return { ok: false, error: CustomEffectsIO.ERROR_TOO_MANY_EFFECTS };
+        }
+
+        const recipes: PortableCustomEffectRecipe[] = [];
+        const usedNames = new Set<string>();
+        for (const candidate of value) {
+            const recipe = CustomEffectsIO.validateRecipe(candidate);
+            if (!recipe) {
+                return { ok: false, error: CustomEffectsIO.ERROR_INVALID_RECIPE };
+            }
+            const nameKey = recipe.name.toLocaleLowerCase();
+            if (usedNames.has(nameKey)) {
+                return { ok: false, error: CustomEffectsIO.ERROR_DUPLICATE_NAME };
+            }
+            usedNames.add(nameKey);
+            recipes.push(recipe);
+        }
+
+        return { ok: true, recipes };
     }
 
     static parse(text: string): CustomEffectsParseResult {
@@ -100,34 +145,12 @@ export class CustomEffectsIO {
         if (data.version !== CustomEffectsIO.VERSION) {
             return { ok: false, error: CustomEffectsIO.ERROR_UNSUPPORTED_VERSION };
         }
-        if (!Array.isArray(data.effects)) {
-            return { ok: false, error: CustomEffectsIO.ERROR_EFFECTS_NOT_ARRAY };
-        }
-        if (data.effects.length === 0) {
-            return { ok: false, error: CustomEffectsIO.ERROR_NOTHING_TO_IMPORT };
-        }
-        if (data.effects.length > CUSTOM_TILE_EFFECT_LIMITS.maxDefinitions) {
-            return { ok: false, error: CustomEffectsIO.ERROR_TOO_MANY_EFFECTS };
-        }
-
-        const recipes: PortableCustomEffectRecipe[] = [];
-        const usedNames = new Set<string>();
-        for (const candidate of data.effects) {
-            const recipe = CustomEffectsIO.validateRecipe(candidate);
-            if (!recipe) {
-                return { ok: false, error: CustomEffectsIO.ERROR_INVALID_RECIPE };
-            }
-            const nameKey = recipe.name.toLocaleLowerCase();
-            if (usedNames.has(nameKey)) {
-                return { ok: false, error: CustomEffectsIO.ERROR_DUPLICATE_NAME };
-            }
-            usedNames.add(nameKey);
-            recipes.push(recipe);
-        }
+        const validated = CustomEffectsIO.validatePortableRecipes(data.effects);
+        if (!validated.ok) return validated;
 
         return {
             ok: true,
-            effects: recipes.map((recipe, index) => ({
+            effects: validated.recipes.map((recipe, index) => ({
                 id: `custom:${index.toString(36)}`,
                 name: recipe.name,
                 baseEffectIds: recipe.baseEffectIds.slice(),

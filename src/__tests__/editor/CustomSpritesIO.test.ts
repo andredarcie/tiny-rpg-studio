@@ -90,6 +90,16 @@ describe('CustomSpritesIO', () => {
             expect(result.error).toBe(CustomSpritesIO.ERROR_TOO_MANY_ENTRIES);
         });
 
+        it('refuses a serialized version 2 payload over MAX_FILE_BYTES', () => {
+            const result = CustomSpritesIO.serialize([
+                makeEntry({ group: 'tile', key: 'x'.repeat(CustomSpritesIO.MAX_FILE_BYTES) }),
+            ]);
+            expect(result).toEqual({
+                ok: false,
+                error: CustomSpritesIO.ERROR_FILE_TOO_LARGE,
+            });
+        });
+
         it('deep-clones frames so mutating originals does not change serialized payload', () => {
             const entry = makeEntry({ group: 'tile', key: '0' });
             const result = CustomSpritesIO.serialize([entry]);
@@ -115,13 +125,68 @@ describe('CustomSpritesIO', () => {
                 engineHint: string;
             };
             expect(data.format).toBe(CustomSpritesIO.FORMAT);
-            expect(data.version).toBe(1);
+            expect(data.version).toBe(2);
             expect(data.exportedAt).toBe('2026-07-11T12:00:00.000Z');
             expect(data.engineHint).toBe('1.4.0');
+        });
+
+        it('serializes portable effects and index-based tile assignments', () => {
+            const result = CustomSpritesIO.serialize(
+                [makeEntry({ group: 'tile', key: '7' })],
+                { exportedAt: '2026-07-20T12:00:00.000Z' },
+                {
+                    customEffects: [{
+                        name: 'Moonlit',
+                        baseEffectIds: ['glow', 'sparkle'],
+                        color: '#88aaff',
+                    }],
+                    tileEffectAssignments: [
+                        { tileKey: '7', effectIndex: 0 },
+                        { tileKey: '8', effectIndex: 0 },
+                    ],
+                }
+            );
+            expect(result.ok).toBe(true);
+            if (!result.ok) return;
+            const data = JSON.parse(result.text) as Record<string, unknown>;
+            expect(data).toMatchObject({
+                version: 2,
+                customEffects: [{
+                    name: 'Moonlit',
+                    baseEffectIds: ['glow', 'sparkle'],
+                    color: '#88AAFF',
+                }],
+                tileEffectAssignments: [
+                    { tileKey: '7', effectIndex: 0 },
+                    { tileKey: '8', effectIndex: 0 },
+                ],
+            });
+        });
+
+        it('omits effect fields for a sprite-only version 2 pack', () => {
+            const result = CustomSpritesIO.serialize([makeEntry()]);
+            expect(result.ok).toBe(true);
+            if (!result.ok) return;
+            const data = JSON.parse(result.text) as Record<string, unknown>;
+            expect(data.version).toBe(2);
+            expect(data).not.toHaveProperty('customEffects');
+            expect(data).not.toHaveProperty('tileEffectAssignments');
         });
     });
 
     describe('parse', () => {
+        it('normalizes a version 1 pack to empty effect arrays', () => {
+            const result = CustomSpritesIO.parse(JSON.stringify({
+                format: CustomSpritesIO.FORMAT,
+                version: 1,
+                sprites: [makeEntry()],
+            }));
+            expect(result.ok).toBe(true);
+            if (!result.ok) return;
+            expect(result.customEffects).toEqual([]);
+            expect(result.tileEffectAssignments).toEqual([]);
+        });
+
         it('rejects invalid JSON', () => {
             const result = CustomSpritesIO.parse('{not json');
             expect(result.ok).toBe(false);
@@ -345,6 +410,30 @@ describe('CustomSpritesIO', () => {
             expect(result.ok).toBe(true);
             if (!result.ok) return;
             expect(result.sprites[0]?.key).toBe('giant-rat');
+        });
+
+        it.each([
+            [{ customEffects: [{ name: 'Glow', baseEffectIds: ['glow'] }] }, CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS],
+            [{ tileEffectAssignments: [{ tileKey: '7', effectIndex: 0 }] }, CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS],
+            [{ customEffects: [{ name: '', baseEffectIds: ['glow'] }], tileEffectAssignments: [{ tileKey: '7', effectIndex: 0 }] }, CustomSpritesIO.ERROR_INVALID_EFFECT_RECIPES],
+            [{ customEffects: [{ name: 'Glow', baseEffectIds: ['glow'] }], tileEffectAssignments: [{ tileKey: '', effectIndex: 0 }] }, CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS],
+            [{ customEffects: [{ name: 'Glow', baseEffectIds: ['glow'] }], tileEffectAssignments: [{ tileKey: '7', effectIndex: 1 }] }, CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS],
+            [{ customEffects: [{ name: 'Glow', baseEffectIds: ['glow'] }], tileEffectAssignments: [{ tileKey: '7', effectIndex: 0 }, { tileKey: '7', effectIndex: 0 }] }, CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS],
+        ])('rejects invalid version 2 effect data', (extras, error) => {
+            const result = CustomSpritesIO.parse(packOf([makeEntry()], extras));
+            expect(result).toEqual({ ok: false, error });
+        });
+
+        it('preserves exact tile keys and deeply clones parsed effect recipes', () => {
+            const result = CustomSpritesIO.parse(packOf([makeEntry()], {
+                customEffects: [{ name: 'Glow', baseEffectIds: ['glow'] }],
+                tileEffectAssignments: [{ tileKey: ' 7 ', effectIndex: 0 }],
+                futureEnvelope: true,
+            }));
+            expect(result.ok).toBe(true);
+            if (!result.ok) return;
+            expect(result.tileEffectAssignments).toEqual([{ tileKey: ' 7 ', effectIndex: 0 }]);
+            expect(result.customEffects).toEqual([{ name: 'Glow', baseEffectIds: ['glow'] }]);
         });
 
         it('accepts null cells (transparent)', () => {

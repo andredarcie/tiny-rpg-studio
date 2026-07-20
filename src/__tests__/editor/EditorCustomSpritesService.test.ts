@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { EditorCustomSpritesService } from '../../editor/modules/EditorCustomSpritesService';
 import { CustomSpritesIO } from '../../editor/modules/CustomSpritesIO';
 import type { CustomSpriteEntry, CustomSpriteFrame } from '../../types/gameState';
+import type { CustomTileEffectDefinition } from '../../runtime/domain/definitions/customTileEffects';
+import type { TileDefinition } from '../../runtime/domain/definitions/tileTypes';
 
 function makeFrame(fill: number | null = 3): CustomSpriteFrame {
     return Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => fill));
@@ -38,17 +40,30 @@ type ManagerFixture = {
         spritesExportButton: HTMLButtonElement;
         spritesClearButton: HTMLButtonElement;
     };
-    game: { title: string; customSprites?: CustomSpriteEntry[] };
+    game: {
+        title: string;
+        customSprites?: CustomSpriteEntry[];
+        customTileEffects?: CustomTileEffectDefinition[];
+        tileset: { tiles: TileDefinition[] };
+    };
 };
 
 function asServiceManager(manager: ManagerFixture): ServiceManager {
     return manager as unknown as ServiceManager;
 }
 
-function createManager(customSprites?: CustomSpriteEntry[]): ManagerFixture {
+function createManager(
+    customSprites?: CustomSpriteEntry[],
+    options: {
+        customTileEffects?: CustomTileEffectDefinition[];
+        tiles?: TileDefinition[];
+    } = {}
+): ManagerFixture {
     const game: ManagerFixture['game'] = {
         title: 'My Test Game',
         customSprites,
+        customTileEffects: options.customTileEffects,
+        tileset: { tiles: options.tiles ?? [] },
     };
 
     return {
@@ -68,6 +83,27 @@ function createManager(customSprites?: CustomSpriteEntry[]): ManagerFixture {
         },
         game,
     };
+}
+
+function makeEffectsPack(
+    assignments: Array<{ tileKey: string; effectIndex: number }> = [
+        { tileKey: '7', effectIndex: 0 },
+    ],
+    effects = [{ name: 'Moonlit', baseEffectIds: ['glow', 'sparkle'] as const }]
+): string {
+    const result = CustomSpritesIO.serialize(
+        [makeEntry({ group: 'tile', key: '7' })],
+        undefined,
+        {
+            customEffects: effects.map((effect) => ({
+                ...effect,
+                baseEffectIds: [...effect.baseEffectIds],
+            })),
+            tileEffectAssignments: assignments,
+        }
+    );
+    if (!result.ok) throw new Error(result.error);
+    return result.text;
 }
 
 describe('EditorCustomSpritesService', () => {
@@ -124,6 +160,41 @@ describe('EditorCustomSpritesService', () => {
         expect(alertMock).not.toHaveBeenCalled();
     });
 
+    it('exports only applied, addressable effects in definition order', () => {
+        const manager = createManager(
+            [makeEntry({ group: 'tile', key: '7' })],
+            {
+                customTileEffects: [
+                    { id: 'custom:0', name: 'Unused', baseEffectIds: ['sparkle'] },
+                    { id: 'custom:1', name: 'Moonlit', baseEffectIds: ['glow'] },
+                ],
+                tiles: [
+                    { id: 7, visualEffect: 'custom:1' },
+                    { id: 8, visualEffect: 'custom:1' },
+                    { id: 9, visualEffect: 'custom:z' },
+                    { id: 10, visualEffect: 'custom:1' },
+                    { id: '10', visualEffect: 'custom:1' },
+                    { visualEffect: 'custom:1' },
+                ],
+            }
+        );
+        const serializeSpy = vi.spyOn(CustomSpritesIO, 'serialize');
+        vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test');
+        vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+        vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+        new EditorCustomSpritesService(asServiceManager(manager)).exportSprites();
+
+        expect(serializeSpy).toHaveBeenCalledOnce();
+        expect(serializeSpy.mock.calls[0]?.[2]).toEqual({
+            customEffects: [{ name: 'Moonlit', baseEffectIds: ['glow'] }],
+            tileEffectAssignments: [
+                { tileKey: '7', effectIndex: 0 },
+                { tileKey: '8', effectIndex: 0 },
+            ],
+        });
+    });
+
     it('applyPackText merge path mutates game, invalidates caches, and pushes history', () => {
         const manager = createManager([makeEntry({ group: 'tile', key: 'old' })]);
         const service = new EditorCustomSpritesService(asServiceManager(manager));
@@ -173,6 +244,197 @@ describe('EditorCustomSpritesService', () => {
         );
 
         expect(manager.game.customSprites).toBe(existing);
+        expect(manager.historyManager.pushCurrentState).not.toHaveBeenCalled();
+    });
+
+    it('imports effects with fresh IDs and applies assignments atomically', () => {
+        const manager = createManager(undefined, {
+            customTileEffects: [
+                { id: 'custom:0', name: 'Existing', baseEffectIds: ['sparkle'] },
+            ],
+            tiles: [
+                { id: 7, visualEffect: 'none' },
+                { id: 8, visualEffect: 'water' },
+                { id: 9, visualEffect: 'lava' },
+            ],
+        });
+        const service = new EditorCustomSpritesService(asServiceManager(manager));
+
+        service.applyPackText(makeEffectsPack([
+            { tileKey: '7', effectIndex: 0 },
+            { tileKey: '8', effectIndex: 0 },
+            { tileKey: '404', effectIndex: 0 },
+        ]));
+
+        expect(confirmMock).toHaveBeenCalledOnce();
+        expect(manager.game.customTileEffects).toEqual([
+            { id: 'custom:0', name: 'Existing', baseEffectIds: ['sparkle'] },
+            { id: 'custom:1', name: 'Moonlit', baseEffectIds: ['glow', 'sparkle'] },
+        ]);
+        expect(manager.game.tileset.tiles.map((tile) => tile.visualEffect)).toEqual([
+            'custom:1',
+            'custom:1',
+            'lava',
+        ]);
+        expect(manager.historyManager.pushCurrentState).toHaveBeenCalledOnce();
+        expect(alertMock.mock.calls.at(-1)?.[0]).toContain('1 skipped');
+    });
+
+    it('reuses an identical destination effect instead of duplicating it', () => {
+        const manager = createManager(undefined, {
+            customTileEffects: [
+                { name: 'mOoNlIt', baseEffectIds: ['glow', 'sparkle'], id: 'custom:a' },
+            ],
+            tiles: [{ id: 7, visualEffect: 'none' }],
+        });
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(manager.game.customTileEffects).toEqual([
+            { id: 'custom:a', name: 'mOoNlIt', baseEffectIds: ['glow', 'sparkle'] },
+        ]);
+        expect(manager.game.tileset.tiles[0]?.visualEffect).toBe('custom:a');
+        expect(alertMock.mock.calls.at(-1)?.[0]).toContain('reused 1');
+    });
+
+    it.each([
+        ['merge', [true], 2],
+        ['replace', [false, true], 1],
+    ] as const)('%s mode preserves unrelated effects during a combined import', (
+        _mode,
+        confirmations,
+        expectedSpriteCount
+    ) => {
+        const manager = createManager(
+            [makeEntry({ group: 'npc', key: 'keep' })],
+            {
+                customTileEffects: [
+                    { id: 'custom:0', name: 'Existing', baseEffectIds: ['sparkle'] },
+                ],
+                tiles: [
+                    { id: 7, visualEffect: 'none' },
+                    { id: 8, visualEffect: 'custom:0' },
+                ],
+            }
+        );
+        for (const response of confirmations) confirmMock.mockReturnValueOnce(response);
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(manager.game.customSprites).toHaveLength(expectedSpriteCount);
+        expect(manager.game.customTileEffects?.[0]).toEqual({
+            id: 'custom:0',
+            name: 'Existing',
+            baseEffectIds: ['sparkle'],
+        });
+        expect(manager.game.tileset.tiles[1]?.visualEffect).toBe('custom:0');
+        expect(manager.game.tileset.tiles[0]?.visualEffect).toBe('custom:1');
+    });
+
+    it('fails atomically on a same-name recipe conflict', () => {
+        const existingSprites = [makeEntry({ group: 'npc', key: 'keep' })];
+        const effects: CustomTileEffectDefinition[] = [
+            { id: 'custom:0', name: 'Moonlit', baseEffectIds: ['sparkle'] },
+        ];
+        const tile: TileDefinition = { id: 7, visualEffect: 'water' };
+        const manager = createManager(existingSprites, {
+            customTileEffects: effects,
+            tiles: [tile],
+        });
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(manager.game.customSprites).toBe(existingSprites);
+        expect(manager.game.customTileEffects).toBe(effects);
+        expect(tile.visualEffect).toBe('water');
+        expect(confirmMock).not.toHaveBeenCalled();
+        expect(manager.historyManager.pushCurrentState).not.toHaveBeenCalled();
+    });
+
+    it('fails atomically when imported effects exceed project capacity', () => {
+        const existing = Array.from({ length: 16 }, (_, index) => ({
+            id: `custom:${index.toString(36)}` as const,
+            name: `E${index}`,
+            baseEffectIds: ['glow'] as const,
+        })).map((definition) => ({
+            ...definition,
+            baseEffectIds: [...definition.baseEffectIds],
+        }));
+        const manager = createManager(undefined, {
+            customTileEffects: existing,
+            tiles: [{ id: 7, visualEffect: 'none' }],
+        });
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(manager.game.customTileEffects).toBe(existing);
+        expect(manager.game.tileset.tiles[0]?.visualEffect).toBe('none');
+        expect(manager.historyManager.pushCurrentState).not.toHaveBeenCalled();
+    });
+
+    it('does not target ambiguous destination tile keys', () => {
+        const first: TileDefinition = { id: 7, visualEffect: 'water' };
+        const second: TileDefinition = { id: '7', visualEffect: 'lava' };
+        const manager = createManager(undefined, { tiles: [first, second] });
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(first.visualEffect).toBe('water');
+        expect(second.visualEffect).toBe('lava');
+        expect(manager.game.customTileEffects).toHaveLength(1);
+    });
+
+    it('cancels an effect-bearing import when there are no current sprites', () => {
+        const tile: TileDefinition = { id: 7, visualEffect: 'water' };
+        const manager = createManager(undefined, { tiles: [tile] });
+        confirmMock.mockReturnValue(false);
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(manager.game.customSprites).toBeUndefined();
+        expect(manager.game.customTileEffects).toBeUndefined();
+        expect(tile.visualEffect).toBe('water');
+        expect(manager.historyManager.pushCurrentState).not.toHaveBeenCalled();
+    });
+
+    it('keeps version 1 imports sprite-only', () => {
+        const effects: CustomTileEffectDefinition[] = [
+            { id: 'custom:0', name: 'Keep', baseEffectIds: ['glow'] },
+        ];
+        const tile: TileDefinition = { id: 7, visualEffect: 'custom:0' };
+        const manager = createManager(undefined, { customTileEffects: effects, tiles: [tile] });
+        const pack = JSON.stringify({
+            format: CustomSpritesIO.FORMAT,
+            version: 1,
+            sprites: [makeEntry({ group: 'player', key: 'default' })],
+        });
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(pack);
+
+        expect(confirmMock).not.toHaveBeenCalled();
+        expect(manager.game.customTileEffects).toBe(effects);
+        expect(tile.visualEffect).toBe('custom:0');
+    });
+
+    it('rejects invalid current effect state instead of normalizing it away', () => {
+        const invalid = [{
+            id: 'custom:0' as const,
+            name: 'Moonlit',
+            baseEffectIds: ['glow'] as const,
+            color: '#aabbcc' as const,
+        }].map((definition) => ({
+            ...definition,
+            baseEffectIds: [...definition.baseEffectIds],
+        }));
+        const manager = createManager(undefined, {
+            customTileEffects: invalid,
+            tiles: [{ id: 7, visualEffect: 'none' }],
+        });
+
+        new EditorCustomSpritesService(asServiceManager(manager)).applyPackText(makeEffectsPack());
+
+        expect(manager.game.customTileEffects).toBe(invalid);
+        expect(confirmMock).not.toHaveBeenCalled();
         expect(manager.historyManager.pushCurrentState).not.toHaveBeenCalled();
     });
 

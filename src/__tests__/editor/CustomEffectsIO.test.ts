@@ -19,6 +19,30 @@ const moonlit = {
 };
 
 describe('CustomEffectsIO', () => {
+    it('exposes deeply cloned portable recipe helpers', () => {
+        const portable = CustomEffectsIO.toPortableRecipes([
+            { ...moonlit, baseEffectIds: [...moonlit.baseEffectIds] },
+        ]);
+        expect(portable.ok).toBe(true);
+        if (!portable.ok) return;
+        expect(portable.recipes).toEqual([{
+            name: 'Moonlit',
+            baseEffectIds: ['cool-tint', 'glow', 'sparkle'],
+            color: '#88AAFF',
+        }]);
+
+        const source = [{ name: ' Glow ', baseEffectIds: ['glow'], color: '#aabbcc' }];
+        const validated = CustomEffectsIO.validatePortableRecipes(source);
+        expect(validated.ok).toBe(true);
+        if (!validated.ok) return;
+        source[0]?.baseEffectIds.push('sparkle');
+        expect(validated.recipes).toEqual([{
+            name: 'Glow',
+            baseEffectIds: ['glow'],
+            color: '#AABBCC',
+        }]);
+    });
+
     it('serializes portable recipes and round-trips with fresh ordered IDs', () => {
         const serialized = CustomEffectsIO.serialize([
             { ...moonlit, baseEffectIds: [...moonlit.baseEffectIds] },

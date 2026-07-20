@@ -1,9 +1,40 @@
 import type { EditorManager } from '../EditorManager';
 import type { CustomSpriteEntry, GameDefinition } from '../../types/gameState';
 import { TextResources } from '../../runtime/adapters/TextResources';
-import { CustomSpritesIO } from './CustomSpritesIO';
+import {
+    CUSTOM_TILE_EFFECT_LIMITS,
+    isCustomTileEffectId,
+    normalizeCustomTileEffects,
+    type CustomTileEffectDefinition,
+    type CustomTileEffectId,
+} from '../../runtime/domain/definitions/customTileEffects';
+import { CustomEffectsIO, type PortableCustomEffectRecipe } from './CustomEffectsIO';
+import {
+    CustomSpritesIO,
+    type AppliedTileEffectsBundle,
+    type TileEffectAssignment,
+} from './CustomSpritesIO';
 
-type GameWithSprites = Pick<GameDefinition, 'customSprites' | 'title'>;
+type GameWithSprites = Pick<
+    GameDefinition,
+    'customSprites' | 'customTileEffects' | 'tileset' | 'title'
+>;
+type GameTile = GameWithSprites['tileset']['tiles'][number];
+
+type EffectReconciliationResult =
+    | {
+          ok: true;
+          definitions: CustomTileEffectDefinition[];
+          resolvedAssignments: Array<{ tile: GameTile; effectId: CustomTileEffectId }>;
+          added: number;
+          reused: number;
+          skippedAssignments: number;
+      }
+    | { ok: false; error: string };
+
+const ERROR_EFFECT_NAME_CONFLICT = 'effect_name_conflict';
+const ERROR_EFFECT_CAPACITY = 'effect_capacity';
+const ERROR_INVALID_DESTINATION_EFFECTS = 'invalid_destination_effects';
 
 export class EditorCustomSpritesService {
     manager: EditorManager;
@@ -60,6 +91,27 @@ export class EditorCustomSpritesService {
                 );
             case CustomSpritesIO.ERROR_NOTHING_TO_IMPORT:
                 return this.t('project.sprites.error.nothingValid', 'No valid sprites in pack.');
+            case CustomSpritesIO.ERROR_INVALID_EFFECT_RECIPES:
+            case CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS:
+                return this.t(
+                    'project.sprites.error.invalidEffects',
+                    'Sprite pack contains invalid custom effect data.'
+                );
+            case ERROR_EFFECT_NAME_CONFLICT:
+                return this.t(
+                    'project.sprites.error.effectConflict',
+                    'An imported effect has the same name as an existing effect with a different recipe.'
+                );
+            case ERROR_EFFECT_CAPACITY:
+                return this.t(
+                    'project.sprites.error.effectCapacity',
+                    'Import would exceed the limit of 16 custom effects.'
+                );
+            case ERROR_INVALID_DESTINATION_EFFECTS:
+                return this.t(
+                    'project.sprites.error.invalidCurrentEffects',
+                    'Current custom effect data is invalid. Fix it before importing this pack.'
+                );
             default:
                 return this.t('project.sprites.error.invalid', 'Invalid sprite pack file.');
         }
@@ -120,6 +172,182 @@ export class EditorCustomSpritesService {
         }
     }
 
+    private collectAppliedEffects(game: GameWithSprites): AppliedTileEffectsBundle | undefined {
+        const definitions = normalizeCustomTileEffects(game.customTileEffects);
+        if (definitions.length === 0) return undefined;
+
+        const keyCounts = new Map<string, number>();
+        for (const tile of game.tileset.tiles) {
+            if (tile.id === undefined) continue;
+            const key = String(tile.id);
+            keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+        }
+
+        const definitionById = new Map(definitions.map((definition) => [definition.id, definition]));
+        const usedIds = new Set<CustomTileEffectId>();
+        for (const tile of game.tileset.tiles) {
+            if (tile.id === undefined) continue;
+            const tileKey = String(tile.id);
+            if (keyCounts.get(tileKey) !== 1) continue;
+            if (
+                isCustomTileEffectId(tile.visualEffect) &&
+                definitionById.has(tile.visualEffect)
+            ) {
+                usedIds.add(tile.visualEffect);
+            }
+        }
+
+        const referenced = definitions.filter((definition) => usedIds.has(definition.id));
+        if (referenced.length === 0) return undefined;
+        const portable = CustomEffectsIO.toPortableRecipes(referenced);
+        if (!portable.ok) return undefined;
+
+        const effectIndexes = new Map(
+            referenced.map((definition, index) => [definition.id, index])
+        );
+        const tileEffectAssignments: TileEffectAssignment[] = [];
+        for (const tile of game.tileset.tiles) {
+            if (tile.id === undefined) continue;
+            const tileKey = String(tile.id);
+            if (keyCounts.get(tileKey) !== 1 || !isCustomTileEffectId(tile.visualEffect)) continue;
+            const effectIndex = effectIndexes.get(tile.visualEffect);
+            if (effectIndex === undefined) continue;
+            tileEffectAssignments.push({ tileKey, effectIndex });
+        }
+
+        return {
+            customEffects: portable.recipes,
+            tileEffectAssignments,
+        };
+    }
+
+    private recipesMatch(
+        definition: CustomTileEffectDefinition,
+        recipe: PortableCustomEffectRecipe
+    ): boolean {
+        return (
+            definition.baseEffectIds.length === recipe.baseEffectIds.length &&
+            definition.baseEffectIds.every((id, index) => id === recipe.baseEffectIds[index]) &&
+            definition.color === recipe.color
+        );
+    }
+
+    private destinationEffectsAreNormalized(
+        value: unknown,
+        normalized: CustomTileEffectDefinition[]
+    ): value is CustomTileEffectDefinition[] {
+        if (!Array.isArray(value) || value.length !== normalized.length) return false;
+        return value.every((candidate, index) => {
+            if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) {
+                return false;
+            }
+            const definition = normalized[index];
+            const record = candidate as Record<string, unknown>;
+            const expectedKeys = definition.color
+                ? ['baseEffectIds', 'color', 'id', 'name']
+                : ['baseEffectIds', 'id', 'name'];
+            const actualKeys = Object.keys(record).sort();
+            if (
+                actualKeys.length !== expectedKeys.length ||
+                actualKeys.some((key, keyIndex) => key !== expectedKeys[keyIndex]) ||
+                record.id !== definition.id ||
+                record.name !== definition.name ||
+                record.color !== definition.color ||
+                !Array.isArray(record.baseEffectIds) ||
+                record.baseEffectIds.length !== definition.baseEffectIds.length
+            ) {
+                return false;
+            }
+            return record.baseEffectIds.every(
+                (effectId, effectIndex) => effectId === definition.baseEffectIds[effectIndex]
+            );
+        });
+    }
+
+    private reconcileEffects(
+        game: GameWithSprites,
+        recipes: PortableCustomEffectRecipe[],
+        assignments: TileEffectAssignment[]
+    ): EffectReconciliationResult {
+        const currentValue = game.customTileEffects;
+        const normalized = normalizeCustomTileEffects(currentValue);
+        if (
+            currentValue !== undefined &&
+            !this.destinationEffectsAreNormalized(currentValue, normalized)
+        ) {
+            return { ok: false, error: ERROR_INVALID_DESTINATION_EFFECTS };
+        }
+
+        const definitions = normalized.map((definition) => ({
+            ...definition,
+            baseEffectIds: definition.baseEffectIds.slice(),
+        }));
+        const usedIds = new Set(definitions.map((definition) => definition.id));
+        const effectIds: CustomTileEffectId[] = [];
+        let added = 0;
+        let reused = 0;
+
+        for (const recipe of recipes) {
+            const nameKey = recipe.name.toLocaleLowerCase();
+            const existing = definitions.find(
+                (definition) => definition.name.toLocaleLowerCase() === nameKey
+            );
+            if (existing) {
+                if (!this.recipesMatch(existing, recipe)) {
+                    return { ok: false, error: ERROR_EFFECT_NAME_CONFLICT };
+                }
+                effectIds.push(existing.id);
+                reused += 1;
+                continue;
+            }
+            if (definitions.length >= CUSTOM_TILE_EFFECT_LIMITS.maxDefinitions) {
+                return { ok: false, error: ERROR_EFFECT_CAPACITY };
+            }
+            let suffix = 0;
+            while (usedIds.has(`custom:${suffix.toString(36)}`)) suffix += 1;
+            const id = `custom:${suffix.toString(36)}` as CustomTileEffectId;
+            usedIds.add(id);
+            definitions.push({
+                id,
+                name: recipe.name,
+                baseEffectIds: recipe.baseEffectIds.slice(),
+                ...(recipe.color ? { color: recipe.color } : {}),
+            });
+            effectIds.push(id);
+            added += 1;
+        }
+
+        const tilesByKey = new Map<string, GameTile[]>();
+        for (const tile of game.tileset.tiles) {
+            if (tile.id === undefined) continue;
+            const key = String(tile.id);
+            const matching = tilesByKey.get(key) ?? [];
+            matching.push(tile);
+            tilesByKey.set(key, matching);
+        }
+
+        const resolvedAssignments: Array<{ tile: GameTile; effectId: CustomTileEffectId }> = [];
+        let skippedAssignments = 0;
+        for (const assignment of assignments) {
+            const matching = tilesByKey.get(assignment.tileKey);
+            const effectId = effectIds[assignment.effectIndex];
+            if (!matching || matching.length !== 1) {
+                skippedAssignments += 1;
+                continue;
+            }
+            resolvedAssignments.push({ tile: matching[0], effectId });
+        }
+
+        return {
+            ok: true,
+            definitions,
+            resolvedAssignments,
+            added,
+            reused,
+            skippedAssignments,
+        };
+    }
+
     exportSprites(): void {
         const game = this.getGame();
         const entries = game.customSprites;
@@ -134,7 +362,11 @@ export class EditorCustomSpritesService {
             return;
         }
 
-        const serialized = CustomSpritesIO.serialize(entries);
+        const serialized = CustomSpritesIO.serialize(
+            entries,
+            undefined,
+            this.collectAppliedEffects(game)
+        );
         if (!serialized.ok) {
             alert(this.mapError(serialized.error));
             return;
@@ -182,7 +414,19 @@ export class EditorCustomSpritesService {
 
         const game = this.getGame();
         const current = game.customSprites;
-        const mode = this.chooseImportMode(Array.isArray(current) ? current.length : 0);
+        const hasEffects = parsed.customEffects.length > 0;
+        const reconciled = hasEffects
+            ? this.reconcileEffects(game, parsed.customEffects, parsed.tileEffectAssignments)
+            : null;
+        if (reconciled && !reconciled.ok) {
+            alert(this.mapError(reconciled.error));
+            return;
+        }
+
+        const mode = this.chooseImportMode(
+            Array.isArray(current) ? current.length : 0,
+            hasEffects
+        );
         if (!mode) return;
 
         const applied = CustomSpritesIO.applyImport(current, parsed.sprites, mode);
@@ -192,6 +436,12 @@ export class EditorCustomSpritesService {
         }
 
         this.assignCustomSprites(applied.sprites);
+        if (reconciled?.ok) {
+            game.customTileEffects = reconciled.definitions;
+            for (const assignment of reconciled.resolvedAssignments) {
+                assignment.tile.visualEffect = assignment.effectId;
+            }
+        }
         this.refreshAfterMutation();
 
         const appliedCount = parsed.sprites.length;
@@ -204,37 +454,74 @@ export class EditorCustomSpritesService {
                       ` (${skipped} skipped)`
                   )
                 : '';
-        alert(
-            this.format(
-                'project.sprites.importSuccess',
-                { applied: appliedCount, skippedSuffix },
-                `Imported ${appliedCount} sprite(s)${skippedSuffix}.`
-            )
-        );
+        if (reconciled?.ok) {
+            alert(this.format(
+                'project.sprites.importSuccessWithEffects',
+                {
+                    applied: appliedCount,
+                    skipped,
+                    added: reconciled.added,
+                    reused: reconciled.reused,
+                    assignmentsApplied: reconciled.resolvedAssignments.length,
+                    assignmentsSkipped: reconciled.skippedAssignments,
+                },
+                `Imported ${appliedCount} sprite(s) (${skipped} skipped), added ${reconciled.added} effect(s), reused ${reconciled.reused}, and applied ${reconciled.resolvedAssignments.length} tile assignment(s) (${reconciled.skippedAssignments} skipped).`
+            ));
+        } else {
+            alert(
+                this.format(
+                    'project.sprites.importSuccess',
+                    { applied: appliedCount, skippedSuffix },
+                    `Imported ${appliedCount} sprite(s)${skippedSuffix}.`
+                )
+            );
+        }
     }
 
     /**
      * Default merge; Cancel on merge dialog offers replace with a second confirm.
      * Returns null if the user aborts.
      */
-    private chooseImportMode(currentCount: number): 'merge' | 'replace' | null {
+    private chooseImportMode(
+        currentCount: number,
+        hasEffects: boolean
+    ): 'merge' | 'replace' | null {
         if (currentCount === 0) {
+            if (hasEffects) {
+                const confirmed = window.confirm(
+                    this.t(
+                        'project.sprites.confirmEffectsOnly',
+                        'Import this sprite pack? It will add custom effect recipes and overwrite effect assignments on the listed tiles.'
+                    )
+                );
+                return confirmed ? 'replace' : null;
+            }
             return 'replace';
         }
 
         const merge = window.confirm(
-            this.t(
-                'project.sprites.confirmMerge',
-                'Merge into current custom sprites?\n\nOK = Merge\nCancel = Replace all (with confirmation)'
-            )
+            hasEffects
+                ? this.t(
+                      'project.sprites.confirmMergeWithEffects',
+                      'Merge into current custom sprites? The pack will also add custom effects and overwrite effect assignments on the listed tiles.\n\nOK = Merge\nCancel = Replace all sprites (with confirmation)'
+                  )
+                : this.t(
+                      'project.sprites.confirmMerge',
+                      'Merge into current custom sprites?\n\nOK = Merge\nCancel = Replace all (with confirmation)'
+                  )
         );
         if (merge) return 'merge';
 
         const replace = window.confirm(
-            this.t(
-                'project.sprites.confirmReplace',
-                'Replace all custom sprites with the imported pack?'
-            )
+            hasEffects
+                ? this.t(
+                      'project.sprites.confirmReplaceWithEffects',
+                      'Replace all custom sprites with the imported pack? The pack will also add custom effects and overwrite effect assignments on the listed tiles.'
+                  )
+                : this.t(
+                      'project.sprites.confirmReplace',
+                      'Replace all custom sprites with the imported pack?'
+                  )
         );
         return replace ? 'replace' : null;
     }

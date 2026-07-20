@@ -1,5 +1,9 @@
 import type { CustomSpriteEntry, CustomSpriteFrame, CustomSpriteVariant } from '../../types/gameState';
 import { CustomSpriteLookup } from '../../runtime/domain/sprites/CustomSpriteLookup';
+import {
+    CustomEffectsIO,
+    type PortableCustomEffectRecipe,
+} from './CustomEffectsIO';
 
 export type SpritePackV1 = {
     format: 'tiny-rpg-studio-custom-sprites';
@@ -9,8 +13,35 @@ export type SpritePackV1 = {
     sprites: CustomSpriteEntry[];
 };
 
+export type TileEffectAssignment = {
+    tileKey: string;
+    effectIndex: number;
+};
+
+export type AppliedTileEffectsBundle = {
+    customEffects: PortableCustomEffectRecipe[];
+    tileEffectAssignments: TileEffectAssignment[];
+};
+
+export type SpritePackV2 = {
+    format: 'tiny-rpg-studio-custom-sprites';
+    version: 2;
+    exportedAt?: string;
+    engineHint?: string;
+    sprites: CustomSpriteEntry[];
+    customEffects?: PortableCustomEffectRecipe[];
+    tileEffectAssignments?: TileEffectAssignment[];
+};
+
 export type ParseResult =
-    | { ok: true; sprites: CustomSpriteEntry[]; skipped: number; warnings: string[] }
+    | {
+          ok: true;
+          sprites: CustomSpriteEntry[];
+          customEffects: PortableCustomEffectRecipe[];
+          tileEffectAssignments: TileEffectAssignment[];
+          skipped: number;
+          warnings: string[];
+      }
     | { ok: false; error: string };
 
 export type ApplyResult =
@@ -33,7 +64,7 @@ const VALID_VARIANTS = new Set<CustomSpriteVariant>(['base', 'on']);
 
 export class CustomSpritesIO {
     static readonly FORMAT = 'tiny-rpg-studio-custom-sprites' as const;
-    static readonly VERSION = 1 as const;
+    static readonly VERSION = 2 as const;
     /** Share-codec safe (1-byte count in ShareEncoder). */
     static readonly MAX_ENTRIES = 255;
     static readonly MAX_FRAMES_PER_ENTRY = 4;
@@ -48,6 +79,8 @@ export class CustomSpritesIO {
     static readonly ERROR_NOTHING_TO_IMPORT = 'nothing_to_import';
     static readonly ERROR_FILE_TOO_LARGE = 'file_too_large';
     static readonly ERROR_MERGE_TOO_LARGE = 'merge_too_large';
+    static readonly ERROR_INVALID_EFFECT_RECIPES = 'invalid_effect_recipes';
+    static readonly ERROR_INVALID_EFFECT_ASSIGNMENTS = 'invalid_effect_assignments';
 
     /**
      * Serialize custom sprite entries to a versioned JSON pack string.
@@ -56,7 +89,8 @@ export class CustomSpritesIO {
      */
     static serialize(
         entries: CustomSpriteEntry[],
-        meta?: { engineHint?: string; exportedAt?: string }
+        meta?: { engineHint?: string; exportedAt?: string },
+        appliedEffects?: AppliedTileEffectsBundle
     ): SerializeResult {
         if (!Array.isArray(entries)) {
             return { ok: false, error: CustomSpritesIO.ERROR_NOTHING_TO_IMPORT };
@@ -65,7 +99,26 @@ export class CustomSpritesIO {
             return { ok: false, error: CustomSpritesIO.ERROR_TOO_MANY_ENTRIES };
         }
 
-        const pack: SpritePackV1 = {
+        let validatedEffects: AppliedTileEffectsBundle | undefined;
+        if (appliedEffects !== undefined) {
+            const recipes = CustomEffectsIO.validatePortableRecipes(appliedEffects.customEffects);
+            if (!recipes.ok) {
+                return { ok: false, error: CustomSpritesIO.ERROR_INVALID_EFFECT_RECIPES };
+            }
+            const assignments = CustomSpritesIO.validateAssignments(
+                appliedEffects.tileEffectAssignments,
+                recipes.recipes.length
+            );
+            if (!assignments) {
+                return { ok: false, error: CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS };
+            }
+            validatedEffects = {
+                customEffects: recipes.recipes,
+                tileEffectAssignments: assignments,
+            };
+        }
+
+        const pack: SpritePackV2 = {
             format: CustomSpritesIO.FORMAT,
             version: CustomSpritesIO.VERSION,
             exportedAt: meta?.exportedAt ?? new Date().toISOString(),
@@ -75,13 +128,18 @@ export class CustomSpritesIO {
                 variant: entry.variant ?? 'base',
                 frames: CustomSpritesIO.cloneFrames(entry.frames),
             })),
+            ...(validatedEffects ?? {}),
         };
 
         if (meta?.engineHint !== undefined) {
             pack.engineHint = meta.engineHint;
         }
 
-        return { ok: true, text: JSON.stringify(pack, null, 2) };
+        const text = JSON.stringify(pack, null, 2);
+        if (new TextEncoder().encode(text).length > CustomSpritesIO.MAX_FILE_BYTES) {
+            return { ok: false, error: CustomSpritesIO.ERROR_FILE_TOO_LARGE };
+        }
+        return { ok: true, text };
     }
 
     /**
@@ -115,7 +173,7 @@ export class CustomSpritesIO {
             return { ok: false, error: CustomSpritesIO.ERROR_WRONG_FORMAT };
         }
 
-        if (record.version !== CustomSpritesIO.VERSION) {
+        if (record.version !== 1 && record.version !== CustomSpritesIO.VERSION) {
             return { ok: false, error: CustomSpritesIO.ERROR_UNSUPPORTED_VERSION };
         }
 
@@ -156,7 +214,42 @@ export class CustomSpritesIO {
             return { ok: false, error: CustomSpritesIO.ERROR_TOO_MANY_ENTRIES };
         }
 
-        return { ok: true, sprites: deduped, skipped, warnings };
+        let customEffects: PortableCustomEffectRecipe[] = [];
+        let tileEffectAssignments: TileEffectAssignment[] = [];
+        if (record.version === CustomSpritesIO.VERSION) {
+            const hasEffects = Object.prototype.hasOwnProperty.call(record, 'customEffects');
+            const hasAssignments = Object.prototype.hasOwnProperty.call(
+                record,
+                'tileEffectAssignments'
+            );
+            if (hasEffects !== hasAssignments) {
+                return { ok: false, error: CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS };
+            }
+            if (hasEffects) {
+                const recipes = CustomEffectsIO.validatePortableRecipes(record.customEffects);
+                if (!recipes.ok) {
+                    return { ok: false, error: CustomSpritesIO.ERROR_INVALID_EFFECT_RECIPES };
+                }
+                const assignments = CustomSpritesIO.validateAssignments(
+                    record.tileEffectAssignments,
+                    recipes.recipes.length
+                );
+                if (!assignments) {
+                    return { ok: false, error: CustomSpritesIO.ERROR_INVALID_EFFECT_ASSIGNMENTS };
+                }
+                customEffects = recipes.recipes;
+                tileEffectAssignments = assignments;
+            }
+        }
+
+        return {
+            ok: true,
+            sprites: deduped,
+            customEffects,
+            tileEffectAssignments,
+            skipped,
+            warnings,
+        };
     }
 
     /**
@@ -293,6 +386,39 @@ export class CustomSpritesIO {
             frame.push(row);
         }
         return frame;
+    }
+
+    private static validateAssignments(
+        value: unknown,
+        effectCount: number
+    ): TileEffectAssignment[] | null {
+        if (!Array.isArray(value) || value.length === 0) return null;
+
+        const assignments: TileEffectAssignment[] = [];
+        const usedTileKeys = new Set<string>();
+        for (const candidate of value) {
+            if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) {
+                return null;
+            }
+            const record = candidate as Record<string, unknown>;
+            if (
+                typeof record.tileKey !== 'string' ||
+                record.tileKey.trim().length === 0 ||
+                typeof record.effectIndex !== 'number' ||
+                !Number.isInteger(record.effectIndex) ||
+                record.effectIndex < 0 ||
+                record.effectIndex >= effectCount ||
+                usedTileKeys.has(record.tileKey)
+            ) {
+                return null;
+            }
+            usedTileKeys.add(record.tileKey);
+            assignments.push({
+                tileKey: record.tileKey,
+                effectIndex: record.effectIndex,
+            });
+        }
+        return assignments;
     }
 }
 
