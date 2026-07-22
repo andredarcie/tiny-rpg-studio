@@ -92,7 +92,7 @@ export class ProjectSaveUI {
     }
   }
 
-  private refreshHistoryUI(): void {
+  refreshHistoryUI(): void {
     if (!this.historyContainer) return;
     this.historyContainer.innerHTML = '';
     const history = this.saveManager.getHistory();

@@ -166,8 +166,7 @@ describe('TinyRPGApplication.setupTabs', () => {
 describe('TinyRPGApplication.bindResetButton', () => {
   let mockGameEngine: MockGameEngine;
   let resetButton: HTMLButtonElement | null;
-  let originalOpen: typeof window.open;
-  let originalLocation: Location;
+  let createNewGame: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     mockGameEngine = new MockGameEngine();
@@ -185,47 +184,28 @@ describe('TinyRPGApplication.bindResetButton', () => {
       return '';
     });
 
-    // Mock window.open
-    originalOpen = globalThis.open;
-    globalThis.open = vi.fn(() => null) as unknown as typeof window.open; // Mock window.open to return null
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-
-    // Mock globalThis.location
-    originalLocation = globalThis.location;
-    // Need to mock the location to test getBaseUrl in editor mode
-    // @ts-expect-error test replaces window.location in jsdom
-    delete globalThis.location;
-    globalThis.location = {
-      origin: 'http://localhost',
-      pathname: '/some/path',
-      assign: vi.fn(),
-      replace: vi.fn(),
-      reload: vi.fn(),
-    } as unknown as Location;
-
     // Call bindResetButton to set up event listeners
-    TinyRPGApplication.bindResetButton(asBindResetGameEngine(mockGameEngine));
+    createNewGame = vi.fn();
+    TinyRPGApplication.bindResetButton(asBindResetGameEngine(mockGameEngine), createNewGame);
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
     vi.restoreAllMocks(); // Restore all mocks after each test
-    globalThis.open = originalOpen; // Restore original window.open
-    globalThis.location = originalLocation; // Restore original window.location
   });
 
   it('should call gameEngine.resetGame when clicked in game mode', () => {
     document.body.classList.remove('editor-mode'); // Ensure game mode
     resetButton?.click();
     expect(mockGameEngine.resetGame).toHaveBeenCalledTimes(1);
-    expect(globalThis.open).not.toHaveBeenCalled();
+    expect(createNewGame).not.toHaveBeenCalled();
   });
 
-  it('should open a new tab/window when clicked in editor mode', () => {
+  it('should replace the current project when clicked in editor mode', () => {
     document.body.classList.add('editor-mode'); // Ensure editor mode
     resetButton?.click();
     expect(mockGameEngine.resetGame).not.toHaveBeenCalled();
-    expect(globalThis.open).toHaveBeenCalledWith('http://localhost/some/path', '_blank', 'noopener');
+    expect(createNewGame).toHaveBeenCalledTimes(1);
   });
 
   it('should update button text and aria-label when game-tab-activated is dispatched', () => {
@@ -294,30 +274,6 @@ describe('TinyRPGApplication.bindResetButton', () => {
     ).not.toThrow();
   });
 
-  it('uses popup path when window.open returns a window handle', () => {
-    const popupHandle = {} as Window;
-    globalThis.open = vi.fn(() => popupHandle) as unknown as typeof window.open;
-    document.body.classList.add('editor-mode');
-
-    resetButton?.click();
-
-    expect(globalThis.open).toHaveBeenCalledWith(
-      'http://localhost/some/path',
-      '_blank',
-      'noopener',
-    );
-    expect(document.querySelector('a')).toBeNull();
-  });
-
-  it('handles missing global location by opening blank target url in editor mode', () => {
-    // @ts-expect-error test replaces window.location in jsdom
-    delete globalThis.location;
-    document.body.classList.add('editor-mode');
-
-    resetButton?.click();
-
-    expect(globalThis.open).toHaveBeenCalledWith('', '_blank', 'noopener');
-  });
 });
 
 describe('TinyRPGApplication.bindExportResetButton', () => {

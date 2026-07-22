@@ -161,6 +161,46 @@ describe('SDK NPC and enemy variable wiring', () => {
         expect(npc?.rewardVariableId).toBe('var-2');
     });
 
+    it('NPC definitive choice and branch rewards survive round-trip', () => {
+        const g = new TinyRPG();
+        const yes = g.variable(), no = g.variable();
+        g.room(0).addNPC({
+            type: 'old-mage', x: 2, y: 2, text: 'Decide.',
+            choice: {
+                prompt: 'Restart the clock?',
+                yesText: 'Then the city lives.',
+                noText: 'Then let it sleep.',
+                yesVariable: yes,
+                noVariable: no,
+            },
+        });
+        const sprites = (roundTrip(g).sprites as Array<Record<string, unknown>> | undefined) ?? [];
+        const npc = sprites.find(s => s.type === 'old-mage');
+        expect(npc?.choiceEnabled).toBe(true);
+        expect(npc?.choicePrompt).toBe('Restart the clock?');
+        expect(npc?.choiceYesText).toBe('Then the city lives.');
+        expect(npc?.choiceNoText).toBe('Then let it sleep.');
+        expect(npc?.choiceYesVariableId).toBe('var-1');
+        expect(npc?.choiceNoVariableId).toBe('var-2');
+    });
+
+    it('NPC choice works without optional branch rewards', () => {
+        const g = new TinyRPG();
+        g.room(0).addNPC({
+            type: 'knight', x: 1, y: 1,
+            choice: {
+                prompt: 'Open the gate?',
+                yesText: 'The gate opens.',
+                noText: 'The gate stays shut.',
+            },
+        });
+        const sprites = (roundTrip(g).sprites as Array<Record<string, unknown>> | undefined) ?? [];
+        const npc = sprites.find(s => s.type === 'knight');
+        expect(npc?.choiceEnabled).toBe(true);
+        expect(npc?.choiceYesVariableId).toBeNull();
+        expect(npc?.choiceNoVariableId).toBeNull();
+    });
+
     it('enemy defeat variable survives round-trip', () => {
         const g = new TinyRPG();
         const slain = g.variable();

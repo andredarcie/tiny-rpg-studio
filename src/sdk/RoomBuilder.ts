@@ -63,6 +63,16 @@ type NpcOptions = {
     rewardVariable?: VariableRef | number;
     /** Variable set ON instead when the conditional dialog is shown. */
     conditionalRewardVariable?: VariableRef | number;
+    /** Optional definitive Yes/No choice shown after the normal dialog. */
+    choice?: {
+        prompt: string;
+        yesText: string;
+        noText: string;
+        /** Variable set ON when the player answers Yes. */
+        yesVariable?: VariableRef | number;
+        /** Variable set ON when the player answers No. */
+        noVariable?: VariableRef | number;
+    };
 };
 
 type EnemyOptions = {
@@ -138,6 +148,18 @@ class RoomBuilder {
         }
         if (opts.conditionalRewardVariable !== undefined) {
             sprite.conditionalRewardVariableId = resolveVariableId(opts.conditionalRewardVariable);
+        }
+        if (opts.choice !== undefined) {
+            sprite.choiceEnabled = true;
+            sprite.choicePrompt = opts.choice.prompt;
+            sprite.choiceYesText = opts.choice.yesText;
+            sprite.choiceNoText = opts.choice.noText;
+            if (opts.choice.yesVariable !== undefined) {
+                sprite.choiceYesVariableId = resolveVariableId(opts.choice.yesVariable);
+            }
+            if (opts.choice.noVariable !== undefined) {
+                sprite.choiceNoVariableId = resolveVariableId(opts.choice.noVariable);
+            }
         }
         this._sprites.push(sprite);
         return this;

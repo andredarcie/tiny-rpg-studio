@@ -625,7 +625,20 @@ class EditorManager {
         this.projectSaveManager?.destroy();
     }
 
-    createNewGame() {
+    createNewGame(): boolean {
+        try {
+            const currentData = this.gameEngine.exportGameData();
+            const shareUrl = ShareUtils.buildShareUrl(currentData as Record<string, unknown> | null | undefined);
+            if (!shareUrl || !this.projectSaveManager) return false;
+
+            const title = this.dom.titleInput?.value ?? '';
+            const result = this.projectSaveManager.manualSave(shareUrl, title);
+            if (!result.ok) return false;
+            this.projectSaveUI?.refreshHistoryUI();
+        } catch {
+            return false;
+        }
+
         const emptyLayer = () => Array.from({ length: 8 }, () => Array(8).fill(null) as null[]);
         const data = {
             title: TextResources.get('editor.newGame.defaultTitle', 'Novo Jogo'),
@@ -655,6 +668,7 @@ class EditorManager {
             }
         };
         this.restore(data);
+        return true;
     }
 }
 

@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => {
 
   const editorManagerInstance = {
     renderAll: vi.fn(),
+    createNewGame: vi.fn(),
   };
 
   return {
@@ -131,7 +132,7 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     // editor-tab activation, so it must NOT be built during boot.
     expect(mocks.EditorManagerCtor).not.toHaveBeenCalled();
     expect(mocks.EditorExportServiceCtor).toHaveBeenCalledTimes(1);
-    expect(bindResetSpy).toHaveBeenCalledWith(mocks.engine);
+    expect(bindResetSpy).toHaveBeenCalledWith(mocks.engine, expect.any(Function));
     expect(bindLangSpy).toHaveBeenCalledTimes(1);
     expect(logSpy).toHaveBeenCalled();
 
@@ -174,6 +175,10 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
       expect(mocks.EditorManagerCtor).toHaveBeenCalledWith(mocks.engine);
       expect(mocks.editorManagerInstance.renderAll).toHaveBeenCalled();
     });
+
+    const createNewGame = bindResetSpy.mock.calls[0]?.[1];
+    await createNewGame?.();
+    expect(mocks.editorManagerInstance.createNewGame).toHaveBeenCalledTimes(1);
   });
 
   it('initializeApplication skips EditorManager in export mode and api.renderAll is safe', () => {

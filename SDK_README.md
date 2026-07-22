@@ -118,7 +118,33 @@ the same tile (placing a second object on an occupied tile throws).
 | Method | Signature | Description |
 |---|---|---|
 | `addEnemy` | `({ type: EnemyType; x; y; defeatVariable? }): this` | Adds an enemy at `(x, y)`. Max 9 enemies per room. `defeatVariable` (`VariableRef \| number`) is set ON when the enemy is defeated. Throws on invalid type, out-of-range coordinates, or a full room. |
-| `addNPC` | `({ type: NpcType; x; y; text?; conditionVariable?; conditionText?; rewardVariable?; conditionalRewardVariable? }): this` | Adds an NPC at `(x, y)` with optional dialog. When `conditionVariable` is ON the NPC shows `conditionText`. `rewardVariable` is set ON after the player reads the NPC; `conditionalRewardVariable` is set ON instead when the conditional dialog is shown. Variable fields accept `VariableRef \| number`. |
+| `addNPC` | `({ type: NpcType; x; y; text?; conditionVariable?; conditionText?; rewardVariable?; conditionalRewardVariable?; choice? }): this` | Adds an NPC at `(x, y)` with optional dialog. When `conditionVariable` is ON the NPC shows `conditionText`. Reward fields set variables after dialog. `choice` adds a definitive one-time Yes/No prompt with branch text and optional `yesVariable` / `noVariable` rewards. Variable fields accept `VariableRef \| number`. |
+
+An NPC choice is answered once per playthrough. The selected branch displays its
+own response text and can optionally turn on a variable:
+
+```js
+const accepted = game.variable('accepted');
+const refused = game.variable('refused');
+
+game.room(0).addNPC({
+  type: 'old-mage',
+  x: 3,
+  y: 3,
+  text: 'There is one decision left.',
+  choice: {
+    prompt: 'Restart the clock?',
+    yesText: 'Then the city lives.',
+    noText: 'Then let it finally stop.',
+    yesVariable: accepted,
+    noVariable: refused,
+  },
+});
+```
+
+`prompt`, `yesText`, and `noText` are required when `choice` is present.
+`yesVariable` and `noVariable` are optional and accept either a `VariableRef` or
+a 1-based variable slot number.
 
 #### Collectibles & equipment — unique per room
 

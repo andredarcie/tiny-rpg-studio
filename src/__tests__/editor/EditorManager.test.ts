@@ -657,15 +657,21 @@ describe('EditorManager', () => {
   // ─── createNewGame() ──────────────────────────────────────────────────────
 
   it('createNewGame calls restore with a valid game structure', () => {
+    localStorage.clear();
+    const shareUrl = 'https://example.com/#old-project';
+    vi.spyOn(ShareUtils, 'buildShareUrl').mockReturnValue(shareUrl);
+    gameEngine = makeGameEngine({ exportGameData: vi.fn(() => ({ title: 'Old Project' })) });
     const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
     vi.clearAllMocks();
-    mgr.createNewGame();
+    expect(mgr.createNewGame()).toBe(true);
     expect(gameEngine.importGameData).toHaveBeenCalled();
     const importMock = vi.mocked(gameEngine.importGameData);
     const data = importMock.mock.calls[0]?.[0] as { title: string; rooms: unknown[]; sprites: unknown[] };
     expect(data.title).toBe('New Game');
     expect(data.rooms).toHaveLength(1);
     expect(data.sprites).toEqual([]);
+    expect(localStorage.getItem('tiny-rpg-projects-history')).toContain(shareUrl);
+    mgr.destroy();
   });
 });
 

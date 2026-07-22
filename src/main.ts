@@ -170,7 +170,10 @@ class TinyRPGApplication {
     new ExploreModal();
     new DevlogModal();
     new AboutModal();
-    this.bindResetButton(gameEngine);
+    this.bindResetButton(gameEngine, async () => {
+      await ensureEditor();
+      editorManager?.createNewGame();
+    });
     this.bindExportResetButton(gameEngine);
     this.bindFullscreenButton();
     this.bindBackgroundMusicVolumeControl(gameEngine);
@@ -178,10 +181,6 @@ class TinyRPGApplication {
 
     console.log(getTextResource('log.engineReady'));
   }
-
-    static getLocation(): Location | null {
-      return ((globalThis as typeof globalThis & { location?: Location }).location) ?? null;
-    }
 
     /**
      * Attaches the profiler's instrumentation to the built engine. `enable()` is
@@ -197,32 +196,9 @@ class TinyRPGApplication {
       console.log('[TinyRPG] Performance profiler enabled.');
     }
 
-    static bindResetButton(gameEngine: GameEngine): void {
+  static bindResetButton(gameEngine: GameEngine, createNewGame?: () => void | Promise<void>): void {
     const resetButton = document.getElementById('btn-reset');
     if (!(resetButton instanceof HTMLButtonElement)) return;
-
-      const getBaseUrl = () => {
-        const location = this.getLocation();
-        if (!location) return '';
-        return `${location.origin}${location.pathname}`;
-      };
-
-    const openNewGameTab = (url: string) => {
-      const popup = globalThis.open(url, '_blank', 'noopener');
-      if (popup) {
-        return true;
-      }
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-      anchor.style.position = 'absolute';
-      anchor.style.left = '-9999px';
-      document.body.appendChild(anchor);
-      anchor.click();
-      requestAnimationFrame(() => anchor.remove());
-      return true;
-    };
 
     const handleClick = (ev: MouseEvent) => {
       const isEditorMode = document.body.classList.contains('editor-mode');
@@ -230,8 +206,7 @@ class TinyRPGApplication {
         ev.preventDefault();
         ev.stopImmediatePropagation();
         track('new_game_clicked');
-        const targetUrl = getBaseUrl();
-        openNewGameTab(targetUrl);
+        void createNewGame?.();
         resetButton.blur();
         return false;
       }
