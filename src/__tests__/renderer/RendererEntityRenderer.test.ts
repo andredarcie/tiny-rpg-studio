@@ -248,6 +248,68 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['push box before pressure plate', [ITEM_TYPES.PUSH_BOX, ITEM_TYPES.PRESSURE_PLATE]],
+    ['pressure plate before push box', [ITEM_TYPES.PRESSURE_PLATE, ITEM_TYPES.PUSH_BOX]]
+  ])('drawObjects renders an active pressure plate below its box with %s', (_label, objectTypes) => {
+    const { renderer, game, gameState, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    const pressurePlate = sprite(10);
+    const activePressurePlate = sprite(11);
+    const pushBox = sprite(12);
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue({
+      [ITEM_TYPES.PRESSURE_PLATE]: pressurePlate,
+      [`${ITEM_TYPES.PRESSURE_PLATE}--on`]: activePressurePlate,
+      [ITEM_TYPES.PUSH_BOX]: pushBox
+    });
+    const isVariableOn = gameState.isVariableOn as NonNullable<EntityRendererGameState['isVariableOn']>;
+    vi.mocked(isVariableOn).mockReturnValue(true);
+    game.objects = objectTypes.map((type) => ({
+      roomIndex: 1,
+      x: 2,
+      y: 3,
+      type,
+      ...(type === ITEM_TYPES.PRESSURE_PLATE ? { variableId: 'plate-variable' } : {})
+    }));
+
+    renderer.drawObjects(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(2);
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(1, ctx, activePressurePlate, 32, 48, 2);
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(2, ctx, pushBox, 32, 48, 2);
+    expect(canvasHelper.drawSprite).not.toHaveBeenCalledWith(ctx, pressurePlate, 32, 48, 2);
+  });
+
+  it('drawObjects preserves stored order while stably layering activated pressure plates', () => {
+    const { renderer, game, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    const firstSprite = sprite(20);
+    const activePressurePlate = sprite(21);
+    const secondSprite = sprite(22);
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue({
+      first: firstSprite,
+      [ITEM_TYPES.PRESSURE_PLATE]: sprite(23),
+      [`${ITEM_TYPES.PRESSURE_PLATE}--on`]: activePressurePlate,
+      second: secondSprite
+    });
+    const first = { roomIndex: 1, x: 0, y: 0, type: 'first' };
+    const plate = { roomIndex: 1, x: 1, y: 1, type: ITEM_TYPES.PRESSURE_PLATE, activated: true };
+    const second = { roomIndex: 1, x: 2, y: 2, type: 'second' };
+    game.objects = [first, plate, second];
+    const storedOrder = [...game.objects];
+
+    renderer.drawObjects(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(3);
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(1, ctx, activePressurePlate, 16, 16, 2);
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(2, ctx, firstSprite, 0, 0, 2);
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(3, ctx, secondSprite, 32, 32, 2);
+    expect(game.objects).toEqual(storedOrder);
+    expect(game.objects[0]).toBe(first);
+    expect(game.objects[1]).toBe(plate);
+    expect(game.objects[2]).toBe(second);
+  });
+
   it('drawItems draws only items in current room that are not collected', () => {
     const { renderer, game, player, canvasHelper, paletteManager } = makeFixture();
     const ctx = createCtx();
