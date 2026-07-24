@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-24-solid-traps',
+    date: '2026-07-24',
+    title: 'Turn traps into solid obstacles',
+    description:
+      'Traps now have a Solid option. While their linked variable is OFF, ordinary traps still deal damage, but solid traps block players and enemies instead. Turn the variable ON to open the path. The setting travels with project files, share links, SDK games, and HTML exports.',
+  },
+  {
     id: '2026-07-20-custom-effects-packs',
     date: '2026-07-20',
     title: 'Move custom effects between projects',

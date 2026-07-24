@@ -4,7 +4,7 @@ import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
 
 describe('ShareConstants', () => {
   it('exposes current version and world metadata', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_37);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_38);
     expect(ShareConstants.WORLD_ROOM_COUNT).toBe(9);
     expect(ShareConstants.MATRIX_SIZE).toBe(8);
   });
@@ -28,6 +28,12 @@ describe('ShareConstants', () => {
     expect(ShareConstants.CUSTOM_TILE_EFFECT_VERSION).toBe(ShareConstants.VERSION_37);
     expect(ShareConstants.TILE_VISUAL_EFFECT_VERSION).toBe(ShareConstants.VERSION_36);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_37)).toBe(true);
+  });
+
+  it('registers solid traps as VERSION_38 without moving older feature boundaries', () => {
+    expect(ShareConstants.TRAP_SOLID_VERSION).toBe(ShareConstants.VERSION_38);
+    expect(ShareConstants.CUSTOM_TILE_EFFECT_VERSION).toBe(ShareConstants.VERSION_37);
+    expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_38)).toBe(true);
   });
 
   it('exposes legacy/tier constants and returns a palette copy', () => {

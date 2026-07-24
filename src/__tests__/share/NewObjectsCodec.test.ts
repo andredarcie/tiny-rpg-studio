@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setupShareGlobals, ShareEncoder, ShareDecoder } from './shareTestUtils';
 
-type DecodedObject = { type: string; x: number; y: number; roomIndex: number; variableId?: string | null; collected?: boolean; opened?: boolean; containsItemType?: string | null; randomItem?: boolean };
+type DecodedObject = { type: string; x: number; y: number; roomIndex: number; variableId?: string | null; solid?: boolean; collected?: boolean; opened?: boolean; containsItemType?: string | null; randomItem?: boolean };
 type DecodedData = { objects?: DecodedObject[] };
 
 const encode = (data: unknown) => ShareEncoder.buildShareCode(data as never);
@@ -89,6 +89,66 @@ describe('New objects — URL round-trip', () => {
         };
         const decoded = decode(encode(game));
         expect(findObjs(decoded, 'trap')).toHaveLength(2);
+    });
+
+    it('trap: mixed solid flags stay aligned with sorted positions and variables', () => {
+        const game = {
+            ...baseGame,
+            objects: [
+                { type: 'trap', x: 6, y: 6, roomIndex: 2, variableId: 'var-2', solid: true },
+                { type: 'trap', x: 3, y: 1, roomIndex: 0, variableId: 'var-1', solid: false },
+                { type: 'trap', x: 1, y: 1, roomIndex: 0, variableId: 'var-2', solid: true },
+            ],
+        };
+
+        const code = encode(game);
+        const traps = findObjs(decode(code), 'trap');
+
+        expect(code.split('.').some((segment) => segment.startsWith('_'))).toBe(true);
+        expect(traps.map(({ roomIndex, x, variableId, solid }) => ({ roomIndex, x, variableId, solid }))).toEqual([
+            { roomIndex: 0, x: 1, variableId: 'var-2', solid: true },
+            { roomIndex: 0, x: 3, variableId: 'var-1', solid: false },
+            { roomIndex: 2, x: 6, variableId: 'var-2', solid: true },
+        ]);
+    });
+
+    it('trap: omits all-false solid payload and defaults legacy or missing flags to false', () => {
+        const game = {
+            ...baseGame,
+            objects: [
+                { type: 'trap', x: 1, y: 1, roomIndex: 0, variableId: 'var-1' },
+                { type: 'trap', x: 2, y: 1, roomIndex: 0, variableId: 'var-1', solid: false },
+            ],
+        };
+        const allFalseCode = encode(game);
+        expect(allFalseCode.split('.').some((segment) => segment.startsWith('_'))).toBe(false);
+        expect(findObjs(decode(allFalseCode), 'trap').map((trap) => trap.solid)).toEqual([false, false]);
+
+        const solidCode = encode({
+            ...baseGame,
+            objects: [{ type: 'trap', x: 1, y: 1, roomIndex: 0, variableId: 'var-1', solid: true }],
+        });
+        const legacyCode = solidCode.replace(/^v[0-9a-z]+/, 'v11');
+        expect(findObj(decode(legacyCode), 'trap')?.solid).toBe(false);
+
+        const withoutFlags = solidCode.split('.').filter((segment) => !segment.startsWith('_')).join('.');
+        expect(findObj(decode(withoutFlags), 'trap')?.solid).toBe(false);
+    });
+
+    it('trap: truncated solid flags retain present values and default missing ones to false', () => {
+        const code = encode({
+            ...baseGame,
+            objects: [
+                { type: 'trap', x: 0, y: 0, roomIndex: 0, variableId: 'var-1', solid: true },
+                { type: 'trap', x: 1, y: 0, roomIndex: 0, variableId: 'var-1', solid: false },
+                { type: 'trap', x: 2, y: 0, roomIndex: 0, variableId: 'var-1', solid: true },
+            ],
+        });
+        const truncated = code.split('.').map((segment) =>
+            segment.startsWith('_') ? segment.slice(0, 3) : segment
+        ).join('.');
+
+        expect(findObjs(decode(truncated), 'trap').map((trap) => trap.solid)).toEqual([true, false, false]);
     });
 
     // ── pressure-plate ────────────────────────────────────────────────────────

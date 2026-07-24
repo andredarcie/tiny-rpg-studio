@@ -62,6 +62,7 @@ export interface MockGameState {
 
   // Objects and interactions
   getObjectAt: (roomIndex: number, x: number, y: number) => unknown | null;
+  getObjectsAt?: (roomIndex: number, x: number, y: number) => unknown[];
   getObjectsForRoom: (roomIndex: number) => unknown[];
   getPlayerEndText: (roomIndex: number) => string;
   setActiveEndingText: (text: string) => void;

@@ -7,6 +7,7 @@ import { EditorConstants } from '../EditorConstants';
 import { EditorRendererBase } from './EditorRendererBase';
 import { RendererConstants } from '../../../runtime/adapters/renderer/RendererConstants';
 import { CustomSpriteLookup } from '../../../runtime/domain/sprites/CustomSpriteLookup';
+import { isTrapActive } from '../../../runtime/domain/state/TrapState';
 import type { CustomSpriteEntry } from '../../../types/gameState';
 import { ONLINE_PLAYER_START_2_TYPE } from '../EditorObjectService';
 
@@ -27,6 +28,7 @@ type EditorObject = {
     x: number;
     y: number;
     variableId?: string | null;
+    solid?: boolean;
     on?: boolean;
     opened?: boolean;
     collected?: boolean;
@@ -334,11 +336,29 @@ class EditorObjectRenderer extends EditorRendererBase {
             label.append(`${this.t('objects.switch.variableLabel')} `, select);
             config.appendChild(label);
 
+            const checkLabel = document.createElement('label');
+            checkLabel.className = 'object-config-label object-config-label--checkbox';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = object.solid === true;
+            checkbox.addEventListener('change', () => {
+                this.gameEngine.setTrapSolidById(object.id ?? '', checkbox.checked);
+                refresh();
+            });
+            checkLabel.append(checkbox, ` ${this.t('objects.trap.solid')}`);
+            config.appendChild(checkLabel);
+
             const status = document.createElement('div');
             status.className = 'object-status';
-            const isActiveTrap = Boolean(this.gameEngine.isVariableOn(object.variableId || ''));
-            status.textContent = this.tf('objects.switch.stateLabel', {
-                state: isActiveTrap ? this.t('objects.state.on') : this.t('objects.state.off')
+            const isActive = isTrapActive(
+                object,
+                (variableId) => this.gameEngine.isVariableOn(variableId)
+            );
+            status.textContent = this.tf('objects.trap.stateLabel', {
+                state: isActive
+                    ? this.t('objects.trap.state.active')
+                    : this.t('objects.trap.state.deactivated')
             });
             config.appendChild(status);
             wrapper.appendChild(config);

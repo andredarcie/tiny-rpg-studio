@@ -2,6 +2,7 @@ import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { TextResources } from '../../adapters/TextResources';
 import { GameConfig } from '../../../config/GameConfig';
+import { isTrapActive } from '../../domain/state/TrapState';
 import { CombatManager } from './CombatManager';
 import { soundEngine } from '../SoundEngine';
 import type {
@@ -726,13 +727,18 @@ class EnemyManager {
   hasBlockingObject(roomIndex: number, x: number, y: number): boolean {
     const OT = ITEM_TYPES;
     const blockingObject = this.gameState.getObjectAt?.(roomIndex, x, y);
-    if (!blockingObject) return false;
-    if (blockingObject.type === OT.DOOR && !blockingObject.opened) return true;
-    if (blockingObject.type === OT.DOOR_VARIABLE) {
-      const isOpen = blockingObject.variableId ? this.gameState.isVariableOn?.(blockingObject.variableId) : false;
-      return !isOpen;
-    }
-    return false;
+    const objects = this.gameState.getObjectsAt?.(roomIndex, x, y)
+      ?? (blockingObject ? [blockingObject] : []);
+    return objects.some((object) => {
+      if (object.type === OT.DOOR && !object.opened) return true;
+      if (object.type === OT.DOOR_VARIABLE) {
+        const isOpen = object.variableId ? this.gameState.isVariableOn?.(object.variableId) : false;
+        return !isOpen;
+      }
+      return object.type === OT.TRAP
+        && object.solid === true
+        && isTrapActive(object, (variableId) => this.gameState.isVariableOn?.(variableId) ?? false);
+    });
   }
 
   isOccupied(enemies: EnemyState[], movingIndex: number, roomIndex: number, x: number, y: number): boolean {

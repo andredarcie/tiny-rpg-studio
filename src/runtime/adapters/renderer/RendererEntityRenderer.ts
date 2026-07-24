@@ -1,6 +1,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
+import { isTrapActive } from '../../domain/state/TrapState';
 import { bitmapFont } from './BitmapFont';
 import { FONT_SIZE } from '../../../config/FontConfig';
 import { drawUnreadNpcDialogMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
@@ -183,9 +184,10 @@ class RendererEntityRenderer {
                 sprite = (isActive ? objectSprites[`${object.type}--on`] : objectSprites[object.type]) || sprite;
             }
             if (object.type === OT.TRAP) {
-                const isActive = object.variableId
-                    ? !(this.gameState.isVariableOn?.(object.variableId) ?? false)
-                    : true;
+                const isActive = isTrapActive(
+                    object,
+                    (variableId) => this.gameState.isVariableOn?.(variableId) ?? false
+                );
                 sprite = (isActive ? objectSprites[object.type] : objectSprites[`${object.type}--on`]) || sprite;
             }
             if (!sprite) continue;
@@ -681,6 +683,7 @@ type GameObjectState = {
     opened?: boolean;
     on?: boolean;
     variableId?: string | null;
+    solid?: boolean;
     hiddenInRuntime?: boolean;
     hideWhenCollected?: boolean;
     hideWhenOpened?: boolean;

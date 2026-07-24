@@ -742,6 +742,12 @@ export class GameEngine {
     this.renderer.draw();
   }
 
+  setTrapSolidById(id: string, solid: boolean): boolean {
+    const result = this.gameState.setTrapSolidById(id, solid);
+    this.renderer.draw();
+    return result;
+  }
+
   setGateInputVariableById(id: string, variableId: string | null, slot: 1 | 2): string | null {
     const result = this.gameState.setGateInputVariableById(id, variableId, slot);
     this.gameState.recomputeLogicGates();

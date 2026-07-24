@@ -10,6 +10,7 @@ type RawObjectInput = {
     y?: number;
     id?: string;
     variableId?: string | null;
+    solid?: boolean;
     collected?: boolean;
     opened?: boolean;
     on?: boolean;
@@ -31,6 +32,7 @@ type ObjectEntry = {
     collected?: boolean;
     opened?: boolean;
     variableId?: string | null;
+    solid?: boolean;
     on?: boolean;
     endingText?: string;
     isCollectible?: boolean;
@@ -203,6 +205,9 @@ class StateObjectManager {
                     base.originalX = x;
                     base.originalY = y;
                 }
+                if (type === OT.TRAP) {
+                    base.solid = raw.solid === true;
+                }
                 if (type === OT.CHEST) {
                     const rawContains = raw.containsItemType;
                     base.containsItemType = typeof rawContains === 'string' && rawContains ? rawContains : null;
@@ -340,17 +345,21 @@ class StateObjectManager {
     }
 
     getObjectAt(roomIndex: number | null | undefined, x: number | null | undefined, y: number | null | undefined): ObjectEntry | null {
-        if (!this.worldManager) return null;
+        const matches = this.getObjectsAt(roomIndex, x, y);
+        // Push-box takes priority over passive floor objects (e.g. pressure plate underneath)
+        return matches.find((o) => o.type === ITEM_TYPES.PUSH_BOX) || matches[0] || null;
+    }
+
+    getObjectsAt(roomIndex: number | null | undefined, x: number | null | undefined, y: number | null | undefined): ObjectEntry[] {
+        if (!this.worldManager) return [];
         const targetRoom = this.worldManager.clampRoomIndex(roomIndex ?? 0);
         const cx = this.worldManager.clampCoordinate(x ?? 0);
         const cy = this.worldManager.clampCoordinate(y ?? 0);
-        const matches = this.getObjects().filter((object) =>
+        return this.getObjects().filter((object) =>
             object.roomIndex === targetRoom &&
             object.x === cx &&
             object.y === cy
         );
-        // Push-box takes priority over passive floor objects (e.g. pressure plate underneath)
-        return matches.find((o) => o.type === ITEM_TYPES.PUSH_BOX) || matches[0] || null;
     }
 
     setObjectPosition(type: ItemType, roomIndex: number, x: number, y: number): ObjectEntry | null {
@@ -396,6 +405,9 @@ class StateObjectManager {
             } as ObjectEntry;
             if (normalizedType === StateObjectManager.SWITCH_TYPE) {
                 entry.on = false;
+            }
+            if (normalizedType === ITEM_TYPES.TRAP) {
+                entry.solid = false;
             }
             if (normalizedType === StateObjectManager.PLAYER_END_TYPE) {
                 entry.endingText = '';
@@ -510,6 +522,13 @@ class StateObjectManager {
         const entry = this.getObjects().find((object) => object.id === id);
         if (!entry) return;
         entry.randomItem = randomItem;
+    }
+
+    setTrapSolidById(id: string, solid: boolean): boolean {
+        const entry = this.getObjects().find((object) => object.id === id);
+        if (!entry || entry.type !== ITEM_TYPES.TRAP) return false;
+        entry.solid = solid === true;
+        return entry.solid;
     }
 
     getAllObjects(): ObjectEntry[] {

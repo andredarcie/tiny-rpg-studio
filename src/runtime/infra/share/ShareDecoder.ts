@@ -410,6 +410,9 @@ class ShareDecoder {
         const trapVarNibbles = version >= ShareConstants.NEW_OBJECTS_VERSION
             ? decodeVarRef(payload.D, trapPositions.length)
             : [];
+        const trapSolidNibbles = version >= ShareConstants.TRAP_SOLID_VERSION
+            ? ShareVariableCodec.decodeVariableNibbleArray(payload._ || '', trapPositions.length)
+            : new Array<number>(trapPositions.length).fill(0);
         const platePositions = version >= ShareConstants.NEW_OBJECTS_VERSION
             ? SharePositionCodec.decodePositions(payload.j || '')
             : [];
@@ -602,7 +605,10 @@ class ShareDecoder {
             ...ledEntries,
             ...ShareDataNormalizer.buildObjectEntries(armorPositions, OT.ARMOR),
             ...ShareDataNormalizer.buildObjectEntries(bootsPositions, OT.BOOTS),
-            ...ShareDataNormalizer.buildObjectEntries(trapPositions, OT.TRAP, { variableNibbles: trapVarNibbles }),
+            ...ShareDataNormalizer.buildObjectEntries(trapPositions, OT.TRAP, {
+                variableNibbles: trapVarNibbles,
+                solidBits: trapSolidNibbles
+            }),
             ...ShareDataNormalizer.buildObjectEntries(platePositions, OT.PRESSURE_PLATE, { variableNibbles: plateVarNibbles }),
             ...ShareDataNormalizer.buildObjectEntries(pushBoxPositions, OT.PUSH_BOX),
             ...ShareDataNormalizer.buildObjectEntries(chestPositions, OT.CHEST, { containsNibbles: chestContainsNibbles, randomBits: chestRandomNibbles }),

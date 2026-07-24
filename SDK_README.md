@@ -173,7 +173,7 @@ These throw if called twice for the same item type in one room.
 | `addSwitch` | `({ x; y; variable: VariableRef \| number; on? }): this` | Lever the player toggles by stepping on it; flips `variable`. `on` sets its starting state (default `false`). Multiple allowed per room. |
 | `addVariableDoor` | `({ x; y; variable: VariableRef \| number }): this` | Door that stays locked until `variable` is ON. **One per room** — throws on a second call. |
 | `addLed` | `({ x; y; variable: VariableRef \| number }): this` | Indicator lamp that lights up while `variable` is ON. |
-| `addTrap` | `({ x; y; variable?: VariableRef \| number }): this` | Spikes that hurt the player. Active unless the optional `variable` is ON. |
+| `addTrap` | `({ x; y; variable?: VariableRef \| number; solid?: boolean }): this` | Active while the optional `variable` is OFF. Damage traps hurt the player; solid traps block passage instead. |
 | `addPressurePlate` | `({ x; y; variable: VariableRef \| number }): this` | Floor plate that holds `variable` ON while a player or push-box rests on it. |
 | `addLogicGate` | `({ type: LogicGateType; x; y; inputA?; inputB?; output; hidden? }): this` | Logic gate that writes `output = gate(inputA, inputB)` whenever an input changes. `not` uses only `inputA`. `hidden: true` hides it in-game (still active) while keeping it visible in the editor. Inputs/output accept `VariableRef \| number`. |
 | `addChest` | `({ x; y; contains?: ChestItemType; random? }): this` | Chest revealing a fixed item (`contains`) or a random one (`random: true`). Throws if neither is supplied, or on an unknown item. |

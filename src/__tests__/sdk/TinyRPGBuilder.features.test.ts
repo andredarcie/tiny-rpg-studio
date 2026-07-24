@@ -96,10 +96,12 @@ describe('SDK new object types round-trip', () => {
         const v = g.variable();
         g.room(0)
             .addTrap({ x: 1, y: 1 })
-            .addTrap({ x: 2, y: 1, variable: v })
+            .addTrap({ x: 2, y: 1, variable: v, solid: true })
             .addPressurePlate({ x: 3, y: 1, variable: v });
         const objs = objectsOf(roundTrip(g));
         expect(objs.filter(o => o.type === 'trap')).toHaveLength(2);
+        expect(objs.find(o => o.type === 'trap' && o.x === 1)?.solid).toBe(false);
+        expect(objs.find(o => o.type === 'trap' && o.x === 2)?.solid).toBe(true);
         expect(objs.find(o => o.type === 'pressure-plate')?.variableId).toBe('var-1');
     });
 

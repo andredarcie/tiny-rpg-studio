@@ -239,12 +239,16 @@ class RoomBuilder {
         return this;
     }
 
-    /** Spikes that hurt the player. Active unless its (optional) `variable` is ON. */
-    addTrap(opts: { x: number; y: number; variable?: VariableRef | number }): this {
+    /**
+     * Active while its optional `variable` is OFF. Damage traps hurt the player;
+     * solid traps block passage instead.
+     */
+    addTrap(opts: { x: number; y: number; variable?: VariableRef | number; solid?: boolean }): this {
         this._reserveTile('trap', opts.x, opts.y);
         this._objects.push({
             type: 'trap', x: opts.x, y: opts.y, roomIndex: 0,
             ...(opts.variable !== undefined ? { variableId: resolveVariableId(opts.variable) } : {}),
+            ...(opts.solid === true ? { solid: true } : {}),
         });
         return this;
     }

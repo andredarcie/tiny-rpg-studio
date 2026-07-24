@@ -1,5 +1,6 @@
 import { ITEM_TYPES, type ItemType } from '../../domain/constants/itemTypes';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
+import { isTrapActive } from '../../domain/state/TrapState';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
 import { resolveChoiceDialog, resolveNpcDialog, type ResolvedNpcDialog } from './resolveNpcDialog';
@@ -33,6 +34,7 @@ type GameObjectState = {
   collected?: boolean;
   opened?: boolean;
   variableId?: string | null;
+  solid?: boolean;
   on?: boolean;
   activated?: boolean;
   // Internal tracker: which named sources are currently activating this plate.
@@ -387,8 +389,12 @@ class InteractionManager {
   handleTrap(object: GameObjectState): boolean {
     const OT = this.types;
     if (object.type !== OT.TRAP) return false;
+    if (object.solid === true) return true;
     const variableId = this.gameState.normalizeVariableId?.(object.variableId ?? null) ?? null;
-    const isActive = variableId ? !(this.gameState.isVariableOn?.(variableId) ?? false) : true;
+    const isActive = isTrapActive(
+      { variableId },
+      (id) => this.gameState.isVariableOn?.(id) ?? false
+    );
     if (!isActive) return true;
     if (this.gameState.hasBoots?.()) return true;
     // Opt out of the auto game-over: onTrapKill runs its own death sequence

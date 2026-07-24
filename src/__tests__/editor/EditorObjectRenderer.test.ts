@@ -56,6 +56,7 @@ type EditorObjectMock = {
   x?: number;
   y?: number;
   variableId?: string;
+  solid?: boolean;
   on?: boolean;
   opened?: boolean;
   collected?: boolean;
@@ -116,6 +117,7 @@ function createFixture() {
     getObjectsForRoom: vi.fn((): EditorObjectMock[] => []),
     setObjectVariable: vi.fn(),
     setObjectVariableById: vi.fn(),
+    setTrapSolidById: vi.fn(),
     setGateInputVariableById: vi.fn(),
     setGateOutputVariableById: vi.fn(),
     setObjectHiddenInGameById: vi.fn(),
@@ -360,6 +362,60 @@ describe('EditorObjectRenderer', () => {
     renderer.renderObjects();
     expect(fixture.manager.npcService.populateVariableSelect).toHaveBeenCalledWith(expect.any(HTMLSelectElement), '');
     expect(fixture.gameEngine.isVariableOn).toHaveBeenCalledWith('');
+  });
+
+  it('renders and updates the solid trap checkbox with activation status', () => {
+    const fixture = createFixture();
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
+    fixture.gameEngine.isVariableOn.mockReturnValue(false);
+
+    const area = renderer.buildObjectConfigArea({
+      id: 'trap-1',
+      type: ITEM_TYPES.TRAP,
+      roomIndex: 0,
+      x: 2,
+      y: 3,
+      variableId: 'var-1',
+      solid: true,
+    });
+    const checkbox = area.querySelector('input[type="checkbox"]') as HTMLInputElement;
+
+    expect(checkbox).not.toBeNull();
+    expect(checkbox.checked).toBe(true);
+    expect(checkbox.parentElement?.textContent).toContain('t:objects.trap.solid');
+    expect(fixture.tf).toHaveBeenCalledWith('objects.trap.stateLabel', {
+      state: 't:objects.trap.state.active',
+    }, '');
+
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change'));
+
+    expect(fixture.gameEngine.setTrapSolidById).toHaveBeenCalledWith('trap-1', false);
+    expect(fixture.worldRenderer.renderWorldGrid).toHaveBeenCalled();
+    expect(fixture.renderEditor).toHaveBeenCalled();
+    expect(fixture.manager.updateJSON).toHaveBeenCalled();
+    expect(fixture.manager.history.pushCurrentState).toHaveBeenCalled();
+
+    fixture.tf.mockClear();
+    fixture.gameEngine.isVariableOn.mockReturnValue(true);
+    renderer.buildObjectConfigArea({
+      type: ITEM_TYPES.TRAP,
+      roomIndex: 0,
+      x: 2,
+      y: 3,
+      variableId: 'var-1',
+    });
+    expect(fixture.tf).toHaveBeenCalledWith('objects.trap.stateLabel', {
+      state: 't:objects.trap.state.deactivated',
+    }, '');
+
+    const keyArea = renderer.buildObjectConfigArea({
+      type: ITEM_TYPES.KEY,
+      roomIndex: 0,
+      x: 0,
+      y: 0,
+    });
+    expect(keyArea.querySelector('input[type="checkbox"]')).toBeNull();
   });
 
   it('drawObjectPreview returns early for invalid canvas and null context', () => {

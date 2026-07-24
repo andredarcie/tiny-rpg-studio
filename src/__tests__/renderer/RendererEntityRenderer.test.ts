@@ -248,6 +248,29 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
   });
 
+  it('drawObjects uses the same active and deactivated sprites for damage and solid traps', () => {
+    const { renderer, game, player, gameState, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    player.roomIndex = 1;
+    const activeSprite = sprite(1);
+    const deactivatedSprite = sprite(2);
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue({
+      [ITEM_TYPES.TRAP]: activeSprite,
+      [`${ITEM_TYPES.TRAP}--on`]: deactivatedSprite,
+    });
+    vi.mocked(gameState.isVariableOn as NonNullable<EntityRendererGameState['isVariableOn']>)
+      .mockImplementation((id) => id === 'on');
+    game.objects = [
+      { roomIndex: 1, x: 0, y: 0, type: ITEM_TYPES.TRAP, variableId: 'off', solid: false },
+      { roomIndex: 1, x: 1, y: 0, type: ITEM_TYPES.TRAP, variableId: 'on', solid: true },
+    ];
+
+    renderer.drawObjects(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(1, ctx, activeSprite, 0, 0, 2);
+    expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(2, ctx, deactivatedSprite, 16, 0, 2);
+  });
+
   it.each([
     ['push box before pressure plate', [ITEM_TYPES.PUSH_BOX, ITEM_TYPES.PRESSURE_PLATE]],
     ['pressure plate before push box', [ITEM_TYPES.PRESSURE_PLATE, ITEM_TYPES.PUSH_BOX]]

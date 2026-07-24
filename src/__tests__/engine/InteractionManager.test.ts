@@ -353,6 +353,27 @@ describe('InteractionManager', () => {
     expect(gameState.damagePlayer).toHaveBeenCalledWith(1, { autoGameOver: false });
   });
 
+  it('solid traps are always handled without damage or defeat callbacks', () => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (gameState.damagePlayer as ReturnType<typeof vi.fn>).mockReturnValue(0);
+    const onTrapKill = vi.fn();
+    const manager = new InteractionManager(gameState, dialogManager, { onTrapKill });
+    const trap = {
+      type: 'trap',
+      variableId: 'var-1',
+      solid: true,
+      roomIndex: 0,
+      x: 0,
+      y: 0,
+    };
+
+    expect(manager.handleTrap(trap as never)).toBe(true);
+    expect(gameState.damagePlayer).not.toHaveBeenCalled();
+    expect(onTrapKill).not.toHaveBeenCalled();
+  });
+
   // --- Chest ---
   it('chest opens and gives contained item via overlay effect', () => {
     const gameState = createInteractionGameState();

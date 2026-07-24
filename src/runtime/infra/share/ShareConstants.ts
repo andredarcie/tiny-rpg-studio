@@ -44,9 +44,10 @@ class ShareConstants {
     static get VERSION_35() { return 35; }
     static get VERSION_36() { return 36; }
     static get VERSION_37() { return 37; }
+    static get VERSION_38() { return 38; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_37;
+        return ShareConstants.VERSION_38;
     }
 
     static get LEGACY_VERSION() {
@@ -186,6 +187,11 @@ class ShareConstants {
         return ShareConstants.VERSION_37;
     }
 
+    // Per-trap solid flag. Payload key '_': aligned nibble array (1 = solid).
+    static get TRAP_SOLID_VERSION() {
+        return ShareConstants.VERSION_38;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -304,7 +310,8 @@ class ShareConstants {
                 ShareConstants.VERSION_34,
                 ShareConstants.VERSION_35,
                 ShareConstants.VERSION_36,
-                ShareConstants.VERSION_37
+                ShareConstants.VERSION_37,
+                ShareConstants.VERSION_38
             ]);
         }
         return this._supportedVersions;

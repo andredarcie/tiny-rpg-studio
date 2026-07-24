@@ -1,5 +1,6 @@
 import { TextResources } from '../../adapters/TextResources';
 import { GameConfig } from '../../../config/GameConfig';
+import { isTrapActive } from '../../domain/state/TrapState';
 import { soundEngine } from '../SoundEngine';
 
 type PlayerState = {
@@ -24,6 +25,7 @@ type GameStateApi = {
   getRoomIndex: (row: number, col: number) => number | null;
   getGame: () => { sprites?: NpcState[] };
   getObjectAt: (roomIndex: number, x: number, y: number) => GameObjectState | null;
+  getObjectsAt?: (roomIndex: number, x: number, y: number) => GameObjectState[];
   setPlayerPosition: (x: number, y: number, roomIndex: number | null) => void;
   consumeKey: () => boolean;
   getKeys: () => number;
@@ -95,6 +97,7 @@ type GameObjectState = {
   variableId?: string | null;
   isLockedDoor?: boolean;
   opened?: boolean;
+  solid?: boolean;
 };
 
 type TileDefinition = {
@@ -287,6 +290,19 @@ class MovementManager {
     }
 
     const objectAtTarget = (this.gameState.getObjectAt(targetRoomIndex, targetX, targetY) as GameObjectState | null) ?? null;
+    const objectsAtTarget = this.gameState.getObjectsAt?.(targetRoomIndex, targetX, targetY)
+      ?? (objectAtTarget ? [objectAtTarget] : []);
+    const hasActiveSolidTrap = objectsAtTarget.some((object) =>
+      object.type === 'trap'
+      && object.solid === true
+      && isTrapActive(object, (variableId) => this.gameState.isVariableOn(variableId))
+    );
+    if (hasActiveSolidTrap) {
+      if (enteringNewRoom) {
+        this.flashBlockedEdge(direction, { x: targetX, y: targetY });
+      }
+      return;
+    }
     const isVariableDoor = Boolean(objectAtTarget?.isVariableDoor);
     if (isVariableDoor) {
       const variableId = objectAtTarget?.variableId;
@@ -508,16 +524,17 @@ class MovementManager {
     if (x < 0 || x > limit || y < 0 || y > limit) return false;
     if (room?.walls?.[y]?.[x]) return false;
     const objectThere = this.gameState.getObjectAt(roomIndex, x, y);
-    if (objectThere) {
-      const t = objectThere.type;
+    const objectsThere = this.gameState.getObjectsAt?.(roomIndex, x, y)
+      ?? (objectThere ? [objectThere] : []);
+    for (const object of objectsThere) {
+      const t = object.type;
       if (t === 'push-box') return false;
-      if (t === 'trap') {
-        const variableId = objectThere.variableId;
-        if (!variableId || !this.gameState.isVariableOn(variableId)) return false;
+      if (t === 'trap' && isTrapActive(object, (variableId) => this.gameState.isVariableOn(variableId))) {
+        return false;
       }
-      if (objectThere.isLockedDoor && !objectThere.opened) return false;
-      if (objectThere.isVariableDoor) {
-        const variableId = objectThere.variableId;
+      if (object.isLockedDoor && !object.opened) return false;
+      if (object.isVariableDoor) {
+        const variableId = object.variableId;
         if (!variableId || !this.gameState.isVariableOn(variableId)) return false;
       }
     }

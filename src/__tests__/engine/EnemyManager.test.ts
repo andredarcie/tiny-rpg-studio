@@ -1152,6 +1152,28 @@ describe('EnemyManager', () => {
       expect(manager.hasBlockingObject(0, 0, 4)).toBe(false);
     });
 
+    it('blocks only active solid traps and finds them in stacked objects', () => {
+      const gameState = createEnemyGameState({
+        getObjectAt: vi.fn(() => ({ type: ITEM_TYPES.KEY })),
+        getObjectsAt: vi.fn((_r, _x, y) => {
+          if (y === 0) return [{ type: ITEM_TYPES.TRAP, solid: true, variableId: 'off' }];
+          if (y === 1) return [{ type: ITEM_TYPES.TRAP, solid: true, variableId: 'on' }];
+          if (y === 2) return [{ type: ITEM_TYPES.TRAP, solid: false, variableId: 'off' }];
+          return [
+            { type: ITEM_TYPES.KEY },
+            { type: ITEM_TYPES.TRAP, solid: true, variableId: 'off' },
+          ];
+        }),
+        isVariableOn: vi.fn((id: string) => id === 'on'),
+      });
+      const manager = new EnemyManager(gameState, renderer, tileManager);
+
+      expect(manager.hasBlockingObject(0, 0, 0)).toBe(true);
+      expect(manager.hasBlockingObject(0, 0, 1)).toBe(false);
+      expect(manager.hasBlockingObject(0, 0, 2)).toBe(false);
+      expect(manager.hasBlockingObject(0, 0, 3)).toBe(true);
+    });
+
     it('checks tile collision with overlay precedence and null tile maps', () => {
       const customTileManager = {
         getTileMap: vi

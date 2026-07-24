@@ -225,4 +225,82 @@ describe('MovementManager', () => {
     expect(door.opened).toBe(true);
     expect(onObjectOpened).toHaveBeenCalledWith('door-1', 0);
   });
+
+  it('blocks active solid traps before stacked door side effects even with boots', () => {
+    const trap = { type: 'trap', variableId: 'var-1', solid: true };
+    const door = { type: 'door', isLockedDoor: true, opened: false };
+    const gameState = {
+      ...createGameState(false),
+      getGame: () => ({ sprites: [], rooms: [{}] }),
+      getObjectAt: () => door,
+      getObjectsAt: () => [door, trap],
+      consumeKey: vi.fn(() => true),
+      isVariableOn: vi.fn(() => false),
+      hasBoots: vi.fn(() => true),
+    };
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+
+    manager.tryMove(1, 0);
+
+    expect(gameState.consumeKey).not.toHaveBeenCalled();
+    expect(door.opened).toBe(false);
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+    expect(interactionManager.handlePlayerInteractions).not.toHaveBeenCalled();
+  });
+
+  it('allows passage through a deactivated solid trap', () => {
+    const trap = { type: 'trap', variableId: 'var-1', solid: true };
+    const gameState = {
+      ...createGameState(false),
+      getGame: () => ({ sprites: [], rooms: [{}] }),
+      getObjectsAt: () => [trap],
+      isVariableOn: vi.fn(() => true),
+    };
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+
+    manager.tryMove(1, 0);
+
+    expect(gameState.setPlayerPosition).toHaveBeenCalledWith(1, 0, null);
+  });
+
+  it('blocks a solid trap on the first tile of an adjacent room and flashes the edge', () => {
+    const player = { roomIndex: 0, x: 0, y: 0, lastX: 0 };
+    const trap = { type: 'trap', variableId: 'var-1', solid: true };
+    const gameState = {
+      ...createGameState(false),
+      getPlayer: () => player,
+      getRoomIndex: (_row: number, col: number) => (col === -1 ? 1 : null),
+      getGame: () => ({ sprites: [], rooms: [{}, {}] }),
+      getObjectsAt: (roomIndex: number, x: number, y: number) =>
+        roomIndex === 1 && x === 7 && y === 0 ? [trap] : [],
+      isVariableOn: vi.fn(() => false),
+    };
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+
+    manager.tryMove(-1, 0);
+
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+    expect(renderer.flashEdge).toHaveBeenCalled();
+  });
 });

@@ -542,7 +542,7 @@ class ShareEncoder {
             if (code) parts.push('O' + code);
         }
 
-        const trapEntries = ShareDataNormalizer.normalizeVariableMultiObjects(objects, OT.TRAP);
+        const trapEntries = ShareDataNormalizer.normalizeTrapObjects(objects);
         if (trapEntries.length) {
             const positions = trapEntries.map((e) => ({ x: e.x, y: e.y, roomIndex: e.roomIndex }));
             const code = SharePositionCodec.encodePositions(positions);
@@ -550,6 +550,8 @@ class ShareEncoder {
                 parts.push('T' + code);
                 const varCode = ShareVariableCodec.encodeVariableRefArray(trapEntries.map((e) => e.variableNibble));
                 if (varCode) parts.push('D' + varCode);
+                const solidCode = ShareVariableCodec.encodeVariableNibbleArray(trapEntries.map((e) => e.solidNibble));
+                if (solidCode) parts.push('_' + solidCode);
             }
         }
 

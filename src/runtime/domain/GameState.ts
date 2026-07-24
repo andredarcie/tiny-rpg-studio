@@ -515,6 +515,10 @@ class GameState {
         return this.objectManager.getObjectAt(roomIndex, x, y);
     }
 
+    getObjectsAt(roomIndex: number, x: number, y: number): unknown[] {
+        return this.objectManager.getObjectsAt(roomIndex, x, y);
+    }
+
     setObjectPosition(type: string, roomIndex: number, x: number, y: number): unknown {
         return this.objectManager.setObjectPosition(type as Parameters<typeof this.objectManager.setObjectPosition>[0], roomIndex, x, y);
     }
@@ -545,6 +549,10 @@ class GameState {
 
     setObjectRandomItemById(id: string, randomItem: boolean): void {
         this.objectManager.setObjectRandomItemById(id, randomItem);
+    }
+
+    setTrapSolidById(id: string, solid: boolean): boolean {
+        return this.objectManager.setTrapSolidById(id, solid);
     }
 
     getAllObjects() {

@@ -188,6 +188,52 @@ describe('StateObjectManager', () => {
     expect(box.x).toBe(5);
     expect(box.y).toBe(6);
   });
+
+  it('normalizes and mutates the solid flag only for traps', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+    const normalized = manager.normalizeObjects([
+      { type: ITEM_TYPES.TRAP, roomIndex: 0, x: 1, y: 2 },
+      { type: ITEM_TYPES.TRAP, roomIndex: 0, x: 2, y: 2, solid: true },
+      { type: ITEM_TYPES.TRAP, roomIndex: 0, x: 3, y: 2, solid: 'false' },
+      { type: ITEM_TYPES.TRAP, roomIndex: 0, x: 4, y: 2, solid: 0 },
+      { type: ITEM_TYPES.KEY, roomIndex: 0, x: 5, y: 2, solid: true },
+    ]);
+
+    const traps = normalized.filter((object) => object.type === ITEM_TYPES.TRAP);
+    expect(traps.map((trap) => trap.solid)).toEqual([false, true, false, false]);
+    expect(normalized.find((object) => object.type === ITEM_TYPES.KEY)?.solid).toBeUndefined();
+
+    manager.setGame({ ...game, objects: normalized });
+    expect(manager.setTrapSolidById(traps[0].id, true)).toBe(true);
+    expect(traps[0].solid).toBe(true);
+    const key = normalized.find((object) => object.type === ITEM_TYPES.KEY);
+    expect(manager.setTrapSolidById(key?.id ?? '', true)).toBe(false);
+    expect(key?.solid).toBeUndefined();
+  });
+
+  it('starts new traps non-solid and retains the flag when reused or moved', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+    const trap = manager.setObjectPosition(ITEM_TYPES.TRAP, 0, 3, 3);
+    if (!trap) throw new Error('trap not created');
+
+    expect(trap.solid).toBe(false);
+    manager.setTrapSolidById(trap.id, true);
+    expect(manager.setObjectPosition(ITEM_TYPES.TRAP, 0, 3, 3)).toBe(trap);
+    manager.moveObjectById(trap.id, 4, 4);
+    expect(trap.solid).toBe(true);
+  });
+
+  it('returns all stacked objects while preserving singular push-box priority', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+    const trap = manager.setObjectPosition(ITEM_TYPES.TRAP, 0, 4, 4);
+    const box = manager.setObjectPosition(ITEM_TYPES.PUSH_BOX, 0, 4, 4);
+
+    expect(manager.getObjectsAt(0, 4, 4)).toEqual([trap, box]);
+    expect(manager.getObjectAt(0, 4, 4)).toBe(box);
+  });
 });
 
 describe('StateObjectManager - logic gates', () => {

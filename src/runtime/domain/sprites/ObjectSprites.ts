@@ -220,7 +220,7 @@ const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
         [ null,  4,  4, null, null,  4,  4, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
-    // Trap inactive (variable ON)
+    // Trap active (default, variable OFF)
     trap: [
         [ null, null, null, null, null, null, null, null ],
         [ null, null, null, null, null, null, null, null ],
@@ -231,7 +231,7 @@ const ObjectSpriteMatrices: Record<string, SpriteMatrix> = {
         [ null,  1,  1, null, null,  1,  1, null ],
         [ null, null, null, null, null, null, null, null ]
     ],
-    // Trap active (default, variable OFF)
+    // Trap inactive (variable ON)
     'trap--on': [
         [ null, null, null, null, null, null, null, null ],
         [ null, null, null, null, null, null, null, null ],

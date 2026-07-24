@@ -32,6 +32,7 @@ export type GameStateApi = {
   normalizeVariableId?: (id: string | null) => string | null;
   setVariableValue?: (id: string, value: boolean, persist?: boolean) => Array<boolean | undefined>;
   getObjectAt?: (roomIndex: number, x: number, y: number) => GameObjectState | null;
+  getObjectsAt?: (roomIndex: number, x: number, y: number) => GameObjectState[];
   hasSkill: (skillId: string) => boolean;
   // Combat-related methods (type-safe)
   getPlayerDamage?: () => number;
@@ -159,6 +160,7 @@ export type GameObjectState = {
   type: string;
   opened?: boolean;
   variableId?: string | null;
+  solid?: boolean;
 };
 
 export type TileMapState = {

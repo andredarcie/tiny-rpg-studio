@@ -51,6 +51,7 @@ type ShareObjectInput = {
     y?: number;
     roomIndex?: number;
     variableId?: string | null;
+    solid?: boolean;
     on?: boolean;
     endingText?: string;
     inputVariableId?: string | null;
@@ -67,6 +68,7 @@ type SharePositionOptions = {
     stateBits?: number[];
     containsNibbles?: number[];
     randomBits?: number[];
+    solidBits?: number[];
 };
 
 type NpcDefinitionLookup = {
@@ -431,6 +433,35 @@ class ShareDataNormalizer {
         return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
     }
 
+    static normalizeTrapObjects(list: unknown[] | null | undefined) {
+        if (!Array.isArray(list)) return [];
+        const seenTiles = new Set<string>();
+        const fallbackNibble = ShareVariableCodec.variableIdToNibble(ShareVariableCodec.getFirstVariableId()) || 1;
+        const result: Array<PositionEntry & { variableNibble: number; solidNibble: number }> = [];
+        for (const raw of list) {
+            const entry = raw as ShareObjectInput;
+            if (entry.type !== ITEM_TYPES.TRAP) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
+            const tileKey = `${roomIndex}:${x}:${y}`;
+            if (seenTiles.has(tileKey)) continue;
+            seenTiles.add(tileKey);
+            const variableNibble =
+                ShareVariableCodec.variableIdToNibble(typeof entry.variableId === 'string' ? entry.variableId : null) ||
+                fallbackNibble;
+            result.push({
+                x,
+                y,
+                roomIndex,
+                variableNibble,
+                solidNibble: entry.solid === true ? 1 : 0
+            });
+        }
+        return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
+    }
+
     static normalizeChestObjects(list: unknown[] | null | undefined) {
         if (!Array.isArray(list)) return [];
         const seenTiles = new Set<string>();
@@ -520,6 +551,10 @@ class ShareDataNormalizer {
                 const variableId = ShareVariableCodec.nibbleToVariableId(nibble) || fallbackVariableId;
                 if (variableId) {
                     entry.variableId = variableId;
+                }
+                if (type === ITEM_TYPES.TRAP) {
+                    const solidBits = Array.isArray(options.solidBits) ? options.solidBits : [];
+                    entry.solid = solidBits[index] === 1;
                 }
             }
             if (type === ITEM_TYPES.CHEST) {

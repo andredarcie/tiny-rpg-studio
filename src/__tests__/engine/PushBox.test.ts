@@ -256,12 +256,17 @@ describe('PushBox — MovementManager', () => {
 
   it('blocks a box at a variable-controlled trap while its variable is OFF', () => {
     const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
-    const trap = { type: 'trap', variableId: 'var-1', roomIndex: 0, x: 5, y: 3 };
+    const trap = { type: 'trap', variableId: 'var-1', solid: true, roomIndex: 0, x: 5, y: 3 };
     const gameState = createMovementGameState({
       getObjectAt: vi.fn((_, x, y) => {
         if (x === 4 && y === 3) return box;
         if (x === 5 && y === 3) return trap;
         return null;
+      }),
+      getObjectsAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return [box];
+        if (x === 5 && y === 3) return [{ type: 'key' }, trap];
+        return [];
       }),
       isVariableOn: vi.fn(() => false),
     });
@@ -275,12 +280,17 @@ describe('PushBox — MovementManager', () => {
 
   it('pushes a box through a deactivated trap while its variable is ON', () => {
     const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
-    const trap = { type: 'trap', variableId: 'var-1', roomIndex: 0, x: 5, y: 3 };
+    const trap = { type: 'trap', variableId: 'var-1', solid: true, roomIndex: 0, x: 5, y: 3 };
     const gameState = createMovementGameState({
       getObjectAt: vi.fn((_, x, y) => {
         if (x === 4 && y === 3) return box;
         if (x === 5 && y === 3) return trap;
         return null;
+      }),
+      getObjectsAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return [box];
+        if (x === 5 && y === 3) return [trap];
+        return [];
       }),
       isVariableOn: vi.fn(() => true),
     });

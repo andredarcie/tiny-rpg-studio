@@ -39,7 +39,8 @@ export type SdkObject =
     | { type: 'switch';       x: number; y: number; roomIndex: number; variableId: string; on?: boolean }
     | { type: 'door-variable'; x: number; y: number; roomIndex: number; variableId: string }
     | { type: 'logic-led';    x: number; y: number; roomIndex: number; variableId: string }
-    | { type: 'trap' | 'pressure-plate'; x: number; y: number; roomIndex: number; variableId?: string }
+    | { type: 'trap'; x: number; y: number; roomIndex: number; variableId?: string; solid?: boolean }
+    | { type: 'pressure-plate'; x: number; y: number; roomIndex: number; variableId?: string }
     | { type: 'logic-gate-not' | 'logic-gate-and' | 'logic-gate-or' | 'logic-gate-nand' | 'logic-gate-nor';
         x: number; y: number; roomIndex: number;
         inputVariableId?: string; inputVariableId2?: string; outputVariableId?: string; hiddenInGame?: boolean }
