@@ -511,6 +511,10 @@ class MovementManager {
     if (objectThere) {
       const t = objectThere.type;
       if (t === 'push-box') return false;
+      if (t === 'trap') {
+        const variableId = objectThere.variableId;
+        if (!variableId || !this.gameState.isVariableOn(variableId)) return false;
+      }
       if (objectThere.isLockedDoor && !objectThere.opened) return false;
       if (objectThere.isVariableDoor) {
         const variableId = objectThere.variableId;

@@ -236,6 +236,62 @@ describe('PushBox — MovementManager', () => {
     expect(gameState.setPlayerPosition).toHaveBeenCalledWith(4, 3, null);
   });
 
+  it('blocks a box at an active trap without a variable', () => {
+    const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
+    const trap = { type: 'trap', roomIndex: 0, x: 5, y: 3 };
+    const gameState = createMovementGameState({
+      getObjectAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return box;
+        if (x === 5 && y === 3) return trap;
+        return null;
+      }),
+    });
+    const manager = makeMovementManager(gameState);
+
+    manager.tryMove(1, 0);
+
+    expect(box.x).toBe(4);
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+  });
+
+  it('blocks a box at a variable-controlled trap while its variable is OFF', () => {
+    const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
+    const trap = { type: 'trap', variableId: 'var-1', roomIndex: 0, x: 5, y: 3 };
+    const gameState = createMovementGameState({
+      getObjectAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return box;
+        if (x === 5 && y === 3) return trap;
+        return null;
+      }),
+      isVariableOn: vi.fn(() => false),
+    });
+    const manager = makeMovementManager(gameState);
+
+    manager.tryMove(1, 0);
+
+    expect(box.x).toBe(4);
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+  });
+
+  it('pushes a box through a deactivated trap while its variable is ON', () => {
+    const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
+    const trap = { type: 'trap', variableId: 'var-1', roomIndex: 0, x: 5, y: 3 };
+    const gameState = createMovementGameState({
+      getObjectAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return box;
+        if (x === 5 && y === 3) return trap;
+        return null;
+      }),
+      isVariableOn: vi.fn(() => true),
+    });
+    const manager = makeMovementManager(gameState);
+
+    manager.tryMove(1, 0);
+
+    expect(box.x).toBe(5);
+    expect(gameState.setPlayerPosition).toHaveBeenCalledWith(4, 3, null);
+  });
+
   it('blocks player when box is at the room boundary', () => {
     const box = { type: 'push-box', roomIndex: 0, x: 7, y: 3 };
     const gameState = createMovementGameState({
