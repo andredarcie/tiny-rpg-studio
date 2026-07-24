@@ -510,7 +510,12 @@ class MovementManager {
     const objectThere = this.gameState.getObjectAt(roomIndex, x, y);
     if (objectThere) {
       const t = objectThere.type;
-      if (t === 'push-box' || objectThere.isLockedDoor || objectThere.isVariableDoor) return false;
+      if (t === 'push-box') return false;
+      if (objectThere.isLockedDoor && !objectThere.opened) return false;
+      if (objectThere.isVariableDoor) {
+        const variableId = objectThere.variableId;
+        if (!variableId || !this.gameState.isVariableOn(variableId)) return false;
+      }
     }
     const tileMap = this.tileManager.getTileMap(roomIndex);
     const overlayId = tileMap?.overlay?.[y]?.[x] ?? null;

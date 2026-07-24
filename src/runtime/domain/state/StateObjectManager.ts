@@ -293,10 +293,18 @@ class StateObjectManager {
     resetPushBoxesForRoom(roomIndex: number): void {
         const OT = this.types;
         const target = this.worldManager?.clampRoomIndex(roomIndex) ?? roomIndex;
-        this.getObjects().forEach((object) => {
+        const objects = this.getObjects();
+        objects.forEach((object) => {
+            const isOnPressurePlate = objects.some((candidate) =>
+                candidate.type === OT.PRESSURE_PLATE &&
+                candidate.roomIndex === object.roomIndex &&
+                candidate.x === object.x &&
+                candidate.y === object.y
+            );
             if (
                 object.type === OT.PUSH_BOX &&
                 object.roomIndex === target &&
+                !isOnPressurePlate &&
                 typeof object.originalX === 'number' &&
                 typeof object.originalY === 'number'
             ) {

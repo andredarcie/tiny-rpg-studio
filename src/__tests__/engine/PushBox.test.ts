@@ -166,6 +166,76 @@ describe('PushBox — MovementManager', () => {
     expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
   });
 
+  it('pushes a box through an opened regular door', () => {
+    const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
+    const door = { type: 'door', roomIndex: 0, x: 5, y: 3, isLockedDoor: true, opened: true };
+    const gameState = createMovementGameState({
+      getObjectAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return box;
+        if (x === 5 && y === 3) return door;
+        return null;
+      }),
+    });
+    const manager = makeMovementManager(gameState);
+
+    manager.tryMove(1, 0);
+
+    expect(box.x).toBe(5);
+    expect(gameState.setPlayerPosition).toHaveBeenCalledWith(4, 3, null);
+  });
+
+  it('blocks a box at a closed variable door', () => {
+    const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
+    const door = {
+      type: 'door-variable',
+      roomIndex: 0,
+      x: 5,
+      y: 3,
+      isVariableDoor: true,
+      variableId: 'var-1',
+    };
+    const gameState = createMovementGameState({
+      getObjectAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return box;
+        if (x === 5 && y === 3) return door;
+        return null;
+      }),
+      isVariableOn: vi.fn(() => false),
+    });
+    const manager = makeMovementManager(gameState);
+
+    manager.tryMove(1, 0);
+
+    expect(box.x).toBe(4);
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+  });
+
+  it('pushes a box through an opened variable door', () => {
+    const box = { type: 'push-box', roomIndex: 0, x: 4, y: 3 };
+    const door = {
+      type: 'door-variable',
+      roomIndex: 0,
+      x: 5,
+      y: 3,
+      isVariableDoor: true,
+      variableId: 'var-1',
+    };
+    const gameState = createMovementGameState({
+      getObjectAt: vi.fn((_, x, y) => {
+        if (x === 4 && y === 3) return box;
+        if (x === 5 && y === 3) return door;
+        return null;
+      }),
+      isVariableOn: vi.fn(() => true),
+    });
+    const manager = makeMovementManager(gameState);
+
+    manager.tryMove(1, 0);
+
+    expect(box.x).toBe(5);
+    expect(gameState.setPlayerPosition).toHaveBeenCalledWith(4, 3, null);
+  });
+
   it('blocks player when box is at the room boundary', () => {
     const box = { type: 'push-box', roomIndex: 0, x: 7, y: 3 };
     const gameState = createMovementGameState({
@@ -406,6 +476,38 @@ describe('PushBox — StateObjectManager reset', () => {
 
     expect(boxRoom0.x).toBe(1);
     expect(boxRoom1.x).toBe(5);
+  });
+
+  it('keeps a box and its variable active when it rests on a pressure plate', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const objectManager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+    const [box, plate] = objectManager.normalizeObjects([
+      { type: ITEM_TYPES.PUSH_BOX, roomIndex: 0, x: 1, y: 1 },
+      { type: ITEM_TYPES.PRESSURE_PLATE, roomIndex: 0, x: 5, y: 3, variableId: 'var-1' },
+    ]);
+    game.objects = [box, plate] as never;
+    box.x = plate.x;
+    box.y = plate.y;
+
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');
+    (gameState.getAllObjects as ReturnType<typeof vi.fn>).mockImplementation(() => objectManager.getAllObjects());
+    if (!gameState.setVariableValue) throw new Error('setVariableValue mock is required');
+    const setVariableValue = vi.mocked(gameState.setVariableValue);
+    const interaction = new InteractionManager(gameState, { showDialog: vi.fn() });
+
+    interaction.checkPressurePlates({ roomIndex: 0, x: 7, y: 7 });
+    expect(plate.activated).toBe(true);
+    expect(setVariableValue).toHaveBeenCalledWith('var-1', true);
+
+    setVariableValue.mockClear();
+    objectManager.resetPushBoxesForRoom(0);
+    interaction.checkPressurePlates({ roomIndex: 1, x: 0, y: 0 });
+
+    expect(box.x).toBe(5);
+    expect(box.y).toBe(3);
+    expect(plate.activated).toBe(true);
+    expect(setVariableValue).not.toHaveBeenCalled();
   });
 
   it('resetRuntime restores all push boxes across all rooms', () => {
