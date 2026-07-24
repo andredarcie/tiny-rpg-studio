@@ -155,6 +155,11 @@ export class GameEngine {
     this.canDismissIntroScreen = false;
     this.timeToResetAfterIntro = GameConfig.timing.resetAfterIntro;
     this.gameState.setLevelUpOverlayPresentationSync(() => this.syncLevelUpOverlayPresentation());
+    this.gameState.onMagicDoorOpened = () => {
+      if (!this.gameState.editorMode) {
+        soundEngine.play('magicGateOpen');
+      }
+    };
     this.setupIntroScreen();
     this.backgroundMusicEngine.syncFromGame(this.gameState.getGame());
 

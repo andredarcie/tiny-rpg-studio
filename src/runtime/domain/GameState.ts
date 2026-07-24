@@ -63,6 +63,7 @@ class GameState {
     reviveSnapshot: ReviveSnapshot | null;
     lastKillerEnemyId: string | null;
     onVariableChanged: ((variableId: string, value: unknown) => void) | null = null;
+    onMagicDoorOpened: (() => void) | null = null;
     editorMode: boolean;
     levelUpOverlayPresentationSync: (() => void) | null;
 
@@ -730,6 +731,9 @@ class GameState {
             // Evaluate logic gates + sync side-effects for the variables they changed
             if (this.evaluateLogicGatesAndSyncSideEffects()) {
                 openedMagicDoor = true;
+            }
+            if (openedMagicDoor) {
+                this.onMagicDoorOpened?.();
             }
             this.onVariableChanged?.(normalizedId, value);
         }

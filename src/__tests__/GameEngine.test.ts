@@ -10,6 +10,7 @@ import {
   StubRenderer,
   StubTileManager
 } from './stubs/index'
+import { soundEngine } from '../runtime/services/SoundEngine'
 
 class StubBackgroundMusicEngine {
   play = vi.fn()
@@ -211,6 +212,22 @@ describe('GameEngine business rules (legacy)', () => {
     expect(engine.renderer.setIntroData.mock.calls.length).toBeGreaterThan(0)
     expect(engine.gameState.pauseCalls).toContain('intro-screen')
     expect(engine.isIntroVisible()).toBe(true)
+  })
+
+  it('plays the magic gate sound for gameplay openings but not editor changes', () => {
+    const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {})
+    const engine = createEngine()
+    const gameState = engine.gameState as unknown as StubGameState
+
+    gameState.onMagicDoorOpened?.()
+    expect(play).toHaveBeenCalledWith('magicGateOpen')
+
+    play.mockClear()
+    gameState.setEditorMode(true)
+    gameState.onMagicDoorOpened?.()
+    expect(play).not.toHaveBeenCalled()
+
+    play.mockRestore()
   })
 
   it('dismisses intro screen only when visible', () => {

@@ -1,4 +1,5 @@
 export class StubGameState {
+  onMagicDoorOpened: (() => void) | null = null
   state = { game: { title: 'Unit Test', author: 'Tester' } }
   resetCalled = false
   importedData: unknown = null

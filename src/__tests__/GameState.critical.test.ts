@@ -18,6 +18,8 @@ describe('GameState - Critical Path Tests', () => {
   describe('Variable and magic door system', () => {
     it('detects when magic door opens via variable change', () => {
       const state = new GameState();
+      const onMagicDoorOpened = vi.fn();
+      state.onMagicDoorOpened = onMagicDoorOpened;
 
       // Add a magic door linked to variable 1
       state.game.objects = [{
@@ -39,10 +41,13 @@ describe('GameState - Critical Path Tests', () => {
 
       expect(success).toBe(true);
       expect(openedDoor).toBe(true);
+      expect(onMagicDoorOpened).toHaveBeenCalledOnce();
     });
 
     it('does not report door opening if variable is not linked to a door', () => {
       const state = new GameState();
+      const onMagicDoorOpened = vi.fn();
+      state.onMagicDoorOpened = onMagicDoorOpened;
 
       state.game.variables = [{
         id: 'var-1',
@@ -53,6 +58,7 @@ describe('GameState - Critical Path Tests', () => {
 
       expect(success).toBe(true);
       expect(openedDoor).toBe(false);
+      expect(onMagicDoorOpened).not.toHaveBeenCalled();
     });
 
     it('handles variable persistence flag', () => {

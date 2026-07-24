@@ -12,6 +12,7 @@ type SoundName =
   | 'dialog'
   | 'switchToggle'
   | 'doorUnlock'
+  | 'magicGateOpen'
   | 'victory'
   | 'gameStart'
   | 'skillPick'
@@ -107,6 +108,7 @@ class SoundEngine {
       case 'dialog':         this.sfxDialog(t);         break;
       case 'switchToggle':   this.sfxSwitchToggle(t);   break;
       case 'doorUnlock':     this.sfxDoorUnlock(t);     break;
+      case 'magicGateOpen':  this.sfxMagicGateOpen(t);  break;
       case 'victory':        this.sfxVictory(t);        break;
       case 'gameStart':      this.sfxGameStart(t);      break;
       case 'skillPick':      this.sfxSkillPick(t);      break;
@@ -188,6 +190,14 @@ class SoundEngine {
     this.tone(440, 'square', t, 0.04, 0.18, 220);
     this.tone(330, 'square', t + 0.05, 0.04, 0.14, 554);
     this.tone(659, 'square', t + 0.09, 0.10, 0.20);
+  }
+
+  // Magic gate opens: the door-unlock motif with a gentle rising finish
+  private sfxMagicGateOpen(t: number): void {
+    this.tone(440, 'square', t, 0.04, 0.11, 220);
+    this.tone(330, 'square', t + 0.05, 0.05, 0.14, 554);
+    this.tone(659, 'square', t + 0.10, 0.08, 0.17);
+    this.tone(784, 'square', t + 0.17, 0.13, 0.20, 1047);
   }
 
   // --- UI / Progression ---
