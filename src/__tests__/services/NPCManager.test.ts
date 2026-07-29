@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NPCManager } from '../../runtime/services/NPCManager';
 import type { GameDefinition } from '../../types/gameState';
+import { NPC_END_GAME_REWARD_ID } from '../../runtime/domain/constants/npcRewards';
 
 const makeGameState = (sprites: GameDefinition['sprites'] = []) => {
   const game: GameDefinition = {
@@ -104,5 +105,33 @@ describe('NPCManager', () => {
     expect(gameState.normalizeVariableId).toHaveBeenCalledWith('var-1');
     expect(manager.getNPC(id)?.conditionVariableId).toBe('var-1');
     expect(manager.getNPC(id)?.conditionText).toBe('Alt');
+  });
+
+  it('preserves END_GAME in rewards while rejecting it as a condition', () => {
+    const gameState = makeGameState([]);
+    const manager = new NPCManager(gameState as unknown as ConstructorParameters<typeof NPCManager>[0]);
+    const normalized = manager.normalizeNPC({
+      id: 'npc-1',
+      type: 'old-mage',
+      conditionVariableId: NPC_END_GAME_REWARD_ID,
+      rewardVariableId: NPC_END_GAME_REWARD_ID,
+      conditionalRewardVariableId: NPC_END_GAME_REWARD_ID,
+      choiceYesVariableId: NPC_END_GAME_REWARD_ID,
+      choiceNoVariableId: NPC_END_GAME_REWARD_ID,
+    });
+
+    expect(normalized.conditionVariableId).toBeNull();
+    expect(normalized.rewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
+    expect(normalized.conditionalRewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
+    expect(normalized.choiceYesVariableId).toBe(NPC_END_GAME_REWARD_ID);
+    expect(normalized.choiceNoVariableId).toBe(NPC_END_GAME_REWARD_ID);
+
+    gameState.game.sprites = [normalized];
+    expect(manager.ensureDefaultNPCs()[0]).toMatchObject({
+      rewardVariableId: NPC_END_GAME_REWARD_ID,
+      conditionalRewardVariableId: NPC_END_GAME_REWARD_ID,
+      choiceYesVariableId: NPC_END_GAME_REWARD_ID,
+      choiceNoVariableId: NPC_END_GAME_REWARD_ID,
+    });
   });
 });

@@ -1,5 +1,6 @@
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
+import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
 import { SkillDefinitions } from '../../domain/definitions/SkillDefinitions';
 import { ShareConstants } from './ShareConstants';
 import { ShareDataNormalizer } from './ShareDataNormalizer';
@@ -281,6 +282,12 @@ class ShareDecoder {
         if (!Number.isFinite(version) || !ShareConstants.SUPPORTED_VERSIONS.has(version)) {
             return null;
         }
+        const allowNpcEndGame = version >= ShareConstants.NPC_END_GAME_VERSION;
+        const normalizeChoiceRewardId = (value: unknown): string | null => {
+            if (typeof value !== 'string') return null;
+            if (ShareConstants.VARIABLE_IDS.includes(value)) return value;
+            return allowNpcEndGame && value === NPC_END_GAME_REWARD_ID ? value : null;
+        };
 
         // Variable references: byte-encoded from VARIABLES_16_VERSION on (supports 16 vars),
         // 4-bit nibbles before that. Small enum fields (switch state, gate type, hidden) stay nibbles.
@@ -326,8 +333,8 @@ class ShareDecoder {
                 choicePrompt: choice?.p ?? '',
                 choiceYesText: choice?.y ?? '',
                 choiceNoText: choice?.n ?? '',
-                choiceYesVariableId: choice?.yv ?? null,
-                choiceNoVariableId: choice?.nv ?? null
+                choiceYesVariableId: normalizeChoiceRewardId(choice?.yv),
+                choiceNoVariableId: normalizeChoiceRewardId(choice?.nv)
             };
         };
         const enemyPositions = SharePositionCodec.decodePositions(payload.e || '');
@@ -490,8 +497,14 @@ class ShareDecoder {
                 if (!def) continue;
                 const pos = npcPositions[index];
                 const conditionVariableId = ShareVariableCodec.nibbleToVariableId(npcConditionIndexes[index] ?? 0);
-                const rewardVariableId = ShareVariableCodec.nibbleToVariableId(npcRewardIndexes[index] ?? 0);
-                const conditionalRewardVariableId = ShareVariableCodec.nibbleToVariableId(npcConditionalRewardIndexes[index] ?? 0);
+                const rewardVariableId = ShareVariableCodec.referenceToRewardId(
+                    npcRewardIndexes[index] ?? 0,
+                    allowNpcEndGame,
+                );
+                const conditionalRewardVariableId = ShareVariableCodec.referenceToRewardId(
+                    npcConditionalRewardIndexes[index] ?? 0,
+                    allowNpcEndGame,
+                );
                 sprites.push({
                     id: buildNpcId(index),
                     type: def.type,
@@ -512,8 +525,14 @@ class ShareDecoder {
             for (let index = 0; index < npcPositions.length; index++) {
                 const pos = npcPositions[index];
                 const conditionVariableId = ShareVariableCodec.nibbleToVariableId(npcConditionIndexes[index] ?? 0);
-                const rewardVariableId = ShareVariableCodec.nibbleToVariableId(npcRewardIndexes[index] ?? 0);
-                const conditionalRewardVariableId = ShareVariableCodec.nibbleToVariableId(npcConditionalRewardIndexes[index] ?? 0);
+                const rewardVariableId = ShareVariableCodec.referenceToRewardId(
+                    npcRewardIndexes[index] ?? 0,
+                    allowNpcEndGame,
+                );
+                const conditionalRewardVariableId = ShareVariableCodec.referenceToRewardId(
+                    npcConditionalRewardIndexes[index] ?? 0,
+                    allowNpcEndGame,
+                );
                 sprites.push({
                     id: buildNpcId(index),
                     name: `NPC ${index + 1}`,

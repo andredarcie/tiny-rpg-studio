@@ -4,7 +4,7 @@ import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
 
 describe('ShareConstants', () => {
   it('exposes current version and world metadata', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_38);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_39);
     expect(ShareConstants.WORLD_ROOM_COUNT).toBe(9);
     expect(ShareConstants.MATRIX_SIZE).toBe(8);
   });

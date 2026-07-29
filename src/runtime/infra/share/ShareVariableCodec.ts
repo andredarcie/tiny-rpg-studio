@@ -59,6 +59,21 @@ class ShareVariableCodec {
         return ShareConstants.VARIABLE_IDS[index] || null;
     }
 
+    static rewardIdToReference(rewardId?: string | null): number {
+        if (typeof rewardId !== 'string') return 0;
+        const index = ShareConstants.NPC_REWARD_IDS.indexOf(rewardId);
+        return index >= 0 ? index + 1 : 0;
+    }
+
+    static referenceToRewardId(value: number, allowEndGame = false): string | null {
+        if (!Number.isFinite(value) || value <= 0) return null;
+        const rewardId = ShareConstants.NPC_REWARD_IDS[value - 1] || null;
+        if (rewardId && (allowEndGame || ShareConstants.VARIABLE_IDS.includes(rewardId))) {
+            return rewardId;
+        }
+        return null;
+    }
+
     static encodeVariableNibbleArray(values: VariableNibbleInput[] | undefined | null): string {
         if (!Array.isArray(values) || !values.length) return '';
         const hasData = values.some((entry) => typeof entry === 'number' && Number.isFinite(entry) && entry > 0);

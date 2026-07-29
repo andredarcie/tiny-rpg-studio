@@ -4,6 +4,7 @@ import { track } from '../../analytics/track';
 import type { EditorManager } from '../EditorManager';
 import type { NpcDefinitionData } from '../../runtime/domain/entities/Npc';
 import type { VariableDefinition } from '../../types/gameState';
+import { NPC_END_GAME_REWARD_ID } from '../../runtime/domain/constants/npcRewards';
 
 type SpriteInstance = {
     id: string;
@@ -200,7 +201,11 @@ class EditorNpcService {
         this.manager.history.pushCurrentState();
     }
 
-    populateVariableSelect(selectElement: HTMLSelectElement | null, selectedId = '', options: { includeBardSkill?: boolean } = {}) {
+    populateVariableSelect(
+        selectElement: HTMLSelectElement | null,
+        selectedId = '',
+        options: { includeBardSkill?: boolean; includeEndGame?: boolean } = {},
+    ) {
         if (!selectElement) return;
         const variables = (this.gameEngine.getVariableDefinitions() ?? []) as (VariableDefinition & { name?: string; color?: string | null })[];
         const includeBardSkill = Boolean(options.includeBardSkill);
@@ -216,6 +221,13 @@ class EditorNpcService {
             bardOption.value = 'skill:bard';
             bardOption.textContent = this.t('variables.skill.bard');
             selectElement.appendChild(bardOption);
+        }
+
+        if (options.includeEndGame) {
+            const endGameOption = document.createElement('option');
+            endGameOption.value = NPC_END_GAME_REWARD_ID;
+            endGameOption.textContent = this.t('variables.endGame');
+            selectElement.appendChild(endGameOption);
         }
 
         variables.forEach((variable: VariableDefinition & { name?: string; color?: string | null }) => {

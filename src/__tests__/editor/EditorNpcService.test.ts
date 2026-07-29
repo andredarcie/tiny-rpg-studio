@@ -130,6 +130,17 @@ describe('populateVariableSelect', () => {
   it('sets value to selectedId', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel,'var-1'); expect(sel.value).toBe('var-1'); });
   it('adds bard when includeBardSkill=true', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel,'',{includeBardSkill:true}); expect(Array.from(sel.options).find(o=>o.value==='skill:bard')).toBeDefined(); });
   it('no bard when includeBardSkill=false', () => { const {service} = makeService(); const sel=document.createElement('select'); service.populateVariableSelect(sel,'',{includeBardSkill:false}); expect(Array.from(sel.options).find(o=>o.value==='skill:bard')).toBeUndefined(); });
+  it('adds END_GAME only when includeEndGame=true and restores its selection', () => {
+    const { service } = makeService();
+    const reward = document.createElement('select');
+    service.populateVariableSelect(reward, 'END_GAME', { includeEndGame: true });
+    expect(reward.value).toBe('END_GAME');
+    expect(Array.from(reward.options).some((option) => option.value === 'END_GAME')).toBe(true);
+
+    const condition = document.createElement('select');
+    service.populateVariableSelect(condition);
+    expect(Array.from(condition.options).some((option) => option.value === 'END_GAME')).toBe(false);
+  });
   it('tints the option text with the variable color', () => {
     const {service, manager} = makeService();
     (manager.gameEngine.getVariableDefinitions as ReturnType<typeof vi.fn>).mockReturnValue([{ id: 'var-1', name: 'Green', color: '#00E756' }] as unknown as VariableDef[]);

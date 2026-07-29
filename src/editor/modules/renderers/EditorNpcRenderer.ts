@@ -155,8 +155,16 @@ class EditorNpcRenderer extends EditorRendererBase {
         }
 
         this.manager.npcService.populateVariableSelect(npcConditionalVariable, npc?.conditionVariableId || '', { includeBardSkill: true });
-        this.manager.npcService.populateVariableSelect(npcRewardVariable, npc?.rewardVariableId || '');
-        this.manager.npcService.populateVariableSelect(npcConditionalRewardVariable, npc?.conditionalRewardVariableId || '');
+        this.manager.npcService.populateVariableSelect(
+            npcRewardVariable,
+            npc?.rewardVariableId || '',
+            { includeEndGame: true },
+        );
+        this.manager.npcService.populateVariableSelect(
+            npcConditionalRewardVariable,
+            npc?.conditionalRewardVariableId || '',
+            { includeEndGame: true },
+        );
 
         if (npcConditionalVariable) npcConditionalVariable.disabled = !hasNpc;
         if (npcRewardVariable) npcRewardVariable.disabled = !hasNpc;

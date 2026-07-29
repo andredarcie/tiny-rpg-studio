@@ -3,6 +3,7 @@ import { NPCDefinitions } from '../domain/definitions/NPCDefinitions';
 import { TextResources } from '../adapters/TextResources';
 import type { Npc } from '../domain/entities/Npc';
 import type { GameState } from '../domain/GameState';
+import { normalizeNpcRewardId } from '../domain/constants/npcRewards';
 
 /**
  * NPCManager creates and mutates the fixed NPC roster.
@@ -250,14 +251,16 @@ class NPCManager {
             npc.conditionalRewardVariableId ?? npc.alternativeRewardVariableId ?? null;
         const conditionVariableId = this.gameState.normalizeVariableId(rawConditionId);
         const conditionText = typeof rawConditionText === 'string' ? rawConditionText : '';
-        const rewardVariableId = this.gameState.normalizeVariableId(rawRewardId);
-        const conditionalRewardVariableId = this.gameState.normalizeVariableId(rawConditionalRewardId);
+        const normalizeReward = (rewardId: string | null) =>
+            normalizeNpcRewardId(rewardId, (id) => this.gameState.normalizeVariableId(id));
+        const rewardVariableId = normalizeReward(rawRewardId);
+        const conditionalRewardVariableId = normalizeReward(rawConditionalRewardId);
         const choiceEnabled = npc.choiceEnabled === true;
         const choicePrompt = typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '';
         const choiceYesText = typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '';
         const choiceNoText = typeof npc.choiceNoText === 'string' ? npc.choiceNoText : '';
-        const choiceYesVariableId = this.gameState.normalizeVariableId(npc.choiceYesVariableId ?? null);
-        const choiceNoVariableId = this.gameState.normalizeVariableId(npc.choiceNoVariableId ?? null);
+        const choiceYesVariableId = normalizeReward(npc.choiceYesVariableId ?? null);
+        const choiceNoVariableId = normalizeReward(npc.choiceNoVariableId ?? null);
 
         return {
             id,

@@ -86,6 +86,7 @@ type GameEngineApi = {
     pickupOverlayActive: boolean;
     levelUpCelebrationActive: boolean;
     gameOver: boolean;
+    activeEndingText: string;
     canResetAfterGameOver: boolean;
     necromancerReady: boolean;
     reviveResult: boolean;
@@ -120,7 +121,7 @@ type GameEngineApi = {
     cancelHeldMovement: { mock: { calls: unknown[] } };
     destroy: { mock: { calls: unknown[] } };
   };
-  dialogManager: { lastMessage?: string };
+  dialogManager: { lastMessage?: string; onEndGame: (() => void) | null };
   chooseLevelUpSkill: (index: number | null) => void;
   moveLevelUpCursor: (delta: number) => void;
   confirmLevelUpSelection: () => void;
@@ -365,6 +366,35 @@ describe('GameEngine business rules (legacy)', () => {
     expect(engine.enemyManager.stop.mock.calls.length).toBeGreaterThan(0)
     expect((engine.gameState as StubGameState).setGameOverCalls).toEqual([{ value: true, reason: 'victory' }])
     expect(engine.awaitingRestart).toBe(true)
+  })
+
+  it('clears custom ending text and completes the game from a dialog ending', () => {
+    const engine = createEngine()
+    engine.gameState.activeEndingText = 'Old tile ending'
+
+    engine.dialogManager.onEndGame?.()
+
+    expect(engine.gameState.activeEndingText).toBe('')
+    expect((engine.gameState as StubGameState).setGameOverCalls).toEqual([
+      { value: true, reason: 'victory' },
+    ])
+  })
+
+  it('routes a guest dialog ending through the authoritative game-completion notification', () => {
+    const engine = createEngine()
+    const online = engine.online as unknown as {
+      setMode: (mode: 'online-guest') => void;
+      onGameCompletion: (() => void) | null;
+    }
+    const notifyCompletion = vi.fn()
+    online.onGameCompletion = notifyCompletion
+    online.setMode('online-guest')
+
+    engine.dialogManager.onEndGame?.()
+
+    expect(notifyCompletion).toHaveBeenCalledTimes(1)
+    expect(engine.gameState.gameOver).toBe(false)
+    expect((engine.gameState as StubGameState).setGameOverCalls).toEqual([])
   })
 
   it('handles game over interaction with necromancer revive', () => {

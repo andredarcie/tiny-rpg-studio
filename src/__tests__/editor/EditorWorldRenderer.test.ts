@@ -421,6 +421,19 @@ describe('EditorWorldRenderer', () => {
       expect(values[METRIC.VariablesInUse]).toBe('0');
     });
 
+    it('Variables in use: does not count END_GAME rewards as variables', () => {
+      const { values } = renderMetrics({
+        sprites: [{
+          placed: true,
+          rewardVariableId: 'END_GAME',
+          conditionalRewardVariableId: 'END_GAME',
+          choiceYesVariableId: 'END_GAME',
+          choiceNoVariableId: 'END_GAME',
+        }],
+      });
+      expect(values[METRIC.VariablesInUse]).toBe('0');
+    });
+
     // ── Rooms with tiles ──────────────────────────────────────────────────────
 
     it('Rooms with tiles: counts rooms with at least one non-default ground tile', () => {

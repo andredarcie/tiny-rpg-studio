@@ -2,6 +2,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { StateObjectManager } from '../../domain/state/StateObjectManager';
+import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { ShareConstants } from './ShareConstants';
 import { ShareMath } from './ShareMath';
@@ -174,14 +175,19 @@ class ShareDataNormalizer {
                 ? npc.conditionalRewardVariableId
                 : (typeof npc.alternativeRewardVariableId === 'string' ? npc.alternativeRewardVariableId : null);
             const hasConditionId = typeof conditionId === 'string' && ShareConstants.VARIABLE_IDS.includes(conditionId);
-            const hasRewardId = typeof rewardId === 'string' && ShareConstants.VARIABLE_IDS.includes(rewardId);
+            const hasRewardId = typeof rewardId === 'string'
+                && (ShareConstants.VARIABLE_IDS.includes(rewardId) || rewardId === NPC_END_GAME_REWARD_ID);
             const hasConditionalRewardId =
-                typeof conditionalRewardId === 'string' && ShareConstants.VARIABLE_IDS.includes(conditionalRewardId);
+                typeof conditionalRewardId === 'string'
+                && (ShareConstants.VARIABLE_IDS.includes(conditionalRewardId)
+                    || conditionalRewardId === NPC_END_GAME_REWARD_ID);
             const choiceYesVarId = typeof npc.choiceYesVariableId === 'string'
-                && ShareConstants.VARIABLE_IDS.includes(npc.choiceYesVariableId)
+                && (ShareConstants.VARIABLE_IDS.includes(npc.choiceYesVariableId)
+                    || npc.choiceYesVariableId === NPC_END_GAME_REWARD_ID)
                 ? npc.choiceYesVariableId : null;
             const choiceNoVarId = typeof npc.choiceNoVariableId === 'string'
-                && ShareConstants.VARIABLE_IDS.includes(npc.choiceNoVariableId)
+                && (ShareConstants.VARIABLE_IDS.includes(npc.choiceNoVariableId)
+                    || npc.choiceNoVariableId === NPC_END_GAME_REWARD_ID)
                 ? npc.choiceNoVariableId : null;
             normalized.push({
                 type,

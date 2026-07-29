@@ -314,6 +314,24 @@ describe('EditorNpcRenderer', () => {
     const renderer = new EditorNpcRenderer(asNpcRendererService(svc));
     renderer.updateNpcForm();
     expect(svc.manager.npcService.populateVariableSelect).toHaveBeenCalledTimes(3);
+    expect(svc.manager.npcService.populateVariableSelect).toHaveBeenNthCalledWith(
+      1,
+      expect.any(HTMLSelectElement),
+      '',
+      { includeBardSkill: true },
+    );
+    expect(svc.manager.npcService.populateVariableSelect).toHaveBeenNthCalledWith(
+      2,
+      expect.any(HTMLSelectElement),
+      '',
+      { includeEndGame: true },
+    );
+    expect(svc.manager.npcService.populateVariableSelect).toHaveBeenNthCalledWith(
+      3,
+      expect.any(HTMLSelectElement),
+      '',
+      { includeEndGame: true },
+    );
   });
 
   // ─── drawNpcPreview ──────────────────────────────────────────────────────

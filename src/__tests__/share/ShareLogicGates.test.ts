@@ -27,7 +27,7 @@ describe('Share round-trip - logic gates and LED', () => {
   });
 
   it('encodes the current version (37)', () => {
-    expect(ShareConstants.VERSION).toBe(38);
+    expect(ShareConstants.VERSION).toBe(39);
   });
 
   it('round-trips an AND gate with three variables', () => {

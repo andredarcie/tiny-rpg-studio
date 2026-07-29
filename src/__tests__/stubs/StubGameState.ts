@@ -24,6 +24,7 @@ export class StubGameState {
   pickupOverlayActive = false
   levelUpCelebrationActive = false
   gameOver = false
+  activeEndingText = ''
 
   getGame() {
     return this.state.game
@@ -115,6 +116,11 @@ export class StubGameState {
 
   getPlayerEndText() {
     return ''
+  }
+
+  setActiveEndingText(text: string) {
+    this.activeEndingText = text
+    return text
   }
 
   removeObject() {}

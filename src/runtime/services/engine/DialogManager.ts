@@ -1,6 +1,7 @@
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { soundEngine } from '../SoundEngine';
 import type { DialogChoiceOption, DialogChoicePhase, DialogChoiceState } from '../../../types/gameState';
+import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
 
 type DialogMeta = {
   pauseReason?: string;
@@ -39,6 +40,7 @@ class DialogManager {
    * without applying the change locally first.
    */
   onNpcReward: ((variableId: string, value: boolean) => void) | null = null;
+  onEndGame: (() => void) | null = null;
   /**
    * Optional dialog to open right after the current one fully closes. Used to
    * chain the NPC's default dialog into its Yes/No choice question.
@@ -127,6 +129,10 @@ class DialogManager {
 
   completeDialog(): void {
     const OT = ITEM_TYPES;
+    if (this.pendingDialogAction?.setVariableId === NPC_END_GAME_REWARD_ID) {
+      if (this.pendingDialogAction.rewardAllowed !== false) return;
+      this.pendingDialogAction = null;
+    }
     if (this.pendingDialogAction?.setVariableId && this.pendingDialogAction.rewardAllowed !== false) {
       const varId = this.pendingDialogAction.setVariableId;
       if (this.onNpcReward) {
@@ -147,13 +153,23 @@ class DialogManager {
   closeDialog(): void {
     if (!this.gameState.getDialog().active) return;
     const pendingMeta = this.pendingDialogAction;
-    this.completeDialog();
+    const shouldEndGame = pendingMeta?.setVariableId === NPC_END_GAME_REWARD_ID
+      && pendingMeta.rewardAllowed !== false;
+    if (shouldEndGame) {
+      this.pendingDialogAction = null;
+      this.pendingNext = null;
+    } else {
+      this.completeDialog();
+    }
     this.gameState.setDialog(false);
 
     const reason = pendingMeta?.pauseReason || 'dialog';
     this.gameState.resumeGame(reason);
 
     this.renderer.draw();
+    if (shouldEndGame) {
+      this.onEndGame?.();
+    }
 
     // Chain into a follow-up dialog (e.g. the Yes/No question after the default
     // dialog). Captured and cleared first so the follow-up can queue its own.

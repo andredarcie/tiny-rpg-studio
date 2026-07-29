@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-29-end-game-by-dialog',
+    date: '2026-07-29',
+    title: 'End games through NPC dialog',
+    description:
+      'Any NPC reward can now end the adventure after its dialog finishes. Choose END_GAME for a default line, conditional line, or either Yes/No response to reach the familiar translated ending screen. The setting travels with project files, share links, and HTML exports.',
+  },
+  {
     id: '2026-07-24-solid-traps',
     date: '2026-07-24',
     title: 'Turn traps into solid obstacles',

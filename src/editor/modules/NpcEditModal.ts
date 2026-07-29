@@ -130,7 +130,11 @@ class NpcEditModal extends EditorRendererBase {
 
         const rewardSelect = document.createElement('select');
         rewardSelect.className = 'object-config-select';
-        this.manager.npcService.populateVariableSelect(rewardSelect, npc.rewardVariableId || '');
+        this.manager.npcService.populateVariableSelect(
+            rewardSelect,
+            npc.rewardVariableId || '',
+            { includeEndGame: true },
+        );
         rewardSelect.addEventListener('change', () => {
             this.manager.npcService.handleRewardVariableChange(rewardSelect.value);
             this.refresh();
@@ -273,7 +277,7 @@ class NpcEditModal extends EditorRendererBase {
         rewardLabel.textContent = opts.rewardLabel;
         const select = document.createElement('select');
         select.className = 'object-config-select';
-        this.manager.npcService.populateVariableSelect(select, opts.rewardValue);
+        this.manager.npcService.populateVariableSelect(select, opts.rewardValue, { includeEndGame: true });
         select.addEventListener('change', () => {
             opts.onReward(select.value);
             this.refresh();
@@ -323,7 +327,11 @@ class NpcEditModal extends EditorRendererBase {
 
         const condRewardSelect = document.createElement('select');
         condRewardSelect.className = 'object-config-select';
-        this.manager.npcService.populateVariableSelect(condRewardSelect, npc.conditionalRewardVariableId || '');
+        this.manager.npcService.populateVariableSelect(
+            condRewardSelect,
+            npc.conditionalRewardVariableId || '',
+            { includeEndGame: true },
+        );
         condRewardSelect.addEventListener('change', () => {
             this.manager.npcService.handleConditionalRewardVariableChange(condRewardSelect.value);
             this.refresh();

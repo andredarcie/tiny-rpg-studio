@@ -2,6 +2,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { NPCDefinitions } from '../../domain/definitions/NPCDefinitions';
 import { GameConfig } from '../../../config/GameConfig';
+import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
 
 class ShareConstants {
     static _supportedVersions?: Set<number>;
@@ -45,9 +46,10 @@ class ShareConstants {
     static get VERSION_36() { return 36; }
     static get VERSION_37() { return 37; }
     static get VERSION_38() { return 38; }
+    static get VERSION_39() { return 39; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_38;
+        return ShareConstants.VERSION_39;
     }
 
     static get LEGACY_VERSION() {
@@ -192,6 +194,10 @@ class ShareConstants {
         return ShareConstants.VERSION_38;
     }
 
+    static get NPC_END_GAME_VERSION() {
+        return ShareConstants.VERSION_39;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -257,6 +263,10 @@ class ShareConstants {
         ];
     }
 
+    static get NPC_REWARD_IDS() {
+        return [...ShareConstants.VARIABLE_IDS, NPC_END_GAME_REWARD_ID];
+    }
+
     static get VARIABLE_NAMES() {
         return [
             '1 - Preto', '2 - Azul Escuro', '3 - Roxo', '4 - Verde', '5 - Marrom', '6 - Cinza', '7 - Azul Claro', '8 - Rosa Choque', '9 - Amarelo', 'Habilidade: Bardo',
@@ -311,7 +321,8 @@ class ShareConstants {
                 ShareConstants.VERSION_35,
                 ShareConstants.VERSION_36,
                 ShareConstants.VERSION_37,
-                ShareConstants.VERSION_38
+                ShareConstants.VERSION_38,
+                ShareConstants.VERSION_39
             ]);
         }
         return this._supportedVersions;

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DialogManager } from '../../runtime/services/engine/DialogManager';
 import type { DialogChoiceOption, DialogChoiceState } from '../../types/gameState';
+import { NPC_END_GAME_REWARD_ID } from '../../runtime/domain/constants/npcRewards';
 
 describe('DialogManager', () => {
   const pauseGame = vi.fn();
@@ -171,6 +172,63 @@ describe('DialogManager', () => {
     manager.closeDialog();
     expect(followUp).toHaveBeenCalledTimes(1);
   });
+
+  it('ends the game only after teardown and does not consume END_GAME in completeDialog', () => {
+    const dialog = { active: true };
+    const localSetDialog = vi.fn((active: boolean) => {
+      dialog.active = active;
+    });
+    const manager = new DialogManager(
+      {
+        pauseGame,
+        resumeGame,
+        setDialog: localSetDialog,
+        getDialog: () => dialog,
+        setVariableValue,
+      },
+      renderer,
+    );
+    const onEndGame = vi.fn(() => {
+      expect(dialog.active).toBe(false);
+      expect(resumeGame).toHaveBeenCalledWith('dialog');
+      expect(renderer.draw).toHaveBeenCalledTimes(1);
+    });
+    const onNpcReward = vi.fn();
+    manager.onEndGame = onEndGame;
+    manager.onNpcReward = onNpcReward;
+    manager.showDialog('The final line', {
+      setVariableId: NPC_END_GAME_REWARD_ID,
+      rewardAllowed: true,
+    });
+
+    manager.completeDialog();
+    expect(onEndGame).not.toHaveBeenCalled();
+
+    manager.closeDialog();
+    manager.closeDialog();
+
+    expect(onEndGame).toHaveBeenCalledTimes(1);
+    expect(onNpcReward).not.toHaveBeenCalled();
+    expect(setVariableValue).not.toHaveBeenCalled();
+  });
+
+  it('cancels a queued choice when the default dialog ends the game', () => {
+    const manager = new DialogManager(
+      { pauseGame, resumeGame, setDialog, getDialog, setVariableValue },
+      renderer,
+    );
+    const followUp = vi.fn();
+    manager.onEndGame = vi.fn();
+    manager.showDialog('The final line', {
+      setVariableId: NPC_END_GAME_REWARD_ID,
+      rewardAllowed: true,
+    });
+    manager.setNextDialog(followUp);
+
+    manager.closeDialog();
+
+    expect(followUp).not.toHaveBeenCalled();
+  });
 });
 
 describe('DialogManager — choice dialog', () => {
@@ -271,6 +329,23 @@ describe('DialogManager — choice dialog', () => {
     manager.confirmChoiceSelection();
 
     expect(onNpcReward).toHaveBeenCalledWith('var-5', true);
+    expect(api.setVariableValue).not.toHaveBeenCalled();
+  });
+
+  it('ends immediately after selecting an END_GAME branch with no message', () => {
+    const { api } = makeChoiceGameState();
+    const manager = new DialogManager(api as unknown as ConstructorParameters<typeof DialogManager>[0], renderer);
+    const onEndGame = vi.fn();
+    manager.onEndGame = onEndGame;
+
+    manager.showChoiceDialog('Finish?', [
+      { key: 'yes', label: 'Yes', text: '', rewardVariableId: NPC_END_GAME_REWARD_ID },
+      { key: 'no', label: 'No', text: '', rewardVariableId: null },
+    ]);
+    api.setChoiceSelection(0);
+    manager.confirmChoiceSelection();
+
+    expect(onEndGame).toHaveBeenCalledTimes(1);
     expect(api.setVariableValue).not.toHaveBeenCalled();
   });
 });

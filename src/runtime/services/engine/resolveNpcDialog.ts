@@ -1,3 +1,5 @@
+import { normalizeNpcRewardId } from '../../domain/constants/npcRewards';
+
 type NpcDialogState = {
   id?: string;
   text?: string;
@@ -38,6 +40,15 @@ type ResolvedNpcDialog = {
 
 const getTrimmedDialogText = (value: string | undefined): string => {
   return typeof value === 'string' ? value.trim() : '';
+};
+
+const normalizeRewardId = (
+  id: string | null | undefined,
+  gameState: NpcDialogResolverGameState,
+): string | null => {
+  const normalizeVariableId = gameState.normalizeVariableId;
+  if (!normalizeVariableId) return id ?? null;
+  return normalizeNpcRewardId(id, (value) => normalizeVariableId.call(gameState, value));
 };
 
 /**
@@ -88,12 +99,8 @@ const resolveChoiceDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGa
   // falling back to the raw value (unlike the legacy simple-reward path below).
   // NOTE: call through `gameState` (not a detached reference) so the method keeps its
   // `this` binding — GameState.normalizeVariableId delegates to this.variableManager.
-  const yesReward = gameState.normalizeVariableId
-    ? gameState.normalizeVariableId(npc.choiceYesVariableId ?? null)
-    : (npc.choiceYesVariableId ?? null);
-  const noReward = gameState.normalizeVariableId
-    ? gameState.normalizeVariableId(npc.choiceNoVariableId ?? null)
-    : (npc.choiceNoVariableId ?? null);
+  const yesReward = normalizeRewardId(npc.choiceYesVariableId, gameState);
+  const noReward = normalizeRewardId(npc.choiceNoVariableId, gameState);
 
   return {
     kind: 'choice',
@@ -125,8 +132,8 @@ const resolveNpcDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGameS
       : `default:${npc.text || ''}`
     : null;
   const rewardVariableId = useConditionalText
-    ? (gameState.normalizeVariableId?.(npc.conditionalRewardVariableId ?? null) ?? npc.conditionalRewardVariableId ?? null)
-    : (gameState.normalizeVariableId?.(npc.rewardVariableId ?? null) ?? npc.rewardVariableId ?? null);
+    ? normalizeRewardId(npc.conditionalRewardVariableId, gameState)
+    : normalizeRewardId(npc.rewardVariableId, gameState);
 
   return {
     kind: 'simple',

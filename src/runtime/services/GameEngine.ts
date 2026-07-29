@@ -110,6 +110,10 @@ export class GameEngine {
       this.chooseLevelUpSkill(index);
     });
     this.dialogManager = new DialogManager(this.gameState as never, this.renderer);
+    this.dialogManager.onEndGame = () => {
+      this.gameState.setActiveEndingText('');
+      this.handleGameCompletion();
+    };
     this.interactionManager = new InteractionManager(this.gameState as never, this.dialogManager, {
       onPlayerVictory: () => this.handleGameCompletion(),
       onTrapKill: () => {

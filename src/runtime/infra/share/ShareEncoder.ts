@@ -362,8 +362,8 @@ class ShareEncoder {
             const spriteTexts = sprites.map((npc) => (typeof npc.text === 'string' ? npc.text : ''));
             const conditionalTexts = sprites.map((npc) => (typeof npc.conditionText === 'string' ? npc.conditionText : ''));
             const conditionIndexes = sprites.map((npc) => ShareVariableCodec.variableIdToNibble(npc.conditionVariableId));
-            const rewardIndexes = sprites.map((npc) => ShareVariableCodec.variableIdToNibble(npc.rewardVariableId));
-            const conditionalRewardIndexes = sprites.map((npc) => ShareVariableCodec.variableIdToNibble(npc.conditionalRewardVariableId));
+            const rewardIndexes = sprites.map((npc) => ShareVariableCodec.rewardIdToReference(npc.rewardVariableId));
+            const conditionalRewardIndexes = sprites.map((npc) => ShareVariableCodec.rewardIdToReference(npc.conditionalRewardVariableId));
             const hasConditionalTexts = conditionalTexts.some((text) => typeof text === 'string' && text.trim().length);
             const texts = ShareTextCodec.encodeTextArray(spriteTexts);
             const conditionalTextCode = hasConditionalTexts ? ShareTextCodec.encodeTextArray(conditionalTexts) : '';

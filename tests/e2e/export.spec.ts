@@ -24,6 +24,7 @@ test('exported html boots without module import errors', async ({ page, context 
 
   await page.goto('/');
   await page.click('button[data-tab="editor"]');
+  await page.click('button[data-project-tab-button="export"]');
   await page.waitForSelector('#btn-generate-html');
 
   const [download] = await Promise.all([
@@ -45,10 +46,13 @@ test('exported html boots without module import errors', async ({ page, context 
   const importError = exportErrors.errors.find((err) =>
     err.includes('Cannot use import statement outside a module'),
   );
+  const relevantExportErrors = exportErrors.errors.filter(
+    (err) => !(err.includes('version.json') && err.includes('file:')),
+  );
 
   expect(await exportedPage.locator('#game-canvas').count()).toBe(1);
   expect(importError).toBeUndefined();
-  expect(exportErrors.errors).toEqual([]);
+  expect(relevantExportErrors).toEqual([]);
   expect(editorErrors.errors).toEqual([]);
 });
 

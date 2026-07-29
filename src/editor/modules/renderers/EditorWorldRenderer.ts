@@ -1,5 +1,6 @@
 import { EditorRendererBase } from './EditorRendererBase';
 import { ITEM_TYPES, type ItemType } from '../../../runtime/domain/constants/itemTypes';
+import { NPC_END_GAME_REWARD_ID } from '../../../runtime/domain/constants/npcRewards';
 import { itemCatalog } from '../../../runtime/domain/services/ItemCatalog';
 
 type GameWithWorld = {
@@ -276,10 +277,21 @@ class EditorWorldRenderer extends EditorRendererBase {
                 + countWords(sprite.choiceYesText)
                 + countWords(sprite.choiceNoText);
             if (sprite.conditionVariableId) usedVariableIds.add(sprite.conditionVariableId);
-            if (sprite.rewardVariableId) usedVariableIds.add(sprite.rewardVariableId);
-            if (sprite.conditionalRewardVariableId) usedVariableIds.add(sprite.conditionalRewardVariableId);
-            if (sprite.choiceYesVariableId) usedVariableIds.add(sprite.choiceYesVariableId);
-            if (sprite.choiceNoVariableId) usedVariableIds.add(sprite.choiceNoVariableId);
+            if (sprite.rewardVariableId && sprite.rewardVariableId !== NPC_END_GAME_REWARD_ID) {
+                usedVariableIds.add(sprite.rewardVariableId);
+            }
+            if (
+                sprite.conditionalRewardVariableId
+                && sprite.conditionalRewardVariableId !== NPC_END_GAME_REWARD_ID
+            ) {
+                usedVariableIds.add(sprite.conditionalRewardVariableId);
+            }
+            if (sprite.choiceYesVariableId && sprite.choiceYesVariableId !== NPC_END_GAME_REWARD_ID) {
+                usedVariableIds.add(sprite.choiceYesVariableId);
+            }
+            if (sprite.choiceNoVariableId && sprite.choiceNoVariableId !== NPC_END_GAME_REWARD_ID) {
+                usedVariableIds.add(sprite.choiceNoVariableId);
+            }
         }
 
         const objects = game.objects ?? [];

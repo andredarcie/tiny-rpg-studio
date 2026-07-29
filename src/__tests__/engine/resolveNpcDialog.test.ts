@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveChoiceDialog, resolveNpcDialog } from '../../runtime/services/engine/resolveNpcDialog';
 import type { NpcDialogResolverGameState, NpcDialogState } from '../../runtime/services/engine/resolveNpcDialog';
+import { NPC_END_GAME_REWARD_ID } from '../../runtime/domain/constants/npcRewards';
 
 const makeGameState = (
   overrides: Partial<{ onVars: string[]; skills: string[]; answered: string[] }> = {},
@@ -38,6 +39,22 @@ describe('resolveNpcDialog — simple dialog', () => {
     expect(resolveNpcDialog(npc, makeGameState({ onVars: ['var-1'] })).text).toBe('Conditional');
     expect(resolveNpcDialog(npc, makeGameState({ onVars: [] })).text).toBe('Default');
   });
+
+  it('preserves END_GAME for the active default and conditional rewards', () => {
+    const npc: NpcDialogState = {
+      text: 'Default',
+      conditionText: 'Conditional',
+      conditionVariableId: 'var-1',
+      rewardVariableId: NPC_END_GAME_REWARD_ID,
+      conditionalRewardVariableId: NPC_END_GAME_REWARD_ID,
+    };
+
+    expect(resolveNpcDialog(npc, makeGameState()).rewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
+    expect(resolveNpcDialog(
+      npc,
+      makeGameState({ onVars: ['var-1'] }),
+    ).rewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
+  });
 });
 
 describe('resolveChoiceDialog — choice question', () => {
@@ -72,6 +89,17 @@ describe('resolveChoiceDialog — choice question', () => {
     );
     expect(resolved?.choices?.yes.rewardVariableId).toBeNull();
     expect(resolved?.choices?.no.rewardVariableId).toBeNull();
+  });
+
+  it('preserves END_GAME in both choice branches', () => {
+    const resolved = resolveChoiceDialog({
+      ...baseChoice,
+      choiceYesVariableId: NPC_END_GAME_REWARD_ID,
+      choiceNoVariableId: NPC_END_GAME_REWARD_ID,
+    }, makeGameState());
+
+    expect(resolved?.choices?.yes.rewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
+    expect(resolved?.choices?.no.rewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
   });
 
   it('returns null when the prompt is empty', () => {
