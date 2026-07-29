@@ -360,6 +360,7 @@ describe('EditorExportService', () => {
     const html = await readExportHtmlBlob();
     expect(html).toContain('id="btn-open-studio"');
     expect(html).not.toContain('#btn-open-studio{display:none}');
+    expect(html).toContain('@media (hover:none),(pointer:coarse){#btn-open-studio { display:none }}');
   });
 
   it('exportProjectAsHtml hides Open Studio with CSS when editable-in-studio is unchecked', async () => {

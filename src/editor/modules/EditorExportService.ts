@@ -445,6 +445,7 @@ class EditorExportService {
                 .game-controls{display:flex;justify-content:center;margin-top:1rem}
                 canvas{image-rendering:pixelated;image-rendering:crisp-edges}
                 #btn-export-reset.export-reset-button{position:absolute;right:clamp(12px,4vw,32px);bottom:clamp(100px,14vw,120px);z-index:10;padding:6px 10px;border:2px solid var(--border,#2a2f3a);background:rgba(12,15,22,0.9);color:#fff;font-family:var(--ui-font-family,monospace);cursor:pointer;pointer-events:auto}
+                @media (hover:none),(pointer:coarse){#btn-open-studio { display:none }}
                 ${openStudioHideCss}
                 </style>
                 <script>

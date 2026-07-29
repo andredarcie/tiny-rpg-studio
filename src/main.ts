@@ -317,6 +317,8 @@ class TinyRPGApplication {
     const controls = document.createElement('div');
     controls.id = 'game-audio-controls';
     controls.className = 'game-audio-controls';
+    const isExportMode = Boolean((globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE);
+    controls.classList.toggle('game-audio-controls--mobile-export', isExportMode);
     controls.hidden = true;
 
     const label = document.createElement('label');
@@ -349,7 +351,7 @@ class TinyRPGApplication {
       const isDesktop = desktopQuery?.matches ?? false;
       const isGameMode = document.body.classList.contains('game-mode');
       const hasMusic = typeof game.backgroundMusicVideoId === 'string' && game.backgroundMusicVideoId.trim().length > 0;
-      controls.hidden = !isDesktop || !isGameMode || !hasMusic;
+      controls.hidden = (!isDesktop && !isExportMode) || !isGameMode || !hasMusic;
       if (!controls.hidden) {
         syncValue(gameEngine.backgroundMusicEngine.getVolume());
       }

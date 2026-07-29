@@ -1300,6 +1300,12 @@ body.editor-mode .project-field input[type='range'] {
     .game-audio-controls {
         display: none;
     }
+
+    body.game-mode #game-container .game-audio-controls--mobile-export:not([hidden]) {
+        position: static;
+        display: block;
+        flex: 0 0 auto;
+    }
 }
 
 .game-fullscreen-button {

@@ -537,6 +537,7 @@ describe('TinyRPGApplication.bindBackgroundMusicVolumeControl', () => {
   afterEach(() => {
     document.body.innerHTML = '';
     document.body.className = '';
+    delete (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE;
     vi.restoreAllMocks();
     if (originalMatchMedia) {
       globalThis.matchMedia = originalMatchMedia;
@@ -556,6 +557,29 @@ describe('TinyRPGApplication.bindBackgroundMusicVolumeControl', () => {
     expect(slider.value).toBe('80');
     expect(slider.closest('.game-audio-controls')).not.toHaveProperty('hidden', true);
     expect(fullscreen).toBeNull();
+  });
+
+  it('shows the music volume slider on touch devices only in exported games', () => {
+    globalThis.matchMedia = vi.fn(() => ({
+      matches: false,
+      media: '(hover: hover) and (pointer: fine)',
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof globalThis.matchMedia;
+
+    TinyRPGApplication.bindBackgroundMusicVolumeControl(asVolumeControlGameEngine(engine));
+    const regularControls = document.getElementById('game-audio-controls') as HTMLElement;
+    expect(regularControls.hidden).toBe(true);
+
+    regularControls.remove();
+    (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE = true;
+    TinyRPGApplication.bindBackgroundMusicVolumeControl(asVolumeControlGameEngine(engine));
+
+    const exportControls = document.getElementById('game-audio-controls') as HTMLElement;
+    expect(exportControls.hidden).toBe(false);
+    expect(exportControls.classList.contains('game-audio-controls--mobile-export')).toBe(true);
   });
 
   it('hides the local music volume slider in editor mode or without background music', () => {
