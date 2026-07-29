@@ -1,6 +1,7 @@
 
 import { ITEM_TYPES, type ItemType } from '../constants/itemTypes';
 import { itemCatalog } from '../services/ItemCatalog';
+import { normalizeChestVariableId } from './ChestState';
 const PLAYER_END_TEXT_LIMIT = 40;
 
 type RawObjectInput = {
@@ -189,7 +190,14 @@ class StateObjectManager {
                 const needsVariable = itemCatalog.requiresVariable(type);
                 const normalizedVariable = needsVariable
                     ? (this.variableManager?.normalizeVariableId?.(raw.variableId) ?? fallbackVariableId)
-                    : null;
+                    : (type === OT.CHEST
+                        ? normalizeChestVariableId(
+                            raw.variableId,
+                            this.variableManager?.normalizeVariableId
+                                ? (variableId) => this.variableManager?.normalizeVariableId?.(variableId) ?? null
+                                : undefined
+                        )
+                        : null);
 
                 const base: ObjectEntry = {
                     id,
@@ -450,6 +458,12 @@ class StateObjectManager {
         }
         if (normalizedType === ITEM_TYPES.CHEST) {
             entry.opened = false;
+            entry.variableId = normalizeChestVariableId(
+                entry.variableId,
+                this.variableManager?.normalizeVariableId
+                    ? (variableId) => this.variableManager?.normalizeVariableId?.(variableId) ?? null
+                    : undefined
+            );
             if (entry.randomItem === undefined) {
                 entry.randomItem = true;
             }
@@ -505,7 +519,17 @@ class StateObjectManager {
 
     setObjectVariableById(id: string, variableId: string | null): string | null {
         const entry = this.getObjects().find((object) => object.id === id);
-        if (!entry || !itemCatalog.requiresVariable(entry.type)) return null;
+        if (!entry) return null;
+        if (entry.type === ITEM_TYPES.CHEST) {
+            entry.variableId = normalizeChestVariableId(
+                variableId,
+                this.variableManager?.normalizeVariableId
+                    ? (candidate) => this.variableManager?.normalizeVariableId?.(candidate) ?? null
+                    : undefined
+            );
+            return entry.variableId;
+        }
+        if (!itemCatalog.requiresVariable(entry.type)) return null;
         const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
         const normalized = this.variableManager?.normalizeVariableId?.(variableId);
         entry.variableId = normalized ?? fallbackVariableId;

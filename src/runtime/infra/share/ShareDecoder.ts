@@ -438,6 +438,9 @@ class ShareDecoder {
         const chestRandomNibbles = version >= ShareConstants.NEW_OBJECTS_VERSION
             ? ShareVariableCodec.decodeVariableNibbleArray(payload['7'] || '', chestPositions.length)
             : [];
+        const chestVariableNibbles = version >= ShareConstants.CHEST_VARIABLE_VERSION
+            ? ShareVariableCodec.decodeVariableRefArray(payload['!'] || '', chestPositions.length)
+            : [];
         const title = (ShareTextCodec.decodeText(payload.n, ShareConstants.DEFAULT_TITLE) || ShareConstants.DEFAULT_TITLE).slice(0, 18);
         const author = (ShareTextCodec.decodeText(payload.y, '') || '').slice(0, 18);
         const backgroundMusicVideoId = version >= ShareConstants.BACKGROUND_MUSIC_VERSION
@@ -630,7 +633,11 @@ class ShareDecoder {
             }),
             ...ShareDataNormalizer.buildObjectEntries(platePositions, OT.PRESSURE_PLATE, { variableNibbles: plateVarNibbles }),
             ...ShareDataNormalizer.buildObjectEntries(pushBoxPositions, OT.PUSH_BOX),
-            ...ShareDataNormalizer.buildObjectEntries(chestPositions, OT.CHEST, { containsNibbles: chestContainsNibbles, randomBits: chestRandomNibbles }),
+            ...ShareDataNormalizer.buildObjectEntries(chestPositions, OT.CHEST, {
+                variableNibbles: chestVariableNibbles,
+                containsNibbles: chestContainsNibbles,
+                randomBits: chestRandomNibbles
+            }),
         ];
 
         // Custom Palette

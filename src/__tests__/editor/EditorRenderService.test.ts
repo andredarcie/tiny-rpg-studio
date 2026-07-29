@@ -444,7 +444,7 @@ describe('EditorRenderService', () => {
         { conditionalRewardVariableId: 'var-2', alternativeRewardVariableId: null }
       ],
       enemies: [{ defeatVariableId: 'var-2' }],
-      objects: [{ variableId: 'var-3' }]
+      objects: [{ type: 'chest', variableId: 'var-3' }]
     });
     const { service } = createService(fixture);
 

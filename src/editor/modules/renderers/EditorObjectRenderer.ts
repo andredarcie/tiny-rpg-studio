@@ -445,6 +445,19 @@ class EditorObjectRenderer extends EditorRendererBase {
             checkLabel.append(checkbox, ` ${this.t('objects.chest.randomItem')}`);
             config.appendChild(checkLabel);
 
+            const variableLabel = document.createElement('label');
+            variableLabel.className = 'object-config-label';
+
+            const variableSelect = document.createElement('select');
+            variableSelect.className = 'object-config-select';
+            this.manager.npcService.populateVariableSelect(variableSelect, object.variableId || '');
+            variableSelect.addEventListener('change', () => {
+                this.gameEngine.setObjectVariableById(object.id ?? '', variableSelect.value || null);
+                refresh();
+            });
+            variableLabel.append(`${this.t('objects.switch.variableLabel')} `, variableSelect);
+            config.appendChild(variableLabel);
+
             wrapper.appendChild(config);
         }
 

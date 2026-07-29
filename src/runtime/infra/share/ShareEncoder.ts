@@ -582,6 +582,8 @@ class ShareEncoder {
                 if (containsCode) parts.push('6' + containsCode);
                 const randomCode = ShareVariableCodec.encodeVariableNibbleArray(chestEntries.map((e) => e.randomNibble));
                 if (randomCode) parts.push('7' + randomCode);
+                const variableCode = ShareVariableCodec.encodeVariableRefArray(chestEntries.map((e) => e.variableNibble));
+                if (variableCode) parts.push('!' + variableCode);
             }
         }
 

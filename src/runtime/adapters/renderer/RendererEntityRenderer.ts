@@ -2,9 +2,10 @@ import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
 import { isTrapActive } from '../../domain/state/TrapState';
+import { isChestAccessible } from '../../domain/state/ChestState';
 import { bitmapFont } from './BitmapFont';
 import { FONT_SIZE } from '../../../config/FontConfig';
-import { drawUnreadNpcDialogMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
+import { drawExclamationMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
 
 type FlashState = {
     color: string;
@@ -197,6 +198,20 @@ class RendererEntityRenderer {
                 : 0;
             const py = Math.round(object.y * tileSize + floatOffset);
             this.drawWorldSprite(ctx, sprite, px, py, step, object.roomIndex, object.x, object.y);
+            const chestHasReward = object.randomItem === true
+                || (typeof object.containsItemType === 'string' && object.containsItemType.length > 0);
+            const chestIsAccessible = isChestAccessible(
+                object,
+                this.gameState.isVariableOn
+                    ? (variableId) => this.gameState.isVariableOn?.(variableId) ?? false
+                    : undefined,
+                this.gameState.normalizeVariableId
+                    ? (variableId) => this.gameState.normalizeVariableId?.(variableId) ?? null
+                    : undefined
+            );
+            if (object.type === OT.CHEST && !object.opened && chestHasReward && chestIsAccessible) {
+                drawExclamationMarker(ctx, this.paletteManager, px, py, tileSize);
+            }
         }
     }
 
@@ -237,7 +252,7 @@ class RendererEntityRenderer {
             sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
             this.drawWorldSprite(ctx, sprite, px, py, step, npc.roomIndex, npc.x, npc.y);
             if (shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
-                drawUnreadNpcDialogMarker(ctx, this.paletteManager, px, py, tileSize);
+                drawExclamationMarker(ctx, this.paletteManager, px, py, tileSize);
             }
         }
     }
@@ -692,6 +707,8 @@ type GameObjectState = {
     isLed?: boolean;
     hiddenInGame?: boolean;
     activated?: boolean;
+    containsItemType?: string | null;
+    randomItem?: boolean;
 };
 
 type ItemState = {

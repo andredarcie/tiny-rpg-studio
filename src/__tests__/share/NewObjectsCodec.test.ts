@@ -242,6 +242,63 @@ describe('New objects — URL round-trip', () => {
         }
     });
 
+    it('chest: preserves empty, mixed, sorted, and var-16 variable references', () => {
+        const code = encode({
+            ...baseGame,
+            objects: [
+                { type: 'chest', x: 6, y: 2, roomIndex: 1, containsItemType: 'boots', variableId: 'var-16' },
+                { type: 'chest', x: 4, y: 1, roomIndex: 0, containsItemType: 'key' },
+                { type: 'chest', x: 1, y: 1, roomIndex: 0, containsItemType: 'armor', variableId: 'var-2' },
+            ],
+        });
+        const chests = findObjs(decode(code), 'chest');
+
+        expect(code.split('.').some((segment) => segment.startsWith('!'))).toBe(true);
+        expect(chests.map(({ roomIndex, x, containsItemType, variableId }) => ({
+            roomIndex, x, containsItemType, variableId
+        }))).toEqual([
+            { roomIndex: 0, x: 1, containsItemType: 'armor', variableId: 'var-2' },
+            { roomIndex: 0, x: 4, containsItemType: 'key', variableId: null },
+            { roomIndex: 1, x: 6, containsItemType: 'boots', variableId: 'var-16' },
+        ]);
+    });
+
+    it('chest: omits empty references and decodes pre-feature VERSION_39 links as null', () => {
+        const emptyCode = encode({
+            ...baseGame,
+            objects: [{ type: 'chest', x: 1, y: 1, roomIndex: 0, containsItemType: 'key' }],
+        });
+        expect(emptyCode.split('.').some((segment) => segment.startsWith('!'))).toBe(false);
+        expect(findObj(decode(emptyCode), 'chest')?.variableId).toBeNull();
+
+        const selectedCode = encode({
+            ...baseGame,
+            objects: [{ type: 'chest', x: 1, y: 1, roomIndex: 0, containsItemType: 'key', variableId: 'var-1' }],
+        });
+        const withoutFeatureSegment = selectedCode.split('.').filter((segment) => !segment.startsWith('!')).join('.');
+        expect(findObj(decode(withoutFeatureSegment), 'chest')?.variableId).toBeNull();
+    });
+
+    it('chest: safely handles malformed, short, out-of-range, and special references', () => {
+        const baseCode = encode({
+            ...baseGame,
+            objects: [
+                { type: 'chest', x: 0, y: 0, roomIndex: 0, containsItemType: 'key' },
+                { type: 'chest', x: 1, y: 0, roomIndex: 0, containsItemType: 'key' },
+                { type: 'chest', x: 2, y: 0, roomIndex: 0, containsItemType: 'key' },
+            ],
+        });
+
+        expect(findObjs(decode(`${baseCode}.!@@`), 'chest').map((chest) => chest.variableId))
+            .toEqual([null, null, null]);
+        expect(findObjs(decode(`${baseCode}.!AQ`), 'chest').map((chest) => chest.variableId))
+            .toEqual(['var-1', null, null]);
+        expect(findObjs(decode(`${baseCode}.!_w`), 'chest').map((chest) => chest.variableId))
+            .toEqual([null, null, null]);
+        expect(findObjs(decode(`${baseCode}.!Cg`), 'chest').map((chest) => chest.variableId))
+            .toEqual([null, null, null]);
+    });
+
     // ── mixed scenario ─────────────────────────────────────────────────────────
 
     it('all new object types coexist in the same game without corruption', () => {

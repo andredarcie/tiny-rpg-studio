@@ -303,4 +303,69 @@ describe('MovementManager', () => {
     expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
     expect(renderer.flashEdge).toHaveBeenCalled();
   });
+
+  it.each([
+    ['empty', null, false, false, true],
+    ['OFF', 'var-1', false, false, false],
+    ['ON', 'var-1', true, false, true],
+    ['opened but OFF', 'var-1', false, true, false],
+    ['invalid', 'skill:bard', false, false, true],
+  ])('%s chest applies the expected traversal rule', (_label, variableId, variableOn, opened, canMove) => {
+    const chest = { type: 'chest', variableId, opened };
+    const gameState = {
+      ...createGameState(false),
+      getGame: () => ({ sprites: [], rooms: [{}] }),
+      getObjectAt: () => chest,
+      getObjectsAt: () => [chest],
+      normalizeVariableId: vi.fn((id: string | null) => id === 'var-1' ? id : null),
+      isVariableOn: vi.fn(() => variableOn),
+    };
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+
+    manager.tryMove(1, 0);
+
+    if (canMove) {
+      expect(gameState.setPlayerPosition).toHaveBeenCalledWith(1, 0, null);
+      expect(interactionManager.handlePlayerInteractions).toHaveBeenCalled();
+    } else {
+      expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+      expect(interactionManager.handlePlayerInteractions).not.toHaveBeenCalled();
+    }
+  });
+
+  it('uses the chest traversal rule in guest mode and for push-box destinations', () => {
+    const chest = { type: 'chest', variableId: 'var-1' };
+    const gameState = {
+      ...createGameState(false),
+      getGame: () => ({ sprites: [], rooms: [{}] }),
+      getObjectAt: () => chest,
+      getObjectsAt: () => [chest],
+      normalizeVariableId: vi.fn((id: string | null) => id),
+      isVariableOn: vi.fn(() => false),
+    };
+    const manager = new MovementManager({
+      gameState,
+      tileManager,
+      renderer,
+      dialogManager,
+      interactionManager,
+      enemyManager,
+    });
+    manager.guestMode = true;
+
+    manager.tryMove(1, 0);
+
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+    expect(manager.canPushBoxTo(0, 1, 0, {})).toBe(false);
+
+    gameState.isVariableOn.mockReturnValue(true);
+    expect(manager.canPushBoxTo(0, 1, 0, {})).toBe(true);
+  });
 });

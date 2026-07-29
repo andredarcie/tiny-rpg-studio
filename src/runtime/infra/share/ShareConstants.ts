@@ -198,6 +198,10 @@ class ShareConstants {
         return ShareConstants.VERSION_39;
     }
 
+    static get CHEST_VARIABLE_VERSION() {
+        return ShareConstants.VERSION_39;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }

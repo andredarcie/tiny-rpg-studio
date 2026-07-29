@@ -1,6 +1,7 @@
 import { ITEM_TYPES, type ItemType } from '../../domain/constants/itemTypes';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { isTrapActive } from '../../domain/state/TrapState';
+import { isChestAccessible } from '../../domain/state/ChestState';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
 import { resolveChoiceDialog, resolveNpcDialog, type ResolvedNpcDialog } from './resolveNpcDialog';
@@ -411,6 +412,17 @@ class InteractionManager {
     const OT = this.types;
     if (object.type !== OT.CHEST) return false;
     if (object.opened) return false;
+    if (!isChestAccessible(
+      object,
+      this.gameState.isVariableOn
+        ? (variableId) => this.gameState.isVariableOn?.(variableId) ?? false
+        : undefined,
+      this.gameState.normalizeVariableId
+        ? (variableId) => this.gameState.normalizeVariableId?.(variableId) ?? null
+        : undefined
+    )) {
+      return false;
+    }
 
     let containsType: ItemType | undefined;
     if (object.randomItem) {

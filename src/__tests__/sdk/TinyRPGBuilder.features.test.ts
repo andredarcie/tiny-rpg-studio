@@ -121,13 +121,14 @@ describe('SDK new object types round-trip', () => {
 
     it('chest with fixed contents and random chest round-trip', () => {
         const g = new TinyRPG();
+        const variable = g.variable();
         g.room(0)
-            .addChest({ x: 1, y: 1, contains: 'sword-bronze' })
+            .addChest({ x: 1, y: 1, contains: 'sword-bronze', variable })
             .addChest({ x: 2, y: 1, random: true });
         const chests = objectsOf(roundTrip(g)).filter(o => o.type === 'chest');
         expect(chests).toHaveLength(2);
-        expect(chests.some(c => c.containsItemType === 'sword-bronze')).toBe(true);
-        expect(chests.some(c => c.randomItem === true)).toBe(true);
+        expect(chests.find(c => c.containsItemType === 'sword-bronze')?.variableId).toBe('var-1');
+        expect(chests.find(c => c.randomItem === true)?.variableId).toBeNull();
     });
 
     it('allows multiple switches but one variable-door per room', () => {

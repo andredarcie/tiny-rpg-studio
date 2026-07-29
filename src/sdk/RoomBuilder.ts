@@ -294,7 +294,7 @@ class RoomBuilder {
     }
 
     /** Chest revealing a fixed item, or a random one when `random` is set. */
-    addChest(opts: { x: number; y: number; contains?: ChestItemType; random?: boolean }): this {
+    addChest(opts: { x: number; y: number; contains?: ChestItemType; random?: boolean; variable?: VariableRef | number }): this {
         if (opts.contains !== undefined && !VALID_CHEST_ITEMS.includes(opts.contains)) {
             throw new Error(`Unknown chest item '${opts.contains}'. Valid: ${VALID_CHEST_ITEMS.join(', ')}`);
         }
@@ -306,6 +306,7 @@ class RoomBuilder {
             type: 'chest', x: opts.x, y: opts.y, roomIndex: 0,
             containsItemType: opts.contains ?? null,
             randomItem: Boolean(opts.random),
+            ...(opts.variable !== undefined ? { variableId: resolveVariableId(opts.variable) } : {}),
         });
         return this;
     }

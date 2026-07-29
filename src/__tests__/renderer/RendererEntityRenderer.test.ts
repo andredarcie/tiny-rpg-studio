@@ -248,6 +248,31 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
   });
 
+  it('drawObjects shows an exclamation marker only beside unopened accessible chests with rewards', () => {
+    const { renderer, game, player, gameState, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    player.roomIndex = 1;
+    vi.mocked(spriteFactory.getObjectSprites).mockReturnValue({
+      [ITEM_TYPES.CHEST]: sprite(1),
+      [`${ITEM_TYPES.CHEST}--on`]: sprite(2),
+    });
+    game.objects = [
+      { roomIndex: 1, x: 1, y: 1, type: ITEM_TYPES.CHEST, opened: false, variableId: 'var-1', containsItemType: 'key' },
+      { roomIndex: 1, x: 2, y: 2, type: ITEM_TYPES.CHEST, opened: false, variableId: 'var-2', containsItemType: 'key' },
+      { roomIndex: 1, x: 3, y: 3, type: ITEM_TYPES.CHEST, opened: true, variableId: 'var-1', containsItemType: 'key' },
+      { roomIndex: 1, x: 4, y: 4, type: ITEM_TYPES.CHEST, opened: false, containsItemType: null, randomItem: false },
+    ];
+    vi.mocked(gameState.isVariableOn as NonNullable<EntityRendererGameState['isVariableOn']>)
+      .mockImplementation((variableId) => variableId === 'var-1');
+    const drawTextSpy = vi.spyOn(bitmapFont, 'drawText').mockImplementation(() => {});
+
+    renderer.drawObjects(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(4);
+    expect(drawTextSpy).toHaveBeenCalledTimes(1);
+    expect(drawTextSpy).toHaveBeenCalledWith(ctx, '!', 28, 18, expect.any(Number), expect.any(String));
+  });
+
   it('drawObjects uses the same active and deactivated sprites for damage and solid traps', () => {
     const { renderer, game, player, gameState, spriteFactory, canvasHelper } = makeFixture();
     const ctx = createCtx();

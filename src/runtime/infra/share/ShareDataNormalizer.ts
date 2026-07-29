@@ -2,6 +2,7 @@
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { StateObjectManager } from '../../domain/state/StateObjectManager';
+import { normalizeChestVariableId } from '../../domain/state/ChestState';
 import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { ShareConstants } from './ShareConstants';
@@ -471,7 +472,7 @@ class ShareDataNormalizer {
     static normalizeChestObjects(list: unknown[] | null | undefined) {
         if (!Array.isArray(list)) return [];
         const seenTiles = new Set<string>();
-        const result: Array<PositionEntry & { containsNibble: number; randomNibble: number }> = [];
+        const result: Array<PositionEntry & { containsNibble: number; randomNibble: number; variableNibble: number }> = [];
         for (const raw of list) {
             const entry = raw as ShareObjectInput;
             if (entry.type !== ITEM_TYPES.CHEST) continue;
@@ -485,7 +486,10 @@ class ShareDataNormalizer {
             const containsIndex = ShareDataNormalizer.CHEST_ITEM_MAP.indexOf(entry.containsItemType ?? null);
             const containsNibble = containsIndex >= 0 ? containsIndex : 0;
             const randomNibble = entry.randomItem ? 1 : 0;
-            result.push({ x, y, roomIndex, containsNibble, randomNibble });
+            const variableNibble = ShareVariableCodec.variableIdToNibble(
+                normalizeChestVariableId(entry.variableId)
+            );
+            result.push({ x, y, roomIndex, containsNibble, randomNibble, variableNibble });
         }
         return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
     }
@@ -565,6 +569,10 @@ class ShareDataNormalizer {
             }
             if (type === ITEM_TYPES.CHEST) {
                 entry.opened = false;
+                const nibble = variableNibbles[index] ?? 0;
+                entry.variableId = normalizeChestVariableId(
+                    ShareVariableCodec.nibbleToVariableId(nibble)
+                );
                 const containsNibbles = Array.isArray(options.containsNibbles) ? options.containsNibbles : [];
                 const randomBits = Array.isArray(options.randomBits) ? options.randomBits : [];
                 const containsNibble = containsNibbles[index] ?? 0;

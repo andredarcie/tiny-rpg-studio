@@ -226,6 +226,21 @@ describe('EditorCanvasRenderer', () => {
     );
   });
 
+  it('draws the existing variable outline for a linked chest', () => {
+    const { service, ctx } = makeService();
+    service.gameEngine.getObjectsForRoom.mockReturnValue([
+      { type: 'chest', roomIndex: 0, x: 2, y: 3, variableId: 'var-1' },
+    ]);
+    service.gameEngine.getVariableDefinitions.mockReturnValue([
+      { id: 'var-1', color: '#FF0000' },
+    ]);
+    const renderer = new EditorCanvasRenderer(asEditorCanvasService(service));
+
+    renderer.drawEntities(20);
+
+    expect(ctx.strokeRect).toHaveBeenCalled();
+  });
+
   it('draws placed npcs in current room', () => {
     const { service } = makeService();
     service.state.activeRoomIndex = 0;

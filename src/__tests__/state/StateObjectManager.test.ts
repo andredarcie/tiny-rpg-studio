@@ -391,4 +391,29 @@ describe('StateObjectManager - multi-instance (logic category)', () => {
     manager.setObjectPosition(ITEM_TYPES.KEY, 0, 3, 0); // moves the existing key
     expect(manager.getObjects().filter((o) => o.type === ITEM_TYPES.KEY).length).toBe(1);
   });
+
+  it('preserves, clears, and safely normalizes optional chest variables', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const variableManager = {
+      getFirstVariableId: () => 'var-1',
+      normalizeVariableId: (value: string | null | undefined) =>
+        value === 'var-1' || value === 'var-16' || value === 'skill:bard' ? value : null,
+    };
+    const manager = new StateObjectManager(game, createWorldManager(), variableManager);
+
+    const chest = manager.setObjectPosition(ITEM_TYPES.CHEST, 0, 2, 2);
+    expect(chest?.variableId).toBeNull();
+    expect(manager.setObjectVariableById(chest?.id ?? '', 'var-16')).toBe('var-16');
+    expect(manager.setObjectVariableById(chest?.id ?? '', null)).toBeNull();
+    expect(manager.setObjectVariableById(chest?.id ?? '', 'missing')).toBeNull();
+    expect(manager.setObjectVariableById(chest?.id ?? '', 'skill:bard')).toBeNull();
+
+    const normalized = manager.normalizeObjects([
+      { type: ITEM_TYPES.CHEST, roomIndex: 0, x: 1, y: 1, variableId: 'var-16' },
+      { type: ITEM_TYPES.CHEST, roomIndex: 0, x: 2, y: 1, variableId: 'skill:bard' },
+      { type: ITEM_TYPES.CHEST, roomIndex: 0, x: 3, y: 1, variableId: 'missing' },
+    ]).filter((object) => object.type === ITEM_TYPES.CHEST);
+
+    expect(normalized.map((object) => object.variableId)).toEqual(['var-16', null, null]);
+  });
 });

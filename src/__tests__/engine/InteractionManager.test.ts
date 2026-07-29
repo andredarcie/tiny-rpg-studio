@@ -470,4 +470,35 @@ describe('InteractionManager', () => {
     expect(plate.activated).toBe(false);
     expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', false);
   });
+
+  it.each([
+    ['empty', null, false, true],
+    ['ON', 'var-1', true, true],
+    ['OFF', 'var-1', false, false],
+    ['invalid', 'skill:bard', false, true],
+  ])('%s chest applies the condition before opening or rewarding', (_label, variableId, variableOn, shouldOpen) => {
+    const gameState = createInteractionGameState();
+    (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockImplementation(
+      (id: string | null) => id === 'var-1' ? id : null
+    );
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(variableOn);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const chest = {
+      type: 'chest',
+      opened: false,
+      variableId,
+      containsItemType: 'key',
+      roomIndex: 0,
+      x: 0,
+      y: 0,
+    };
+
+    expect(manager.handleChest(chest as never)).toBe(shouldOpen);
+    expect(chest.opened).toBe(shouldOpen);
+    if (shouldOpen) {
+      expect(gameState.showPickupOverlay).toHaveBeenCalled();
+    } else {
+      expect(gameState.showPickupOverlay).not.toHaveBeenCalled();
+    }
+  });
 });

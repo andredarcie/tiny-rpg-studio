@@ -38,7 +38,7 @@ const shouldDrawUnreadNpcDialogMarker = (gameState: GameStateApi, npc: NpcState)
   return gameState.hasUnreadNpcDialog(npc.id, resolved.variantKey);
 };
 
-const drawUnreadNpcDialogMarker = (
+const drawExclamationMarker = (
   ctx: CanvasRenderingContext2D,
   paletteManager: PaletteManagerApi,
   px: number,
@@ -51,4 +51,4 @@ const drawUnreadNpcDialogMarker = (
   bitmapFont.drawText(ctx, '!', iconX, iconY, Math.max(8, Math.round(tileSize * 0.8)), iconColor);
 };
 
-export { drawUnreadNpcDialogMarker, shouldDrawUnreadNpcDialogMarker };
+export { drawExclamationMarker, shouldDrawUnreadNpcDialogMarker };

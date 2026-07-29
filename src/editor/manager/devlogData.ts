@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-29-conditional-chests',
+    date: '2026-07-29',
+    title: 'Lock chests with variables',
+    description:
+      'Chests can now be linked to a variable. While it is OFF, the chest blocks the path and stays closed; turn it ON to walk onto the chest and collect its reward. An exclamation marker shows when a chest is ready to open. The setting travels with share links, HTML exports, imports, and SDK games.',
+  },
+  {
     id: '2026-07-29-end-game-by-dialog',
     date: '2026-07-29',
     title: 'End games through NPC dialog',

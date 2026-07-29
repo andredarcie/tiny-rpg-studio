@@ -1,6 +1,7 @@
 import { TextResources } from '../../adapters/TextResources';
 import { GameConfig } from '../../../config/GameConfig';
 import { isTrapActive } from '../../domain/state/TrapState';
+import { isChestAccessible } from '../../domain/state/ChestState';
 import { soundEngine } from '../SoundEngine';
 
 type PlayerState = {
@@ -30,6 +31,7 @@ type GameStateApi = {
   consumeKey: () => boolean;
   getKeys: () => number;
   isVariableOn: (id: string) => boolean;
+  normalizeVariableId?: (id: string | null) => string | null;
   hasSkill?: (skillId: string) => boolean;
   isInCombat?: () => boolean;
   resetPushBoxesForRoom?: (roomIndex: number) => void;
@@ -303,6 +305,22 @@ class MovementManager {
       }
       return;
     }
+    const hasLockedChest = objectsAtTarget.some((object) =>
+      object.type === 'chest'
+      && !isChestAccessible(
+        object,
+        (variableId) => this.gameState.isVariableOn(variableId),
+        this.gameState.normalizeVariableId
+          ? (variableId) => this.gameState.normalizeVariableId?.(variableId) ?? null
+          : undefined
+      )
+    );
+    if (hasLockedChest) {
+      if (enteringNewRoom) {
+        this.flashBlockedEdge(direction, { x: targetX, y: targetY });
+      }
+      return;
+    }
     const isVariableDoor = Boolean(objectAtTarget?.isVariableDoor);
     if (isVariableDoor) {
       const variableId = objectAtTarget?.variableId;
@@ -530,6 +548,18 @@ class MovementManager {
       const t = object.type;
       if (t === 'push-box') return false;
       if (t === 'trap' && isTrapActive(object, (variableId) => this.gameState.isVariableOn(variableId))) {
+        return false;
+      }
+      if (
+        t === 'chest'
+        && !isChestAccessible(
+          object,
+          (variableId) => this.gameState.isVariableOn(variableId),
+          this.gameState.normalizeVariableId
+            ? (variableId) => this.gameState.normalizeVariableId?.(variableId) ?? null
+            : undefined
+        )
+      ) {
         return false;
       }
       if (object.isLockedDoor && !object.opened) return false;

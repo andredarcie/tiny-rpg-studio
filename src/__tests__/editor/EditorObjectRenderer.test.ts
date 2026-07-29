@@ -55,7 +55,7 @@ type EditorObjectMock = {
   roomIndex?: number;
   x?: number;
   y?: number;
-  variableId?: string;
+  variableId?: string | null;
   solid?: boolean;
   on?: boolean;
   opened?: boolean;
@@ -117,6 +117,8 @@ function createFixture() {
     getObjectsForRoom: vi.fn((): EditorObjectMock[] => []),
     setObjectVariable: vi.fn(),
     setObjectVariableById: vi.fn(),
+    setObjectContainsItemById: vi.fn(),
+    setObjectRandomItemById: vi.fn(),
     setTrapSolidById: vi.fn(),
     setGateInputVariableById: vi.fn(),
     setGateOutputVariableById: vi.fn(),
@@ -416,6 +418,44 @@ describe('EditorObjectRenderer', () => {
       y: 0,
     });
     expect(keyArea.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  it('renders and clears the optional chest variable selector', () => {
+    const fixture = createFixture();
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
+    const area = renderer.buildObjectConfigArea({
+      id: 'chest-1',
+      type: ITEM_TYPES.CHEST,
+      roomIndex: 0,
+      x: 2,
+      y: 3,
+      variableId: 'var-2',
+    });
+    const selects = area.querySelectorAll('select.object-config-select');
+    const variableSelect = selects[1] as HTMLSelectElement;
+
+    expect(selects).toHaveLength(2);
+    expect(fixture.manager.npcService.populateVariableSelect)
+      .toHaveBeenCalledWith(variableSelect, 'var-2');
+    expect(variableSelect.value).toBe('var-2');
+
+    variableSelect.value = '';
+    variableSelect.dispatchEvent(new Event('change'));
+
+    expect(fixture.gameEngine.setObjectVariableById).toHaveBeenCalledWith('chest-1', null);
+    expect(fixture.manager.history.pushCurrentState).toHaveBeenCalled();
+
+    fixture.manager.npcService.populateVariableSelect.mockClear();
+    renderer.buildObjectConfigArea({
+      id: 'chest-2',
+      type: ITEM_TYPES.CHEST,
+      roomIndex: 0,
+      x: 3,
+      y: 3,
+      variableId: null,
+    });
+    expect(fixture.manager.npcService.populateVariableSelect)
+      .toHaveBeenCalledWith(expect.any(HTMLSelectElement), '');
   });
 
   it('drawObjectPreview returns early for invalid canvas and null context', () => {
