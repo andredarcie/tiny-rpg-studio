@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockState = vi.hoisted(() => ({
   api: null as null | {
@@ -7,9 +7,9 @@ const mockState = vi.hoisted(() => ({
     draw: () => void;
     renderAll: () => void;
   },
-  shareEncode: vi.fn<(data: Record<string, unknown>) => string>(),
-  shareDecode: vi.fn<(code: string) => Record<string, unknown> | null>(),
   shareBuildUrl: vi.fn<(data: unknown) => string | null>(),
+  shareDecode: vi.fn<(code: string) => Record<string, unknown> | null>(),
+  shareEncode: vi.fn<(data: Record<string, unknown>) => string>(),
   trGet: vi.fn<(key: string, fallback?: string) => string>(),
   trLocale: 'en-US',
   version: '1',
@@ -21,9 +21,9 @@ vi.mock('../../runtime/infra/TinyRpgApi', () => ({
 
 vi.mock('../../runtime/infra/share/ShareUtils', () => ({
   ShareUtils: {
-    encode: (...args: [Record<string, unknown>]) => mockState.shareEncode(...args),
-    decode: (...args: [string]) => mockState.shareDecode(...args),
     buildShareUrl: (...args: [unknown]) => mockState.shareBuildUrl(...args),
+    decode: (...args: [string]) => mockState.shareDecode(...args),
+    encode: (...args: [Record<string, unknown>]) => mockState.shareEncode(...args),
   },
 }));
 
@@ -48,410 +48,84 @@ type FakeResponse = {
   blob?: () => Promise<Blob>;
 };
 
-function setupDom() {
-  document.body.innerHTML = '';
-
-  const exportBtn = document.createElement('button');
-  exportBtn.id = 'btn-generate-html';
-  document.body.appendChild(exportBtn);
-
-  const editable = document.createElement('input');
-  editable.type = 'checkbox';
-  editable.id = 'export-editable-in-studio';
-  editable.checked = true;
-  document.body.appendChild(editable);
-
-  const importBtn = document.createElement('button');
-  importBtn.id = 'btn-import-html';
-  document.body.appendChild(importBtn);
-
-  const shareInput = document.createElement('input');
-  shareInput.id = 'project-share-url';
-  document.body.appendChild(shareInput);
-
-  const gameContainer = document.createElement('div');
-  gameContainer.id = 'game-container';
-  gameContainer.innerHTML = '<canvas></canvas>';
-  document.body.appendChild(gameContainer);
-
-  return { exportBtn, importBtn, shareInput, gameContainer };
+function setupDom(): void {
+  document.body.innerHTML = `
+    <button id="btn-generate-html"></button>
+    <input id="export-editable-in-studio" type="checkbox" checked>
+    <button id="btn-import-html"></button>
+    <input id="project-share-url">
+    <div id="game-container"><canvas></canvas></div>
+  `;
 }
 
 function makeApi(overrides: Partial<NonNullable<typeof mockState.api>> = {}) {
   return {
+    draw: vi.fn(),
     exportGameData: vi.fn(() => ({ title: 'My Game' })),
     importGameData: vi.fn(),
-    draw: vi.fn(),
     renderAll: vi.fn(),
     ...overrides,
   };
 }
 
-function setStyleSheets(sheets: Array<{ href?: string | null; cssRules?: Array<{ cssText: string }> }>) {
-  Object.defineProperty(document, 'styleSheets', {
-    configurable: true,
-    value: sheets,
-  });
-}
-
-function fileLike(textResult: string | Error): File {
+function fileLike(result: string | Error): File {
   return {
-    text: typeof textResult === 'string'
-      ? vi.fn(() => Promise.resolve(textResult))
-      : vi.fn(() => Promise.reject(textResult)),
+    text: typeof result === 'string'
+      ? vi.fn(() => Promise.resolve(result))
+      : vi.fn(() => Promise.reject(result)),
   } as unknown as File;
 }
 
 describe('EditorExportService', () => {
   let alertSpy: ReturnType<typeof vi.fn>;
-  let fetchSpy: ReturnType<typeof vi.fn>;
   let anchorClickSpy: ReturnType<typeof vi.spyOn>;
-  let revokeObjectUrlSpy: ReturnType<typeof vi.spyOn>;
   let createdBlob: Blob | null;
+  let fetchSpy: ReturnType<typeof vi.fn<(url: string) => Promise<FakeResponse>>>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.useRealTimers();
     setupDom();
-
     alertSpy = vi.fn();
     vi.stubGlobal('alert', alertSpy);
-    fetchSpy = vi.fn();
+    fetchSpy = vi.fn((url: string) => {
+      if (url.startsWith('export.bundle.js')) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve('globalThis.exportBundleLoaded=true;'),
+        } as FakeResponse);
+      }
+      if (url.startsWith('tiny-rpg-studio-sdk.css')) {
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve('@font-face{src:url("pixel-operator.woff")}body{color:white}'),
+        } as FakeResponse);
+      }
+      if (url === 'pixel-operator.woff') {
+        return Promise.resolve({
+          blob: () => Promise.resolve(new Blob(['woff'], { type: 'font/woff' })),
+          ok: true,
+          text: () => Promise.resolve('woff'),
+        } as FakeResponse);
+      }
+      return Promise.resolve({ ok: false, text: () => Promise.resolve('') } as FakeResponse);
+    });
     vi.stubGlobal('fetch', fetchSpy);
     createdBlob = null;
 
     mockState.api = makeApi();
-    mockState.shareEncode.mockReset();
-    mockState.shareDecode.mockReset();
-    mockState.shareBuildUrl.mockReset();
-    mockState.trGet.mockReset();
-    mockState.shareEncode.mockReturnValue('ENCODED');
-    mockState.shareDecode.mockReturnValue({ title: 'Imported' });
-    mockState.shareBuildUrl.mockReturnValue('https://x.test/#abc');
-    mockState.trGet.mockImplementation((_key, fallback = '') => fallback);
+    mockState.shareEncode.mockReset().mockReturnValue('ENCODED');
+    mockState.shareDecode.mockReset().mockReturnValue({ title: 'Imported' });
+    mockState.shareBuildUrl.mockReset().mockReturnValue('https://x.test/#abc');
+    mockState.trGet.mockReset().mockImplementation((_key, fallback = '') => fallback);
     mockState.trLocale = 'en-US';
     mockState.version = '9';
-
-    setStyleSheets([]);
 
     anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    vi.spyOn(URL, 'createObjectURL').mockImplementation((obj: Blob | MediaSource) => {
-      if (obj instanceof Blob) createdBlob = obj;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((object: Blob | MediaSource) => {
+      if (object instanceof Blob) createdBlob = object;
       return 'blob:test';
     });
-    revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('binds buttons in constructor and schedules export on click', async () => {
-    vi.useFakeTimers();
-    const svc = new EditorExportService();
-    const exportSpy = vi.spyOn(svc, 'exportProjectAsHtml').mockResolvedValue();
-    const importClickSpy = vi.spyOn(svc.importFileInput as HTMLInputElement, 'click').mockImplementation(() => {});
-
-    (document.getElementById('btn-generate-html') as HTMLButtonElement).click();
-    expect(exportSpy).not.toHaveBeenCalled();
-    await vi.runAllTimersAsync();
-    expect(exportSpy).toHaveBeenCalledTimes(1);
-
-    (document.getElementById('btn-import-html') as HTMLButtonElement).click();
-    expect(importClickSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('resets hidden import input value after file selection and imports file', async () => {
-    const svc = new EditorExportService();
-    const importSpy = vi.spyOn(svc, 'importFromHtml').mockResolvedValue();
-    const hiddenInput = svc.importFileInput as HTMLInputElement;
-    Object.defineProperty(hiddenInput, 'files', {
-      configurable: true,
-      value: [fileLike('<html></html>')],
-    });
-
-    hiddenInput.dispatchEvent(new Event('change'));
-    await Promise.resolve();
-
-    expect(importSpy).toHaveBeenCalledTimes(1);
-    expect(hiddenInput.value).toBe('');
-  });
-
-  it('importFromHtml alerts when no embedded share code is found', async () => {
-    const svc = new EditorExportService();
-    await svc.importFromHtml(fileLike('<html><body>No code</body></html>'));
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('importFromHtml alerts when embedded value is invalid JSON', async () => {
-    const svc = new EditorExportService();
-    const html = '<script>__TINY_RPG_SHARED_CODE = not-json;</script>';
-    await svc.importFromHtml(fileLike(html));
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('importFromHtml alerts when ShareUtils.decode fails', async () => {
-    mockState.shareDecode.mockReturnValue(null);
-    const svc = new EditorExportService();
-    const html = '<script>__TINY_RPG_SHARED_CODE = "abc";</script>';
-    await svc.importFromHtml(fileLike(html));
-    expect(mockState.shareDecode).toHaveBeenCalledWith('abc');
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('importFromHtml alerts when engine API is unavailable', async () => {
-    mockState.api = null;
-    const svc = new EditorExportService();
-    const html = '<script>__TINY_RPG_SHARED_CODE = "abc";</script>';
-    await svc.importFromHtml(fileLike(html));
-    expect(alertSpy).toHaveBeenCalledWith('Unable to import: engine API is not available.');
-  });
-
-  it('importFromHtml imports data, redraws, updates hash and share input on success', async () => {
-    const api = makeApi();
-    mockState.api = api;
-    mockState.shareDecode.mockReturnValue({ title: 'Imported Game' });
-    mockState.shareBuildUrl.mockReturnValue('https://example.test/#xyz123');
-    const svc = new EditorExportService();
-    const shareInput = document.getElementById('project-share-url') as HTMLInputElement;
-
-    await svc.importFromHtml(fileLike('<script>__TINY_RPG_SHARED_CODE = "abc";</script>'));
-
-    expect(api.importGameData).toHaveBeenCalledWith({ title: 'Imported Game' });
-    expect(api.draw).toHaveBeenCalledTimes(1);
-    expect(api.renderAll).toHaveBeenCalledTimes(1);
-    expect(location.hash).toBe('#xyz123');
-    expect(shareInput.value).toBe('https://example.test/#xyz123');
-  });
-
-  it('importFromHtml handles file read errors', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const svc = new EditorExportService();
-    await svc.importFromHtml(fileLike(new Error('boom')));
-    expect(errorSpy).toHaveBeenCalled();
-    expect(alertSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('exportProjectAsHtml alerts when engine API is unavailable', async () => {
-    mockState.api = null;
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
-    expect(alertSpy).toHaveBeenCalledWith('Unable to export: engine API is not available.');
-  });
-
-  it('exportProjectAsHtml alerts when exportGameData returns null', async () => {
-    mockState.api = makeApi({ exportGameData: vi.fn(() => null) });
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
-    expect(alertSpy).toHaveBeenCalledWith('Unable to read current project data.');
-  });
-
-  it('exportProjectAsHtml alerts on local stylesheet download failure', async () => {
-    setStyleSheets([{ href: '/app.css' }]);
-    fetchSpy.mockResolvedValue({ ok: false, text: () => Promise.resolve('') } as FakeResponse);
-    const svc = new EditorExportService();
-
-    await svc.exportProjectAsHtml();
-
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Unable to download project assets'));
-  });
-
-  it('exportProjectAsHtml skips cross-origin stylesheet and succeeds with bundle source', async () => {
-    const cssRules = [{ cssText: '.a{color:red;}' }];
-    setStyleSheets([
-      { href: 'https://fonts.googleapis.com/css2?family=Press+Start+2P' },
-      { href: null, cssRules },
-    ]);
-    mockState.trLocale = 'pt-BR';
-    mockState.api = makeApi({ exportGameData: vi.fn(() => ({ title: 'Árvore Mágica' })) });
-    fetchSpy
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('console.log("bundle ok");') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('woff'), blob: () => Promise.resolve(new Blob(['woff'])) } as FakeResponse)
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('png'), blob: () => Promise.resolve(new Blob(['png'])) } as FakeResponse);
-    const svc = new EditorExportService();
-
-    await svc.exportProjectAsHtml();
-
-    expect(mockState.shareEncode).toHaveBeenCalled();
-    expect(fetchSpy).toHaveBeenCalledWith(expect.stringMatching(/^export\.bundle\.js\?v=/));
-    expect(anchorClickSpy).toHaveBeenCalled();
-    expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:test');
-
-    expect(createdBlob).toBeInstanceOf(Blob);
-  });
-
-  it('exportProjectAsHtml injects export-only reset and omits Studio tabs/reset chrome', async () => {
-    const gameContainer = document.getElementById('game-container');
-    if (!gameContainer) throw new Error('game-container missing');
-    const audio = document.createElement('div');
-    audio.id = 'game-audio-controls';
-    gameContainer.appendChild(audio);
-    const fullscreen = document.createElement('button');
-    fullscreen.id = 'game-fullscreen-toggle';
-    gameContainer.appendChild(fullscreen);
-
-    setStyleSheets([{ href: null, cssRules: [{ cssText: '.a{color:red;}' }] }]);
-    mockState.trGet.mockImplementation((key, fallback = '') => {
-      if (key === 'export.resetAria') return 'Restart the game';
-      if (key === 'export.openStudio') return 'Open Studio';
-      // If text used i18n, this would inject a non-English label.
-      if (key === 'export.reset') return 'Reiniciar';
-      return fallback;
-    });
-    fetchSpy
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('console.log("bundle ok");') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('woff'), blob: () => Promise.resolve(new Blob(['woff'])) } as FakeResponse);
-
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
-
-    expect(createdBlob).toBeInstanceOf(Blob);
-    if (!(createdBlob instanceof Blob)) throw new Error('expected export blob');
-    const exportBlob = createdBlob;
-    const html = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error ?? new Error('Failed to read export blob'));
-      reader.readAsText(exportBlob);
-    });
-    expect(html).toContain('id="btn-export-reset"');
-    expect(html).toContain('export-reset-button');
-    // Label is a fixed single letter so export UI stays compact and language-neutral.
-    expect(html).toContain('>R</button>');
-    expect(html).not.toContain('>Reiniciar</button>');
-    expect(html).toContain('Restart the game');
-    expect(html).toContain('#btn-export-reset.export-reset-button');
-    expect(html).not.toContain('id="btn-reset"');
-    expect(html).not.toContain('class="tabs"');
-    expect(html).not.toContain('tabs-links');
-    expect(html).not.toContain('id="game-audio-controls"');
-    expect(html).not.toContain('id="game-fullscreen-toggle"');
-    expect(html).toContain('id="tab-game"');
-    expect(html).toContain('class="tab-content active"');
-  });
-
-  async function readExportHtmlBlob(): Promise<string> {
-    expect(createdBlob).toBeInstanceOf(Blob);
-    if (!(createdBlob instanceof Blob)) throw new Error('expected export blob');
-    const exportBlob = createdBlob;
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => reject(reader.error ?? new Error('Failed to read export blob'));
-      reader.readAsText(exportBlob);
-    });
-  }
-
-  it('exportProjectAsHtml keeps Open Studio visible when editable-in-studio is checked', async () => {
-    const editable = document.getElementById('export-editable-in-studio') as HTMLInputElement;
-    editable.checked = true;
-    setStyleSheets([{ href: null, cssRules: [{ cssText: '.a{color:red;}' }] }]);
-    mockState.trGet.mockImplementation((key, fallback = '') => {
-      if (key === 'export.openStudio') return 'Open Studio';
-      return fallback;
-    });
-    fetchSpy
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('console.log("bundle ok");') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('woff'), blob: () => Promise.resolve(new Blob(['woff'])) } as FakeResponse);
-
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
-
-    const html = await readExportHtmlBlob();
-    expect(html).toContain('id="btn-open-studio"');
-    expect(html).not.toContain('#btn-open-studio{display:none}');
-    expect(html).toContain('@media (hover:none),(pointer:coarse){#btn-open-studio { display:none }}');
-  });
-
-  it('exportProjectAsHtml hides Open Studio with CSS when editable-in-studio is unchecked', async () => {
-    const editable = document.getElementById('export-editable-in-studio') as HTMLInputElement;
-    editable.checked = false;
-    setStyleSheets([{ href: null, cssRules: [{ cssText: '.a{color:red;}' }] }]);
-    mockState.trGet.mockImplementation((key, fallback = '') => {
-      if (key === 'export.openStudio') return 'Open Studio';
-      return fallback;
-    });
-    fetchSpy
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('console.log("bundle ok");') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('woff'), blob: () => Promise.resolve(new Blob(['woff'])) } as FakeResponse);
-
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
-
-    const html = await readExportHtmlBlob();
-    expect(html).toContain('id="btn-open-studio"');
-    expect(html).toContain('#btn-open-studio{display:none}');
-  });
-
-  it('exportProjectAsHtml alerts when script endpoint returns HTML in fallback mode', async () => {
-    setStyleSheets([]);
-    fetchSpy
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: true, text: () => Promise.resolve('<!doctype html><html></html>') } as FakeResponse);
-    const svc = new EditorExportService();
-
-    await svc.exportProjectAsHtml();
-
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('expected a JavaScript asset but received HTML'));
-  });
-
-  it('exportProjectAsHtml alerts when game-container is missing', async () => {
-    (document.getElementById('game-container') as HTMLElement).remove();
-    fetchSpy.mockResolvedValue({ ok: true, text: () => Promise.resolve('console.log(1);') } as FakeResponse);
-    const svc = new EditorExportService();
-
-    await svc.exportProjectAsHtml();
-
-    expect(alertSpy).toHaveBeenCalledWith('game-container not found');
-  });
-
-  it('exportProjectAsHtml alerts when fallback scripts are all skipped as modules', async () => {
-    fetchSpy
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
-      .mockResolvedValueOnce({
-        ok: true,
-        text: () => Promise.resolve('<html><body><script src="js/main.js"></script><script src="js/runtime/adapters/TextResources.js"></script></body></html>'),
-      } as FakeResponse)
-      .mockResolvedValue({ ok: true, text: () => Promise.resolve('export const x = 1;') } as FakeResponse);
-
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
-
-    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('expected a JavaScript asset but received HTML'));
-  });
-});
-
-describe('EditorExportService - novos arquivos de custom sprites', () => {
-  let alertSpy: ReturnType<typeof vi.fn>;
-  let fetchSpy: ReturnType<typeof vi.fn>;
-
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    vi.useRealTimers();
-    setupDom();
-
-    alertSpy = vi.fn();
-    vi.stubGlobal('alert', alertSpy);
-    fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-
-    mockState.api = makeApi();
-    mockState.shareEncode.mockReset();
-    mockState.shareDecode.mockReset();
-    mockState.shareBuildUrl.mockReset();
-    mockState.trGet.mockReset();
-    mockState.shareEncode.mockReturnValue('ENCODED');
-    mockState.shareDecode.mockReturnValue({ title: 'Imported' });
-    mockState.shareBuildUrl.mockReturnValue('https://x.test/#abc');
-    mockState.trGet.mockImplementation((_key, fallback = '') => fallback);
-    mockState.trLocale = 'en-US';
-    mockState.version = '9';
-
-    setStyleSheets([]);
-
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => 'blob:test');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
   });
 
@@ -459,30 +133,171 @@ describe('EditorExportService - novos arquivos de custom sprites', () => {
     vi.unstubAllGlobals();
   });
 
-  it('includes CustomSpriteLookup.js in the script list', async () => {
-    // The bundle fails, legacyIndex fails, and fallbackScriptSrcs is used.
-    fetchSpy
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse) // bundle fail
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse) // legacyIndex fail
-      .mockResolvedValue({ ok: true, text: () => Promise.resolve('console.log(1);') } as FakeResponse);
+  async function readExportHtml(): Promise<string> {
+    expect(createdBlob).toBeInstanceOf(Blob);
+    const blob = createdBlob;
+    if (!blob) throw new Error('Expected export blob');
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(reader.error ?? new Error('Unable to read blob'));
+      reader.readAsText(blob);
+    });
+  }
 
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
+  it('binds export and import buttons', async () => {
+    vi.useFakeTimers();
+    const service = new EditorExportService();
+    const exportSpy = vi.spyOn(service, 'exportProjectAsHtml').mockResolvedValue();
+    const importClickSpy = vi.spyOn(
+      service.importFileInput as HTMLInputElement,
+      'click',
+    ).mockImplementation(() => {});
 
-    const calledUrls = (fetchSpy.mock.calls as [string][]).map(([url]) => url);
-    expect(calledUrls.some(url => url.includes('CustomSpriteLookup.js'))).toBe(true);
+    (document.getElementById('btn-generate-html') as HTMLButtonElement).click();
+    await vi.runAllTimersAsync();
+    expect(exportSpy).toHaveBeenCalledOnce();
+    (document.getElementById('btn-import-html') as HTMLButtonElement).click();
+    expect(importClickSpy).toHaveBeenCalledOnce();
   });
 
-  it('includes PixelArtEditorController.js in the script list', async () => {
-    fetchSpy
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
-      .mockResolvedValueOnce({ ok: false, text: () => Promise.resolve('') } as FakeResponse)
-      .mockResolvedValue({ ok: true, text: () => Promise.resolve('console.log(1);') } as FakeResponse);
+  it('resets the hidden import input after selection', async () => {
+    const service = new EditorExportService();
+    const importSpy = vi.spyOn(service, 'importFromHtml').mockResolvedValue();
+    const input = service.importFileInput as HTMLInputElement;
+    Object.defineProperty(input, 'files', { configurable: true, value: [fileLike('<html>')] });
+    input.dispatchEvent(new Event('change'));
+    await Promise.resolve();
+    expect(importSpy).toHaveBeenCalledOnce();
+    expect(input.value).toBe('');
+  });
 
-    const svc = new EditorExportService();
-    await svc.exportProjectAsHtml();
+  it.each([
+    ['missing code', '<html>No code</html>'],
+    ['invalid JSON', '<script>__TINY_RPG_SHARED_CODE = invalid;</script>'],
+  ])('rejects an import with %s', async (_name, html) => {
+    await new EditorExportService().importFromHtml(fileLike(html));
+    expect(alertSpy).toHaveBeenCalledOnce();
+  });
 
-    const calledUrls = (fetchSpy.mock.calls as [string][]).map(([url]) => url);
-    expect(calledUrls.some(url => url.includes('PixelArtEditorController.js'))).toBe(true);
+  it('rejects undecodable imported data', async () => {
+    mockState.shareDecode.mockReturnValue(null);
+    await new EditorExportService().importFromHtml(
+      fileLike('<script>__TINY_RPG_SHARED_CODE = "abc";</script>'),
+    );
+    expect(mockState.shareDecode).toHaveBeenCalledWith('abc');
+    expect(alertSpy).toHaveBeenCalledOnce();
+  });
+
+  it('imports, redraws, and updates the share URL', async () => {
+    const api = makeApi();
+    mockState.api = api;
+    mockState.shareDecode.mockReturnValue({ title: 'Imported Game' });
+    mockState.shareBuildUrl.mockReturnValue('https://example.test/#xyz123');
+    await new EditorExportService().importFromHtml(
+      fileLike('<script>__TINY_RPG_SHARED_CODE = "abc";</script>'),
+    );
+
+    expect(api.importGameData).toHaveBeenCalledWith({ title: 'Imported Game' });
+    expect(api.draw).toHaveBeenCalledOnce();
+    expect(api.renderAll).toHaveBeenCalledOnce();
+    expect(location.hash).toBe('#xyz123');
+    expect((document.getElementById('project-share-url') as HTMLInputElement).value)
+      .toBe('https://example.test/#xyz123');
+  });
+
+  it('handles import read errors and an unavailable API', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await new EditorExportService().importFromHtml(fileLike(new Error('boom')));
+    expect(errorSpy).toHaveBeenCalled();
+    mockState.api = null;
+    await new EditorExportService().importFromHtml(
+      fileLike('<script>__TINY_RPG_SHARED_CODE = "abc";</script>'),
+    );
+    expect(alertSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects export without API or game data', async () => {
+    mockState.api = null;
+    await new EditorExportService().exportProjectAsHtml();
+    expect(alertSpy).toHaveBeenCalledWith('Unable to export: engine API is not available.');
+    mockState.api = makeApi({ exportGameData: vi.fn(() => null) });
+    await new EditorExportService().exportProjectAsHtml();
+    expect(alertSpy).toHaveBeenCalledWith('Unable to read current project data.');
+  });
+
+  it('fetches only dedicated assets and exports minimal markup', async () => {
+    const service = new EditorExportService();
+    await service.exportProjectAsHtml();
+    const html = await readExportHtml();
+    const urls = (fetchSpy.mock.calls as [string][]).map(([url]) => url);
+
+    expect(urls).toHaveLength(3);
+    expect(urls.some((url) => url.startsWith('export.bundle.js?v='))).toBe(true);
+    expect(urls.some((url) => url.startsWith('tiny-rpg-studio-sdk.css?v='))).toBe(true);
+    expect(urls).toContain('pixel-operator.woff');
+    expect(urls.some((url) => url.includes('legacy/'))).toBe(false);
+    expect(html).toContain('id="btn-export-reset"');
+    expect(html).toContain('>R</button>');
+    expect(html).not.toContain('id="btn-reset"');
+    expect(html).not.toContain('class="tabs"');
+    expect(html).not.toContain('id="game-audio-controls"');
+    expect(html).not.toContain('id="game-fullscreen-toggle"');
+    expect(service.lastExportSections?.total).toBeGreaterThan(0);
+    expect(anchorClickSpy).toHaveBeenCalledOnce();
+  });
+
+  it('does not depend on the live game container', async () => {
+    document.getElementById('game-container')?.remove();
+    await new EditorExportService().exportProjectAsHtml();
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(createdBlob).toBeInstanceOf(Blob);
+  });
+
+  it('respects the editable-in-studio setting', async () => {
+    const editable = document.getElementById('export-editable-in-studio') as HTMLInputElement;
+    editable.checked = false;
+    await new EditorExportService().exportProjectAsHtml();
+    expect(await readExportHtml()).toContain('id="btn-open-studio" type="button" hidden');
+
+    createdBlob = null;
+    editable.checked = true;
+    await new EditorExportService().exportProjectAsHtml();
+    expect(await readExportHtml()).toContain('id="btn-open-studio" type="button">');
+  });
+
+  it('embeds the font once and keeps the payload import-compatible', async () => {
+    await new EditorExportService().exportProjectAsHtml();
+    const html = await readExportHtml();
+    expect(html.match(/data:font\/woff;base64,/g)).toHaveLength(1);
+    const match = html.match(/__TINY_RPG_SHARED_CODE\s*=\s*([^;]+);/);
+    expect(JSON.parse(match?.[1] ?? '""')).toBe('ENCODED');
+  });
+
+  it('reports dedicated asset failures without attempting a fallback', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    fetchSpy.mockImplementation((url: string) => Promise.resolve({
+      blob: () => Promise.resolve(new Blob(['woff'])),
+      ok: !url.startsWith('tiny-rpg-studio-sdk.css'),
+      text: () => Promise.resolve('globalThis.ok=true;'),
+    } as FakeResponse));
+    await new EditorExportService().exportProjectAsHtml();
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('Unable to download project assets'));
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('rejects an HTML response in place of the runtime bundle', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    fetchSpy.mockImplementation((url: string) => Promise.resolve({
+      blob: () => Promise.resolve(new Blob(['woff'])),
+      ok: true,
+      text: () => Promise.resolve(
+        url.startsWith('export.bundle.js')
+          ? '<!doctype html><html></html>'
+          : '@font-face{src:url("pixel-operator.woff")}',
+      ),
+    } as FakeResponse));
+    await new EditorExportService().exportProjectAsHtml();
+    expect(alertSpy).toHaveBeenCalledWith(expect.stringContaining('runtime bundle is missing or stale'));
   });
 });

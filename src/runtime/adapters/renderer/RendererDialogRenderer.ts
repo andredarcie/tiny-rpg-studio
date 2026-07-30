@@ -133,6 +133,9 @@ class RendererDialogRenderer {
 
         const box = document.createElement('div');
         box.className = 'game-dialog-box';
+        // Keep message text at the fixed UI size used by standalone exports.
+        // The container's scaled font size is reserved for its em-based layout.
+        box.style.fontSize = 'var(--engine-font-size)';
 
         const text = document.createElement('div');
         text.className = 'game-dialog-text';
@@ -149,6 +152,7 @@ class RendererDialogRenderer {
 
         const buttons = document.createElement('div');
         buttons.className = 'game-dialog-buttons';
+        buttons.style.fontSize = 'var(--engine-font-size)';
 
         box.appendChild(text);
         box.appendChild(measurer);

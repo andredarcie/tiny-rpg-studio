@@ -35,6 +35,12 @@ test('exported html boots without module import errors', async ({ page, context 
   const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tiny-rpg-export-'));
   const filePath = path.join(tmpDir, 'index.html');
   await download.saveAs(filePath);
+  const html = await fs.readFile(filePath, 'utf8');
+
+  expect(Buffer.byteLength(html, 'utf8')).toBeLessThan(475_000);
+  expect(html.match(/data:font\/woff;base64,/g)).toHaveLength(1);
+  expect(html).not.toContain('project.generateHTML');
+  expect(html).not.toContain('editor.mobileNav');
 
   const exportedPage = await context.newPage();
   const exportErrors = collectErrors();
@@ -51,6 +57,8 @@ test('exported html boots without module import errors', async ({ page, context 
   );
 
   expect(await exportedPage.locator('#game-canvas').count()).toBe(1);
+  expect(await exportedPage.locator('#btn-export-reset').count()).toBe(1);
+  expect(await exportedPage.locator('#game-fullscreen-toggle').count()).toBe(1);
   expect(importError).toBeUndefined();
   expect(relevantExportErrors).toEqual([]);
   expect(editorErrors.errors).toEqual([]);

@@ -107,6 +107,16 @@ describe('RendererDialogRenderer (HTML overlay)', () => {
     expect(container.style.fontSize).toBe('16px');
   });
 
+  it('keeps dialog text and choices at the fixed UI size', () => {
+    const { renderer, ctx } = setup({ active: true, text: 'Accept?', choice: makeChoice() });
+    renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+    const box = document.querySelector('.game-dialog-box') as HTMLElement;
+    const buttons = document.querySelector('.game-dialog-buttons') as HTMLElement;
+    expect(box.style.fontSize).toBe('var(--engine-font-size)');
+    expect(buttons.style.fontSize).toBe('var(--engine-font-size)');
+  });
+
   it('always keeps a positive, proportional font size across canvas sizes', () => {
     for (const displayHeight of [196, 300, 392, 588, 800]) {
       document.body.innerHTML = '';

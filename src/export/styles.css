@@ -1,0 +1,436 @@
+@font-face {
+    font-family: "PixelOperator";
+    src: url("pixel-operator.woff") format("woff");
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+}
+
+:root {
+    --bg: #000;
+    --panel: #151821;
+    --text: #fff;
+    --accent: #5bfa8e;
+    --border: #232734;
+    --screen-flash-color: #ff4040;
+    --screen-flash-opacity: .85;
+    --engine-font-size: 12px;
+    --ui-font-family: "PixelOperator", monospace;
+}
+
+* {
+    box-sizing: border-box;
+    border-radius: 0;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+body {
+    color: var(--text);
+    background: var(--bg);
+    font: var(--engine-font-size) var(--ui-font-family);
+    font-kerning: none;
+    font-synthesis: none;
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: none;
+}
+
+/*
+ * Keep runtime overlay descendants at the fixed UI size used by legacy exports.
+ * Their positioned containers may use a canvas-scaled font size for em-based
+ * layout, but allowing that value to inherit also enlarges the dialog text.
+ */
+body * {
+    font-size: var(--engine-font-size);
+}
+
+.app,
+main,
+#tab-game,
+#game-container {
+    width: 100%;
+    height: 100%;
+}
+
+main {
+    padding: 0;
+}
+
+.game-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 8px;
+    overflow: hidden;
+    text-align: center;
+    background: #000;
+}
+
+.game-screen {
+    position: relative;
+    display: inline-block;
+    flex: 0 0 auto;
+    line-height: 0;
+}
+
+#game-canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+.combat-indicator {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    z-index: 4;
+    padding: 4px 10px;
+    color: #fff;
+    background: var(--panel);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+}
+
+.combat-indicator.visible {
+    opacity: 1;
+}
+
+.screen-flash {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    width: 100%;
+    height: 100%;
+    background: var(--screen-flash-color);
+    mix-blend-mode: screen;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease-out;
+}
+
+.screen-flash.visible {
+    opacity: var(--screen-flash-opacity);
+}
+
+.game-dialog-overlay {
+    z-index: 6;
+}
+
+.game-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: .5em;
+    image-rendering: auto;
+}
+
+.game-dialog-box {
+    padding: .75em .85em;
+    line-height: 1.3;
+    text-align: left;
+}
+
+.game-dialog-text {
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.game-dialog-buttons {
+    display: flex;
+    gap: .5em;
+}
+
+.game-dialog-button {
+    flex: 1 1 0;
+    padding: .55em .5em;
+    font: inherit;
+    line-height: 1.2;
+    text-align: center;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.game-levelup-overlay {
+    position: absolute;
+    z-index: 30;
+    pointer-events: auto;
+}
+
+.game-levelup {
+    position: absolute;
+    inset-inline: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1em;
+    padding: 1em .8em;
+    overflow-y: auto;
+    background: #0a0c14;
+}
+
+.game-levelup-title {
+    color: var(--levelup-accent, #fff1e8);
+    font-size: 1.2em;
+    line-height: 1;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.game-levelup-pending {
+    color: var(--levelup-accent-strong, #ffd700);
+    font-size: .8em;
+}
+
+.game-levelup-cards {
+    display: flex;
+    flex-direction: column;
+    gap: .7em;
+    width: 92%;
+}
+
+.game-levelup-card {
+    display: flex;
+    flex-direction: column;
+    gap: .45em;
+    width: 100%;
+    padding: .7em .8em;
+    color: #fff;
+    font: inherit;
+    text-align: left;
+    background: rgb(0 0 0 / 55%);
+    border: .16em solid var(--levelup-accent, #c2c3c7);
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.game-levelup-card--selected {
+    background: rgb(100 181 246 / 18%);
+    border-color: var(--levelup-accent-strong, #64b5f6);
+}
+
+.game-levelup-card-name {
+    color: #fff;
+    font-size: 1em;
+}
+
+.game-levelup-card-desc {
+    color: rgb(255 255 255 / 82%);
+    font-size: .78em;
+    line-height: 1.45;
+}
+
+#btn-open-studio,
+.export-reset-button,
+.game-fullscreen-button {
+    position: absolute;
+    z-index: 10;
+    padding: 6px 10px;
+    color: #fff;
+    font: inherit;
+    background: rgb(12 15 22 / 90%);
+    border: 2px solid var(--border);
+    cursor: pointer;
+}
+
+#btn-open-studio {
+    top: 10px;
+    right: 10px;
+    z-index: 40;
+}
+
+.export-reset-button {
+    right: clamp(12px, 4vw, 32px);
+    bottom: clamp(100px, 14vw, 120px);
+}
+
+.game-audio-controls {
+    position: absolute;
+    right: clamp(12px, 4vw, 32px);
+    bottom: clamp(54px, 8vw, 72px);
+    z-index: 5;
+    padding: 6px 8px;
+    color: #fff;
+    background: rgb(12 15 22 / 90%);
+    border: 2px solid var(--border);
+}
+
+.game-audio-controls[hidden],
+.game-fullscreen-button[hidden],
+#btn-open-studio[hidden] {
+    display: none;
+}
+
+.game-audio-controls__label {
+    display: grid;
+    grid-template-columns: 92px 36px;
+    align-items: center;
+    gap: 6px;
+}
+
+.game-audio-controls input[type="range"] {
+    width: 92px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+}
+
+.game-audio-controls input[type="range"]::-webkit-slider-runnable-track {
+    height: 6px;
+    background: #141a24;
+    border: 2px solid var(--border);
+}
+
+.game-audio-controls input[type="range"]::-webkit-slider-thumb {
+    width: 14px;
+    height: 14px;
+    margin-top: -4px;
+    appearance: none;
+    background: #1f2735;
+    border: 2px solid var(--accent);
+}
+
+.game-fullscreen-button {
+    right: clamp(12px, 4vw, 24px);
+    bottom: clamp(12px, 4vw, 24px);
+    z-index: 3;
+    display: inline-flex;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    opacity: .55;
+}
+
+.game-fullscreen-button::before,
+.game-fullscreen-button::after {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    content: "";
+    border-color: currentcolor;
+    border-style: solid;
+}
+
+.game-fullscreen-button::before {
+    top: 7px;
+    left: 7px;
+    border-width: 2px 0 0 2px;
+}
+
+.game-fullscreen-button::after {
+    right: 7px;
+    bottom: 7px;
+    border-width: 0 2px 2px 0;
+}
+
+.game-fullscreen-button[data-state="exit"]::before {
+    top: 10px;
+    left: 10px;
+    border-width: 0 2px 2px 0;
+}
+
+.game-fullscreen-button[data-state="exit"]::after {
+    right: 10px;
+    bottom: 10px;
+    border-width: 2px 0 0 2px;
+}
+
+.game-touch-pad {
+    z-index: 4;
+    display: none;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: center;
+    filter: drop-shadow(0 4px 5px rgb(0 0 0 / 60%));
+}
+
+.gb-dpad {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.pad-middle-row {
+    display: flex;
+}
+
+.game-touch-pad .pad-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: clamp(30px, 8.5vw, 38px);
+    height: clamp(30px, 8.5vw, 38px);
+    padding: 0;
+    color: rgb(255 255 255 / 62%);
+    background: linear-gradient(155deg, #2b3340, #12161f 52%, #070910);
+    border: 0;
+    box-shadow: inset 0 2px 0 rgb(255 255 255 / 16%), inset 0 -3px 3px rgb(0 0 0 / 75%), 0 0 0 1px #05070b;
+    touch-action: none;
+    user-select: none;
+}
+
+.game-touch-pad .pad-center {
+    position: relative;
+    color: transparent;
+    background: linear-gradient(155deg, #1d2330, #0a0d13);
+}
+
+.game-touch-pad .pad-button[data-direction]:active,
+.game-touch-pad .pad-button.is-pressed {
+    background: linear-gradient(155deg, #07090d, #131822);
+    transform: translateY(2px) scale(.95);
+}
+
+.pad-up::before {
+    content: "▲";
+}
+
+.pad-down::before {
+    content: "▼";
+}
+
+.pad-left::before {
+    content: "◀";
+}
+
+.pad-right::before {
+    content: "▶";
+}
+
+@media (hover: none), (pointer: coarse) {
+    #btn-open-studio {
+        display: none;
+    }
+
+    .game-audio-controls--mobile-export:not([hidden]) {
+        position: static;
+        display: block;
+    }
+}
+
+@media (max-width: 720px), (hover: none), (pointer: coarse) {
+    .game-container {
+        justify-content: flex-start;
+        gap: 8px;
+    }
+
+    .game-touch-pad {
+        display: flex;
+    }
+}

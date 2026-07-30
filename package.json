@@ -25,6 +25,7 @@
     "tauri": "tauri",
     "build:check": "tsc --noEmit && npm run build",
     "build:export": "vite build -c vite.export.config.ts",
+    "measure:export": "npm run build:export && node scripts/report-export-sizes.mjs",
     "build:sdk": "vite build -c vite.sdk.config.ts && tsc -p tsconfig.sdk.json",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",

@@ -41,7 +41,7 @@ test('creates, assigns, shares, and exports a custom tile effect', async ({ page
   await page.click('#btn-generate-url');
   await expect(page.locator('#project-share-url')).not.toHaveValue('');
   const shareUrl = await page.locator('#project-share-url').inputValue();
-  expect(shareUrl).toContain('#v11.');
+  expect(new URL(shareUrl).hash).toMatch(/^#v\d+\./);
   const decodedShare = ShareDecoder.decodeShareCode(new URL(shareUrl).hash.slice(1)) as {
     customTileEffects?: Array<{ color?: string }>;
   } | null;
@@ -63,7 +63,7 @@ test('creates, assigns, shares, and exports a custom tile effect', async ({ page
   const exportedPath = path.join(temporaryDirectory, 'game.html');
   await download.saveAs(exportedPath);
   const html = await fs.readFile(exportedPath, 'utf8');
-  const embeddedCode = html.match(/__TINY_RPG_SHARED_CODE = ("[^"]+")/)?.[1];
+  const embeddedCode = html.match(/__TINY_RPG_SHARED_CODE\s*=\s*("[^"]+")/)?.[1];
   expect(embeddedCode).toBeDefined();
   expect(JSON.parse(embeddedCode ?? '""')).toBe(new URL(shareUrl).hash.slice(1));
 

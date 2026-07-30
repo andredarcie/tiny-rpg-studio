@@ -23,6 +23,20 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-07-30-lighter-html-exports',
+    date: '2026-07-30',
+    title: 'Much smaller HTML exports',
+    description:
+      'Expect less than HALF the sizes! Exported HTML games now contain a focused play-only runtime and stylesheet instead of carrying the Studio editor with them. They remain self-contained and offline-ready, preserve gameplay, translations, controls, custom art and effects, and can still be reopened in the Studio.',
+  },
+  {
+    id: '2026-07-30-less-text',
+    date: '2026-07-30',
+    title: 'Less annoying text',
+    description:
+      'We removed text that could be redundant, like when you open a door with a key and it used to say "Used a key to open the door." Now it just opens. We also removed some other text that could be confusing or unnecessary.',
+  },
+  {
     id: '2026-07-29-conditional-chests',
     date: '2026-07-29',
     title: 'Lock chests with variables',

@@ -46,7 +46,8 @@ tmp-screenshots/
 .tools/butler/
 
 # Local scripts (not versioned)
-scripts/
+scripts/*
+!scripts/report-export-sizes.mjs
 
 # Editor / OS files
 .vscode/*
