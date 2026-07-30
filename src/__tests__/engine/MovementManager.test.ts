@@ -4,7 +4,6 @@ import { TextResources } from '../../runtime/adapters/TextResources';
 
 describe('MovementManager', () => {
   const getSpy = vi.spyOn(TextResources, 'get');
-  const formatSpy = vi.spyOn(TextResources, 'format');
   const createGameState = (dialogActive = false) => ({
     playing: true,
     game: { roomSize: 8 },
@@ -58,10 +57,6 @@ describe('MovementManager', () => {
     vi.clearAllMocks();
     getSpy.mockImplementation((...args: unknown[]) => {
       const fallback = args[1] as string | undefined;
-      return fallback || 'text';
-    });
-    formatSpy.mockImplementation((...args: unknown[]) => {
-      const fallback = args[2] as string | undefined;
       return fallback || 'text';
     });
   });
@@ -199,7 +194,7 @@ describe('MovementManager', () => {
     expect(dialogManager.showDialog).toHaveBeenCalledWith('Hello!', undefined);
   });
 
-  it('notifies when a locked door is opened by movement', () => {
+  it('opens a locked door with a key without showing a redundant dialog', () => {
     const door = { id: 'door-1', type: 'door', roomIndex: 0, x: 1, y: 0, isLockedDoor: true, opened: false };
     const onObjectOpened = vi.fn();
     const gameState = {
@@ -224,6 +219,7 @@ describe('MovementManager', () => {
 
     expect(door.opened).toBe(true);
     expect(onObjectOpened).toHaveBeenCalledWith('door-1', 0);
+    expect(dialogManager.showDialog).not.toHaveBeenCalled();
   });
 
   it('blocks active solid traps before stacked door side effects even with boots', () => {

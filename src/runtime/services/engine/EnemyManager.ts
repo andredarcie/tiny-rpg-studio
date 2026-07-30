@@ -77,9 +77,6 @@ class EnemyManager {
         this.handleEnemyDefeated(enemyId, enemy);
         options.onEnemyDefeated?.(enemyId, enemy);
       },
-      onCheckAllEnemiesCleared: () => {
-        this.checkAllEnemiesCleared();
-      },
       shouldStartLevelOverlay: () => {
         return this.shouldStartLevelOverlay();
       },
@@ -865,18 +862,6 @@ class EnemyManager {
 
   getEnemyMissChance(type: string): number {
     return this.combatManager.getEnemyMissChance(type);
-  }
-
-  checkAllEnemiesCleared(): void {
-    const remaining = this.gameState.getEnemies().length;
-    if (remaining <= 0) {
-      const text = getEnemyLocaleText('game.clearAllEnemies', '');
-      if (text) {
-        if (this.dialogManager && this.dialogManager.showDialog) {
-          this.dialogManager.showDialog(text);
-        }
-      }
-    }
   }
 
   normalizeMissChance(value: number): number {

@@ -29,14 +29,6 @@ const formatEnemyLocaleText = (
   return value || fallback || '';
 };
 
-const getEnemyLocalizedName = (enemyType: string): string => {
-  const definition = EnemyDefinitions.getEnemyDefinition(enemyType);
-  if (definition && definition.nameKey) {
-    return getEnemyLocaleText(definition.nameKey, definition.name || enemyType);
-  }
-  return enemyType;
-};
-
 /**
  * CombatManager - Handles all combat-related logic
  *
@@ -55,7 +47,6 @@ class CombatManager {
   combatStunManager: CombatStunManagerApi | null;
   playerManager: StatePlayerManagerApi | null;
   onEnemyDefeated: (enemyId: string, enemy: EnemyState) => void;
-  onCheckAllEnemiesCleared: () => void;
   shouldStartLevelOverlay: () => boolean;
   deathSequenceTimer: ReturnType<typeof setTimeout> | null;
   animationTimers: Set<ReturnType<typeof setTimeout>>;
@@ -75,7 +66,6 @@ class CombatManager {
     this.combatStunManager = options.combatStunManager ?? null;
     this.playerManager = options.playerManager ?? null;
     this.onEnemyDefeated = options.onEnemyDefeated || (() => {});
-    this.onCheckAllEnemiesCleared = options.onCheckAllEnemiesCleared || (() => {});
     this.shouldStartLevelOverlay = options.shouldStartLevelOverlay || (() => false);
     this.deathSequenceTimer = null;
     this.animationTimers = new Set();
@@ -260,7 +250,6 @@ class CombatManager {
           if (enemy.id) {
             this.onEnemyDefeated(enemy.id, enemy);
           }
-          this.onCheckAllEnemiesCleared();
           this.finishCombat();
         });
       } else {
@@ -336,7 +325,6 @@ class CombatManager {
             if (enemy.id) {
               this.onEnemyDefeated(enemy.id, enemy);
             }
-            this.onCheckAllEnemiesCleared();
             this.finishCombat();
           });
         } else {
@@ -494,7 +482,6 @@ class CombatManager {
 
     if (result.defeated && enemy.id) {
       this.onEnemyDefeated(enemy.id, enemy);
-      this.onCheckAllEnemiesCleared();
       this.renderer.flashScreen({ intensity: 0.8, duration: 160 });
     }
 
@@ -542,11 +529,11 @@ class CombatManager {
   /**
    * Play player death sequence: grayscale, pause, show death message, then game over
    */
-  private playPlayerDeathSequence(enemyType: string): void {
-    this.playDeathSequence(getEnemyLocalizedName(enemyType));
+  private playPlayerDeathSequence(_enemyType: string): void {
+    this.playDeathSequence();
   }
 
-  playDeathSequence(killerName: string): void {
+  playDeathSequence(): void {
     this.cancelDeathSequence();
 
     soundEngine.play('playerDeath');
@@ -554,7 +541,7 @@ class CombatManager {
 
     this.gameState.pauseGame('player-death');
 
-    const deathMessage = formatEnemyLocaleText('combat.killedBy', { enemy: killerName }, '');
+    const deathMessage = getEnemyLocaleText('combat.killedBy', '');
     this.renderer.showCombatIndicator(deathMessage, { duration: GameConfig.combat.messageDuration.death });
 
     // Wait for death sequence to complete, then trigger game over

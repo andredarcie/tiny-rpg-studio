@@ -29,7 +29,6 @@ type GameStateApi = {
   getObjectsAt?: (roomIndex: number, x: number, y: number) => GameObjectState[];
   setPlayerPosition: (x: number, y: number, roomIndex: number | null) => void;
   consumeKey: () => boolean;
-  getKeys: () => number;
   isVariableOn: (id: string) => boolean;
   normalizeVariableId?: (id: string | null) => string | null;
   hasSkill?: (skillId: string) => boolean;
@@ -115,15 +114,6 @@ type TileMapState = {
 
 const getMovementText = (key: string, fallback = ''): string => {
   const value = TextResources.get(key, fallback) as string;
-  return value || fallback || '';
-};
-
-const formatMovementText = (
-  key: string,
-  params: Record<string, string | number | boolean> = {},
-  fallback = '',
-): string => {
-  const value = TextResources.format(key, params, fallback) as string;
   return value || fallback || '';
 };
 
@@ -326,8 +316,6 @@ class MovementManager {
       const variableId = objectAtTarget?.variableId;
       const doorOpen = variableId ? this.gameState.isVariableOn(variableId) : false;
       if (!doorOpen) {
-        this.dialogManager.showDialog(getMovementText('doors.variableLocked'));
-        this.renderer.draw();
         return;
       }
     }
@@ -348,18 +336,10 @@ class MovementManager {
           this.options.onObjectOpened?.(objectId, targetRoomIndex);
         }
         soundEngine.play('doorUnlock');
-        const remainingKeys = Number(this.gameState.getKeys());
-        const message = openedWithSkill
-          ? getMovementText('doors.unlockedSkill', getMovementText('doors.opened', ''))
-          : Number.isFinite(remainingKeys)
-            ? formatMovementText('doors.openedRemaining', { value: remainingKeys })
-            : getMovementText('doors.opened');
-        if (message) {
-          this.dialogManager.showDialog(message);
+        if (openedWithSkill) {
+          this.dialogManager.showDialog(getMovementText('doors.unlockedSkill'));
         }
       } else {
-        this.dialogManager.showDialog(getMovementText('doors.locked'));
-        this.renderer.draw();
         return;
       }
     }

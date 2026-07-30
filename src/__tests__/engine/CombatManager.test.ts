@@ -72,15 +72,13 @@ describe('CombatManager', () => {
 
     getSpy.mockImplementation((key: string | null | undefined, fallback?: string) => {
       if (key === 'combat.cooldown') return 'Cooldown!';
-      if (key === 'combat.stealthKill') return 'Stealth Kill!';
-      if (key === 'combat.stealthMiss') return 'Stealth Miss!';
       if (key === 'combat.backstab') return 'Backstab!';
       if (key === 'combat.block.full') return 'Blocked!';
+      if (key === 'combat.killedBy') return 'You died';
       return fallback || 'text';
     });
 
     formatSpy.mockImplementation((key: string | null | undefined, params?: Record<string, string | number | boolean>, fallback?: string) => {
-      if (key === 'combat.killedBy' && params) return `Killed by ${params.enemy}`;
       if (key === 'combat.block.partial' && params) return `Blocked ${params.value}`;
       return fallback || 'text';
     });
@@ -992,7 +990,6 @@ describe('CombatManager', () => {
 
     it('calls enemy defeat callbacks when player counter-attack kills enemy in enemy-initiated combat', () => {
       const onEnemyDefeated = vi.fn();
-      const onCheckAllEnemiesCleared = vi.fn();
       const gameState = createCombatGameState({
         getEnemies: vi.fn(() => [{ id: 'e1', type: 'rat', roomIndex: 0, x: 1, y: 1, lastX: 1, lives: 1 }]),
         getPlayer: vi.fn(() => ({ roomIndex: 0, x: 0, y: 1 })),
@@ -1003,7 +1000,6 @@ describe('CombatManager', () => {
       const renderer = createRenderer();
       const manager = new CombatManager(gameState, renderer, {
         onEnemyDefeated,
-        onCheckAllEnemiesCleared,
         fallbackMissChance: 0,
       });
 
@@ -1011,7 +1007,6 @@ describe('CombatManager', () => {
       vi.advanceTimersByTime(1000);
 
       expect(onEnemyDefeated).toHaveBeenCalledWith('e1', expect.any(Object));
-      expect(onCheckAllEnemiesCleared).toHaveBeenCalled();
       expect(renderer.draw).toHaveBeenCalled();
     });
 
@@ -1032,19 +1027,15 @@ describe('CombatManager', () => {
       expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Blocked 1', { duration: 700 });
     });
 
-    it('returns fallback enemy name when definition has no nameKey in death sequence', () => {
-      getDefinitionSpy.mockImplementation(() => ({ ...baseEnemyDefinition, nameKey: undefined } as never));
+    it('shows a generic localized message in the death sequence', () => {
       const gameState = createCombatGameState();
       const renderer = createRenderer();
       const manager = new CombatManager(gameState, renderer);
 
       manager['playPlayerDeathSequence']('mystery-enemy');
 
-      expect(formatSpy).toHaveBeenCalledWith(
-        'combat.killedBy',
-        expect.objectContaining({ enemy: 'mystery-enemy' }),
-        ''
-      );
+      expect(getSpy).toHaveBeenCalledWith('combat.killedBy', '');
+      expect(renderer.showCombatIndicator).toHaveBeenCalledWith('You died', { duration: 2500 });
     });
 
     it('short-circuits enemy death animation when enemy is already dying', () => {

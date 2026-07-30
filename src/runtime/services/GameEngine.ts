@@ -117,8 +117,7 @@ export class GameEngine {
     this.interactionManager = new InteractionManager(this.gameState as never, this.dialogManager, {
       onPlayerVictory: () => this.handleGameCompletion(),
       onTrapKill: () => {
-        const trapName = TextResources.get('objects.label.trap', 'Trap') as string;
-        this.enemyManager.combatManager.playDeathSequence(trapName);
+        this.enemyManager.combatManager.playDeathSequence();
       },
       onItemCollected: (itemId, roomIndex) => this.online.notifyItemCollected(itemId, roomIndex),
       onObjectTriggered: (objectId, roomIndex, newState) => this.online.notifyObjectTriggered(objectId, roomIndex, newState),

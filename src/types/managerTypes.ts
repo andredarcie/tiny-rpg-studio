@@ -115,7 +115,6 @@ export type CombatManagerOptions = {
   combatStunManager?: CombatStunManagerApi | null;
   playerManager?: StatePlayerManagerApi | null;
   onEnemyDefeated?: (enemyId: string, enemy: EnemyState) => void;
-  onCheckAllEnemiesCleared?: () => void;
   shouldStartLevelOverlay?: () => boolean;
 };
 
