@@ -208,6 +208,28 @@ export const PALETTE_PRESETS: PalettePreset[] = [
             { name: 'pink', hex: '#FF7DBF', pico8Index: 14 },
             { name: 'white', hex: '#FFFFFF', pico8Index: 7 }
         ]
+    },
+    {
+        name: 'ZX Spectrum',
+        description: 'The classic ZX Spectrum palette, combining seven base hues with bright variants plus black. Bright black matches black, filling the engine\'s 16th palette slot.',
+        colors: [
+            { name: 'black 0', hex: '#000000', pico8Index: 0 },
+            { name: 'black', hex: '#000000', pico8Index: 1 },
+            { name: 'dark blue', hex: '#0000D8', pico8Index: 2 },
+            { name: 'bright blue', hex: '#0000FF', pico8Index: 3 },
+            { name: 'dark red', hex: '#D80000', pico8Index: 4 },
+            { name: 'bright green', hex: '#00FF00', pico8Index: 5 },
+            { name: 'light gray', hex: '#D8D8D8', pico8Index: 6 },
+            { name: 'dark cyan', hex: '#00D8D8', pico8Index: 7 },
+            { name: 'bright red', hex: '#FF0000', pico8Index: 8 },
+            { name: 'dark green', hex: '#00D800', pico8Index: 9 },
+            { name: 'bright magenta', hex: '#FF00FF', pico8Index: 10 },
+            { name: 'dark yellow', hex: '#D8D800', pico8Index: 11 },
+            { name: 'bright cyan', hex: '#00FFFF', pico8Index: 12 },
+            { name: 'bright yellow', hex: '#FFFF00', pico8Index: 13 },
+            { name: 'dark magenta', hex: '#D800D8', pico8Index: 14 },
+            { name: 'white', hex: '#FFFFFF', pico8Index: 15 }
+        ]
     }
 ];
 

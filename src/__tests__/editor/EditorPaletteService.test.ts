@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorPaletteService } from '../../editor/modules/EditorPaletteService';
+import { PALETTE_PRESETS } from '../../runtime/domain/definitions/PalettePresets';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 
 const CUSTOM_PALETTE = [
@@ -390,6 +391,23 @@ describe('EditorPaletteService', () => {
             expect(manager.gameEngine.setCustomPalette).toHaveBeenCalled();
             expect(manager.renderAll).toHaveBeenCalled();
         }
+    });
+
+    it('applies the ZX Spectrum preset to all 16 palette slots', () => {
+        const manager = createManager();
+        const service = new EditorPaletteService(asPaletteServiceManager(manager));
+        service.initialize();
+        const presetIndex = PALETTE_PRESETS.findIndex(preset => preset.name === 'ZX Spectrum');
+
+        manager.dom.palettePresetSelect.value = String(presetIndex);
+        manager.dom.palettePresetSelect.dispatchEvent(new Event('change'));
+
+        expect(manager.gameEngine.setCustomPalette).toHaveBeenCalledWith([
+            '#000000', '#0000D8', '#0000FF', '#D80000',
+            '#FF0000', '#D800D8', '#FF00FF', '#00D800',
+            '#00FF00', '#00D8D8', '#00FFFF', '#D8D800',
+            '#FFFF00', '#D8D8D8', '#FFFFFF', '#000000'
+        ]);
     });
 
     it('selecting "custom" in preset select does nothing', () => {
