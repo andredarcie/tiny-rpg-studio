@@ -5752,6 +5752,16 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
     color: rgba(255, 64, 64, 0.75);
 }
 
+/* Sits between the preset dropdown and the colour grid as its own action, so it
+   needs the panel's own rhythm rather than the 4px that pairs a label with its
+   control. Hugs its text like the neighbouring import/export/reset buttons —
+   full width would make a secondary help link the loudest thing in the panel. */
+.palette-about-btn {
+    display: inline-flex;
+    align-items: center;
+    margin: 12px 0 14px;
+}
+
 /* --- Palette guide modal --------------------------------------------------
    Explains how a preset re-colours the 16 engine slots. Reuses the .about-modal
    shell; only the mapping layout is specific. */
