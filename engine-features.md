@@ -59,4 +59,4 @@
 - The editor also works on mobile with a tab-based layout for each tool
 
 ## Language
-- The editor is available in English and Portuguese
+- The editor is available in English, Portuguese, Spanish, Polish and Chinese
