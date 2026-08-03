@@ -2,6 +2,7 @@ import './styles.css';
 import { normalizeBackgroundMusicVolume } from '../runtime/infra/share/BackgroundMusicVideoId';
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
 import { TextResources } from '../runtime/adapters/TextResources';
+import { installGlobalErrorReporter } from '../runtime/adapters/GlobalErrorReporter';
 import { GameEngine } from '../runtime/services/GameEngine';
 import { soundEngine } from '../runtime/services/SoundEngine';
 
@@ -10,6 +11,8 @@ const text = (key: string, fallback: string): string =>
 
 class ExportApplication {
     static boot(): void {
+        // Installed before anything else so failures during boot are reported too.
+        installGlobalErrorReporter();
         const initialize = () => this.initialize();
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initialize, { once: true });

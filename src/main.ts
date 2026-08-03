@@ -11,6 +11,7 @@ import { ShareUtils } from './runtime/infra/share/ShareUtils';
 import { ProjectSaveManager } from './editor/manager/ProjectSaveManager';
 import { getTinyRpgApi, setTinyRpgApi, type TinyRpgApi } from './runtime/infra/TinyRpgApi';
 import { TextResources } from './runtime/adapters/TextResources';
+import { installGlobalErrorReporter, reportRecoverableError } from './runtime/adapters/GlobalErrorReporter';
 import { soundEngine } from './runtime/services/SoundEngine';
 import { normalizeBackgroundMusicVolume } from './runtime/infra/share/BackgroundMusicVideoId';
 import { PerformanceProfiler, performanceProfiler } from './runtime/debug/PerformanceProfiler';
@@ -27,6 +28,8 @@ type TabActivationDetail = { initial?: boolean };
 
 class TinyRPGApplication {
   static boot(): void {
+    // Installed before anything else so failures during boot are reported too.
+    installGlobalErrorReporter();
     document.addEventListener('DOMContentLoaded', () => {
       BootLoadingScreen.start();
       this.setupWelcomeAudio();
@@ -507,6 +510,13 @@ class TinyRPGApplication {
       return;
     }
 
+    // A hash that is present but did not decode means the visitor followed a share
+    // link truncated or corrupted in transit — a common outcome when a chat client
+    // clips long URLs. Remember it, but keep trying the other sources first: the
+    // hash may simply be an anchor, and silently discarding the inline code or the
+    // user's last saved project would be a worse failure than the one we report.
+    const hashFailedToDecode = globalThis.location.hash.length > 1;
+
     const sharedCode = (globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE;
     if (typeof sharedCode === 'string' && sharedCode.trim().length > 0) {
       try {
@@ -524,14 +534,25 @@ class TinyRPGApplication {
     // project from localStorage so a plain reload keeps their work instead of
     // resetting to the default Studio data. The editor "Save" persists there,
     // and the page URL is not kept in sync with every edit.
+    let restoredFromSave = false;
     try {
       const savedUrl = ProjectSaveManager.getMostRecentShareUrl();
       const restored = savedUrl ? ShareUtils.extractGameDataFromShareUrl(savedUrl) : null;
       if (restored) {
         gameEngine.importGameData(restored);
+        restoredFromSave = true;
       }
     } catch (error) {
       console.warn('[TinyRPG] Unable to restore the last saved project.', error);
+    }
+
+    // Only now, with every source exhausted, is a failed hash worth reporting: the
+    // visitor really is looking at something other than the game they were sent.
+    if (hashFailedToDecode && !restoredFromSave) {
+      reportRecoverableError('errors.share.corrupt.title', 'errors.share.corrupt.body', {
+        title: 'This share link could not be opened.',
+        body: 'The link looks incomplete or damaged, so the default game was loaded instead. Ask whoever sent it for the full link.',
+      });
     }
   }
 

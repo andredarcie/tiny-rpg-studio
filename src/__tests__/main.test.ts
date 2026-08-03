@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TinyRPGApplication } from '../main';
 import { TextResources } from '../runtime/adapters/TextResources'; // Import TextResources
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
+import { ProjectSaveManager } from '../editor/manager/ProjectSaveManager';
 import { setTinyRpgApi, type TinyRpgApi } from '../runtime/infra/TinyRpgApi';
 import { soundEngine } from '../runtime/services/SoundEngine';
 
@@ -352,6 +353,31 @@ describe('TinyRPGApplication.loadSharedGameIfAvailable', () => {
 
     expect(warnSpy).toHaveBeenCalled();
     expect(engine.importGameData).not.toHaveBeenCalled();
+  });
+
+  it('still falls back to inline shared code when the hash fails to decode', () => {
+    // A hash that does not decode must not short-circuit the remaining sources:
+    // an exported HTML page carries its game in __TINY_RPG_SHARED_CODE, and the
+    // page may legitimately also carry an unrelated anchor.
+    globalThis.history.replaceState({}, '', '#not-a-share-code');
+    (globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE = 'abc123';
+    vi.spyOn(ShareUtils, 'decode').mockReturnValue({ title: 'Inline' });
+
+    TinyRPGApplication.loadSharedGameIfAvailable(asSharedLoadGameEngine(engine));
+
+    expect(engine.importGameData).toHaveBeenCalledWith({ title: 'Inline' });
+    globalThis.history.replaceState({}, '', ' ');
+  });
+
+  it('still restores the last saved project when the hash fails to decode', () => {
+    globalThis.history.replaceState({}, '', '#not-a-share-code');
+    vi.spyOn(ProjectSaveManager, 'getMostRecentShareUrl').mockReturnValue('https://example.test/#saved');
+    vi.spyOn(ShareUtils, 'extractGameDataFromShareUrl').mockReturnValue({ title: 'Saved' });
+
+    TinyRPGApplication.loadSharedGameIfAvailable(asSharedLoadGameEngine(engine));
+
+    expect(engine.importGameData).toHaveBeenCalledWith({ title: 'Saved' });
+    globalThis.history.replaceState({}, '', ' ');
   });
 });
 

@@ -5,6 +5,7 @@ const RUNTIME_TEXT_PREFIXES = [
     'doors.',
     'enemies.',
     'enemy.',
+    'errors.',
     'gameOver.',
     'hud.',
     'intro.',
