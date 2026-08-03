@@ -403,11 +403,19 @@ describe('EditorPaletteService', () => {
         manager.dom.palettePresetSelect.dispatchEvent(new Event('change'));
 
         expect(manager.gameEngine.setCustomPalette).toHaveBeenCalledWith([
-            '#000000', '#0000D8', '#0000FF', '#D80000',
-            '#FF0000', '#D800D8', '#FF00FF', '#00D800',
-            '#00FF00', '#00D8D8', '#00FFFF', '#D8D800',
-            '#FFFF00', '#D8D8D8', '#FFFFFF', '#000000'
+            '#000000', '#0000D8', '#D800D8', '#00D800',
+            '#D80000', '#00D8D8', '#D8D8D8', '#FFFFFF',
+            '#FF0000', '#D8D800', '#FFFF00', '#00FF00',
+            '#0000FF', '#00FFFF', '#FF00FF', '#FFFF00'
         ]);
+    });
+
+    it('gives the ZX Spectrum preset a light color in the slot used for HUD text', () => {
+        // Slot 7 is read as "white" by the HUD, dialog and level-up renderers. A preset
+        // that leaves a mid-tone there makes on-screen text unreadable.
+        const preset = PALETTE_PRESETS.find(p => p.name === 'ZX Spectrum');
+        const slot7 = preset?.colors.find(color => color.pico8Index === 7);
+        expect(slot7?.hex).toBe('#FFFFFF');
     });
 
     it('selecting "custom" in preset select does nothing', () => {

@@ -211,24 +211,29 @@ export const PALETTE_PRESETS: PalettePreset[] = [
     },
     {
         name: 'ZX Spectrum',
-        description: 'The classic ZX Spectrum palette, combining seven base hues with bright variants plus black. Bright black matches black, filling the engine\'s 16th palette slot.',
+        description: 'The classic ZX Spectrum palette: seven base hues in normal and bright variants, plus black. Bright black matches black, so the hardware offers 15 distinct colors for 16 slots — bright yellow doubles as the skin tone, the way ZX games traditionally handled faces.',
         colors: [
-            { name: 'black 0', hex: '#000000', pico8Index: 0 },
-            { name: 'black', hex: '#000000', pico8Index: 1 },
-            { name: 'dark blue', hex: '#0000D8', pico8Index: 2 },
-            { name: 'bright blue', hex: '#0000FF', pico8Index: 3 },
-            { name: 'dark red', hex: '#D80000', pico8Index: 4 },
-            { name: 'bright green', hex: '#00FF00', pico8Index: 5 },
-            { name: 'light gray', hex: '#D8D8D8', pico8Index: 6 },
-            { name: 'dark cyan', hex: '#00D8D8', pico8Index: 7 },
+            // pico8Index is the engine slot this color takes over, and each slot has a
+            // fixed role (7 is the "white" used for HUD text and dialog accents, 3 is
+            // grass, 8 is the health hearts). Map by role, not by array order.
+            { name: 'black', hex: '#000000', pico8Index: 0 },
+            { name: 'blue', hex: '#0000D8', pico8Index: 1 },
+            { name: 'magenta', hex: '#D800D8', pico8Index: 2 },
+            { name: 'green', hex: '#00D800', pico8Index: 3 },
+            // The ZX palette has no brown or orange; the darker red and yellow are the
+            // traditional stand-ins for those two slots.
+            { name: 'red', hex: '#D80000', pico8Index: 4 },
+            { name: 'cyan', hex: '#00D8D8', pico8Index: 5 },
+            { name: 'white (normal)', hex: '#D8D8D8', pico8Index: 6 },
+            { name: 'bright white', hex: '#FFFFFF', pico8Index: 7 },
             { name: 'bright red', hex: '#FF0000', pico8Index: 8 },
-            { name: 'dark green', hex: '#00D800', pico8Index: 9 },
-            { name: 'bright magenta', hex: '#FF00FF', pico8Index: 10 },
-            { name: 'dark yellow', hex: '#D8D800', pico8Index: 11 },
-            { name: 'bright cyan', hex: '#00FFFF', pico8Index: 12 },
-            { name: 'bright yellow', hex: '#FFFF00', pico8Index: 13 },
-            { name: 'dark magenta', hex: '#D800D8', pico8Index: 14 },
-            { name: 'white', hex: '#FFFFFF', pico8Index: 15 }
+            { name: 'yellow', hex: '#D8D800', pico8Index: 9 },
+            { name: 'bright yellow', hex: '#FFFF00', pico8Index: 10 },
+            { name: 'bright green', hex: '#00FF00', pico8Index: 11 },
+            { name: 'bright blue', hex: '#0000FF', pico8Index: 12 },
+            { name: 'bright cyan', hex: '#00FFFF', pico8Index: 13 },
+            { name: 'bright magenta', hex: '#FF00FF', pico8Index: 14 },
+            { name: 'bright yellow (skin)', hex: '#FFFF00', pico8Index: 15 }
         ]
     }
 ];
