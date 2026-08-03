@@ -4,6 +4,7 @@ import { GameEngine } from '../../runtime/services/GameEngine';
 import { getTinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { track } from '../../analytics/track';
+import { Modal } from '../../ui/Modal';
 
 const PREVIEW_CANVAS_WIDTH = 128;
 const GAMEPLAY_SIZE = 128;
@@ -115,7 +116,7 @@ async function loadJamGames(): Promise<GameEntry[]> {
 type PreviewJob = { gameData: Record<string, unknown>; img: HTMLImageElement };
 
 class ExploreModal {
-  private modal: HTMLElement | null;
+  private modal: Modal | null;
   private grid: HTMLElement | null;
   private loadingEl: HTMLElement | null;
   private emptyEl: HTMLElement | null;
@@ -134,31 +135,33 @@ class ExploreModal {
   private static readonly PAGE_SIZE = 6;
 
   constructor() {
-    this.modal = document.getElementById('explore-modal');
+    const root = document.getElementById('explore-modal');
+    this.modal = root
+      ? new Modal({
+          root,
+          labelledBy: 'explore-modal-title',
+          // Dismissing must also drop the pending preview jobs, so the shell
+          // routes every close path through this class.
+          onClose: () => this.close(),
+        })
+      : null;
     this.grid = document.getElementById('explore-grid');
     this.loadingEl = document.getElementById('explore-loading');
     this.emptyEl = document.getElementById('explore-empty');
     this.backBanner = document.getElementById('explore-back-banner');
     this.subtitleEl = document.getElementById('explore-subtitle');
-    this.body = this.modal?.querySelector<HTMLElement>('.explore-modal__body') ?? null;
+    this.body = this.modal?.body ?? null;
     this.bind();
   }
 
   private bind(): void {
     document.getElementById('btn-explore')?.addEventListener('click', () => this.open());
-    document.getElementById('explore-close')?.addEventListener('click', () => this.close());
     document.getElementById('btn-explore-back')?.addEventListener('click', () => this.restoreMyGame());
-    this.modal?.addEventListener('click', e => {
-      if (e.target === this.modal) this.close();
-    });
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape' && this.modal && !this.modal.hidden) this.close();
-    });
   }
 
   open(): void {
     if (!this.modal) return;
-    this.modal.hidden = false;
+    this.modal.open();
     track('explore_opened');
     this.syncBackBanner();
     if (!this.loaded) void this.loadAll();
@@ -166,7 +169,7 @@ class ExploreModal {
 
   close(): void {
     if (!this.modal) return;
-    this.modal.hidden = true;
+    this.modal.close();
     this.previewQueue = [];
   }
 

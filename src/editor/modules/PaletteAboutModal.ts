@@ -7,9 +7,8 @@
  * palette grid, so this modal lays the two sides next to each other — the
  * PICO-8 colour a slot starts with, and the colour the chosen palette puts there.
  *
- * Follows the {@link AboutModal} shell (static template in index.html, shown by
- * toggling `hidden`, closed by button, backdrop or Escape) with a body rendered
- * from PALETTE_PRESETS on first open.
+ * Uses the shared {@link Modal} shell over a static template in index.html,
+ * with the mapping body rendered from PALETTE_PRESETS on first open.
  *
  * The mapping is read through `resolvePresetSlots`, the same function the editor
  * uses to apply a preset, so this screen cannot drift away from what a click on
@@ -19,6 +18,7 @@ import { track } from '../../analytics/track';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 import { PALETTE_PRESETS, resolvePresetSlots } from '../../runtime/domain/definitions/PalettePresets';
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { Modal } from '../../ui/Modal';
 
 /**
  * What each engine slot is for. These are the PICO-8 colour names, kept in
@@ -45,24 +45,18 @@ const NOTABLE_ROLES: Readonly<Record<number, string>> = {
 
 class PaletteAboutModal {
     private button: HTMLButtonElement | null;
-    private modal: HTMLElement | null;
-    private closeBtn: HTMLButtonElement | null;
+    private modal: Modal | null;
     private baseHost: HTMLElement | null;
     private listHost: HTMLElement | null;
     private rendered = false;
 
     private boundOpen = () => this.open();
-    private boundClose = () => this.close();
-    private boundBackdrop = (e: MouseEvent) => { if (e.target === this.modal) this.close(); };
-    private boundKeydown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape' && this.modal && !this.modal.hidden) this.close();
-    };
     private boundLanguageChange = () => {
         // The static shell re-hydrates itself from data-text-key, but the rows here
         // are built in code. Without this the two halves disagree while the modal is
         // open: a translated heading above English role labels.
         this.rendered = false;
-        if (this.modal && !this.modal.hidden) {
+        if (this.modal?.isOpen) {
             this.render();
             this.rendered = true;
         }
@@ -70,8 +64,8 @@ class PaletteAboutModal {
 
     constructor() {
         this.button = document.getElementById('palette-about-button') as HTMLButtonElement | null;
-        this.modal = document.getElementById('palette-about-modal');
-        this.closeBtn = document.getElementById('palette-about-close') as HTMLButtonElement | null;
+        const root = document.getElementById('palette-about-modal');
+        this.modal = root ? new Modal({ root, labelledBy: 'palette-about-title' }) : null;
         this.baseHost = document.getElementById('palette-about-base');
         this.listHost = document.getElementById('palette-about-list');
         this.bind();
@@ -84,9 +78,6 @@ class PaletteAboutModal {
 
     private bind(): void {
         this.button?.addEventListener('click', this.boundOpen);
-        this.closeBtn?.addEventListener('click', this.boundClose);
-        this.modal?.addEventListener('click', this.boundBackdrop);
-        document.addEventListener('keydown', this.boundKeydown);
         document.addEventListener('language-changed', this.boundLanguageChange);
     }
 
@@ -98,13 +89,12 @@ class PaletteAboutModal {
             this.render();
             this.rendered = true;
         }
-        this.modal.hidden = false;
+        this.modal.open();
         track('palette_about_opened');
     }
 
     close(): void {
-        if (!this.modal) return;
-        this.modal.hidden = true;
+        this.modal?.close();
     }
 
     private render(): void {
@@ -232,9 +222,7 @@ class PaletteAboutModal {
 
     destroy(): void {
         this.button?.removeEventListener('click', this.boundOpen);
-        this.closeBtn?.removeEventListener('click', this.boundClose);
-        this.modal?.removeEventListener('click', this.boundBackdrop);
-        document.removeEventListener('keydown', this.boundKeydown);
+        this.modal?.destroy();
         document.removeEventListener('language-changed', this.boundLanguageChange);
     }
 }

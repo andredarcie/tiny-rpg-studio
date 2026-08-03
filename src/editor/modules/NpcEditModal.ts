@@ -66,7 +66,6 @@ class NpcEditModal extends EditorRendererBase {
         const def = this.getDefinition(npc);
 
         this.modal.open({
-            panelClassName: 'npc-edit-modal__panel object-edit-modal__panel',
             header: {
                 title: this.service.npcRenderer.getNpcName(def),
                 subtitle: (npc.x !== undefined && npc.y !== undefined) ? `(${npc.x}, ${npc.y})` : '',

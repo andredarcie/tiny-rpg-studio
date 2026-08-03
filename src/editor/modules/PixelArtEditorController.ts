@@ -5,6 +5,7 @@ import { RendererConstants } from '../../runtime/adapters/renderer/RendererConst
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 import { SpriteMatrixRegistry } from '../../runtime/domain/sprites/SpriteMatrixRegistry';
+import { Modal } from '../../ui/Modal';
 import {
     normalizeCustomTileEffects,
     type CustomTileEffectDefinition,
@@ -42,7 +43,6 @@ type DomDeps = {
     paeFrameBar: HTMLElement | null;
     paeSave: HTMLButtonElement | null;
     paeReset: HTMLButtonElement | null;
-    paeClose: HTMLButtonElement | null;
     paeCopyCode: HTMLButtonElement | null;
     paeToolPaint: HTMLButtonElement | null;
     paeToolErase: HTMLButtonElement | null;
@@ -61,6 +61,7 @@ export class PixelArtEditorController {
     private isPainting = false;
     private manager: ManagerDeps | null = null;
     private dom: DomDeps | null = null;
+    private modal: Modal | null = null;
     private eventsReady = false;
     private languageEventsReady = false;
     private tileEffectDraft: TileVisualEffectKind = 'none';
@@ -94,7 +95,7 @@ export class PixelArtEditorController {
             this.frames = custom ? this.cloneFrames(custom.frames) : this.loadBaseFrames(group, key, variant);
         }
 
-        this.dom?.pixelArtEditorModal?.removeAttribute('hidden');
+        this.ensureModal()?.open();
         this.renderMeta();
         this.renderPalette();
         this.renderFrameBar();
@@ -105,7 +106,25 @@ export class PixelArtEditorController {
     }
 
     close(): void {
-        this.dom?.pixelArtEditorModal?.setAttribute('hidden', '');
+        this.ensureModal()?.close();
+    }
+
+    /**
+     * Built on demand: the modal host lives in the editor's DOM cache, which is
+     * not wired yet when this controller is constructed.
+     */
+    private ensureModal(): Modal | null {
+        if (this.modal) return this.modal;
+
+        const root = this.dom?.pixelArtEditorModal;
+        if (!root) return null;
+
+        this.modal = new Modal({
+            root,
+            labelledBy: 'pae-title',
+            onClose: () => this.close(),
+        });
+        return this.modal;
     }
 
     save(): void {
@@ -422,9 +441,11 @@ export class PixelArtEditorController {
         if (this.eventsReady) return;
         this.eventsReady = true;
 
+        // Wires the header "✕", backdrop and Escape through the shared shell.
+        this.ensureModal();
+
         this.dom?.paeSave?.addEventListener('click', () => this.save());
         this.dom?.paeReset?.addEventListener('click', () => this.resetToDefault());
-        this.dom?.paeClose?.addEventListener('click', () => this.close());
         this.dom?.paeCopyCode?.addEventListener('click', () => this.copyCode());
 
         this.dom?.paeToolPaint?.addEventListener('click', () => {

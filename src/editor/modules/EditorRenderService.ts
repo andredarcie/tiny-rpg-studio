@@ -8,6 +8,7 @@ import { EditorNpcRenderer } from './renderers/EditorNpcRenderer';
 import { EditorObjectRenderer } from './renderers/EditorObjectRenderer';
 import { EditorTilePanelRenderer } from './renderers/EditorTilePanelRenderer';
 import { EditorWorldRenderer } from './renderers/EditorWorldRenderer';
+import { Modal } from '../../ui/Modal';
 import type { EditorManager } from '../EditorManager';
 import type { SkillCustomizationMap, VariableDefinition } from '../../types/gameState';
 import type { SkillDefinitionData } from '../../runtime/domain/entities/Skill';
@@ -48,6 +49,7 @@ class EditorRenderService {
     objectRenderer: EditorObjectRenderer;
     handleTileAnimationFrame: () => void;
     private _skillEditModalSkillId: string | null = null;
+    private _skillEditModal: Modal | null = null;
 
     constructor(editorManager: EditorManager) {
         this.manager = editorManager;
@@ -406,7 +408,7 @@ class EditorRenderService {
     }
 
     initSkillEditModal(): void {
-        const { skillEditSaveBtn, skillEditCancelBtn, skillEditRestoreBtn, skillEditIconInput, skillEditIconPreview, skillEditModal } = this.dom;
+        const { skillEditSaveBtn, skillEditCancelBtn, skillEditRestoreBtn, skillEditIconInput, skillEditIconPreview } = this.dom;
 
         skillEditSaveBtn?.addEventListener('click', () => this._saveSkillEditModal());
         skillEditCancelBtn?.addEventListener('click', () => this.closeSkillEditModal());
@@ -418,16 +420,27 @@ class EditorRenderService {
         this.dom.skillEditNameInput?.addEventListener('input', () => this._updateSkillEditCounter('name'));
         this.dom.skillEditDescInput?.addEventListener('input', () => this._updateSkillEditCounter('desc'));
 
-        skillEditModal?.addEventListener('click', (event) => {
-            if (event.target === skillEditModal) this.closeSkillEditModal();
-        });
+        // Backdrop click, Escape and the header "✕" all come from the shell.
+        this.ensureSkillEditModal();
+    }
 
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && skillEditModal && !skillEditModal.hidden) {
-                event.preventDefault();
-                this.closeSkillEditModal();
-            }
+    /**
+     * Built on demand so the modal can still be closed by callers that never
+     * ran `initSkillEditModal()` (saving a skill closes it, and the save path
+     * is reachable from the project panel alone).
+     */
+    private ensureSkillEditModal(): Modal | null {
+        if (this._skillEditModal) return this._skillEditModal;
+
+        const root = this.dom.skillEditModal;
+        if (!root) return null;
+
+        this._skillEditModal = new Modal({
+            root,
+            labelledBy: 'skill-edit-title',
+            onClose: () => this.closeSkillEditModal(),
         });
+        return this._skillEditModal;
     }
 
     private _updateSkillEditCounter(field: 'name' | 'desc'): void {
@@ -472,13 +485,13 @@ class EditorRenderService {
         this._updateSkillEditCounter('desc');
 
         if (skillEditModal) {
-            skillEditModal.hidden = false;
+            this.ensureSkillEditModal()?.open();
             skillEditNameInput?.focus();
         }
     }
 
     closeSkillEditModal(): void {
-        if (this.dom.skillEditModal) this.dom.skillEditModal.hidden = true;
+        this.ensureSkillEditModal()?.close();
         this._skillEditModalSkillId = null;
     }
 

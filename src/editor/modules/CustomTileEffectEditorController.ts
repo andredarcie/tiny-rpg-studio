@@ -1,4 +1,5 @@
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { Modal } from '../../ui/Modal';
 import { listBaseTileEffects } from '../../runtime/adapters/renderer/tileEffects/baseEffectRegistry';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 import { GameConfig } from '../../config/GameConfig';
@@ -53,7 +54,7 @@ export class CustomTileEffectEditorController {
     private dom: DomDeps | null = null;
     private selectedIds: BaseTileEffectId[] = [];
     private sampleTile: TileDefinition | null = null;
-    private lastFocus: HTMLElement | null = null;
+    private modal: Modal | null = null;
     private lastError: CreateCustomTileEffectError | null = null;
     private eventsReady = false;
     private previewAnimationFrame: number | null = null;
@@ -70,7 +71,6 @@ export class CustomTileEffectEditorController {
     open(): void {
         const modal = this.dom?.customTileEffectModal;
         if (!modal || !this.manager) return;
-        this.lastFocus = document.activeElement as HTMLElement | null;
         this.selectedIds = [];
         this.nameInput().value = '';
         this.lastError = null;
@@ -80,7 +80,7 @@ export class CustomTileEffectEditorController {
         this.sampleTile = this.manager.gameEngine.tileManager.getTile(0)
             ?? TileDefinitions.TILE_PRESETS.find((tile) => Number(tile.id) === 0)
             ?? TileDefinitions.TILE_PRESETS[0];
-        modal.removeAttribute('hidden');
+        this.ensureModal()?.open();
         this.render();
         this.startPreviewAnimation();
         this.nameInput().focus();
@@ -88,10 +88,10 @@ export class CustomTileEffectEditorController {
 
     close(): void {
         this.stopPreviewAnimation();
-        this.dom?.customTileEffectModal?.setAttribute('hidden', '');
+        // Focus goes back to the opener through the shell's own restore.
+        this.ensureModal()?.close();
         this.selectedIds = [];
         this.draftColor = null;
-        this.lastFocus?.focus();
     }
 
     save(): void {
@@ -272,18 +272,18 @@ export class CustomTileEffectEditorController {
         if (this.eventsReady || !this.dom?.customTileEffectModal) return;
         this.eventsReady = true;
         const modal = this.dom.customTileEffectModal;
+        this.ensureModal();
         this.dom.customTileEffectOpen?.addEventListener('click', () => this.open());
         this.query('#custom-effect-save')?.addEventListener('click', () => this.save());
         this.query('#custom-effect-cancel')?.addEventListener('click', () => this.close());
-        this.query('#custom-effect-close')?.addEventListener('click', () => this.close());
         this.query('#custom-effect-color')?.addEventListener('input', (event) => {
             const color = normalizeCustomTileEffectColor((event.target as HTMLInputElement).value);
             if (!color) return;
             this.draftColor = color;
             this.renderPreview();
         });
+        // Delegated clicks for the effect rows; dismissing is the shell's job.
         modal.addEventListener('click', (event) => {
-            if (event.target === modal) this.close();
             const target = event.target as HTMLElement;
             const addId = target.closest<HTMLElement>('[data-base-effect-id]')?.dataset.baseEffectId as BaseTileEffectId | undefined;
             if (addId && !this.selectedIds.includes(addId)) {
@@ -309,12 +309,23 @@ export class CustomTileEffectEditorController {
                 this.render();
             }
         });
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape' && !modal.hasAttribute('hidden')) this.close();
-        });
         document.addEventListener('language-changed', () => {
             if (!modal.hasAttribute('hidden')) this.render();
         });
+    }
+
+    private ensureModal(): Modal | null {
+        if (this.modal) return this.modal;
+
+        const root = this.dom?.customTileEffectModal;
+        if (!root) return null;
+
+        this.modal = new Modal({
+            root,
+            labelledBy: 'custom-effect-title',
+            onClose: () => this.close(),
+        });
+        return this.modal;
     }
 
     private nameInput(): HTMLInputElement {

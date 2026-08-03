@@ -572,50 +572,54 @@
                                     </div>
 
                                     <!-- Skill Edit Modal -->
-                                    <div id="skill-edit-modal" class="skill-edit-modal" hidden>
-                                        <div class="skill-edit-modal__content">
-                                            <div class="skill-edit-modal__panel">
-                                                <div class="skill-edit-modal__header">
-                                                    <h3 data-text-key="skills.edit.modalTitle">Editar Skill</h3>
+                                    <div id="skill-edit-modal" class="tiny-modal skill-edit-modal" hidden role="dialog" aria-modal="true" aria-labelledby="skill-edit-title">
+                                        <div class="tiny-modal__panel tiny-modal__panel--md">
+                                            <div class="tiny-modal__header">
+                                                <div class="tiny-modal__title-group">
+                                                    <h3 id="skill-edit-title" class="tiny-modal__title" data-text-key="skills.edit.modalTitle">Editar Skill</h3>
                                                 </div>
-                                                <div class="skill-edit-modal__fields">
-                                                    <div class="skill-edit-modal__field">
-                                                        <label for="skill-edit-icon" data-text-key="skills.edit.iconLabel">Ícone</label>
-                                                        <div class="skill-edit-modal__icon-row">
-                                                            <span id="skill-edit-icon-preview" class="skill-edit-modal__icon-preview" aria-hidden="true"></span>
-                                                            <input type="text" id="skill-edit-icon" class="skill-edit-modal__input skill-edit-modal__input--icon" autocomplete="off" data-aria-label-key="skills.edit.iconAriaLabel" />
-                                                        </div>
-                                                    </div>
-                                                    <div class="skill-edit-modal__field">
-                                                        <label for="skill-edit-name" data-text-key="skills.edit.nameLabel">Nome</label>
-                                                        <input type="text" id="skill-edit-name" class="skill-edit-modal__input" autocomplete="off" data-aria-label-key="skills.edit.nameAriaLabel" />
-                                                        <span id="skill-edit-name-counter" class="skill-edit-modal__counter" aria-live="polite"></span>
-                                                    </div>
-                                                    <div class="skill-edit-modal__field">
-                                                        <label for="skill-edit-desc" data-text-key="skills.edit.descLabel">Descrição</label>
-                                                        <textarea id="skill-edit-desc" class="skill-edit-modal__input skill-edit-modal__input--desc" autocomplete="off" rows="3" spellcheck="true" data-aria-label-key="skills.edit.descAriaLabel"></textarea>
-                                                        <span id="skill-edit-desc-counter" class="skill-edit-modal__counter" aria-live="polite"></span>
+                                                <button type="button" class="tiny-modal__close" data-modal-close data-aria-label-key="buttons.close">✕</button>
+                                            </div>
+                                            <div class="tiny-modal__body tiny-modal__body--stack skill-edit-modal__fields">
+                                                <div class="skill-edit-modal__field">
+                                                    <label for="skill-edit-icon" data-text-key="skills.edit.iconLabel">Ícone</label>
+                                                    <div class="skill-edit-modal__icon-row">
+                                                        <span id="skill-edit-icon-preview" class="skill-edit-modal__icon-preview" aria-hidden="true"></span>
+                                                        <input type="text" id="skill-edit-icon" class="skill-edit-modal__input skill-edit-modal__input--icon" autocomplete="off" data-aria-label-key="skills.edit.iconAriaLabel" />
                                                     </div>
                                                 </div>
-                                                <div class="skill-edit-modal__actions">
-                                                    <button id="skill-edit-restore" type="button" class="btn-secondary" data-text-key="skills.edit.restoreDefaults">Restaurar padrão</button>
-                                                    <div class="skill-edit-modal__actions-right">
-                                                        <button id="skill-edit-cancel" type="button" class="btn-secondary" data-text-key="skills.edit.cancel">Cancelar</button>
-                                                        <button id="skill-edit-save" type="button" class="btn-primary" data-text-key="skills.edit.save">Salvar</button>
-                                                    </div>
+                                                <div class="skill-edit-modal__field">
+                                                    <label for="skill-edit-name" data-text-key="skills.edit.nameLabel">Nome</label>
+                                                    <input type="text" id="skill-edit-name" class="skill-edit-modal__input" autocomplete="off" data-aria-label-key="skills.edit.nameAriaLabel" />
+                                                    <span id="skill-edit-name-counter" class="skill-edit-modal__counter" aria-live="polite"></span>
+                                                </div>
+                                                <div class="skill-edit-modal__field">
+                                                    <label for="skill-edit-desc" data-text-key="skills.edit.descLabel">Descrição</label>
+                                                    <textarea id="skill-edit-desc" class="skill-edit-modal__input skill-edit-modal__input--desc" autocomplete="off" rows="3" spellcheck="true" data-aria-label-key="skills.edit.descAriaLabel"></textarea>
+                                                    <span id="skill-edit-desc-counter" class="skill-edit-modal__counter" aria-live="polite"></span>
+                                                </div>
+                                            </div>
+                                            <div class="tiny-modal__footer skill-edit-modal__actions">
+                                                <button id="skill-edit-restore" type="button" class="btn-secondary" data-text-key="skills.edit.restoreDefaults">Restaurar padrão</button>
+                                                <div class="skill-edit-modal__actions-right">
+                                                    <button id="skill-edit-cancel" type="button" class="btn-secondary" data-text-key="skills.edit.cancel">Cancelar</button>
+                                                    <button id="skill-edit-save" type="button" class="btn-primary" data-text-key="skills.edit.save">Salvar</button>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- Color Picker Modal -->
-                                    <div id="color-picker-modal" class="color-picker-modal" hidden>
-                                        <div class="color-picker-content">
-                                            <div class="color-picker-panel">
-                                                <div class="color-picker-header">
-                                                    <h3 data-text-key="project.colorPickerTitle"></h3>
-                                                    <span id="color-picker-index" class="color-index-label"></span>
+                                    <div id="color-picker-modal" class="tiny-modal color-picker-modal" hidden role="dialog" aria-modal="true" aria-labelledby="color-picker-title">
+                                        <div class="tiny-modal__panel tiny-modal__panel--md">
+                                            <div class="tiny-modal__header">
+                                                <div class="tiny-modal__title-group">
+                                                    <h3 id="color-picker-title" class="tiny-modal__title" data-text-key="project.colorPickerTitle"></h3>
                                                 </div>
+                                                <span id="color-picker-index" class="color-index-label"></span>
+                                                <button type="button" class="tiny-modal__close" data-modal-close data-aria-label-key="buttons.close">✕</button>
+                                            </div>
+                                            <div class="tiny-modal__body tiny-modal__body--stack">
                                                 <div class="color-picker-preview">
                                                     <div class="color-preview-box">
                                                         <div id="color-preview-current" class="color-preview-row">
@@ -639,18 +643,18 @@
                                                     id="color-picker-input"
                                                     class="color-picker-input"
                                                 />
-                                                <div class="color-picker-actions">
-                                                    <button
-                                                        id="color-picker-cancel"
-                                                        class="btn-secondary"
-                                                        data-text-key="project.colorCancel"
-                                                    ></button>
-                                                    <button
-                                                        id="color-picker-confirm"
-                                                        class="btn-primary"
-                                                        data-text-key="project.colorConfirm"
-                                                    ></button>
-                                                </div>
+                                            </div>
+                                            <div class="tiny-modal__footer color-picker-actions">
+                                                <button
+                                                    id="color-picker-cancel"
+                                                    class="btn-secondary"
+                                                    data-text-key="project.colorCancel"
+                                                ></button>
+                                                <button
+                                                    id="color-picker-confirm"
+                                                    class="btn-primary"
+                                                    data-text-key="project.colorConfirm"
+                                                ></button>
                                             </div>
                                         </div>
                                     </div>
@@ -745,26 +749,23 @@
 
     <input type="file" id="file-input" accept=".json" style="display: none;">
 
-    <!-- NPC Edit Modal -->
-    <div id="npc-edit-modal" class="object-edit-modal" hidden role="dialog" aria-modal="true"></div>
-
-    <!-- Object Edit Modal -->
-    <div id="object-edit-modal" class="object-edit-modal" hidden role="dialog" aria-modal="true"></div>
-
-    <!-- Enemy Edit Modal -->
-    <div id="enemy-edit-modal" class="object-edit-modal" hidden role="dialog" aria-modal="true"></div>
+    <!-- NPC / Object / Enemy edit modals: panels are built at open time by
+         EditorModal on top of the shared Modal shell. -->
+    <div id="npc-edit-modal" hidden></div>
+    <div id="object-edit-modal" hidden></div>
+    <div id="enemy-edit-modal" hidden></div>
 
     <!-- Explore Modal -->
-    <div id="explore-modal" class="explore-modal" hidden role="dialog" aria-modal="true" aria-labelledby="explore-modal-title">
-        <div class="explore-modal__panel">
-            <div class="explore-modal__header">
-                <div class="explore-modal__title-group">
-                    <h2 id="explore-modal-title" class="explore-modal__title" data-text-key="explore.title">Explorar Jogos</h2>
-                    <p id="explore-subtitle" class="explore-modal__subtitle"></p>
+    <div id="explore-modal" class="tiny-modal explore-modal" hidden role="dialog" aria-modal="true" aria-labelledby="explore-modal-title">
+        <div class="tiny-modal__panel tiny-modal__panel--xl">
+            <div class="tiny-modal__header">
+                <div class="tiny-modal__title-group">
+                    <h2 id="explore-modal-title" class="tiny-modal__title" data-text-key="explore.title">Explorar Jogos</h2>
+                    <p id="explore-subtitle" class="tiny-modal__subtitle tiny-modal__subtitle--ellipsis"></p>
                 </div>
-                <button type="button" id="explore-close" class="explore-modal__close" data-aria-label-key="explore.closeAria">✕</button>
+                <button type="button" id="explore-close" class="tiny-modal__close" data-modal-close data-aria-label-key="explore.closeAria">✕</button>
             </div>
-            <div class="explore-modal__body">
+            <div class="tiny-modal__body">
                 <div id="explore-back-banner" class="explore-back-banner" hidden>
                     <button type="button" id="btn-explore-back" class="explore-back-btn btn-secondary" data-text-key="explore.backToMyGame">← Voltar para meu jogo</button>
                 </div>
@@ -777,17 +778,17 @@
         </div>
     </div>
 
-    <div id="devlog-modal" class="devlog-modal" hidden role="dialog" aria-modal="true" aria-labelledby="devlog-modal-title">
-        <div class="devlog-modal__panel">
-            <div class="devlog-modal__header">
-                <div class="devlog-modal__title-group">
-                    <h2 id="devlog-modal-title" class="devlog-modal__title" data-text-key="devlog.modalTitle">What's New</h2>
-                    <p class="devlog-modal__subtitle" data-text-key="devlog.modalSubtitle">Engine updates &amp; devlog</p>
+    <div id="devlog-modal" class="tiny-modal devlog-modal" hidden role="dialog" aria-modal="true" aria-labelledby="devlog-modal-title">
+        <div class="tiny-modal__panel tiny-modal__panel--lg">
+            <div class="tiny-modal__header">
+                <div class="tiny-modal__title-group">
+                    <h2 id="devlog-modal-title" class="tiny-modal__title" data-text-key="devlog.modalTitle">What's New</h2>
+                    <p class="tiny-modal__subtitle" data-text-key="devlog.modalSubtitle">Engine updates &amp; devlog</p>
                 </div>
-                <button type="button" id="devlog-close" class="devlog-modal__close" aria-label="Close updates" data-aria-label-key="devlog.closeAria">✕</button>
+                <button type="button" id="devlog-close" class="tiny-modal__close" data-modal-close aria-label="Close updates" data-aria-label-key="devlog.closeAria">✕</button>
             </div>
-            <div id="devlog-list" class="devlog-modal__body"></div>
-            <div class="devlog-modal__footer">
+            <div id="devlog-list" class="tiny-modal__body tiny-modal__body--stack"></div>
+            <div class="tiny-modal__footer devlog-modal__footer">
                 <button type="button" id="devlog-prev" class="devlog-pager-btn" data-text-key="devlog.prev">← Prev</button>
                 <span id="devlog-page-indicator" class="devlog-page-indicator" aria-live="polite"></span>
                 <button type="button" id="devlog-next" class="devlog-pager-btn" data-text-key="devlog.next">Next →</button>
@@ -796,16 +797,16 @@
     </div>
 
     <!-- About Modal -->
-    <div id="about-modal" class="about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
-        <div class="about-modal__panel">
-            <div class="about-modal__header">
-                <div class="about-modal__title-group">
-                    <h2 id="about-modal-title" class="about-modal__title" data-text-key="about.title">About Tiny RPG Studio</h2>
-                    <p class="about-modal__subtitle" data-text-key="about.subtitle">A browser-native RPG maker</p>
+    <div id="about-modal" class="tiny-modal about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="about-modal-title">
+        <div class="tiny-modal__panel tiny-modal__panel--md">
+            <div class="tiny-modal__header">
+                <div class="tiny-modal__title-group">
+                    <h2 id="about-modal-title" class="tiny-modal__title" data-text-key="about.title">About Tiny RPG Studio</h2>
+                    <p class="tiny-modal__subtitle" data-text-key="about.subtitle">A browser-native RPG maker</p>
                 </div>
-                <button type="button" id="about-close" class="about-modal__close" aria-label="Close about" data-aria-label-key="about.closeAria">✕</button>
+                <button type="button" id="about-close" class="tiny-modal__close" data-modal-close aria-label="Close about" data-aria-label-key="about.closeAria">✕</button>
             </div>
-            <div class="about-modal__body">
+            <div class="tiny-modal__body tiny-modal__body--stack">
                 <p class="about-modal__lead" data-text-key="about.description">Tiny RPG Studio lets you build and instantly play tiny RPGs right in your browser — no installation, no account. Every game is encoded into a single shareable URL.</p>
                 <p class="about-modal__creators" data-text-key="about.createdBy">Created by André N. Darcie and Diguifi.</p>
                 <p class="about-modal__free" data-text-key="about.free">An open-source, free, non-profit engine.</p>
@@ -814,16 +815,16 @@
         </div>
     </div>
 
-    <div id="palette-about-modal" class="about-modal palette-about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="palette-about-title">
-        <div class="about-modal__panel palette-about-modal__panel">
-            <div class="about-modal__header">
-                <div class="about-modal__title-group">
-                    <h2 id="palette-about-title" class="about-modal__title" data-text-key="paletteAbout.title">How palettes map</h2>
-                    <p class="about-modal__subtitle" data-text-key="paletteAbout.subtitle">Every palette is a re-colouring of the 16 PICO-8 slots.</p>
+    <div id="palette-about-modal" class="tiny-modal palette-about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="palette-about-title">
+        <div class="tiny-modal__panel tiny-modal__panel--xl">
+            <div class="tiny-modal__header">
+                <div class="tiny-modal__title-group">
+                    <h2 id="palette-about-title" class="tiny-modal__title" data-text-key="paletteAbout.title">How palettes map</h2>
+                    <p class="tiny-modal__subtitle" data-text-key="paletteAbout.subtitle">Every palette is a re-colouring of the 16 PICO-8 slots.</p>
                 </div>
-                <button type="button" id="palette-about-close" class="about-modal__close" aria-label="Close palette guide" data-aria-label-key="paletteAbout.closeAria">✕</button>
+                <button type="button" id="palette-about-close" class="tiny-modal__close" data-modal-close aria-label="Close palette guide" data-aria-label-key="paletteAbout.closeAria">✕</button>
             </div>
-            <div class="about-modal__body palette-about-modal__body">
+            <div class="tiny-modal__body tiny-modal__body--stack">
                 <p class="about-modal__lead" data-text-key="paletteAbout.lead">Each slot has a fixed job in the engine — slot 3 paints grass, slot 7 draws HUD text. Choosing a palette swaps the colour in every slot, keeping the job.</p>
                 <section class="palette-about__section">
                     <h3 class="palette-about__heading" data-text-key="paletteAbout.baseHeading">PICO-8 base slots</h3>
@@ -837,71 +838,79 @@
         </div>
     </div>
 
-    <div id="custom-effect-modal" class="custom-effect-modal" hidden role="dialog" aria-modal="true" aria-labelledby="custom-effect-title">
-        <div class="custom-effect-dialog">
-            <div class="pae-header">
-                <h2 id="custom-effect-title" class="pae-title" data-text-key="customEffects.title">Create tile effect</h2>
-                <button type="button" id="custom-effect-close" class="pae-close" data-aria-label-key="customEffects.closeAria">X</button>
+    <div id="custom-effect-modal" class="tiny-modal custom-effect-modal" hidden role="dialog" aria-modal="true" aria-labelledby="custom-effect-title">
+        <div class="tiny-modal__panel tiny-modal__panel--auto custom-effect-modal__panel">
+            <div class="tiny-modal__header">
+                <div class="tiny-modal__title-group">
+                    <h2 id="custom-effect-title" class="tiny-modal__title" data-text-key="customEffects.title">Create tile effect</h2>
+                </div>
+                <button type="button" id="custom-effect-close" class="tiny-modal__close" data-modal-close data-aria-label-key="customEffects.closeAria">✕</button>
             </div>
-            <section class="custom-effect-saved-section">
-                <h3 data-text-key="customEffects.saved">Created effects</h3>
-                <div id="custom-effect-saved" class="custom-effect-list custom-effect-saved-list"></div>
-            </section>
-            <div class="custom-effect-layout">
-                <section>
-                    <h3 data-text-key="customEffects.available">Available effects</h3>
-                    <div id="custom-effect-catalog" class="custom-effect-list"></div>
+            <div class="tiny-modal__body tiny-modal__body--stack">
+                <section class="custom-effect-saved-section">
+                    <h3 data-text-key="customEffects.saved">Created effects</h3>
+                    <div id="custom-effect-saved" class="custom-effect-list custom-effect-saved-list"></div>
                 </section>
-                <section class="custom-effect-preview-column">
-                    <h3 data-text-key="customEffects.preview">Preview</h3>
-                    <canvas id="custom-effect-preview" width="192" height="192"></canvas>
-                    <label for="custom-effect-name" data-text-key="customEffects.name">Effect name</label>
-                    <input id="custom-effect-name" maxlength="8" autocomplete="off" data-placeholder-key="customEffects.namePlaceholder" placeholder="My effect">
-                    <div id="custom-effect-color-control" class="custom-effect-color-control" hidden>
-                        <label for="custom-effect-color" data-text-key="customEffects.color">Effect color</label>
-                        <input id="custom-effect-color" type="color" value="#FF5A00" disabled>
-                        <small class="custom-effect-help" data-text-key="customEffects.colorHelp">One color affects every tint and glow pass in this effect.</small>
-                    </div>
-                </section>
-                <section>
-                    <h3 data-text-key="customEffects.selected">Selected order</h3>
-                    <div id="custom-effect-selected" class="custom-effect-list"></div>
-                </section>
+                <div class="custom-effect-layout">
+                    <section>
+                        <h3 data-text-key="customEffects.available">Available effects</h3>
+                        <div id="custom-effect-catalog" class="custom-effect-list"></div>
+                    </section>
+                    <section class="custom-effect-preview-column">
+                        <h3 data-text-key="customEffects.preview">Preview</h3>
+                        <canvas id="custom-effect-preview" width="192" height="192"></canvas>
+                        <label for="custom-effect-name" data-text-key="customEffects.name">Effect name</label>
+                        <input id="custom-effect-name" maxlength="8" autocomplete="off" data-placeholder-key="customEffects.namePlaceholder" placeholder="My effect">
+                        <div id="custom-effect-color-control" class="custom-effect-color-control" hidden>
+                            <label for="custom-effect-color" data-text-key="customEffects.color">Effect color</label>
+                            <input id="custom-effect-color" type="color" value="#FF5A00" disabled>
+                            <small class="custom-effect-help" data-text-key="customEffects.colorHelp">One color affects every tint and glow pass in this effect.</small>
+                        </div>
+                    </section>
+                    <section>
+                        <h3 data-text-key="customEffects.selected">Selected order</h3>
+                        <div id="custom-effect-selected" class="custom-effect-list"></div>
+                    </section>
+                </div>
+                <p id="custom-effect-status" class="custom-effect-status" role="status" aria-live="polite"></p>
             </div>
-            <p id="custom-effect-status" class="custom-effect-status" role="status" aria-live="polite"></p>
-            <div class="pae-actions">
-                <button type="button" id="custom-effect-cancel" data-text-key="customEffects.cancel">Cancel</button>
-                <button type="button" id="custom-effect-save" class="pae-save-btn" data-text-key="customEffects.save">Save effect</button>
+            <div class="tiny-modal__footer">
+                <button type="button" id="custom-effect-cancel" class="btn-secondary" data-text-key="customEffects.cancel">Cancel</button>
+                <button type="button" id="custom-effect-save" class="btn-primary" data-text-key="customEffects.save">Save effect</button>
             </div>
         </div>
     </div>
 
-    <div id="pixel-art-editor-modal" class="pixel-art-editor-modal" hidden>
-        <div class="pixel-art-editor">
-            <div class="pae-header">
-                <span class="pae-title" data-text-key="pixelArtEditor.title">PIXEL ART EDITOR</span>
-                <button type="button" class="pae-close" id="pae-close" data-aria-label-key="pixelArtEditor.closeAria">X</button>
+    <div id="pixel-art-editor-modal" class="tiny-modal pixel-art-editor-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pae-title">
+        <div class="tiny-modal__panel tiny-modal__panel--auto pixel-art-editor-modal__panel">
+            <div class="tiny-modal__header">
+                <div class="tiny-modal__title-group">
+                    <span id="pae-title" class="tiny-modal__title" data-text-key="pixelArtEditor.title">PIXEL ART EDITOR</span>
+                </div>
+                <button type="button" class="tiny-modal__close" id="pae-close" data-modal-close data-aria-label-key="pixelArtEditor.closeAria">✕</button>
             </div>
-            <div class="pae-sprite-meta" id="pae-sprite-meta"></div>
-            <div class="pae-variant-bar" id="pae-variant-bar" hidden></div>
-            <div class="pae-frame-bar" id="pae-frame-bar" hidden></div>
-            <div class="pae-editor-area">
-                <canvas id="pae-canvas" width="256" height="256"></canvas>
+            <div class="tiny-modal__body tiny-modal__body--stack pixel-art-editor">
+                <div class="pae-sprite-meta" id="pae-sprite-meta"></div>
+                <div class="pae-variant-bar" id="pae-variant-bar" hidden></div>
+                <div class="pae-frame-bar" id="pae-frame-bar" hidden></div>
+                <div class="pae-editor-area">
+                    <canvas id="pae-canvas" width="256" height="256"></canvas>
+                </div>
+                <div class="pae-palette" id="pae-palette"></div>
+                <div class="pae-tile-effect-row" id="pae-tile-effect-row" hidden>
+                    <label class="pae-tile-effect-label" for="pae-tile-effect" data-text-key="pixelArtEditor.visualEffect">Efeito visual</label>
+                    <select id="pae-tile-effect" class="pae-tile-effect-select" data-aria-label-key="pixelArtEditor.visualEffect">
+                        <option value="none" data-text-key="pixelArtEditor.visualEffect.none">Nenhum</option>
+                        <option value="water" data-text-key="pixelArtEditor.visualEffect.water">Água</option>
+                        <option value="lava" data-text-key="pixelArtEditor.visualEffect.lava">Lava</option>
+                    </select>
+                </div>
+                <div class="pae-tools">
+                    <button type="button" class="pae-tool active" data-tool="paint" id="pae-tool-paint" data-text-key="pixelArtEditor.paint">Pintar</button>
+                    <button type="button" class="pae-tool" data-tool="erase" id="pae-tool-erase" data-text-key="pixelArtEditor.erase">Apagar</button>
+                </div>
             </div>
-            <div class="pae-palette" id="pae-palette"></div>
-            <div class="pae-tile-effect-row" id="pae-tile-effect-row" hidden>
-                <label class="pae-tile-effect-label" for="pae-tile-effect" data-text-key="pixelArtEditor.visualEffect">Efeito visual</label>
-                <select id="pae-tile-effect" class="pae-tile-effect-select" data-aria-label-key="pixelArtEditor.visualEffect">
-                    <option value="none" data-text-key="pixelArtEditor.visualEffect.none">Nenhum</option>
-                    <option value="water" data-text-key="pixelArtEditor.visualEffect.water">Água</option>
-                    <option value="lava" data-text-key="pixelArtEditor.visualEffect.lava">Lava</option>
-                </select>
-            </div>
-            <div class="pae-tools">
-                <button type="button" class="pae-tool active" data-tool="paint" id="pae-tool-paint" data-text-key="pixelArtEditor.paint">Pintar</button>
-                <button type="button" class="pae-tool" data-tool="erase" id="pae-tool-erase" data-text-key="pixelArtEditor.erase">Apagar</button>
-            </div>
-            <div class="pae-actions">
+            <div class="tiny-modal__footer pae-actions">
                 <button type="button" id="pae-copy-code" class="pae-copy-code-btn" data-text-key="pixelArtEditor.copyCode">Copiar código</button>
                 <button type="button" id="pae-reset" data-text-key="pixelArtEditor.reset">Restaurar padrão</button>
                 <button type="button" id="pae-save" class="pae-save-btn" data-text-key="pixelArtEditor.save">Salvar</button>

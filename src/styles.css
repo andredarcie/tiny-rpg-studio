@@ -4039,8 +4039,16 @@ body.game-mode .tab-button.active {
     color: #666;
 }
 
-/* Skill Edit Modal */
-#skill-edit-modal {
+/* ══ Shared modal shell ═══════════════════════════════════════════════════
+   Every modal in the engine — editor panels, the pixel-art tools and the
+   online dialogs — renders through this shell via src/ui/Modal.ts. The scrim,
+   panel frame, header, body and footer live here and nowhere else, so the
+   per-modal rules further down only describe their own content and a new
+   modal cannot drift into a look of its own.
+
+   Width and stacking are exposed as custom properties (--modal-width,
+   --modal-z) so a modal can opt out of one value without forking the shell. */
+.tiny-modal {
     position: fixed;
     inset: 0;
     display: flex;
@@ -4048,51 +4056,246 @@ body.game-mode .tab-button.active {
     justify-content: center;
     padding: 16px;
     margin: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 1000;
+    background: rgba(0, 0, 0, 0.88);
+    z-index: var(--modal-z, 1000);
 }
 
-#skill-edit-modal[hidden] {
+.tiny-modal[hidden] {
     display: none;
 }
 
-#skill-edit-modal .skill-edit-modal__content {
-    background: rgba(10, 13, 22, 0.95);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px;
+.tiny-modal__panel {
+    display: flex;
+    flex-direction: column;
     width: 100%;
-    max-width: 420px;
-    display: block;
+    max-width: var(--modal-width, 460px);
+    max-height: 85vh;
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    color: var(--text);
+    font-family: var(--ui-font-family);
+    overflow: hidden;
+    outline: none;
 }
 
-.skill-edit-modal__panel {
-    border: 2px solid var(--accent);
-    border-radius: 8px;
-    background: var(--panel);
-    padding: 14px;
+.tiny-modal__panel--sm { --modal-width: 380px; }
+.tiny-modal__panel--md { --modal-width: 460px; }
+.tiny-modal__panel--lg { --modal-width: 560px; }
+.tiny-modal__panel--xl { --modal-width: 900px; }
+
+/* Content-sized, for tool modals whose own layout dictates the width. */
+.tiny-modal__panel--auto {
+    width: auto;
+    max-width: min(var(--modal-width, 960px), 100%);
+}
+
+/* ── header ── */
+.tiny-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    flex-shrink: 0;
+}
+
+.tiny-modal__header[hidden] {
+    display: none;
+}
+
+/* A preview thumbnail pins the header to the top: the title group grows taller
+   than the canvas as soon as it carries a chip or a description. */
+.tiny-modal__header:has(.tiny-modal__preview) {
+    align-items: flex-start;
+}
+
+.tiny-modal__preview {
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.35);
+    padding: 2px;
+    image-rendering: pixelated;
+}
+
+.tiny-modal__title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.tiny-modal__title {
     margin: 0;
-    width: 100%;
-    box-sizing: border-box;
+    color: var(--accent);
+    line-height: 1.2;
+}
+
+.tiny-modal__subtitle {
+    margin: 0;
+    color: var(--muted);
+    opacity: 0.55;
+    font-size: 0.85em;
+    line-height: var(--lh-text);
+}
+
+/* Opt-in truncation, for subtitles carrying a live count that must stay on
+   one line next to the title. */
+.tiny-modal__subtitle--ellipsis {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Neutral chip (a coordinate, an id) — reads as metadata rather than prose. */
+.tiny-modal__chip {
+    margin: 2px 0 0;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    letter-spacing: 0.04em;
+}
+
+.tiny-modal__badge {
+    margin-top: 4px;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 6px;
+    color: var(--accent);
+    background: rgba(91, 250, 142, 0.1);
+    border: 1px solid rgba(91, 250, 142, 0.25);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.tiny-modal__desc {
+    margin: 4px 0 0;
+    color: rgba(255, 255, 255, 0.38);
+    line-height: var(--lh-relaxed);
+}
+
+/* Qualified with the element on purpose: `body.editor-mode button` gives every
+   button in the editor a border and a filled background, and would otherwise
+   box in the "✕" for editor modals only — leaving the same control looking
+   different depending on which tab you opened it from. */
+.tiny-modal button.tiny-modal__close {
+    margin-left: auto;
+    align-self: flex-start;
+    padding: 4px 8px;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: var(--ui-font-family);
+    line-height: var(--lh-tight);
+    opacity: 0.7;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.tiny-modal button.tiny-modal__close:hover,
+.tiny-modal button.tiny-modal__close:focus-visible {
+    opacity: 1;
+    background: none;
+    border: none;
+    color: var(--accent);
+    outline: none;
+}
+
+/* ── body ── */
+.tiny-modal__body {
+    flex: 1;
+    min-height: 0;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+/* Vertical rhythm for bodies that are a plain stack of blocks. Bodies running
+   their own grid (Explore, the pixel-art tools) leave this off. */
+.tiny-modal__body--stack {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.skill-edit-modal__header {
+/* ── footer ── */
+.tiny-modal__footer {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 2px solid var(--border);
+    flex-shrink: 0;
 }
 
-.skill-edit-modal__header h3 {
-    margin: 0;
-    color: var(--text);
+/* Buttons match the tallest one in the row instead of hugging their own text:
+   a label that wraps to two lines ("Remover NPC") or a footer mixing paddings
+   would otherwise leave the row with buttons of visibly different heights. */
+.tiny-modal__footer button {
+    align-self: stretch;
 }
 
+.tiny-modal__footer .btn-secondary,
+.tiny-modal__footer .btn-primary {
+    flex: 1;
+    min-height: 34px;
+    padding: 6px 10px;
+}
+
+.tiny-modal__btn--accent {
+    color: var(--accent) !important;
+    border-color: rgba(91, 250, 142, 0.3) !important;
+}
+
+.tiny-modal__btn--accent:hover {
+    background: rgba(91, 250, 142, 0.08) !important;
+    border-color: rgba(91, 250, 142, 0.6) !important;
+}
+
+.tiny-modal__btn--danger {
+    color: #e06060 !important;
+    border-color: rgba(224, 96, 96, 0.35) !important;
+}
+
+.tiny-modal__btn--danger:hover {
+    background: rgba(224, 96, 96, 0.1) !important;
+    border-color: rgba(224, 96, 96, 0.6) !important;
+}
+
+@media (max-width: 640px) {
+    .tiny-modal {
+        padding: 8px;
+    }
+
+    .tiny-modal__panel {
+        max-height: 92vh;
+    }
+
+    .tiny-modal__header {
+        padding: 10px 12px;
+    }
+
+    .tiny-modal__body {
+        padding: 12px;
+    }
+
+    .tiny-modal__footer {
+        padding: 10px 12px;
+    }
+}
+
+@media (pointer: coarse) {
+    .tiny-modal__footer .btn-secondary,
+    .tiny-modal__footer .btn-primary {
+        min-height: 42px;
+    }
+}
+
+/* Skill Edit Modal — content only; the shell comes from .tiny-modal above. */
 .skill-edit-modal__fields {
     display: flex;
     flex-direction: column;
@@ -4117,7 +4320,6 @@ body.game-mode .tab-button.active {
     padding: 7px 10px;
     background: rgba(12, 14, 24, 0.75);
     border: 1px solid var(--border);
-    border-radius: 6px;
     color: var(--text);
     font: inherit;
     box-sizing: border-box;
@@ -4174,12 +4376,11 @@ body.game-mode .tab-button.active {
     color: var(--accent);
 }
 
+/* "Restore defaults" is a whole-panel action, so it sits on its own row above
+   the cancel/save pair instead of competing with them for width. */
 .skill-edit-modal__actions {
-    display: flex;
     flex-direction: column;
-    gap: 8px;
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
+    align-items: stretch;
 }
 
 .skill-edit-modal__actions-right {
@@ -4195,27 +4396,17 @@ body.game-mode .tab-button.active {
     width: 100%;
 }
 
-.skill-edit-modal__actions button {
+/* Beats the shell's own footer-button sizing, which assumes a single row. */
+.tiny-modal__footer.skill-edit-modal__actions button {
     min-height: 40px;
     padding: 10px 12px;
     font-weight: var(--fw-bold);
-    border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s;
 }
 
-@media (max-width: 768px) {
-    #skill-edit-modal .skill-edit-modal__content {
-        width: 100%;
-        max-width: none;
-    }
-}
-
 @media (pointer: coarse) {
-    .skill-edit-modal__input {
-    }
-
-    .skill-edit-modal__actions button {
+    .tiny-modal__footer.skill-edit-modal__actions button {
         min-height: 44px;
     }
 }
@@ -4228,135 +4419,11 @@ body.game-mode .tab-button.active {
     justify-content: center;
 }
 
-/* Object / NPC / Enemy Edit Modals */
-#object-edit-modal,
-#npc-edit-modal,
-#enemy-edit-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 16px;
-}
-
-#object-edit-modal[hidden],
-#npc-edit-modal[hidden],
-#enemy-edit-modal[hidden] {
-    display: none;
-}
-
-.object-edit-modal__panel {
-    font-size: var(--engine-font-size);
-    background: var(--panel, #151821);
-    border: 1px solid var(--border);
-    border-top: 2px solid var(--accent);
-    border-radius: 6px;
-    max-width: 380px;
-    width: 100%;
-    max-height: 82vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(91, 250, 142, 0.08);
-}
-
-/* ── header ── */
-.object-edit-modal__header {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 14px 14px 13px;
-    background: rgba(255, 255, 255, 0.025);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-}
-
-.object-edit-modal__preview {
-    flex-shrink: 0;
-    border-radius: 4px;
-    border: 1px solid var(--border);
-    background: rgba(0, 0, 0, 0.35);
-    padding: 2px;
-    image-rendering: pixelated;
-}
-
-.object-edit-modal__title-group {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding-top: 2px;
-}
-
-.object-edit-modal__title {
-    margin: 0;
-    color: var(--accent);
-    font-weight: var(--fw-bold);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: 1.1;
-}
-
-.object-edit-modal__header .object-position {
-    display: inline-flex;
-    align-items: center;
-    color: rgba(255, 255, 255, 0.45);
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 3px;
-    padding: 1px 6px;
-    align-self: flex-start;
-    letter-spacing: 0.04em;
-}
-
-.object-edit-modal__desc {
-    margin: 0;
-    color: rgba(255, 255, 255, 0.38);
-    line-height: 1.45;
-}
-
-.editor-modal__badge {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    padding: 1px 6px;
-    border-radius: 3px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--accent);
-    background: rgba(91, 250, 142, 0.1);
-    border: 1px solid rgba(91, 250, 142, 0.25);
-}
-
-.object-edit-modal__close {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.3);
-    cursor: pointer;
-    padding: 2px 4px;
-    line-height: 1;
-    flex-shrink: 0;
-    border-radius: 3px;
-    margin-left: auto;
-    align-self: flex-start;
-    transition: color 0.15s, background 0.15s;
-}
-
-.object-edit-modal__close:hover {
-    color: var(--text);
-    background: rgba(255, 255, 255, 0.08);
-}
+/* Object / NPC / Enemy Edit Modals — content only; shell from .tiny-modal. */
 
 /* ── config body ── */
 .object-edit-modal__config {
-    display: flex;
-    flex-direction: column;
     gap: 10px;
-    padding: 14px;
 }
 
 .object-edit-modal__config:empty {
@@ -4392,48 +4459,9 @@ body.game-mode .tab-button.active {
     font-weight: var(--fw-bold);
 }
 
-/* ── footer ── */
-.object-edit-modal__footer {
-    display: flex;
-    gap: 8px;
-    padding: 10px 14px;
-    border-top: 1px solid var(--border);
-    background: rgba(0, 0, 0, 0.15);
-    flex-shrink: 0;
-}
-
-.object-edit-modal__footer .btn-secondary {
-    flex: 1;
-    min-height: 34px;
-    padding: 6px 10px;
-}
-
-.object-edit-modal__move {
-    color: var(--accent) !important;
-    border-color: rgba(91, 250, 142, 0.3) !important;
-}
-
-.object-edit-modal__move:hover {
-    background: rgba(91, 250, 142, 0.08) !important;
-    border-color: rgba(91, 250, 142, 0.6) !important;
-}
-
-.object-edit-modal__remove {
-    color: #e06060 !important;
-    border-color: rgba(224, 96, 96, 0.35) !important;
-}
-
-.object-edit-modal__remove:hover {
-    background: rgba(224, 96, 96, 0.1) !important;
-    border-color: rgba(224, 96, 96, 0.6) !important;
-}
-
 /* ── NPC modal specifics ── */
 .npc-edit-modal__body {
-    display: flex;
-    flex-direction: column;
     gap: 10px;
-    padding: 14px;
 }
 
 .npc-edit-modal__toggle {
@@ -4477,75 +4505,19 @@ body.game-mode .tab-button.active {
 }
 
 @media (pointer: coarse) {
-    .object-edit-modal__footer .btn-secondary {
-        min-height: 42px;
-    }
-
     .npc-edit-modal__toggle {
         min-height: 34px;
     }
 }
 
-/* Modal de Color Picker */
-#color-picker-modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    margin: 0;
-    background: rgba(0, 0, 0, 0.8);
-    z-index: 1000;
-}
-
-#color-picker-modal[hidden] {
-    display: none;
-}
-
-#color-picker-modal .color-picker-content {
-    background: rgba(10, 13, 22, 0.95);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px;
-    width: 100%;
-    max-width: 460px;
-    display: block;
-}
-
-.color-picker-panel {
-    border: 2px solid var(--accent);
-    border-radius: 8px;
-    background: var(--panel);
-    padding: 14px;
-    margin: 0;
-    width: 100%;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.color-picker-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border);
-}
-
-.color-picker-header h3 {
-    margin: 0;
-    color: var(--text);
-}
-
+/* Color Picker — content only; the shell comes from .tiny-modal. */
 .color-index-label {
     color: var(--text);
     background: rgba(15, 18, 29, 0.85);
     padding: 4px 8px;
-    border-radius: 3px;
     border: 1px solid var(--border);
+    align-self: center;
+    flex-shrink: 0;
 }
 
 .color-picker-preview {
@@ -4626,19 +4598,17 @@ body.game-mode .tab-button.active {
     border: none;
 }
 
-.color-picker-actions {
-    display: flex;
+/* Beats the shell's own footer-button sizing: the confirm/cancel pair is the
+   modal's whole purpose, so it keeps the taller touch target. */
+.tiny-modal__footer.color-picker-actions {
     gap: 12px;
-    border-top: 1px solid var(--border);
-    padding-top: 10px;
 }
 
-.color-picker-actions button {
+.tiny-modal__footer.color-picker-actions button {
     flex: 1;
     min-height: 40px;
     padding: 10px 12px;
     font-weight: var(--fw-bold);
-    border-radius: 4px;
     cursor: pointer;
     transition: background 0.2s;
 }
@@ -4675,11 +4645,6 @@ body.game-mode .tab-button.active {
     .palette-color-button {
         width: 20px;
         height: 20px;
-    }
-
-    #color-picker-modal .color-picker-content {
-        width: 100%;
-        max-width: none;
     }
 }
 
@@ -4721,36 +4686,10 @@ body.game-mode .tab-button.active {
     opacity: 1;
 }
 
-.pixel-art-editor-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-}
-
-.custom-effect-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    background: rgba(0, 0, 0, 0.8);
-}
-
-.custom-effect-modal[hidden] { display: none; }
-
-.custom-effect-dialog {
-    width: min(960px, 100%);
-    max-height: 92vh;
-    overflow: auto;
-    padding: 16px;
-    border: 2px solid var(--border);
-    background: var(--panel, #1a1c2c);
+/* The effect builder is a three-column workbench, so it takes the widest
+   panel the shell offers rather than a reading-width one. */
+.custom-effect-modal__panel {
+    --modal-width: 960px;
 }
 
 .custom-effect-layout {
@@ -4768,8 +4707,6 @@ body.game-mode .tab-button.active {
 .custom-effect-row button { flex: 0 0 auto; }
 .custom-effect-help { display: block; max-width: 18rem; color: var(--muted); line-height: 1.3; }
 .custom-effect-empty { color: var(--muted); }
-.custom-effects-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.custom-effects-actions > button { flex: 1 1 140px; }
 .custom-effect-preview-column { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
 #custom-effect-preview { align-self: center; width: min(192px, 100%); height: auto; image-rendering: pixelated; background: var(--bg); }
 #custom-effect-name { padding: 6px 8px; border: 2px solid var(--border); background: var(--bg); color: var(--text); }
@@ -4783,37 +4720,16 @@ body.game-mode .tab-button.active {
     .custom-effect-layout { grid-template-columns: minmax(0, 1fr); }
 }
 
-.pixel-art-editor-modal[hidden] {
-    display: none;
+/* The canvas and its tool rows size themselves; the panel just hugs them. The
+   cap is set by the footer (copy / reset / save side by side), not the canvas —
+   below it the row wraps rather than clipping a button off the edge. */
+.pixel-art-editor-modal__panel {
+    --modal-width: 560px;
+    min-width: min(320px, 100%);
 }
 
 .pixel-art-editor {
-    background: var(--panel, #1a1c2c);
-    border: 2px solid var(--border, #333);
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
     gap: 8px;
-    min-width: 320px;
-}
-
-.pae-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.pae-title {
-    font-weight: var(--fw-bold);
-    letter-spacing: var(--ls-mono);
-}
-
-.pae-close {
-    cursor: pointer;
-    background: none;
-    border: none;
-    color: inherit;
-    padding: 2px 6px;
 }
 
 .pae-editor-area {
@@ -4915,10 +4831,28 @@ body.game-mode .tab-button.active {
     color: #000;
 }
 
-.pae-actions {
-    display: flex;
+/* The pixel-art footer places its own buttons (a left-aligned "copy code" plus
+   a right-aligned pair), so it opts out of the shell's equal-width split. */
+.tiny-modal__footer.pae-actions {
     gap: 4px;
     justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.tiny-modal__footer.pae-actions button {
+    flex: 0 0 auto;
+    min-height: 0;
+}
+
+/* The import/export pair in the project panel — not a modal footer. */
+.custom-effects-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.custom-effects-actions > button {
+    flex: 1 1 140px;
 }
 
 .pae-save-btn {
@@ -4938,7 +4872,6 @@ body.game-mode .tab-button.active {
     padding: 4px 10px;
     cursor: pointer;
     font-size: 0.85em;
-    border-radius: 4px;
     transition: color 0.15s, border-color 0.15s;
 }
 
@@ -4976,92 +4909,7 @@ body.game-mode .tab-button.active {
     to   { opacity: 0; }
 }
 
-/* === Explore Modal === */
-.explore-modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.88);
-    z-index: 1000;
-    padding: 16px;
-}
-
-.explore-modal[hidden] {
-    display: none;
-}
-
-.explore-modal__panel {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 900px;
-    max-height: 85vh;
-    background: var(--panel);
-    border: 2px solid var(--accent);
-    overflow: hidden;
-}
-
-.explore-modal__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 2px solid var(--border);
-    flex-shrink: 0;
-    gap: 12px;
-}
-
-.explore-modal__title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.explore-modal__title {
-    color: var(--accent);
-    margin: 0;
-}
-
-.explore-modal__subtitle {
-    margin: 0;
-    color: var(--muted);
-    opacity: 0.55;
-    font-size: 0.85em;
-    line-height: var(--lh-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.explore-modal__close {
-    background: none;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    font-family: var(--ui-font-family);
-    line-height: var(--lh-tight);
-    padding: 4px 8px;
-    opacity: 0.7;
-    flex-shrink: 0;
-}
-
-.explore-modal__close:hover,
-.explore-modal__close:focus {
-    opacity: 1;
-    color: var(--accent);
-    outline: none;
-}
-
-.explore-modal__body {
-    overflow-y: auto;
-    padding: 16px;
-    flex: 1;
-    min-height: 0;
-}
-
+/* === Explore Modal — content only; the shell comes from .tiny-modal. === */
 .explore-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5285,25 +5133,9 @@ body.game-mode .tab-button.active {
 }
 
 @media (max-width: 640px) {
-    .explore-modal {
-        padding: 8px;
-    }
-
-    .explore-modal__panel {
-        max-height: 94vh;
-    }
-
-    .explore-modal__header {
-        padding: 10px 12px;
-    }
-
     /* Let the count subtitle wrap instead of hard-truncating on narrow screens. */
-    .explore-modal__subtitle {
+    .explore-modal .tiny-modal__subtitle--ellipsis {
         white-space: normal;
-    }
-
-    .explore-modal__body {
-        padding: 12px;
     }
 
     .explore-grid {
@@ -5322,7 +5154,7 @@ body.game-mode .tab-button.active {
         gap: 8px;
     }
 
-    .explore-modal__body {
+    .explore-modal .tiny-modal__body {
         padding: 10px;
     }
 }
@@ -5335,89 +5167,8 @@ body.game-mode .tab-button.active {
     }
 }
 
-/* ── Devlog ("What's New") modal ─────────────────────────────── */
-.devlog-modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.88);
-    z-index: 1000;
-    padding: 16px;
-}
-
-.devlog-modal[hidden] {
-    display: none;
-}
-
-.devlog-modal__panel {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 560px;
-    max-height: 85vh;
-    background: var(--panel);
-    border: 2px solid var(--accent);
-    overflow: hidden;
-}
-
-.devlog-modal__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 2px solid var(--border);
-    flex-shrink: 0;
-    gap: 12px;
-}
-
-.devlog-modal__title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.devlog-modal__title {
-    color: var(--accent);
-    margin: 0;
-}
-
-.devlog-modal__subtitle {
-    margin: 0;
-    color: var(--muted);
-    opacity: 0.55;
-    font-size: 0.85em;
-    line-height: var(--lh-text);
-}
-
-.devlog-modal__close {
-    background: none;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    font-family: var(--ui-font-family);
-    line-height: var(--lh-tight);
-    padding: 4px 8px;
-    opacity: 0.7;
-    flex-shrink: 0;
-}
-
-.devlog-modal__close:hover,
-.devlog-modal__close:focus {
-    opacity: 1;
-    color: var(--accent);
-    outline: none;
-}
-
-.devlog-modal__body {
-    overflow-y: auto;
-    padding: 16px;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+/* ── Devlog ("What's New") modal — content only ──────────────── */
+.devlog-modal .tiny-modal__body {
     gap: 14px;
 }
 
@@ -5449,14 +5200,10 @@ body.game-mode .tab-button.active {
     font-size: 0.9em;
 }
 
-.devlog-modal__footer {
-    display: flex;
-    align-items: center;
+/* Pager row: prev / indicator / next pushed to the edges. */
+.tiny-modal__footer.devlog-modal__footer {
     justify-content: space-between;
     gap: 12px;
-    padding: 12px 16px;
-    border-top: 2px solid var(--border);
-    flex-shrink: 0;
 }
 
 .devlog-pager-btn {
@@ -5495,100 +5242,9 @@ body.game-mode .tab-button.active {
     flex: 1;
 }
 
-@media (max-width: 640px) {
-    .devlog-modal__panel {
-        max-height: 90vh;
-    }
-}
-
-/* ── About modal ─────────────────────────────────────────────── */
+/* ── About modal — content only ──────────────────────────────── */
 .tab-action-button--about {
     color: var(--accent);
-}
-
-.about-modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.88);
-    z-index: 1000;
-    padding: 16px;
-}
-
-.about-modal[hidden] {
-    display: none;
-}
-
-.about-modal__panel {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    max-width: 460px;
-    max-height: 85vh;
-    background: var(--panel);
-    border: 2px solid var(--accent);
-    overflow: hidden;
-}
-
-.about-modal__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    border-bottom: 2px solid var(--border);
-    flex-shrink: 0;
-    gap: 12px;
-}
-
-.about-modal__title-group {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-}
-
-.about-modal__title {
-    color: var(--accent);
-    margin: 0;
-}
-
-.about-modal__subtitle {
-    margin: 0;
-    color: var(--muted);
-    opacity: 0.55;
-    font-size: 0.85em;
-    line-height: var(--lh-text);
-}
-
-.about-modal__close {
-    background: none;
-    border: none;
-    color: var(--text);
-    cursor: pointer;
-    font-family: var(--ui-font-family);
-    line-height: var(--lh-tight);
-    padding: 4px 8px;
-    opacity: 0.7;
-    flex-shrink: 0;
-}
-
-.about-modal__close:hover,
-.about-modal__close:focus {
-    opacity: 1;
-    color: var(--accent);
-    outline: none;
-}
-
-.about-modal__body {
-    overflow-y: auto;
-    padding: 16px;
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
 }
 
 .about-modal__lead {
@@ -5626,12 +5282,6 @@ body.game-mode .tab-button.active {
     outline: none;
 }
 
-@media (max-width: 640px) {
-    .about-modal__panel {
-        max-height: 90vh;
-    }
-}
-
 /* ── Online mode player list ─────────────────────────────────── */
 #online-player-list-root {
     flex-shrink: 0;
@@ -5653,59 +5303,19 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
     justify-content: center;
 }
 
-.server-status-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 10020;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: clamp(12px, 4vw, 24px);
-    background: rgba(14, 15, 19, 0.92);
+/* Online dialogs sit above the in-game HUD, which owns the 10000 range. */
+.server-status-modal,
+.player-name-modal {
+    --modal-z: 10020;
+    --modal-width: 420px;
 }
 
-.server-status-modal[hidden] {
-    display: none;
-}
-
-.server-status-modal__panel {
-    width: min(420px, 100%);
-    max-height: calc(100vh - 32px);
-    overflow: auto;
-    background: var(--panel);
-    border: 4px solid var(--border);
-    color: var(--text);
-    font-family: var(--ui-font-family);
-}
-
-.server-status-modal__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 12px;
-    border-bottom: 4px solid var(--border);
-}
-
-.server-status-modal__header h2 {
-    margin: 0;
-    font-weight: bold;
-    color: var(--accent);
-}
-
-.server-status-modal__close {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 2px solid var(--border);
-    background: #141a24;
-    color: var(--text);
-    cursor: pointer;
-}
-
+/* Rows draw their own separators edge to edge, so the body drops the shell's
+   padding and lets each row pad itself. */
 .server-status-modal__content {
     display: grid;
     gap: 0;
+    padding: 0;
 }
 
 .server-status-modal__row {
@@ -5752,6 +5362,45 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
     color: rgba(255, 64, 64, 0.75);
 }
 
+/* ── Online: player name prompt ──────────────────────────────── */
+.player-name-modal {
+    --modal-width: 300px;
+}
+
+.player-name-modal__input {
+    width: 100%;
+    padding: 7px 8px;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    color: var(--text);
+    font-family: var(--ui-font-family);
+    outline: none;
+}
+
+.player-name-modal__input:focus {
+    border-color: var(--accent);
+}
+
+/* Set while the name is too short, so the field itself carries the error
+   instead of a message that would push the button off a short viewport. */
+.player-name-modal__input--invalid,
+.player-name-modal__input--invalid:focus {
+    border-color: #ff4040;
+}
+
+/* The only action in the dialog, so it takes the whole footer row and the
+   accent fill rather than the shell's neutral secondary look. */
+.tiny-modal__footer button.player-name-modal__confirm {
+    flex: 1;
+    padding: 8px;
+    background: var(--accent);
+    border: none;
+    color: var(--bg);
+    font-family: var(--ui-font-family);
+    font-weight: bold;
+    cursor: pointer;
+}
+
 /* Sits between the preset dropdown and the colour grid as its own action, so it
    needs the panel's own rhythm rather than the 4px that pairs a label with its
    control. Hugs its text like the neighbouring import/export/reset buttons —
@@ -5763,14 +5412,12 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
 }
 
 /* --- Palette guide modal --------------------------------------------------
-   Explains how a preset re-colours the 16 engine slots. Reuses the .about-modal
-   shell; only the mapping layout is specific. */
-.palette-about-modal__panel {
-    max-width: 900px;
-}
+   Explains how a preset re-colours the 16 engine slots. It is a plain
+   .tiny-modal at the widest size; only the mapping layout below is specific.
 
-/* Scrolling comes from .about-modal__body (overflow-y:auto, flex:1, min-height:0)
-   together with the panel's 85vh cap, so this modal only sizes its own content. */
+   Scrolling comes from .tiny-modal__body (overflow-y:auto, flex:1,
+   min-height:0) together with the panel's 85vh cap, so this modal only has to
+   size its own content. */
 .palette-about__section {
     margin-top: 18px;
 }

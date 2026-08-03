@@ -4,55 +4,40 @@
  * Opens a small modal explaining what Tiny RPG Studio is and who created it
  * (André N. Darcie and Diguifi) — an open-source, free, non-profit engine.
  *
- * Mirrors the structure of {@link DevlogModal}: a static template in index.html
- * is shown/hidden, and closes on the close button, backdrop click, or Escape.
- * The content itself is localized via `data-text-key` hydration, so this class
- * only owns the open/close behaviour.
+ * The shell (scrim, panel, header, close button, Escape and backdrop handling)
+ * comes from {@link Modal}; the content is a static template in index.html
+ * localized via `data-text-key` hydration. This class only owns the button and
+ * the analytics event.
  */
 import { track } from '../../analytics/track';
+import { Modal } from '../../ui/Modal';
 
 class AboutModal {
   private button: HTMLButtonElement | null;
-  private modal: HTMLElement | null;
-  private closeBtn: HTMLButtonElement | null;
+  private modal: Modal | null;
 
   private boundOpen = () => this.open();
-  private boundClose = () => this.close();
-  private boundBackdrop = (e: MouseEvent) => { if (e.target === this.modal) this.close(); };
-  private boundKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && this.modal && !this.modal.hidden) this.close();
-  };
 
   constructor() {
     this.button = document.getElementById('btn-about') as HTMLButtonElement | null;
-    this.modal = document.getElementById('about-modal');
-    this.closeBtn = document.getElementById('about-close') as HTMLButtonElement | null;
-    this.bind();
-  }
-
-  private bind(): void {
+    const root = document.getElementById('about-modal');
+    this.modal = root ? new Modal({ root, labelledBy: 'about-modal-title' }) : null;
     this.button?.addEventListener('click', this.boundOpen);
-    this.closeBtn?.addEventListener('click', this.boundClose);
-    this.modal?.addEventListener('click', this.boundBackdrop);
-    document.addEventListener('keydown', this.boundKeydown);
   }
 
   open(): void {
     if (!this.modal) return;
-    this.modal.hidden = false;
+    this.modal.open();
     track('about_opened');
   }
 
   close(): void {
-    if (!this.modal) return;
-    this.modal.hidden = true;
+    this.modal?.close();
   }
 
   destroy(): void {
     this.button?.removeEventListener('click', this.boundOpen);
-    this.closeBtn?.removeEventListener('click', this.boundClose);
-    this.modal?.removeEventListener('click', this.boundBackdrop);
-    document.removeEventListener('keydown', this.boundKeydown);
+    this.modal?.destroy();
   }
 }
 

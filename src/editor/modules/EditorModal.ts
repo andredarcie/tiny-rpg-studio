@@ -1,5 +1,6 @@
 
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { Modal } from '../../ui/Modal';
 
 type EditorModalButtonVariant = 'default' | 'move' | 'remove';
 
@@ -27,9 +28,9 @@ interface EditorModalConfig {
     body?: HTMLElement | null;
     /** Extra footer buttons rendered after the standard close button. */
     buttons?: EditorModalButton[];
-    /** Invoked by the header "✕", the footer close button and the Escape key. */
+    /** Invoked by the header "✕", the footer close button, the backdrop and Escape. */
     onClose: () => void;
-    /** Override the panel class (defaults to the shared object-edit-modal panel). */
+    /** Extra class for the panel, for per-entity tweaks. */
     panelClassName?: string;
     /** Label for the footer close button (defaults to "Fechar"). */
     closeLabel?: string;
@@ -37,22 +38,21 @@ interface EditorModalConfig {
     closeAriaLabel?: string;
 }
 
-const PANEL_SELECTOR = '.editor-modal__panel';
-
 /**
- * Generic edit-modal shell shared across editor contexts (objects, NPCs, ...).
+ * Editor-side wrapper over the shared {@link Modal} shell.
  *
- * It owns nothing but the host element: each `open()` rebuilds the panel from
- * scratch from the supplied config, mirroring the existing rebuild-on-open
- * behaviour. Visual styling reuses the shared `object-edit-modal__*` classes.
+ * The entity editors (objects, NPCs, enemies) all describe themselves the same
+ * way — a preview, a title with chips, a body and a row of actions — so this
+ * class turns that description into the shell's header/body/footer calls and
+ * keeps the per-open rebuild the editors were already written against.
  */
 class EditorModal {
     private readonly getHost: () => HTMLElement | null;
+    private modal: Modal | null = null;
     private currentOnClose: (() => void) | null = null;
 
     constructor(getHost: () => HTMLElement | null) {
         this.getHost = getHost;
-        this.bindStaticEvents();
     }
 
     get host(): HTMLElement | null {
@@ -60,26 +60,46 @@ class EditorModal {
     }
 
     get isOpen(): boolean {
-        const host = this.host;
-        return Boolean(host && !host.hidden);
+        return this.modal?.isOpen ?? false;
     }
 
     open(config: EditorModalConfig): void {
-        const host = this.host;
-        if (!host) return;
-
-        const existing = host.querySelector(PANEL_SELECTOR);
-        if (existing) existing.remove();
+        const modal = this.ensureModal();
+        if (!modal) return;
 
         this.currentOnClose = config.onClose;
-        host.appendChild(this.buildPanel(config));
-        host.hidden = false;
+
+        if (config.panelClassName) {
+            modal.panel.classList.add(...config.panelClassName.split(' ').filter(Boolean));
+        }
+
+        modal.setHeader({
+            title: config.header.title,
+            subtitle: config.header.subtitle,
+            subtitleAsChip: true,
+            badge: config.header.badge,
+            description: config.header.description,
+            drawPreview: config.header.drawPreview,
+        });
+        modal.setBody(config.body ?? null);
+        modal.setFooter([
+            {
+                label: config.closeLabel ?? TextResources.get('buttons.close', 'Fechar'),
+                onClick: () => this.requestClose(),
+            },
+            ...(config.buttons ?? []).map((button) => ({
+                label: button.label,
+                variant: this.buttonVariant(button.variant),
+                onClick: button.onClick,
+            })),
+        ]);
+
+        modal.open();
     }
 
     /** Hides the modal. Cleanup logic belongs in the consumer's `onClose`. */
     close(): void {
-        const host = this.host;
-        if (host) host.hidden = true;
+        this.modal?.close();
         this.currentOnClose = null;
     }
 
@@ -89,112 +109,33 @@ class EditorModal {
         else this.close();
     }
 
-    private bindStaticEvents(): void {
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.isOpen) {
-                e.preventDefault();
-                this.requestClose();
-            }
+    /**
+     * Built on first open, not in the constructor: the host element comes from
+     * the editor's DOM cache, which is not populated yet when this class is
+     * constructed.
+     */
+    private ensureModal(): Modal | null {
+        if (this.modal) return this.modal;
+
+        const host = this.host;
+        if (!host) return null;
+
+        this.modal = new Modal({
+            root: host,
+            size: 'sm',
+            onClose: () => this.requestClose(),
         });
+        return this.modal;
     }
 
-    private buildPanel(config: EditorModalConfig): HTMLElement {
-        const panel = document.createElement('div');
-        panel.className = `editor-modal__panel ${config.panelClassName ?? 'object-edit-modal__panel'}`;
-
-        panel.appendChild(this.buildHeader(config));
-        if (config.body) panel.appendChild(config.body);
-        panel.appendChild(this.buildFooter(config));
-        return panel;
-    }
-
-    private buildHeader(config: EditorModalConfig): HTMLElement {
-        const { header } = config;
-        const el = document.createElement('div');
-        el.className = 'object-edit-modal__header';
-
-        if (header.drawPreview) {
-            const preview = document.createElement('canvas');
-            preview.width = 48;
-            preview.height = 48;
-            preview.className = 'object-preview object-edit-modal__preview';
-            header.drawPreview(preview);
-            el.appendChild(preview);
-        }
-
-        const titleGroup = document.createElement('div');
-        titleGroup.className = 'object-edit-modal__title-group';
-
-        const title = document.createElement('h3');
-        title.className = 'object-edit-modal__title';
-        title.textContent = header.title;
-        titleGroup.appendChild(title);
-
-        const subtitle = document.createElement('span');
-        subtitle.className = 'object-position';
-        subtitle.textContent = header.subtitle ?? '';
-        titleGroup.appendChild(subtitle);
-
-        if (header.badge) {
-            const badge = document.createElement('span');
-            badge.className = 'editor-modal__badge';
-            badge.textContent = header.badge;
-            titleGroup.appendChild(badge);
-        }
-
-        if (header.description) {
-            const desc = document.createElement('p');
-            desc.className = 'object-edit-modal__desc';
-            desc.textContent = header.description;
-            titleGroup.appendChild(desc);
-        }
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'object-edit-modal__close';
-        closeBtn.setAttribute('aria-label', config.closeAriaLabel ?? config.closeLabel ?? TextResources.get('buttons.close', 'Fechar'));
-        closeBtn.textContent = '✕';
-        closeBtn.addEventListener('click', () => this.requestClose());
-
-        el.append(titleGroup, closeBtn);
-        return el;
-    }
-
-    private buildFooter(config: EditorModalConfig): HTMLElement {
-        const footer = document.createElement('div');
-        footer.className = 'object-edit-modal__footer';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'btn-secondary';
-        closeBtn.textContent = config.closeLabel ?? TextResources.get('buttons.close', 'Fechar');
-        closeBtn.addEventListener('click', () => this.requestClose());
-        footer.appendChild(closeBtn);
-
-        for (const button of config.buttons ?? []) {
-            footer.appendChild(this.buildButton(button));
-        }
-
-        return footer;
-    }
-
-    private buildButton(button: EditorModalButton): HTMLElement {
-        const el = document.createElement('button');
-        el.type = 'button';
-        el.className = this.buttonClassName(button.variant);
-        el.textContent = button.label;
-        el.addEventListener('click', () => button.onClick());
-        return el;
-    }
-
-    private buttonClassName(variant: EditorModalButtonVariant = 'default'): string {
+    private buttonVariant(variant: EditorModalButtonVariant = 'default'): 'default' | 'accent' | 'danger' {
         switch (variant) {
             case 'move':
-                return 'btn-secondary object-edit-modal__move';
+                return 'accent';
             case 'remove':
-                return 'btn-secondary object-edit-modal__remove';
+                return 'danger';
             default:
-                return 'btn-secondary';
+                return 'default';
         }
     }
 }

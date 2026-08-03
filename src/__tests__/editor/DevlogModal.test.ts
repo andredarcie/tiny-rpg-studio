@@ -8,13 +8,17 @@ function setupDom(editorActive = true): void {
   document.body.innerHTML = `
     <div id="tab-editor" class="${editorActive ? 'active' : ''}"></div>
     <button id="btn-devlog" class="btn-devlog"><span id="devlog-badge" hidden></span></button>
-    <div id="devlog-modal" hidden>
-      <div class="devlog-modal__panel">
-        <button id="devlog-close"></button>
-        <div id="devlog-list"></div>
-        <button id="devlog-prev"></button>
-        <span id="devlog-page-indicator"></span>
-        <button id="devlog-next"></button>
+    <div id="devlog-modal" class="tiny-modal devlog-modal" hidden>
+      <div class="tiny-modal__panel tiny-modal__panel--lg">
+        <div class="tiny-modal__header">
+          <button id="devlog-close" class="tiny-modal__close" data-modal-close></button>
+        </div>
+        <div id="devlog-list" class="tiny-modal__body"></div>
+        <div class="tiny-modal__footer">
+          <button id="devlog-prev"></button>
+          <span id="devlog-page-indicator"></span>
+          <button id="devlog-next"></button>
+        </div>
       </div>
     </div>
   `;

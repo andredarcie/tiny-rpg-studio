@@ -80,8 +80,13 @@ const makeDom = () => {
         width: 256,
         height: 256,
     } as unknown as HTMLCanvasElement;
+    // A real, attached element: the controller now shows/hides itself through
+    // the shared modal shell, which needs a genuine DOM node in the document.
+    const modalHost = document.createElement('div');
+    modalHost.hidden = true;
+    document.body.appendChild(modalHost);
     const dom = {
-        pixelArtEditorModal: { removeAttribute: vi.fn(), setAttribute: vi.fn(), hidden: true },
+        pixelArtEditorModal: modalHost,
         paeCanvas: canvas,
         paePalette: { innerHTML: '', appendChild: vi.fn(), addEventListener: vi.fn() },
         paeSpriteMeta: { textContent: '' },
@@ -89,7 +94,6 @@ const makeDom = () => {
         paeFrameBar: document.createElement('div'),
         paeSave: { addEventListener: vi.fn() },
         paeReset: { addEventListener: vi.fn() },
-        paeClose: { addEventListener: vi.fn() },
         paeToolPaint: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
         paeToolErase: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
     } as unknown as PixelArtEditorDom;

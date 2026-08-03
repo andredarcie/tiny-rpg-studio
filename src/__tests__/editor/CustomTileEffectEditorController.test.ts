@@ -5,7 +5,7 @@ function setup() {
   document.body.innerHTML = `
     <button id="custom-effect-open">Open</button>
     <div id="custom-effect-modal" hidden>
-      <button id="custom-effect-close"></button>
+      <button id="custom-effect-close" class="tiny-modal__close" data-modal-close></button>
       <div id="custom-effect-saved"></div>
       <div id="custom-effect-catalog"></div>
       <canvas id="custom-effect-preview" width="192" height="192"></canvas>

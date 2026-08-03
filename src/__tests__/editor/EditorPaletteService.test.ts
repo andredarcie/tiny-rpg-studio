@@ -69,6 +69,9 @@ function createManager(overrides: {
     const projectPalettePanel = document.createElement('div');
     const colorPickerModal = document.createElement('div');
     colorPickerModal.hidden = true;
+    // Attached on purpose: the shared modal shell only treats a dialog as
+    // on-screen (and so Escape-closable) while its host is in the document.
+    document.body.appendChild(colorPickerModal);
     const colorPickerInput = document.createElement('input') as HTMLInputElement;
     const colorPreviewCurrent = document.createElement('div');
     const colorPreviewNew = document.createElement('div');

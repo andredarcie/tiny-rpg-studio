@@ -12,6 +12,7 @@
 import { DEVLOG_ENTRIES, LATEST_DEVLOG_ID, type DevlogEntry } from '../manager/devlogData';
 import { track } from '../../analytics/track';
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { Modal } from '../../ui/Modal';
 
 const SEEN_STORAGE_KEY = 'tiny-rpg-devlog-seen';
 const PAGE_SIZE = 5;
@@ -50,7 +51,7 @@ class DevlogModal {
   private entries: DevlogEntry[];
   private button: HTMLButtonElement | null;
   private badge: HTMLElement | null;
-  private modal: HTMLElement | null;
+  private modal: Modal | null;
   private list: HTMLElement | null;
   private prevBtn: HTMLButtonElement | null;
   private nextBtn: HTMLButtonElement | null;
@@ -60,13 +61,8 @@ class DevlogModal {
   private currentPage = 0;
 
   private boundOpen = () => this.open();
-  private boundClose = () => this.close();
   private boundPrev = () => this.goToPage(this.currentPage - 1);
   private boundNext = () => this.goToPage(this.currentPage + 1);
-  private boundBackdrop = (e: MouseEvent) => { if (e.target === this.modal) this.close(); };
-  private boundKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && this.modal && !this.modal.hidden) this.close();
-  };
   private boundVisibility = () => this.updateButtonVisibility();
   private tabObserver: MutationObserver | null = null;
 
@@ -74,7 +70,8 @@ class DevlogModal {
     this.entries = entries;
     this.button = document.getElementById('btn-devlog') as HTMLButtonElement | null;
     this.badge = document.getElementById('devlog-badge');
-    this.modal = document.getElementById('devlog-modal');
+    const root = document.getElementById('devlog-modal');
+    this.modal = root ? new Modal({ root, labelledBy: 'devlog-modal-title' }) : null;
     this.list = document.getElementById('devlog-list');
     this.prevBtn = document.getElementById('devlog-prev') as HTMLButtonElement | null;
     this.nextBtn = document.getElementById('devlog-next') as HTMLButtonElement | null;
@@ -92,11 +89,8 @@ class DevlogModal {
 
   private bind(): void {
     this.button?.addEventListener('click', this.boundOpen);
-    document.getElementById('devlog-close')?.addEventListener('click', this.boundClose);
     this.prevBtn?.addEventListener('click', this.boundPrev);
     this.nextBtn?.addEventListener('click', this.boundNext);
-    this.modal?.addEventListener('click', this.boundBackdrop);
-    document.addEventListener('keydown', this.boundKeydown);
 
     // Mirror the Save / Load buttons: only visible while the Editor tab is active.
     if (this.tabEditor) {
@@ -116,14 +110,13 @@ class DevlogModal {
     if (!this.modal) return;
     this.currentPage = 0;
     this.renderPage();
-    this.modal.hidden = false;
+    this.modal.open();
     track('devlog_opened');
     this.markAllSeen();
   }
 
   close(): void {
-    if (!this.modal) return;
-    this.modal.hidden = true;
+    this.modal?.close();
   }
 
   private markAllSeen(): void {
@@ -207,11 +200,9 @@ class DevlogModal {
 
   destroy(): void {
     this.button?.removeEventListener('click', this.boundOpen);
-    document.getElementById('devlog-close')?.removeEventListener('click', this.boundClose);
     this.prevBtn?.removeEventListener('click', this.boundPrev);
     this.nextBtn?.removeEventListener('click', this.boundNext);
-    this.modal?.removeEventListener('click', this.boundBackdrop);
-    document.removeEventListener('keydown', this.boundKeydown);
+    this.modal?.destroy();
     this.tabObserver?.disconnect();
     this.tabObserver = null;
   }

@@ -1,4 +1,5 @@
 import { TextResources } from '../../runtime/adapters/TextResources';
+import { Modal } from '../../ui/Modal';
 import type { OnlineRole, PlayerInfo } from '../shared/protocol';
 
 type ServerStatus = 'connecting' | 'connected' | 'disconnected';
@@ -20,66 +21,40 @@ const text = (key: string, fallback = ''): string => {
 };
 
 export class ServerStatusModal {
-    private modal: HTMLElement;
-    private panel: HTMLElement;
+    private modal: Modal;
     private content: HTMLElement;
     private state: ServerStatusModalState;
 
     constructor(initialState: ServerStatusModalState) {
         this.state = initialState;
-        this.modal = document.createElement('div');
-        this.modal.className = 'server-status-modal';
-        this.modal.hidden = true;
-        this.modal.setAttribute('role', 'dialog');
-        this.modal.setAttribute('aria-modal', 'true');
 
-        this.panel = document.createElement('div');
-        this.panel.className = 'server-status-modal__panel';
-
-        const header = document.createElement('div');
-        header.className = 'server-status-modal__header';
-
-        const title = document.createElement('h2');
-        title.textContent = text('server.modal.title', 'Status do Servidor');
-
-        const close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'server-status-modal__close';
-        close.textContent = 'X';
-        close.setAttribute('aria-label', text('server.modal.close', 'Fechar'));
-        close.addEventListener('click', () => this.hide());
-
-        header.append(title, close);
+        this.modal = new Modal({
+            className: 'server-status-modal',
+            closeAriaLabel: text('server.modal.close', 'Fechar'),
+        });
+        this.modal.setHeader({ title: text('server.modal.title', 'Status do Servidor') });
 
         this.content = document.createElement('div');
         this.content.className = 'server-status-modal__content';
+        this.modal.setBody(this.content, { stack: false });
 
-        this.panel.append(header, this.content);
-        this.modal.appendChild(this.panel);
-        this.modal.addEventListener('click', (ev) => {
-            if (ev.target === this.modal) this.hide();
-        });
-        document.addEventListener('keydown', (ev) => {
-            if (ev.key === 'Escape' && !this.modal.hidden) this.hide();
-        });
-        document.body.appendChild(this.modal);
         this.render();
     }
 
     update(nextState: Partial<ServerStatusModalState>): void {
         this.state = { ...this.state, ...nextState };
-        if (!this.modal.hidden) {
+        if (this.modal.isOpen) {
             this.render();
         }
     }
 
     show(): void {
         this.render();
-        this.modal.hidden = false;
+        this.modal.open();
     }
 
     hide(): void {
-        this.modal.hidden = true;
+        this.modal.close();
     }
 
     destroy(): void {

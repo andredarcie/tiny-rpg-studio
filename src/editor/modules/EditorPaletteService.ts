@@ -4,6 +4,7 @@ import { PALETTE_PRESETS, resolvePresetPalette } from '../../runtime/domain/defi
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { PaletteGimpIO } from './PaletteGimpIO';
 import { PaletteAboutModal } from './PaletteAboutModal';
+import { Modal } from '../../ui/Modal';
 
 export class EditorPaletteService {
     manager: EditorManager;
@@ -20,6 +21,7 @@ export class EditorPaletteService {
     }
 
     private aboutModal: PaletteAboutModal | null = null;
+    private colorPickerModal: Modal | null = null;
 
     initialize(): void {
         this.populatePresetSelect();
@@ -84,7 +86,7 @@ export class EditorPaletteService {
         indexLabel.textContent = `#${colorIndex}`;
 
         // Show modal
-        modal.hidden = false;
+        this.ensureColorPickerModal()?.open();
 
         // Update preview on input change
         const updatePreview = () => {
@@ -95,10 +97,7 @@ export class EditorPaletteService {
     }
 
     closeColorPicker(): void {
-        const modal = this.manager.dom.colorPickerModal;
-        if (modal) {
-            modal.hidden = true;
-        }
+        this.ensureColorPickerModal()?.close();
         this.manager.state.editingColorIndex = null;
     }
 
@@ -319,18 +318,25 @@ export class EditorPaletteService {
             this.closeColorPicker();
         });
 
-        // Close modal on backdrop click
-        this.manager.dom.colorPickerModal?.addEventListener('click', (e) => {
-            if (e.target === this.manager.dom.colorPickerModal) {
-                this.closeColorPicker();
-            }
-        });
+        // Backdrop click, Escape and the header "✕" all come from the shell.
+        this.ensureColorPickerModal();
+    }
 
-        // ESC to close modal
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && !this.manager.dom.colorPickerModal?.hidden) {
-                this.closeColorPicker();
-            }
+    /**
+     * Built on demand so the picker can still be closed by callers that never
+     * ran `initialize()` (the palette can be reset from outside the editor UI).
+     */
+    private ensureColorPickerModal(): Modal | null {
+        if (this.colorPickerModal) return this.colorPickerModal;
+
+        const root = this.manager.dom.colorPickerModal;
+        if (!root) return null;
+
+        this.colorPickerModal = new Modal({
+            root,
+            labelledBy: 'color-picker-title',
+            onClose: () => this.closeColorPicker(),
         });
+        return this.colorPickerModal;
     }
 }
