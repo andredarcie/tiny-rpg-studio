@@ -6,6 +6,14 @@ class ShareUrlHelper {
         return ((globalThis as typeof globalThis & { location?: Location }).location) ?? null;
     }
 
+    /**
+     * Base URL that generated share links point at.
+     *
+     * Everywhere except local development this is deliberately pinned to the
+     * canonical deployment rather than the page's own origin: the game also runs
+     * inside the itch.io iframe and the Tauri desktop shell, whose URLs are
+     * ephemeral or non-web and would produce links no recipient could open.
+     */
     static getBaseUrl() {
         const location = this.getLocation();
         if (!location) return '';
