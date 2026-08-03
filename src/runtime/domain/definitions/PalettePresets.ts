@@ -242,3 +242,55 @@ export const PALETTE_PRESETS: PalettePreset[] = [
 export function getPresetHexColors(preset: PalettePreset): string[] {
     return preset.colors.map(c => c.hex);
 }
+
+/** One engine palette slot after a preset has been applied over the base colors. */
+export interface ResolvedPaletteSlot {
+    /** Engine slot index, 0-15. Its role is fixed (3 paints grass, 7 draws HUD text). */
+    index: number;
+    /** The color this slot holds before the preset is applied. */
+    baseHex: string;
+    /** The color the slot ends up with. Equal to `baseHex` when the preset skips it. */
+    hex: string;
+    /** Name of the preset color that claimed the slot, or null when none did. */
+    sourceName: string | null;
+}
+
+/**
+ * Resolves a preset into the 16 engine slots.
+ *
+ * A preset does not define a palette in array order — each entry names the slot it
+ * takes over through `pico8Index`, because slots carry fixed roles. Entries that
+ * target the same slot overwrite each other, and slots no entry targets keep their
+ * base color. This is the single source of truth for applying a preset, so the
+ * editor and any UI that explains the mapping cannot drift apart.
+ */
+export function resolvePresetSlots(
+    preset: PalettePreset,
+    basePalette: readonly string[],
+): ResolvedPaletteSlot[] {
+    const slots: ResolvedPaletteSlot[] = basePalette.map((baseHex, index) => ({
+        index,
+        baseHex,
+        hex: baseHex,
+        sourceName: null,
+    }));
+
+    preset.colors.forEach((color) => {
+        const idx = color.pico8Index;
+        if (typeof idx !== 'number' || !Number.isFinite(idx)) return;
+        if (idx < 0 || idx >= slots.length) return;
+        const slot = slots[idx];
+        slot.hex = color.hex;
+        slot.sourceName = color.name;
+    });
+
+    return slots;
+}
+
+/** The palette a preset produces, ready to hand to the engine. */
+export function resolvePresetPalette(
+    preset: PalettePreset,
+    basePalette: readonly string[],
+): string[] {
+    return resolvePresetSlots(preset, basePalette).map((slot) => slot.hex);
+}

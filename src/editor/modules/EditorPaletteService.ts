@@ -1,8 +1,9 @@
 import type { EditorManager } from '../EditorManager';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
-import { PALETTE_PRESETS } from '../../runtime/domain/definitions/PalettePresets';
+import { PALETTE_PRESETS, resolvePresetPalette } from '../../runtime/domain/definitions/PalettePresets';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { PaletteGimpIO } from './PaletteGimpIO';
+import { PaletteAboutModal } from './PaletteAboutModal';
 
 export class EditorPaletteService {
     manager: EditorManager;
@@ -18,11 +19,14 @@ export class EditorPaletteService {
         return key || '';
     }
 
+    private aboutModal: PaletteAboutModal | null = null;
+
     initialize(): void {
         this.populatePresetSelect();
         this.renderPaletteGrid();
         this.bindEvents();
         this.syncPaletteState();
+        this.aboutModal ??= new PaletteAboutModal();
     }
 
     renderPaletteGrid(): void {
@@ -235,16 +239,7 @@ export class EditorPaletteService {
     }
 
     private buildPaletteFromPreset(preset: typeof PALETTE_PRESETS[number]): string[] {
-        const palette = [...TileDefinitions.PICO8_COLORS];
-
-        preset.colors.forEach((color) => {
-            const idx = color.pico8Index;
-            if (typeof idx !== 'number' || !Number.isFinite(idx)) return;
-            if (idx < 0 || idx >= palette.length) return;
-            palette[idx] = color.hex;
-        });
-
-        return palette;
+        return resolvePresetPalette(preset, TileDefinitions.PICO8_COLORS);
     }
 
     private bindEvents(): void {
