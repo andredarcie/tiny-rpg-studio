@@ -130,6 +130,7 @@ class EditorManager {
                 const psu = new ProjectSaveUI(psm, getShare, getTitle, onLoadProject);
                 this.projectSaveManager = psm;
                 this.projectSaveUI = psu;
+                this.installUnsavedChangesGuard();
             } catch (err) {
                 // Do not break editor initialization if save components fail
                 console.warn('[EditorManager] ProjectSave components failed to initialize', err);
@@ -142,6 +143,52 @@ class EditorManager {
                 });
             });
         }
+    }
+
+    /**
+     * Warns before leaving the page while edits are newer than the last save.
+     *
+     * Auto-save only runs every two minutes, so a reload or an accidental tab
+     * close can otherwise discard everything done since the last tick.
+     *
+     * Work counts as unsaved only when the project differs from BOTH the last
+     * value persisted through ProjectSaveManager (which covers the auto and the
+     * manual save paths alike) AND the state the editor opened with. Without the
+     * second comparison a first-time visitor, who has nothing saved yet, would be
+     * prompted on the way out despite never having edited anything.
+     */
+    private installUnsavedChangesGuard(): void {
+        if (typeof window === 'undefined') return;
+
+        const currentShareUrl = (): string | null => {
+            const gameData = this.gameEngine.exportGameData() as Record<string, unknown> | null | undefined;
+            return ShareUtils.buildShareUrl(gameData) || null;
+        };
+
+        let baselineUrl: string | null = null;
+        try {
+            baselineUrl = currentShareUrl();
+        } catch {
+            // A baseline we cannot take just means we fall back to the saved-URL check.
+        }
+
+        window.addEventListener('beforeunload', (event: BeforeUnloadEvent) => {
+            let hasUnsavedWork = false;
+            try {
+                const currentUrl = currentShareUrl();
+                if (!currentUrl) return;
+                const savedUrl = ProjectSaveManager.getMostRecentShareUrl();
+                hasUnsavedWork = currentUrl !== savedUrl && currentUrl !== baselineUrl;
+            } catch {
+                // Never block the user from leaving because the check itself failed.
+                return;
+            }
+
+            if (!hasUnsavedWork) return;
+            event.preventDefault();
+            // Browsers show their own wording; a non-empty value is what opts in.
+            event.returnValue = '';
+        });
     }
 
     showRepositionIndicator(name: string): void {
