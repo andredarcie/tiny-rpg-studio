@@ -28,6 +28,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The desktop release publishes straight to GitHub Releases and itch.io, so it
+      # needs the same gate as the web deploy. Without it a commit rejected by
+      # deploy.yml still reaches desktop users.
+      - name: Run unit tests
+        run: npm run test:run
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Run typecheck
+        run: npx tsc --noEmit
+
       - name: Generate app icons
         run: npx @tauri-apps/cli icon public/icons/icon-128.png --output src-tauri/icons
 
