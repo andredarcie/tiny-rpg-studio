@@ -173,6 +173,18 @@ class EditorExportService {
                 return;
             }
 
+            // Background music is a YouTube embed, so it is the one part of an
+            // exported game that still needs the network. Say so before the file is
+            // written rather than letting the author discover it offline.
+            const musicVideoId = (gameData as { backgroundMusicVideoId?: string }).backgroundMusicVideoId;
+            if (typeof musicVideoId === 'string' && musicVideoId.trim()) {
+                const proceed = confirm(TextResources.get(
+                    'alerts.exportHTML.musicNeedsNetwork',
+                    'This game uses background music, which streams from YouTube. The exported file plays offline, but the music will not. Continue?',
+                ));
+                if (!proceed) return;
+            }
+
             const downloadError = TextResources.get(
                 'alerts.exportHTML.downloadError',
                 'Unable to download project assets. Please run Tiny RPG Studio from an HTTP/HTTPS server (not file://) to export HTML.',
