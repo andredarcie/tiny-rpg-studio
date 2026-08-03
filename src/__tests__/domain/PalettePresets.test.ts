@@ -6,6 +6,7 @@ import {
     type PalettePreset,
 } from '../../runtime/domain/definitions/PalettePresets';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
+import { SLOT_ROLES } from '../../editor/modules/PaletteAboutModal';
 
 const BASE = TileDefinitions.PICO8_COLORS;
 
@@ -75,6 +76,18 @@ describe('resolvePresetSlots', () => {
                 resolvePresetSlots(p, BASE).map((slot) => slot.hex),
             );
         }
+    });
+});
+
+describe('slot role labels', () => {
+    it('names every slot exactly as the PICO-8 preset names its own color', () => {
+        // The palette guide labels slot 13 for the user; the presets call the colour
+        // that lands there "lavender". If the two drift, the guide describes a slot
+        // by a name that appears nowhere else in the editor.
+        const pico8 = PALETTE_PRESETS.find((p) => p.name === 'PICO-8');
+        expect(pico8, 'PICO-8 preset').toBeDefined();
+        const names = (pico8 as PalettePreset).colors.map((c) => c.name);
+        expect(SLOT_ROLES).toEqual(names);
     });
 });
 

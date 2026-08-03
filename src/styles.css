@@ -5751,3 +5751,133 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
 .server-status-modal__player span.is-dead {
     color: rgba(255, 64, 64, 0.75);
 }
+
+/* --- Palette guide modal --------------------------------------------------
+   Explains how a preset re-colours the 16 engine slots. Reuses the .about-modal
+   shell; only the mapping layout is specific. */
+.palette-about-modal__panel {
+    max-width: 900px;
+}
+
+/* Scrolling comes from .about-modal__body (overflow-y:auto, flex:1, min-height:0)
+   together with the panel's 85vh cap, so this modal only sizes its own content. */
+.palette-about__section {
+    margin-top: 18px;
+}
+
+.palette-about__heading {
+    margin: 0 0 8px;
+    color: var(--accent);
+    font-size: 0.9em;
+}
+
+.palette-about__base {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 6px;
+}
+
+.palette-about__base-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    border: 1px solid var(--border);
+}
+
+.palette-about__base-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.palette-about__swatch {
+    display: block;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.palette-about__slot-index {
+    color: var(--muted);
+    font-size: 0.75em;
+}
+
+.palette-about__role {
+    color: var(--text);
+    font-size: 0.78em;
+}
+
+.palette-about__note {
+    color: var(--accent);
+    font-size: 0.7em;
+}
+
+.palette-about__hex {
+    color: var(--muted);
+    opacity: 0.6;
+    font-size: 0.7em;
+}
+
+.palette-about__preset {
+    margin-bottom: 14px;
+}
+
+.palette-about__preset-name {
+    margin: 0 0 5px;
+    color: var(--text);
+    font-size: 0.82em;
+}
+
+/* 16 slots side by side; scrolls horizontally on narrow screens rather than
+   forcing the modal body to. */
+.palette-about__row {
+    display: grid;
+    grid-template-columns: repeat(16, minmax(30px, 1fr));
+    gap: 3px;
+    overflow-x: auto;
+}
+
+.palette-about__map-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 3px 1px;
+    border: 1px solid var(--border);
+    cursor: help;
+}
+
+/* A slot the preset never claimed keeps its PICO-8 colour; dim it so the eye
+   skips to the slots that actually changed. */
+.palette-about__map-cell--unchanged {
+    opacity: 0.45;
+}
+
+.palette-about__map-cell .palette-about__swatch {
+    width: 100%;
+    height: 16px;
+}
+
+.palette-about__arrow {
+    color: var(--muted);
+    font-size: 0.65em;
+    line-height: 1;
+}
+
+@media (max-width: 640px) {
+    .palette-about__row {
+        grid-template-columns: repeat(8, minmax(30px, 1fr));
+    }
+}
+
+.palette-about__preset-note {
+    margin-left: 8px;
+    color: var(--muted);
+    opacity: 0.7;
+    font-size: 0.85em;
+    font-weight: normal;
+}

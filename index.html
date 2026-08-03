@@ -497,6 +497,14 @@
                                                 <div class="palette-preset-field">
                                                     <label data-text-key="project.palettePreset"></label>
                                                     <select id="palette-preset-select"></select>
+                                                    <button
+                                                        type="button"
+                                                        id="palette-about-button"
+                                                        class="palette-action-btn palette-about-btn"
+                                                        data-text-key="paletteAbout.open"
+                                                        title="See how each PICO-8 color maps to every palette"
+                                                        data-title-key="paletteAbout.openTitle"
+                                                    >About palettes</button>
                                                 </div>
                                                 <div id="palette-grid" class="palette-grid"></div>
                                             </div>
@@ -802,6 +810,29 @@
                 <p class="about-modal__creators" data-text-key="about.createdBy">Created by André N. Darcie and Diguifi.</p>
                 <p class="about-modal__free" data-text-key="about.free">An open-source, free, non-profit engine.</p>
                 <a class="about-modal__link" href="https://github.com/andredarcie/tiny-rpg-studio" target="_blank" rel="noopener noreferrer" data-text-key="about.viewSource">View source on GitHub ↗</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="palette-about-modal" class="about-modal palette-about-modal" hidden role="dialog" aria-modal="true" aria-labelledby="palette-about-title">
+        <div class="about-modal__panel palette-about-modal__panel">
+            <div class="about-modal__header">
+                <div class="about-modal__title-group">
+                    <h2 id="palette-about-title" class="about-modal__title" data-text-key="paletteAbout.title">How palettes map</h2>
+                    <p class="about-modal__subtitle" data-text-key="paletteAbout.subtitle">Every palette is a re-colouring of the 16 PICO-8 slots.</p>
+                </div>
+                <button type="button" id="palette-about-close" class="about-modal__close" aria-label="Close palette guide" data-aria-label-key="paletteAbout.closeAria">✕</button>
+            </div>
+            <div class="about-modal__body palette-about-modal__body">
+                <p class="about-modal__lead" data-text-key="paletteAbout.lead">Each slot has a fixed job in the engine — slot 3 paints grass, slot 7 draws HUD text. Choosing a palette swaps the colour in every slot, keeping the job.</p>
+                <section class="palette-about__section">
+                    <h3 class="palette-about__heading" data-text-key="paletteAbout.baseHeading">PICO-8 base slots</h3>
+                    <div id="palette-about-base" class="palette-about__base"></div>
+                </section>
+                <section class="palette-about__section">
+                    <h3 class="palette-about__heading" data-text-key="paletteAbout.mapHeading">What each palette puts in those slots</h3>
+                    <div id="palette-about-list" class="palette-about__list"></div>
+                </section>
             </div>
         </div>
     </div>
