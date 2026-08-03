@@ -6,6 +6,7 @@ dist/
 dist-ssr/
 docs/
 output/
+deployed-bundle.js
 src-tauri/target/
 src-tauri/icons/
 *.tsbuildinfo

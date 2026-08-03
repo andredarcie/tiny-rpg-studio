@@ -14,7 +14,9 @@ export default [
       // Harness/agent worktrees are throwaway copies of the repo; never lint them.
       '.claude/**',
       // Generated/minified bundles are build output, not source to lint.
+      // Covers both `export.bundle.js` and root artifacts like `deployed-bundle.js`.
       '**/*.bundle.js',
+      '**/*-bundle.js',
     ],
   },
   {
