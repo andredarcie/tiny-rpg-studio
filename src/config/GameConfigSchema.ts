@@ -145,6 +145,11 @@ export interface GameHudConfig {
   readonly backgroundColor: string;
 }
 
+export interface GameDialogConfig {
+  readonly maxLines: number;
+  readonly maxFontSize: number;
+}
+
 export interface GameTilesConfig {
   readonly legacyMax: number;
   readonly valueMax: number;
@@ -175,6 +180,7 @@ export type GameConfigShape = {
   timing: GameTimingConfig;
   input: GameInputConfig;
   hud: GameHudConfig;
+  dialog: GameDialogConfig;
   tiles: GameTilesConfig;
   palette: GamePaletteConfig;
   debug: GameDebugConfig;
@@ -195,6 +201,7 @@ export class GameConfigSchema {
   private _timing: GameTimingConfig;
   private _input: GameInputConfig;
   private _hud: GameHudConfig;
+  private _dialog: GameDialogConfig;
   private _tiles: GameTilesConfig;
   private _palette: GamePaletteConfig;
   private _debug: GameDebugConfig;
@@ -211,6 +218,7 @@ export class GameConfigSchema {
     timing: GameTimingConfig;
     input: GameInputConfig;
     hud: GameHudConfig;
+    dialog: GameDialogConfig;
     tiles: GameTilesConfig;
     palette: GamePaletteConfig;
     debug: GameDebugConfig;
@@ -226,6 +234,7 @@ export class GameConfigSchema {
     this._timing = this.validateTiming(config.timing);
     this._input = this.validateInput(config.input);
     this._hud = this.validateHud(config.hud);
+    this._dialog = this.validateDialog(config.dialog);
     this._tiles = this.validateTiles(config.tiles);
     this._palette = this.validatePalette(config.palette);
     this._debug = this.validateDebug(config.debug);
@@ -294,6 +303,10 @@ export class GameConfigSchema {
 
   get hud(): GameHudConfig {
     return { ...this._hud };
+  }
+
+  get dialog(): GameDialogConfig {
+    return { ...this._dialog };
   }
 
   get tiles(): GameTilesConfig {
@@ -500,6 +513,12 @@ export class GameConfigSchema {
       throw new Error(`Invalid HUD background color: ${hud.backgroundColor}`);
     }
     return Object.freeze({ ...hud });
+  }
+
+  private validateDialog(dialog: GameDialogConfig): GameDialogConfig {
+    this.assertPositiveInteger(dialog.maxLines, 'dialog max lines');
+    this.assertPositiveInteger(dialog.maxFontSize, 'dialog max font size');
+    return Object.freeze({ ...dialog });
   }
 
   private validateTiles(tiles: GameTilesConfig): GameTilesConfig {

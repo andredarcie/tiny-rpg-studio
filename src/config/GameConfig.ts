@@ -264,6 +264,32 @@ export const GameConfig = new GameConfigSchema({
   },
 
   /**
+   * Dialog box configuration
+   */
+  dialog: {
+    /**
+     * Maximum text lines shown in one dialog page. Longer messages paginate;
+     * the box height follows the line count so it never reserves empty space.
+     */
+    maxLines: 4,
+    /**
+     * Upper bound (in display px) for the dialog font, which otherwise grows
+     * with the canvas. Past this point the font holds still and a page fits more
+     * characters instead.
+     *
+     * Five times the native 8px size. Accessibility standards give text minimums
+     * rather than maximums, and those minimums scale with resolution: the Xbox
+     * Accessibility Guidelines put the PC/VR minimum at 18px on 1080p and 36px
+     * on 4K. A ceiling therefore must not drop below 36px, or the largest
+     * displays would fall under the minimum — which rules out 32px. 40px is the
+     * smallest multiple of the native size that clears it, and integer multiples
+     * are what keep a pixel font crisp. It also stays under the 52px that the
+     * same guidelines allow console text to scale to.
+     */
+    maxFontSize: FONT_SIZE * 5,
+  },
+
+  /**
    * Tiles configuration
    */
   tiles: {

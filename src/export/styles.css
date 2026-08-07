@@ -142,9 +142,14 @@ main {
     text-align: left;
 }
 
+/* The `body *` rule above would pin this to the fixed UI size and win over
+   inheritance, leaving the dialog text the only game element that does not scale
+   with the canvas. JS sets the real size on the container; this keeps the cascade
+   pointing at it. */
 .game-dialog-text {
     overflow-wrap: anywhere;
     white-space: pre-wrap;
+    font-size: inherit;
 }
 
 .game-dialog-buttons {

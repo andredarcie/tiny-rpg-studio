@@ -122,6 +122,14 @@ class NpcEditModal extends EditorRendererBase {
         dialogLabel.appendChild(dialogTextarea);
         body.appendChild(dialogLabel);
 
+        const dialogHint = document.createElement('div');
+        dialogHint.className = 'object-config-hint';
+        dialogHint.textContent = this.t(
+            'npc.dialog.pageBreakHint',
+            'Use \\ para quebrar a página do diálogo.',
+        );
+        body.appendChild(dialogHint);
+
         // Reward variable
         const rewardLabel = document.createElement('label');
         rewardLabel.className = 'object-config-label';

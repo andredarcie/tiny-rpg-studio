@@ -842,9 +842,14 @@ body.editor-mode .editor-mobile-nav-button:focus-visible {
     line-height: 1.3;
 }
 
+/* The `body *` rule above would pin this to the fixed UI size and win over
+   inheritance, leaving the dialog text the only game element that does not scale
+   with the canvas. JS sets the real size on the container; this keeps the cascade
+   pointing at it. */
 .game-dialog-text {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+    font-size: inherit;
 }
 
 .game-dialog-buttons {

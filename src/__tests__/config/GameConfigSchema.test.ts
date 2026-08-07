@@ -120,6 +120,10 @@ describe('GameConfigSchema', () => {
       gap: 6,
       backgroundColor: '#000000',
     },
+    dialog: {
+      maxLines: 4,
+      maxFontSize: 40,
+    },
     tiles: {
       legacyMax: 15,
       valueMax: 255,
