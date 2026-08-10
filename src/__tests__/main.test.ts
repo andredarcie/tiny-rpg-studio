@@ -640,12 +640,14 @@ describe('TinyRPGApplication.bindBackgroundMusicVolumeControl', () => {
 
 describe('TinyRPGApplication.bindLanguageSelector', () => {
   beforeEach(() => {
+    localStorage.clear();
     document.body.innerHTML = `<select id="language-select"><option value="en-US">EN</option><option value="pt-BR">PT</option></select>`;
   });
 
   afterEach(() => {
     document.body.innerHTML = '';
     vi.restoreAllMocks();
+    localStorage.clear();
   });
 
   it('returns early when language select is missing', () => {
@@ -663,6 +665,56 @@ describe('TinyRPGApplication.bindLanguageSelector', () => {
 
     select.value = 'pt-BR';
     select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(setLocaleSpy).toHaveBeenCalledWith('pt-BR');
+    expect(localStorage.getItem('tiny-rpg-editor-language')).toBe('pt-BR');
+  });
+
+  it('restores a saved locale before syncing the select', () => {
+    const select = document.getElementById('language-select') as HTMLSelectElement;
+    localStorage.setItem('tiny-rpg-editor-language', 'pt-BR');
+    let locale = 'en-US';
+    vi.spyOn(TextResources, 'getLocale').mockImplementation(() => locale);
+    const setLocaleSpy = vi.spyOn(TextResources, 'setLocale').mockImplementation((value) => {
+      locale = value;
+      return true;
+    });
+
+    TinyRPGApplication.bindLanguageSelector();
+
+    expect(setLocaleSpy).toHaveBeenCalledWith('pt-BR');
+    expect(select.value).toBe('pt-BR');
+  });
+
+  it('ignores an invalid saved locale', () => {
+    const select = document.getElementById('language-select') as HTMLSelectElement;
+    localStorage.setItem('tiny-rpg-editor-language', 'invalid');
+    vi.spyOn(TextResources, 'getLocale').mockReturnValue('en-US' as unknown as ReturnType<typeof TextResources.getLocale>);
+    const setLocaleSpy = vi.spyOn(TextResources, 'setLocale').mockReturnValue(false as unknown as ReturnType<typeof TextResources.setLocale>);
+
+    TinyRPGApplication.bindLanguageSelector();
+
+    expect(setLocaleSpy).toHaveBeenCalledWith('invalid');
+    expect(select.value).toBe('en-US');
+  });
+
+  it('tolerates localStorage read and write failures', () => {
+    const select = document.getElementById('language-select') as HTMLSelectElement;
+    vi.spyOn(TextResources, 'getLocale').mockReturnValue('en-US' as unknown as ReturnType<typeof TextResources.getLocale>);
+    const setLocaleSpy = vi.spyOn(TextResources, 'setLocale').mockReturnValue(true as unknown as ReturnType<typeof TextResources.setLocale>);
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+
+    expect(() => TinyRPGApplication.bindLanguageSelector()).not.toThrow();
+    expect(select.value).toBe('en-US');
+
+    getItemSpy.mockRestore();
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('Storage unavailable');
+    });
+    select.value = 'pt-BR';
+
+    expect(() => select.dispatchEvent(new Event('change', { bubbles: true }))).not.toThrow();
     expect(setLocaleSpy).toHaveBeenCalledWith('pt-BR');
   });
 

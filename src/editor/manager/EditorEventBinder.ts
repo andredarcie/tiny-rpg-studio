@@ -4,6 +4,8 @@ import { DebugFlags } from '../../runtime/debug/DebugFlags';
 import { track } from '../../analytics/track';
 import type { CustomSpriteEntry, CustomSpriteVariant } from '../../types/gameState';
 
+const SHOW_VARIABLE_LINKS_STORAGE_KEY = 'tiny-rpg-editor-show-variable-links';
+
 class EditorEventBinder extends EditorManagerModule {
     declare manager: EditorManager;
     bind() {
@@ -131,11 +133,27 @@ class EditorEventBinder extends EditorManagerModule {
             const target = ev.target as HTMLInputElement;
             manager.setDisablePixelFont(target.checked);
         });
-        projectShowVariableLinks?.addEventListener('change', (ev: Event) => {
-            const target = ev.target as HTMLInputElement;
-            manager.state.showVariableLinks = target.checked;
-            manager.renderService.renderEditor();
-        });
+        if (projectShowVariableLinks) {
+            try {
+                const storedValue = localStorage.getItem(SHOW_VARIABLE_LINKS_STORAGE_KEY);
+                if (storedValue === 'true' || storedValue === 'false') {
+                    manager.state.showVariableLinks = storedValue === 'true';
+                }
+            } catch {
+                // The editor remains usable when storage is unavailable.
+            }
+            projectShowVariableLinks.checked = manager.state.showVariableLinks;
+            projectShowVariableLinks.addEventListener('change', (ev: Event) => {
+                const target = ev.target as HTMLInputElement;
+                manager.state.showVariableLinks = target.checked;
+                try {
+                    localStorage.setItem(SHOW_VARIABLE_LINKS_STORAGE_KEY, String(target.checked));
+                } catch {
+                    // The setting still applies for the current session.
+                }
+                manager.renderService.renderEditor();
+            });
+        }
         projectOnlineEnabled?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setOnlineEnabled(target.checked);

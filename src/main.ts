@@ -19,6 +19,8 @@ import { loadAnalyticsWhenIdle } from './analytics/loadAnalytics';
 import { track } from './analytics/track';
 import { installPwaUpdateChecks, recoverFromDynamicImportFailure } from './pwa/installPwaUpdateChecks';
 
+const EDITOR_LANGUAGE_STORAGE_KEY = 'tiny-rpg-editor-language';
+
 const getTextResource = (key: string, fallback = ''): string => {
   const value = TextResources.get(key, fallback) as string;
   return value || fallback || key || '';
@@ -384,6 +386,15 @@ class TinyRPGApplication {
       select.value = TextResources.getLocale() as string;
     };
 
+    try {
+      const storedLocale = localStorage.getItem(EDITOR_LANGUAGE_STORAGE_KEY);
+      if (storedLocale) {
+        TextResources.setLocale(storedLocale);
+      }
+    } catch {
+      // Language switching must still work when storage is unavailable.
+    }
+
     syncSelect();
 
     select.addEventListener('change', () => {
@@ -392,6 +403,12 @@ class TinyRPGApplication {
       const changed = TextResources.setLocale(locale) as boolean;
       if (!changed) {
         syncSelect();
+        return;
+      }
+      try {
+        localStorage.setItem(EDITOR_LANGUAGE_STORAGE_KEY, locale);
+      } catch {
+        // The selected language remains active even if it cannot be persisted.
       }
     });
 

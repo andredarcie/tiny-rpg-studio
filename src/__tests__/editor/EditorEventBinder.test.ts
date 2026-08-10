@@ -99,6 +99,8 @@ function makeDom() {
     const projectBackgroundMusicUrl = document.createElement('input');
     const projectBackgroundMusicVolume = document.createElement('input');
     projectBackgroundMusicVolume.type = 'range';
+    const projectShowVariableLinks = document.createElement('input');
+    projectShowVariableLinks.type = 'checkbox';
 
     const shareUrlInput = document.createElement('input');
     shareUrlInput.select = vi.fn();
@@ -140,6 +142,7 @@ function makeDom() {
         projectDisableSkills,
         projectBackgroundMusicUrl,
         projectBackgroundMusicVolume,
+        projectShowVariableLinks,
         shareUrlInput,
     };
 }
@@ -151,6 +154,7 @@ function makeManager() {
         placingObjectType: null as string | null,
         activeRoomIndex: 0,
         conditionalDialogueExpanded: false,
+        showVariableLinks: true,
     };
 
     const renderService = {
@@ -160,6 +164,7 @@ function makeManager() {
         renderVariableUsage: vi.fn(),
         renderSkillList: vi.fn(),
         renderTestTools: vi.fn(),
+        renderEditor: vi.fn(),
     };
 
     const npcService = {
@@ -270,6 +275,7 @@ describe('EditorEventBinder', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        localStorage.clear();
         const built = makeManager();
         manager = built.manager;
         dom = built.dom;
@@ -285,6 +291,48 @@ describe('EditorEventBinder', () => {
 
         svc = new EditorEventBinder(asEventBinderManager(manager));
         svc.bind();
+    });
+
+    it('restores the show-variable-links preference and syncs the checkbox', () => {
+        localStorage.setItem('tiny-rpg-editor-show-variable-links', 'false');
+        const built = makeManager();
+        const binder = new EditorEventBinder(asEventBinderManager(built.manager));
+
+        binder.bind();
+
+        expect(built.state.showVariableLinks).toBe(false);
+        expect(built.dom.projectShowVariableLinks.checked).toBe(false);
+    });
+
+    it('persists show-variable-links changes and re-renders the editor', () => {
+        dom.projectShowVariableLinks.checked = false;
+        dom.projectShowVariableLinks.dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(state.showVariableLinks).toBe(false);
+        expect(localStorage.getItem('tiny-rpg-editor-show-variable-links')).toBe('false');
+        expect(renderService.renderEditor).toHaveBeenCalledTimes(1);
+    });
+
+    it('tolerates localStorage failures for the show-variable-links preference', () => {
+        const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+            throw new Error('Storage unavailable');
+        });
+        const built = makeManager();
+        const binder = new EditorEventBinder(asEventBinderManager(built.manager));
+
+        expect(() => binder.bind()).not.toThrow();
+        expect(built.state.showVariableLinks).toBe(true);
+
+        getItemSpy.mockRestore();
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new Error('Storage unavailable');
+        });
+        built.dom.projectShowVariableLinks.checked = false;
+
+        expect(() => built.dom.projectShowVariableLinks.dispatchEvent(new Event('change', { bubbles: true }))).not.toThrow();
+        expect(built.state.showVariableLinks).toBe(false);
+        expect(built.renderService.renderEditor).toHaveBeenCalledTimes(1);
+        setItemSpy.mockRestore();
     });
 
     // 1. btnNpcDelete click
