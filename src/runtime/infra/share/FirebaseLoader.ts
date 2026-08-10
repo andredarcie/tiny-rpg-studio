@@ -21,7 +21,7 @@ export function ensureFirebase(): Promise<boolean> {
   const loader = (globalThis as FirebaseEnsureGlobal).TinyRPGEnsureFirebase;
   if (typeof loader !== 'function') return Promise.resolve(false);
   try {
-    return loader();
+    return loader().catch(() => false);
   } catch {
     return Promise.resolve(false);
   }
