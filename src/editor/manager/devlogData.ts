@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-08-09-disappearing-npcs',
+    date: '2026-08-09',
+    title: 'NPCs can leave after talking',
+    description:
+      'NPCs can now disappear after their default dialogue closes, opening the tile for players and push boxes. The option travels with project files, share links, SDK games, and HTML exports.',
+  },
+  {
     id: '2026-07-30-lighter-html-exports',
     date: '2026-07-30',
     title: 'Much smaller HTML exports',

@@ -57,6 +57,8 @@ type NpcState = {
   conditionVariableId?: string | null;
   rewardVariableId?: string | null;
   conditionalRewardVariableId?: string | null;
+  disappearAfterDialog?: boolean;
+  disappeared?: boolean;
   choiceEnabled?: boolean;
   choicePrompt?: string;
   choiceYesText?: string;
@@ -563,7 +565,7 @@ class InteractionManager {
 
   checkNpcs(npcs: NpcState[], player: PlayerPosition): void {
     for (const npc of npcs) {
-      if (!npc.placed) continue;
+      if (!npc.placed || npc.disappeared === true) continue;
       const sameTile = npc.roomIndex === player.roomIndex && npc.x === player.x && npc.y === player.y;
       if (!sameTile) continue;
       if (this.openNpcDialog(npc)) break;
@@ -577,6 +579,7 @@ class InteractionManager {
    * both entry points behave identically. Returns true when something was shown.
    */
   openNpcDialog(npc: NpcState): boolean {
+    if (npc.disappeared === true) return false;
     const simple = resolveNpcDialog(npc, this.gameState);
     const choice = resolveChoiceDialog(npc, this.gameState);
     const showChoice = choice && choice.choices && this.dialogManager.showChoiceDialog
@@ -650,6 +653,9 @@ class InteractionManager {
     }
     if (resolvedDialog.variantKey) {
       meta.npcDialogVariantKey = resolvedDialog.variantKey;
+    }
+    if (npc.disappearAfterDialog === true && typeof npc.id === 'string' && npc.id.trim()) {
+      meta.disappearNpcId = npc.id;
     }
 
     return Object.keys(meta).length > 0 ? meta : undefined;

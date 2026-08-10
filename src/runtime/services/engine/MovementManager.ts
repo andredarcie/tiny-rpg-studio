@@ -79,6 +79,7 @@ type MovementManagerOptions = {
 
 type NpcState = {
   placed?: boolean;
+  disappeared?: boolean;
   roomIndex: number;
   x: number;
   y: number;
@@ -565,7 +566,7 @@ class MovementManager {
   findNpcAt(roomIndex: number, x: number, y: number): NpcState | null {
     const sprites = (this.gameState.getGame().sprites || []) as NpcState[];
     return (
-      sprites.find((npc) => npc.placed && npc.roomIndex === roomIndex && npc.x === x && npc.y === y) ||
+      sprites.find((npc) => npc.placed && npc.disappeared !== true && npc.roomIndex === roomIndex && npc.x === x && npc.y === y) ||
       null
     );
   }

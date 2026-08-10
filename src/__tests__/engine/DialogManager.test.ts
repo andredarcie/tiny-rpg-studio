@@ -229,6 +229,26 @@ describe('DialogManager', () => {
 
     expect(followUp).not.toHaveBeenCalled();
   });
+
+  it('disappears an NPC on close while preserving its reward', () => {
+    const manager = new DialogManager(
+      { pauseGame, resumeGame, setDialog, getDialog, setVariableValue },
+      renderer,
+    );
+    const onNpcDisappear = vi.fn();
+    manager.onNpcDisappear = onNpcDisappear;
+    manager.showDialog('bye', {
+      setVariableId: 'var-1',
+      rewardAllowed: true,
+      disappearNpcId: 'npc-1',
+    });
+
+    manager.closeDialog();
+
+    expect(setVariableValue).toHaveBeenCalledWith('var-1', true);
+    expect(onNpcDisappear).toHaveBeenCalledWith('npc-1');
+    expect(onNpcDisappear.mock.invocationCallOrder[0]).toBeLessThan(renderer.draw.mock.invocationCallOrder[0]);
+  });
 });
 
 describe('DialogManager — choice dialog', () => {

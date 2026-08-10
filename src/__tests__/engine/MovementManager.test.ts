@@ -222,6 +222,22 @@ describe('MovementManager', () => {
     expect(dialogManager.showDialog).not.toHaveBeenCalled();
   });
 
+  it('does not treat disappeared NPCs as occupied tiles', () => {
+    const gameState = createGameState(false);
+    gameState.getGame = (() => ({
+      sprites: [
+        { placed: true, disappeared: true, roomIndex: 0, x: 1, y: 1 },
+        { placed: true, roomIndex: 0, x: 2, y: 2 },
+      ],
+    })) as typeof gameState.getGame;
+    const manager = new MovementManager({
+      gameState, tileManager, renderer, dialogManager, interactionManager, enemyManager,
+    });
+
+    expect(manager.findNpcAt(0, 1, 1)).toBeNull();
+    expect(manager.findNpcAt(0, 2, 2)).not.toBeNull();
+  });
+
   it('blocks active solid traps before stacked door side effects even with boots', () => {
     const trap = { type: 'trap', variableId: 'var-1', solid: true };
     const door = { type: 'door', isLockedDoor: true, opened: false };

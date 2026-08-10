@@ -3,6 +3,7 @@ import type { StubGameState } from './StubGameState'
 
 export class StubNpcManager {
   ensureDefaultNPCs = vi.fn()
+  resetNPCs = vi.fn()
 
   constructor(_state: StubGameState) {}
 
@@ -12,5 +13,9 @@ export class StubNpcManager {
 
   getNPCs() {
     return []
+  }
+
+  getNPC() {
+    return null
   }
 }

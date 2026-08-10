@@ -9,6 +9,7 @@ type DialogMeta = {
   rewardAllowed?: boolean;
   npcId?: string;
   npcDialogVariantKey?: string;
+  disappearNpcId?: string;
 };
 
 type GameStateApi = {
@@ -40,6 +41,7 @@ class DialogManager {
    * without applying the change locally first.
    */
   onNpcReward: ((variableId: string, value: boolean) => void) | null = null;
+  onNpcDisappear: ((npcId: string) => void) | null = null;
   onEndGame: (() => void) | null = null;
   /**
    * Optional dialog to open right after the current one fully closes. Used to
@@ -160,6 +162,9 @@ class DialogManager {
       this.pendingNext = null;
     } else {
       this.completeDialog();
+    }
+    if (pendingMeta?.disappearNpcId) {
+      this.onNpcDisappear?.(pendingMeta.disappearNpcId);
     }
     this.gameState.setDialog(false);
 

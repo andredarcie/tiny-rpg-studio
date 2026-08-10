@@ -47,9 +47,10 @@ class ShareConstants {
     static get VERSION_37() { return 37; }
     static get VERSION_38() { return 38; }
     static get VERSION_39() { return 39; }
+    static get VERSION_40() { return 40; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_39;
+        return ShareConstants.VERSION_40;
     }
 
     static get LEGACY_VERSION() {
@@ -202,6 +203,10 @@ class ShareConstants {
         return ShareConstants.VERSION_39;
     }
 
+    static get NPC_DISAPPEAR_VERSION() {
+        return ShareConstants.VERSION_40;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -326,7 +331,8 @@ class ShareConstants {
                 ShareConstants.VERSION_36,
                 ShareConstants.VERSION_37,
                 ShareConstants.VERSION_38,
-                ShareConstants.VERSION_39
+                ShareConstants.VERSION_39,
+                ShareConstants.VERSION_40
             ]);
         }
         return this._supportedVersions;

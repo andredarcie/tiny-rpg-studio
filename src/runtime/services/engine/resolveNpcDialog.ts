@@ -7,6 +7,7 @@ type NpcDialogState = {
   conditionVariableId?: string | null;
   rewardVariableId?: string | null;
   conditionalRewardVariableId?: string | null;
+  disappearAfterDialog?: boolean;
   choiceEnabled?: boolean;
   choicePrompt?: string;
   choiceYesText?: string;
@@ -78,7 +79,7 @@ const isNpcDialogConditionActive = (npc: NpcDialogState, gameState: NpcDialogRes
 };
 
 const resolveChoiceDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGameState): ResolvedNpcDialog | null => {
-  if (npc.choiceEnabled !== true) {
+  if (npc.disappearAfterDialog === true || npc.choiceEnabled !== true) {
     return null;
   }
   // A definitive choice is answered once per playthrough: after that it never
@@ -123,7 +124,9 @@ const resolveChoiceDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGa
  */
 const resolveNpcDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGameState): ResolvedNpcDialog => {
   const conditionActive = isNpcDialogConditionActive(npc, gameState);
-  const useConditionalText = conditionActive && getTrimmedDialogText(npc.conditionText).length > 0;
+  const useConditionalText = npc.disappearAfterDialog !== true
+    && conditionActive
+    && getTrimmedDialogText(npc.conditionText).length > 0;
   const text = useConditionalText ? (npc.conditionText ?? '') : (npc.text ?? '');
   const hasDialog = getTrimmedDialogText(text).length > 0;
   const variantKey = hasDialog

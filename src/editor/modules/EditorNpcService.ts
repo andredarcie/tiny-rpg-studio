@@ -17,6 +17,7 @@ type SpriteInstance = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    disappearAfterDialog?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string | null;
     choiceYesText?: string | null;
@@ -321,6 +322,15 @@ class EditorNpcService {
         if (!this.state.selectedNpcId) return null;
         const sprites = this.gameEngine.getSprites() as SpriteInstance[];
         return sprites.find((entry: SpriteInstance) => entry.id === this.state.selectedNpcId) || null;
+    }
+
+    updateNpcDisappearAfterDialog(enabled: boolean) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        npc.disappearAfterDialog = enabled;
+        this.manager.renderService.renderNpcs();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
     }
 
     toggleChoiceEnabled(enabled: boolean) {

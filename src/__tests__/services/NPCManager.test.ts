@@ -134,4 +134,27 @@ describe('NPCManager', () => {
       choiceNoVariableId: NPC_END_GAME_REWARD_ID,
     });
   });
+
+  it('preserves disappearance during normalization and clears it on reset', () => {
+    const gameState = makeGameState([]);
+    const manager = new NPCManager(gameState as unknown as ConstructorParameters<typeof NPCManager>[0]);
+    const npc = manager.normalizeNPC({
+      id: 'npc-1',
+      type: 'old-mage',
+      disappearAfterDialog: true,
+      disappeared: true,
+    });
+    gameState.game.sprites = [npc];
+
+    expect(manager.ensureDefaultNPCs()[0]).toMatchObject({
+      disappearAfterDialog: true,
+      disappeared: true,
+    });
+
+    manager.resetNPCs();
+    expect(manager.getNPC('npc-1')).toMatchObject({
+      disappearAfterDialog: true,
+      disappeared: false,
+    });
+  });
 });

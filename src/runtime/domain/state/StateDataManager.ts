@@ -119,7 +119,11 @@ class StateDataManager {
             world: this.game.world,
             rooms: this.game.rooms,
             start: this.game.start,
-            sprites: this.game.sprites,
+            sprites: this.game.sprites.map((sprite) => {
+                const copy = { ...sprite } as Record<string, unknown>;
+                delete copy.disappeared;
+                return copy;
+            }),
             enemies: this.game.enemies,
             // `collected` is run-time pickup state stored on the item; reset it in
             // the exported definition so play progress never leaks into the saved

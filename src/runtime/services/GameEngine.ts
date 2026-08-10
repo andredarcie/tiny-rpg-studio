@@ -110,6 +110,10 @@ export class GameEngine {
       this.chooseLevelUpSkill(index);
     });
     this.dialogManager = new DialogManager(this.gameState as never, this.renderer);
+    this.dialogManager.onNpcDisappear = (npcId) => {
+      const npc = this.npcManager.getNPC(npcId);
+      if (npc) npc.disappeared = true;
+    };
     this.dialogManager.onEndGame = () => {
       this.gameState.setActiveEndingText('');
       this.handleGameCompletion();
@@ -383,6 +387,7 @@ export class GameEngine {
     this.gameState.setGameOver(false);
     this.gameState.resumeGame('game-over');
     this.gameState.resetGame();
+    this.npcManager.resetNPCs();
     this.startEnemyLoop();
     this.dialogManager.reset();
     this.renderer.draw();
@@ -436,6 +441,7 @@ export class GameEngine {
     this.inputManager.cancelHeldMovement();
     this.gameState.importGameData(data);
     this.npcManager.ensureDefaultNPCs();
+    this.npcManager.resetNPCs();
     this.tileManager.ensureDefaultTiles();
     const game = this.gameState.getGame() as ReturnType<GameEngine['gameState']['getGame']> & {
       tileVisualEffects?: Record<string, TileVisualEffectKind>;

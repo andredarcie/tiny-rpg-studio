@@ -409,6 +409,23 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
   });
 
+  it('drawNPCs skips disappeared NPCs and their unread markers', () => {
+    const { renderer, game, spriteFactory, canvasHelper, gameState } = makeFixture();
+    const ctx = createCtx();
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({ default: sprite(9) });
+    game.sprites = [{
+      id: 'npc-gone', placed: true, disappeared: true,
+      roomIndex: 1, x: 1, y: 1, type: 'villager', text: 'Unread',
+    }];
+    const drawTextSpy = vi.spyOn(bitmapFont, 'drawText').mockImplementation(() => {});
+    (gameState as unknown as { hasUnreadNpcDialog: () => boolean }).hasUnreadNpcDialog = vi.fn(() => true);
+
+    renderer.drawNPCs(asCanvasCtx(ctx));
+
+    expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
+    expect(drawTextSpy).not.toHaveBeenCalled();
+  });
+
   it('drawNPCs shows unread marker only for npc with unread effective dialog variant', () => {
     const { renderer, game, player, spriteFactory, canvasHelper, gameState } = makeFixture();
     const ctx = createCtx();

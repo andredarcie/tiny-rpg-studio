@@ -108,6 +108,28 @@ describe('StateDataManager', () => {
     expect(objectManager.normalizeObjects).not.toHaveBeenCalled();
   });
 
+  it('omits runtime NPC disappearance from exported data', () => {
+    const game = makeGame();
+    game.sprites = [{
+      id: 'npc-1', type: 'old-mage', name: 'Mage', text: 'Bye', textKey: null,
+      roomIndex: 0, x: 1, y: 1, initialX: 1, initialY: 1, initialRoomIndex: 0,
+      placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null,
+      conditionalRewardVariableId: null, disappearAfterDialog: true, disappeared: true,
+      choiceEnabled: false, choicePrompt: '', choiceYesText: '', choiceNoText: '',
+      choiceYesVariableId: null, choiceNoVariableId: null,
+    }];
+    const manager = new StateDataManager({
+      game,
+      worldManager: {} as StateWorldManager,
+      objectManager: {} as StateObjectManager,
+      variableManager: {} as StateVariableManager,
+    });
+
+    const exported = manager.exportGameData();
+    expect(exported.sprites?.[0]).toMatchObject({ disappearAfterDialog: true });
+    expect(exported.sprites?.[0]).not.toHaveProperty('disappeared');
+  });
+
   it('normalizes and imports game data with defaults', () => {
     const game = makeGame();
     const rooms: RoomDefinition[] = [

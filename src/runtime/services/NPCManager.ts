@@ -35,6 +35,8 @@ type NPCInstance = {
     conditionText: string;
     rewardVariableId: string | null;
     conditionalRewardVariableId: string | null;
+    disappearAfterDialog?: boolean;
+    disappeared?: boolean;
     choiceEnabled: boolean;
     choicePrompt: string;
     choiceYesText: string;
@@ -66,6 +68,8 @@ type NPCInput = {
     onCompleteVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
     alternativeRewardVariableId?: string | null;
+    disappearAfterDialog?: boolean;
+    disappeared?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string;
     choiceYesText?: string;
@@ -255,6 +259,8 @@ class NPCManager {
             normalizeNpcRewardId(rewardId, (id) => this.gameState.normalizeVariableId(id));
         const rewardVariableId = normalizeReward(rawRewardId);
         const conditionalRewardVariableId = normalizeReward(rawConditionalRewardId);
+        const disappearAfterDialog = npc.disappearAfterDialog === true;
+        const disappeared = npc.disappeared === true;
         const choiceEnabled = npc.choiceEnabled === true;
         const choicePrompt = typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '';
         const choiceYesText = typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '';
@@ -279,6 +285,8 @@ class NPCManager {
             conditionText,
             rewardVariableId,
             conditionalRewardVariableId,
+            disappearAfterDialog,
+            disappeared,
             choiceEnabled,
             choicePrompt,
             choiceYesText,
@@ -307,6 +315,8 @@ class NPCManager {
             conditionText: '',
             rewardVariableId: null,
             conditionalRewardVariableId: null,
+            disappearAfterDialog: false,
+            disappeared: false,
             choiceEnabled: false,
             choicePrompt: '',
             choiceYesText: '',
@@ -321,6 +331,7 @@ class NPCManager {
             npc.x = npc.initialX;
             npc.y = npc.initialY;
             npc.roomIndex = npc.initialRoomIndex;
+            npc.disappeared = false;
         }
     }
 

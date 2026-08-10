@@ -353,6 +353,41 @@ describe('InteractionManager', () => {
     expect(gameState.damagePlayer).toHaveBeenCalledWith(1, { autoGameOver: false });
   });
 
+  it('ignores disappeared NPCs', () => {
+    const gameState = createInteractionGameState();
+    (gameState.getPlayer as ReturnType<typeof vi.fn>).mockReturnValue({ roomIndex: 0, x: 2, y: 3 });
+    (gameState.getGame as ReturnType<typeof vi.fn>).mockReturnValue({
+      items: [], exits: [], rooms: [],
+      sprites: [{ id: 'npc-1', placed: true, disappeared: true, roomIndex: 0, x: 2, y: 3, text: 'Bye' }],
+    });
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    manager.handlePlayerInteractions();
+
+    expect(dialogManager.showDialog).not.toHaveBeenCalled();
+  });
+
+  it('uses only the default dialog and attaches disappearance metadata', () => {
+    const gameState = createInteractionGameState();
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    const dm = { showDialog: vi.fn(), showChoiceDialog: vi.fn(), setNextDialog: vi.fn() };
+    const manager = new InteractionManager(gameState, dm);
+    const npc = {
+      id: 'npc-1', placed: true, roomIndex: 0, x: 0, y: 0,
+      text: 'Default', rewardVariableId: 'var-1',
+      conditionVariableId: 'var-2', conditionText: 'Conditional',
+      choiceEnabled: true, choicePrompt: 'Choose?', disappearAfterDialog: true,
+    };
+
+    expect(manager.openNpcDialog(npc)).toBe(true);
+    expect(dm.showDialog).toHaveBeenCalledWith('Default', expect.objectContaining({
+      setVariableId: 'var-1',
+      disappearNpcId: 'npc-1',
+    }));
+    expect(dm.showChoiceDialog).not.toHaveBeenCalled();
+    expect(dm.setNextDialog).toHaveBeenCalledWith(null);
+  });
+
   it('solid traps are always handled without damage or defeat callbacks', () => {
     const gameState = createInteractionGameState();
     (gameState.normalizeVariableId as ReturnType<typeof vi.fn>).mockReturnValue('var-1');

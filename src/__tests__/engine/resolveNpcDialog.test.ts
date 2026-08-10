@@ -55,6 +55,23 @@ describe('resolveNpcDialog — simple dialog', () => {
       makeGameState({ onVars: ['var-1'] }),
     ).rewardVariableId).toBe(NPC_END_GAME_REWARD_ID);
   });
+
+  it('forces default text and reward when the NPC disappears after dialog', () => {
+    const npc: NpcDialogState = {
+      text: 'Default',
+      rewardVariableId: 'var-1',
+      conditionText: 'Conditional',
+      conditionVariableId: 'var-2',
+      conditionalRewardVariableId: 'var-3',
+      disappearAfterDialog: true,
+    };
+
+    expect(resolveNpcDialog(npc, makeGameState({ onVars: ['var-2'] }))).toMatchObject({
+      text: 'Default',
+      rewardVariableId: 'var-1',
+      variantKey: 'default:Default',
+    });
+  });
 });
 
 describe('resolveChoiceDialog — choice question', () => {
@@ -108,6 +125,10 @@ describe('resolveChoiceDialog — choice question', () => {
 
   it('returns null when choiceEnabled is false', () => {
     expect(resolveChoiceDialog({ ...baseChoice, choiceEnabled: false }, makeGameState())).toBeNull();
+  });
+
+  it('returns null when disappearance is enabled', () => {
+    expect(resolveChoiceDialog({ ...baseChoice, disappearAfterDialog: true }, makeGameState())).toBeNull();
   });
 
   it('locks the choice once it has been answered (definitive choice)', () => {

@@ -30,6 +30,7 @@ type ShareSpriteInput = {
     onCompleteVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
     alternativeRewardVariableId?: string | null;
+    disappearAfterDialog?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string;
     choiceYesText?: string;
@@ -98,6 +99,7 @@ type NormalizedSprite = {
     conditionText: string;
     rewardVariableId: string | null;
     conditionalRewardVariableId: string | null;
+    disappearAfterDialog: boolean;
     choiceEnabled: boolean;
     choicePrompt: string;
     choiceYesText: string;
@@ -207,6 +209,7 @@ class ShareDataNormalizer {
                     : (typeof npc.conditionalText === 'string' ? npc.conditionalText : ''),
                 rewardVariableId: hasRewardId ? rewardId : null,
                 conditionalRewardVariableId: hasConditionalRewardId ? conditionalRewardId : null,
+                disappearAfterDialog: npc.disappearAfterDialog === true,
                 choiceEnabled: npc.choiceEnabled === true,
                 choicePrompt: typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '',
                 choiceYesText: typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '',

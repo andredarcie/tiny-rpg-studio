@@ -314,7 +314,7 @@ class ShareDecoder {
         const npcConditionalRewardIndexes = version >= ShareConstants.NPC_CONDITIONAL_REWARD_VERSION
             ? decodeVarRef(payload.h, npcPositions.length)
             : [];
-        type ChoiceDialogEntry = { p?: string; y?: string; n?: string; yv?: string | null; nv?: string | null };
+        type ChoiceDialogEntry = { p?: string; y?: string; n?: string; yv?: string | null; nv?: string | null; d?: unknown };
         let npcChoiceMap: Record<string, ChoiceDialogEntry | undefined> = {};
         if (version >= ShareConstants.NPC_CHOICE_DIALOG_VERSION && payload['9']) {
             try {
@@ -328,8 +328,14 @@ class ShareDecoder {
         }
         const buildChoiceFields = (index: number) => {
             const choice = npcChoiceMap[String(index)];
+            const isChoiceEntry = Boolean(choice && typeof choice === 'object');
+            const choiceEnabled = isChoiceEntry && ['p', 'y', 'n', 'yv', 'nv']
+                .some((key) => Object.prototype.hasOwnProperty.call(choice, key));
             return {
-                choiceEnabled: Boolean(choice),
+                disappearAfterDialog: version >= ShareConstants.NPC_DISAPPEAR_VERSION
+                    && isChoiceEntry
+                    && choice?.d === 1,
+                choiceEnabled,
                 choicePrompt: choice?.p ?? '',
                 choiceYesText: choice?.y ?? '',
                 choiceNoText: choice?.n ?? '',

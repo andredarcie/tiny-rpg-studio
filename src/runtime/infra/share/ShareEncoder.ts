@@ -381,16 +381,28 @@ class ShareEncoder {
             // Choice dialog (prompt + Yes/No branches) — sparse JSON map keyed by sprite index.
             // Single payload key '9' because almost every 1-char key is already taken; this
             // follows the same JSON-blob pattern as `online` ('8') and skillCustomizations ('C').
-            const choiceMap: Record<number, { p: string; y: string; n: string; yv: string | null; nv: string | null }> = {};
+            const choiceMap: Record<number, {
+                p?: string;
+                y?: string;
+                n?: string;
+                yv?: string | null;
+                nv?: string | null;
+                d?: 1;
+            }> = {};
             sprites.forEach((npc, index) => {
-                if (npc.choiceEnabled) {
-                    choiceMap[index] = {
+                if (npc.choiceEnabled || npc.disappearAfterDialog) {
+                    const entry: (typeof choiceMap)[number] = {};
+                    if (npc.choiceEnabled) {
+                        Object.assign(entry, {
                         p: typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '',
                         y: typeof npc.choiceYesText === 'string' ? npc.choiceYesText : '',
                         n: typeof npc.choiceNoText === 'string' ? npc.choiceNoText : '',
                         yv: npc.choiceYesVariableId ?? null,
                         nv: npc.choiceNoVariableId ?? null
-                    };
+                        });
+                    }
+                    if (npc.disappearAfterDialog) entry.d = 1;
+                    choiceMap[index] = entry;
                 }
             });
             if (Object.keys(choiceMap).length) {

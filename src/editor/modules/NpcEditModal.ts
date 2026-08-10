@@ -24,6 +24,7 @@ type EditorNpc = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    disappearAfterDialog?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string | null;
     choiceYesText?: string | null;
@@ -105,12 +106,37 @@ class NpcEditModal extends EditorRendererBase {
         const body = document.createElement('div');
         body.className = 'object-edit-modal__config npc-edit-modal__body';
 
-        // Main dialogue textarea
+        // Main dialogue heading and disappearance option
+        const dialogGroup = document.createElement('div');
+        dialogGroup.className = 'object-config-label';
+
+        const dialogHeading = document.createElement('div');
+        dialogHeading.className = 'npc-dialog-heading';
+
         const dialogLabel = document.createElement('label');
         dialogLabel.className = 'object-config-label';
+        dialogLabel.htmlFor = 'npc-default-dialog';
         dialogLabel.textContent = this.t('npc.dialog.defaultLabel', 'Diálogo');
 
+        const disappearLabel = document.createElement('label');
+        disappearLabel.className = 'object-config-label object-config-label--checkbox';
+        disappearLabel.htmlFor = 'npc-disappear-after-dialog';
+
+        const disappearCheckbox = document.createElement('input');
+        disappearCheckbox.id = 'npc-disappear-after-dialog';
+        disappearCheckbox.type = 'checkbox';
+        disappearCheckbox.checked = npc.disappearAfterDialog === true;
+        disappearLabel.append(
+            disappearCheckbox,
+            ` ${this.t('npc.dialog.disappearAfter', 'Desaparecer')}`,
+        );
+
+        dialogHeading.append(dialogLabel, disappearLabel);
+        dialogGroup.appendChild(dialogHeading);
+        body.appendChild(dialogGroup);
+
         const dialogTextarea = document.createElement('textarea');
+        dialogTextarea.id = 'npc-default-dialog';
         dialogTextarea.className = 'object-config-textarea';
         dialogTextarea.rows = 3;
         const dialogText = npc.textKey ? this.t(npc.textKey, npc.text || '') : (npc.text || '');
@@ -119,8 +145,7 @@ class NpcEditModal extends EditorRendererBase {
         dialogTextarea.addEventListener('input', () => {
             this.manager.npcService.updateNpcText(dialogTextarea.value);
         });
-        dialogLabel.appendChild(dialogTextarea);
-        body.appendChild(dialogLabel);
+        dialogGroup.appendChild(dialogTextarea);
 
         const dialogHint = document.createElement('div');
         dialogHint.className = 'object-config-hint';
@@ -198,6 +223,19 @@ class NpcEditModal extends EditorRendererBase {
             // (prompt, branches, variables) is preserved if the author reopens it.
             this.manager.npcService.toggleChoiceEnabled(this.choiceExpanded);
         });
+
+        const updateAlternativeVisibility = () => {
+            const hidden = disappearCheckbox.checked;
+            toggleBtn.hidden = hidden;
+            conditionalSection.hidden = hidden || !this.conditionalExpanded;
+            choiceToggleBtn.hidden = hidden;
+            choiceSection.hidden = hidden || !this.choiceExpanded;
+        };
+        disappearCheckbox.addEventListener('change', () => {
+            this.manager.npcService.updateNpcDisappearAfterDialog(disappearCheckbox.checked);
+            updateAlternativeVisibility();
+        });
+        updateAlternativeVisibility();
 
         body.appendChild(choiceToggleBtn);
         body.appendChild(choiceSection);

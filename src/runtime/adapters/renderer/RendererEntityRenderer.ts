@@ -243,7 +243,7 @@ class RendererEntityRenderer {
         const npcSprites = this.spriteFactory.getNpcSprites();
 
         for (const npc of game.sprites) {
-            if (!npc.placed) continue;
+            if (!npc.placed || npc.disappeared === true) continue;
             if (npc.roomIndex !== player.roomIndex) continue;
             const px = npc.x * tileSize;
             const py = npc.y * tileSize;
@@ -678,6 +678,7 @@ type PlayerState = {
 type NpcState = {
     id?: string;
     placed?: boolean;
+    disappeared?: boolean;
     roomIndex: number;
     x: number;
     y: number;

@@ -18,6 +18,7 @@ type TestNpcSprite = {
   conditionVariableId?: string | null;
   rewardVariableId?: string | null;
   conditionalRewardVariableId?: string | null;
+  disappearAfterDialog?: boolean;
   choiceEnabled?: boolean;
   choicePrompt?: string | null;
   choiceYesText?: string | null;
@@ -188,6 +189,21 @@ describe('choice dialog handlers', () => {
   it('handleChoiceYesVariableChange sets and clears the branch variable', () => { const npc={id:'npc-1',choiceYesVariableId:null}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.handleChoiceYesVariableChange('var-2'); expect(npc.choiceYesVariableId).toBe('var-2'); service.handleChoiceYesVariableChange(''); expect(npc.choiceYesVariableId).toBeNull(); });
   it('handleChoiceNoVariableChange sets the branch variable', () => { const npc={id:'npc-1',choiceNoVariableId:null}; const {service,manager} = makeService({selectedNpcId:'npc-1'}); manager.gameEngine.getSprites.mockReturnValue([npc]); service.handleChoiceNoVariableChange('var-1'); expect(npc.choiceNoVariableId).toBe('var-1'); expect(manager.history.pushCurrentState).toHaveBeenCalled(); });
   it('returns early when no NPC is selected', () => { const {service,manager} = makeService({selectedNpcId:null}); service.toggleChoiceEnabled(true); expect(manager.renderService.renderNpcs).not.toHaveBeenCalled(); });
+});
+
+describe('disappear after dialog', () => {
+  it('updates only the selected NPC flag and records one history state', () => {
+    const npc = { id: 'npc-1', disappearAfterDialog: false, choiceEnabled: true };
+    const { service, manager } = makeService({ selectedNpcId: 'npc-1' });
+    manager.gameEngine.getSprites.mockReturnValue([npc]);
+
+    service.updateNpcDisappearAfterDialog(true);
+
+    expect(npc).toEqual({ id: 'npc-1', disappearAfterDialog: true, choiceEnabled: true });
+    expect(manager.renderService.renderNpcs).toHaveBeenCalledTimes(1);
+    expect(manager.updateJSON).toHaveBeenCalledTimes(1);
+    expect(manager.history.pushCurrentState).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('setVariantFilter', () => {
