@@ -45,7 +45,7 @@ class DialogManager {
   onEndGame: (() => void) | null = null;
   /**
    * Optional dialog to open right after the current one fully closes. Used to
-   * chain the NPC's default dialog into its Yes/No choice question.
+   * chain an NPC's default, alternative, and Yes/No choice dialogs.
    */
   private pendingNext: (() => void) | null = null;
 
@@ -176,8 +176,8 @@ class DialogManager {
       this.onEndGame?.();
     }
 
-    // Chain into a follow-up dialog (e.g. the Yes/No question after the default
-    // dialog). Captured and cleared first so the follow-up can queue its own.
+    // Chain into a follow-up dialog. Captured and cleared first so the follow-up
+    // can queue its own.
     const next = this.pendingNext;
     this.pendingNext = null;
     if (next) {

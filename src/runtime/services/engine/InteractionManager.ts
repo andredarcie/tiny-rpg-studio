@@ -573,27 +573,44 @@ class InteractionManager {
   }
 
   /**
-   * Opens the NPC's dialog sequence: the default dialog first, and only then the
-   * Yes/No choice question (when one is configured and available). Shared by the
-   * same-tile check and the movement "bump into NPC" path (MovementManager) so
-   * both entry points behave identically. Returns true when something was shown.
+   * Opens the NPC's dialog sequence: default, newly activated alternative, then
+   * the Yes/No choice question. Shared by the same-tile check and the movement
+   * "bump into NPC" path (MovementManager) so both entry points behave identically.
+   * Returns true when something was shown.
    */
   openNpcDialog(npc: NpcState): boolean {
     if (npc.disappeared === true) return false;
     const simple = resolveNpcDialog(npc, this.gameState);
-    const choice = resolveChoiceDialog(npc, this.gameState);
-    const showChoice = choice && choice.choices && this.dialogManager.showChoiceDialog
-      ? () => this.dialogManager.showChoiceDialog?.(
-          choice.text,
-          this.buildChoiceOptions(choice),
-          this.buildChoiceMeta(npc, choice),
-        )
+    const initialChoice = resolveChoiceDialog(npc, this.gameState);
+    const showChoice = initialChoice && initialChoice.choices && this.dialogManager.showChoiceDialog
+      ? () => {
+          const choice = resolveChoiceDialog(npc, this.gameState);
+          if (!choice?.choices) return;
+          this.dialogManager.showChoiceDialog?.(
+            choice.text,
+            this.buildChoiceOptions(choice),
+            this.buildChoiceMeta(npc, choice),
+          );
+        }
       : null;
 
     if (simple.hasDialog) {
       this.dialogManager.showDialog(simple.text, this.getNpcDialogMeta(npc));
-      // The question is queued to open right after the default dialog closes.
-      this.dialogManager.setNextDialog?.(showChoice);
+      this.dialogManager.setNextDialog?.(showChoice
+        ? () => {
+            // A default-dialog reward may activate the alternative while the
+            // dialog closes. Re-resolve it before moving on to the choice.
+            const nextSimple = resolveNpcDialog(npc, this.gameState);
+            const alternativeActivated = simple.variantKey?.startsWith('default:')
+              && nextSimple.variantKey?.startsWith('conditional:');
+            if (nextSimple.hasDialog && alternativeActivated) {
+              this.dialogManager.showDialog(nextSimple.text, this.getNpcDialogMeta(npc));
+              this.dialogManager.setNextDialog?.(showChoice);
+              return;
+            }
+            showChoice();
+          }
+        : null);
       return true;
     }
     if (showChoice) {
@@ -609,13 +626,13 @@ class InteractionManager {
     return [
       {
         key: 'yes',
-        label: this.getInteractionText('dialog.choice.yes', 'Sim'),
+        label: this.getInteractionText('dialog.choice.yes', '✔'),
         text: branches.yes.text,
         rewardVariableId: branches.yes.rewardVariableId,
       },
       {
         key: 'no',
-        label: this.getInteractionText('dialog.choice.no', 'Não'),
+        label: this.getInteractionText('dialog.choice.no', '✖'),
         text: branches.no.text,
         rewardVariableId: branches.no.rewardVariableId,
       },

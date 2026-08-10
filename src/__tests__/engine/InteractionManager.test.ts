@@ -173,6 +173,41 @@ describe('InteractionManager', () => {
     expect(dm.showChoiceDialog.mock.calls[0][0]).toBe('Aceita?');
   });
 
+  it('shows an alternative activated by the default dialog before the choice', () => {
+    const gameState = createInteractionGameState();
+    let conditionActive = false;
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockImplementation(() => conditionActive);
+    const npc = {
+      id: 'npc-1', placed: true, roomIndex: 0, x: 2, y: 3,
+      text: 'Default', rewardVariableId: 'var-1',
+      conditionVariableId: 'var-1', conditionText: 'Alternative',
+      choiceEnabled: true, choicePrompt: 'Choose?', choiceYesText: 'Yes', choiceNoText: 'No',
+    };
+    const dm = { showDialog: vi.fn(), showChoiceDialog: vi.fn(), setNextDialog: vi.fn() };
+    const manager = new InteractionManager(gameState, dm);
+
+    manager.openNpcDialog(npc as never);
+    expect(dm.showDialog).toHaveBeenLastCalledWith('Default', expect.any(Object));
+
+    conditionActive = true;
+    const afterDefault = dm.setNextDialog.mock.calls[0][0] as () => void;
+    afterDefault();
+
+    expect(dm.showDialog).toHaveBeenLastCalledWith('Alternative', expect.objectContaining({
+      npcDialogVariantKey: 'conditional:var-1:Alternative',
+    }));
+    expect(dm.showChoiceDialog).not.toHaveBeenCalled();
+
+    const afterAlternative = dm.setNextDialog.mock.calls[1][0] as () => void;
+    afterAlternative();
+
+    expect(dm.showChoiceDialog).toHaveBeenCalledWith(
+      'Choose?',
+      expect.any(Array),
+      expect.objectContaining({ npcDialogVariantKey: 'choice:Choose?' }),
+    );
+  });
+
   it('uses bard condition as the effective unread dialog variant', () => {
     const gameState = createInteractionGameState();
     (gameState.hasSkill as ReturnType<typeof vi.fn>).mockImplementation((skillId: string) => skillId === 'charisma');

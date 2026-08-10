@@ -89,8 +89,8 @@ const resolveChoiceDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGa
   }
 
   // The choice is independent of the condition: the condition only swaps the simple
-  // (default) dialog text, which is shown BEFORE the choice. So the choice shows
-  // whenever it is enabled with a prompt.
+  // dialog text, which is shown before the choice. So the choice shows whenever it
+  // is enabled with a prompt.
   const promptText = npc.choicePrompt ?? '';
   if (getTrimmedDialogText(promptText).length === 0) {
     return null;
@@ -119,8 +119,8 @@ const resolveChoiceDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGa
 /**
  * Resolves the NPC's SIMPLE dialog (default text, or the conditional text when the
  * condition is active). The choice dialog is resolved separately via
- * resolveChoiceDialog and shown AFTER this one (default dialog first, then the
- * Yes/No question), so this function never returns a choice.
+ * resolveChoiceDialog and shown after the simple-dialog sequence, so this function
+ * never returns a choice.
  */
 const resolveNpcDialog = (npc: NpcDialogState, gameState: NpcDialogResolverGameState): ResolvedNpcDialog => {
   const conditionActive = isNpcDialogConditionActive(npc, gameState);
