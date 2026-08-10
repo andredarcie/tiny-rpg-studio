@@ -4836,8 +4836,8 @@ body.game-mode .tab-button.active {
     color: #000;
 }
 
-/* The pixel-art footer places its own buttons (a left-aligned "copy code" plus
-   a right-aligned pair), so it opts out of the shell's equal-width split. */
+/* The pixel-art footer places its own buttons (a left-aligned copy/paste pair
+   plus a right-aligned pair), so it opts out of the shell's equal-width split. */
 .tiny-modal__footer.pae-actions {
     gap: 4px;
     justify-content: flex-end;
@@ -4869,8 +4869,8 @@ body.game-mode .tab-button.active {
     font-weight: var(--fw-bold);
 }
 
-.pae-copy-code-btn {
-    margin-right: auto;
+.pae-copy-code-btn,
+.pae-paste-code-btn {
     background: transparent;
     color: var(--text-muted, #90a4ae);
     border: 1px solid var(--border);
@@ -4880,9 +4880,24 @@ body.game-mode .tab-button.active {
     transition: color 0.15s, border-color 0.15s;
 }
 
-.pae-copy-code-btn:hover {
+.pae-paste-code-btn {
+    margin-right: auto;
+}
+
+.pae-copy-code-btn:hover,
+.pae-paste-code-btn:hover:not(:disabled) {
     color: var(--text);
     border-color: var(--text-muted, #90a4ae);
+}
+
+body.editor-mode .pae-paste-code-btn:disabled,
+body.editor-mode .pae-paste-code-btn:disabled:hover {
+    background: transparent;
+    color: var(--text-muted, #90a4ae);
+    border-color: var(--border);
+    cursor: not-allowed;
+    opacity: 0.4;
+    box-shadow: none;
 }
 
 /* ─── Project Save Toast Notifications ─────────────────────────────────── */

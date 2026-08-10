@@ -98,6 +98,7 @@ class EditorDomCache {
     paeSave: HTMLButtonElement | null = null;
     paeReset: HTMLButtonElement | null = null;
     paeCopyCode: HTMLButtonElement | null = null;
+    paePasteCode: HTMLButtonElement | null = null;
     paeToolPaint: HTMLButtonElement | null = null;
     paeToolErase: HTMLButtonElement | null = null;
     paeTileEffectRow: HTMLElement | null = null;
@@ -217,6 +218,7 @@ class EditorDomCache {
             this.paeSave = null;
             this.paeReset = null;
             this.paeCopyCode = null;
+            this.paePasteCode = null;
             this.paeToolPaint = null;
             this.paeToolErase = null;
             this.paeTileEffectRow = null;
@@ -325,6 +327,7 @@ class EditorDomCache {
         this.paeSave = root.querySelector('#pae-save') as HTMLButtonElement | null;
         this.paeReset = root.querySelector('#pae-reset') as HTMLButtonElement | null;
         this.paeCopyCode = root.querySelector('#pae-copy-code') as HTMLButtonElement | null;
+        this.paePasteCode = root.querySelector('#pae-paste-code') as HTMLButtonElement | null;
         this.paeToolPaint = root.querySelector('#pae-tool-paint') as HTMLButtonElement | null;
         this.paeToolErase = root.querySelector('#pae-tool-erase') as HTMLButtonElement | null;
         this.paeTileEffectRow = root.querySelector('#pae-tile-effect-row') as HTMLElement | null;

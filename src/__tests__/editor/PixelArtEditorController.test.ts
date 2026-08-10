@@ -85,6 +85,9 @@ const makeDom = () => {
     const modalHost = document.createElement('div');
     modalHost.hidden = true;
     document.body.appendChild(modalHost);
+    const copyButton = document.createElement('button');
+    const pasteButton = document.createElement('button');
+    pasteButton.disabled = true;
     const dom = {
         pixelArtEditorModal: modalHost,
         paeCanvas: canvas,
@@ -94,6 +97,8 @@ const makeDom = () => {
         paeFrameBar: document.createElement('div'),
         paeSave: { addEventListener: vi.fn() },
         paeReset: { addEventListener: vi.fn() },
+        paeCopyCode: copyButton,
+        paePasteCode: pasteButton,
         paeToolPaint: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
         paeToolErase: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
     } as unknown as PixelArtEditorDom;
@@ -104,6 +109,10 @@ describe('PixelArtEditorController', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         TextResources.setLocale('en-US', { silent: true });
+        Object.defineProperty(navigator, 'clipboard', {
+            configurable: true,
+            value: { writeText: vi.fn().mockResolvedValue(undefined) },
+        });
     });
 
     describe('open - loads sprites', () => {
@@ -258,6 +267,53 @@ describe('PixelArtEditorController', () => {
 
             expect(invalidate).not.toHaveBeenCalled();
             expect(renderAll).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('tile copy and paste', () => {
+        it('keeps Paste disabled until tile art is copied, then enables it for tiles', () => {
+            const { manager } = makeManager();
+            const { dom } = makeDom();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, dom);
+
+            controller.open('npc', 'wizard');
+            controller.copyCode();
+            expect(dom.paePasteCode?.disabled).toBe(true);
+
+            controller.open('tile', '1');
+            expect(dom.paePasteCode?.disabled).toBe(true);
+
+            controller.copyCode();
+            expect(dom.paePasteCode?.disabled).toBe(false);
+
+            controller.open('npc', 'wizard');
+            expect(dom.paePasteCode?.disabled).toBe(true);
+
+            controller.open('tile', '2');
+            expect(dom.paePasteCode?.disabled).toBe(false);
+        });
+
+        it('immediately replaces the selected tile frame with a clone of the copied art', () => {
+            const { manager } = makeManager();
+            const { dom, context2d } = makeDom();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, dom);
+            controller.open('tile', '1');
+            controller.copyCode();
+            controller.open('tile', '2');
+            const rendersBeforePaste = context2d.clearRect.mock.calls.length;
+
+            controller.pasteCode();
+
+            expect(controller.getCurrentFrames()[0]).toEqual(
+                Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 3))
+            );
+            expect(context2d.clearRect.mock.calls.length).toBeGreaterThan(rendersBeforePaste);
+
+            controller.getCurrentFrames()[0][0][0] = 9;
+            controller.pasteCode();
+            expect(controller.getCurrentFrames()[0][0][0]).toBe(3);
         });
     });
 });

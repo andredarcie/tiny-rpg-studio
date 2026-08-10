@@ -44,6 +44,7 @@ type DomDeps = {
     paeSave: HTMLButtonElement | null;
     paeReset: HTMLButtonElement | null;
     paeCopyCode: HTMLButtonElement | null;
+    paePasteCode: HTMLButtonElement | null;
     paeToolPaint: HTMLButtonElement | null;
     paeToolErase: HTMLButtonElement | null;
     paeTileEffectRow?: HTMLElement | null;
@@ -65,6 +66,7 @@ export class PixelArtEditorController {
     private eventsReady = false;
     private languageEventsReady = false;
     private tileEffectDraft: TileVisualEffectKind = 'none';
+    private copiedTileFrame: CustomSpriteFrame | null = null;
 
     init(manager: ManagerDeps, dom: DomDeps): void {
         this.manager = manager;
@@ -102,6 +104,7 @@ export class PixelArtEditorController {
         this.syncTileEffectSelect();
         this.renderCanvas();
         this.syncToolButtons();
+        this.syncPasteButton();
         return true;
     }
 
@@ -187,6 +190,11 @@ export class PixelArtEditorController {
         const frame = this.frames.at(this.activeFrameIndex);
         if (!frame) return;
 
+        if (this.group === 'tile') {
+            this.copiedTileFrame = this.cloneFrame(frame);
+            this.syncPasteButton();
+        }
+
         const spriteKey = this.variant === 'on' ? `${this.key}--on` : this.key;
 
         const formatCell = (v: number | null): string =>
@@ -221,6 +229,12 @@ export class PixelArtEditorController {
                 setTimeout(() => { btn.textContent = originalText; }, 1500);
             }
         });
+    }
+
+    pasteCode(): void {
+        if (this.group !== 'tile' || !this.copiedTileFrame) return;
+        this.frames[this.activeFrameIndex] = this.cloneFrame(this.copiedTileFrame);
+        this.renderCanvas();
     }
 
     // ── Rendering ──────────────────────────────────────────────
@@ -340,6 +354,12 @@ export class PixelArtEditorController {
         this.dom?.paeToolErase?.classList.toggle('active', this.tool === 'erase');
     }
 
+    private syncPasteButton(): void {
+        if (this.dom?.paePasteCode) {
+            this.dom.paePasteCode.disabled = this.group !== 'tile' || !this.copiedTileFrame;
+        }
+    }
+
     /** Show liquid-effect select only when editing a tile. */
     private syncTileEffectSelect(): void {
         const row = this.dom?.paeTileEffectRow;
@@ -447,6 +467,7 @@ export class PixelArtEditorController {
         this.dom?.paeSave?.addEventListener('click', () => this.save());
         this.dom?.paeReset?.addEventListener('click', () => this.resetToDefault());
         this.dom?.paeCopyCode?.addEventListener('click', () => this.copyCode());
+        this.dom?.paePasteCode?.addEventListener('click', () => this.pasteCode());
 
         this.dom?.paeToolPaint?.addEventListener('click', () => {
             this.tool = 'paint';
@@ -648,7 +669,11 @@ export class PixelArtEditorController {
     }
 
     private cloneFrames(frames: CustomSpriteFrame[]): CustomSpriteFrame[] {
-        return frames.map((frame) => frame.map((row) => row.slice()));
+        return frames.map((frame) => this.cloneFrame(frame));
+    }
+
+    private cloneFrame(frame: CustomSpriteFrame): CustomSpriteFrame {
+        return frame.map((row) => row.slice());
     }
 
     private invalidateAndRefresh(): void {
