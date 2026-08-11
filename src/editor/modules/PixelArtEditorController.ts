@@ -24,6 +24,8 @@ type ManagerDeps = {
             refreshAnimationMetadata(): void;
             getTileVisualEffect?(id: number | string): TileVisualEffectKind;
             setTileVisualEffect?(id: number | string, effect: TileVisualEffectKind): void;
+            getTileMergeEdges?(id: number | string): boolean;
+            setTileMergeEdges?(id: number | string, enabled: boolean): void;
         };
     };
     renderAll(): void;
@@ -49,6 +51,7 @@ type DomDeps = {
     paeToolErase: HTMLButtonElement | null;
     paeTileEffectRow?: HTMLElement | null;
     paeTileEffect?: HTMLSelectElement | null;
+    paeTileMergeEdges?: HTMLInputElement | null;
 };
 
 export class PixelArtEditorController {
@@ -66,6 +69,7 @@ export class PixelArtEditorController {
     private eventsReady = false;
     private languageEventsReady = false;
     private tileEffectDraft: TileVisualEffectKind = 'none';
+    private tileMergeEdgesDraft = false;
     private copiedTileFrame: CustomSpriteFrame | null = null;
 
     init(manager: ManagerDeps, dom: DomDeps): void {
@@ -85,6 +89,7 @@ export class PixelArtEditorController {
         this.tool = 'paint';
         this.selectedColor = 0;
         this.tileEffectDraft = 'none';
+        this.tileMergeEdgesDraft = false;
 
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
 
@@ -135,9 +140,10 @@ export class PixelArtEditorController {
         track('pixel_sprite_saved', { group: this.group });
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
 
-        // Commit the tile's draft visual effect together with the sprite.
+        // Commit tile metadata together with the sprite.
         if (this.group === 'tile') {
             this.persistTileVisualEffect();
+            this.persistTileMergeEdges();
         }
 
         const objectDef = this.group === 'object' ? this.findObjectDef(this.key) : undefined;
@@ -175,6 +181,10 @@ export class PixelArtEditorController {
             const select = this.dom?.paeTileEffect;
             if (select) select.value = presetEffect;
             this.tileEffectDraft = presetEffect;
+            this.tileMergeEdgesDraft = this.getPresetTileMergeEdges(this.key);
+            if (this.dom?.paeTileMergeEdges) {
+                this.dom.paeTileMergeEdges.checked = this.tileMergeEdgesDraft;
+            }
         }
         this.renderFrameBar();
         if (this.group === 'tile' && this.dom?.paeTileEffect) {
@@ -379,6 +389,11 @@ export class PixelArtEditorController {
             this.readTileVisualEffectFromGame(tileId);
         this.tileEffectDraft = effect;
         select.value = effect;
+        const mergeEdges =
+            this.manager?.gameEngine.tileManager.getTileMergeEdges?.(tileId) ??
+            this.readTileMergeEdgesFromGame(tileId);
+        this.tileMergeEdgesDraft = mergeEdges;
+        if (this.dom?.paeTileMergeEdges) this.dom.paeTileMergeEdges.checked = mergeEdges;
     }
 
     private rebuildTileEffectOptions(): void {
@@ -422,6 +437,27 @@ export class PixelArtEditorController {
         if (tile) tile.visualEffect = effect;
     }
 
+    private persistTileMergeEdges(): void {
+        if (!this.manager || this.group !== 'tile') return;
+        const tileId = this.resolveTileId(this.key);
+        if (this.manager.gameEngine.tileManager.setTileMergeEdges) {
+            this.manager.gameEngine.tileManager.setTileMergeEdges(tileId, this.tileMergeEdgesDraft);
+            return;
+        }
+        const game = this.manager.gameEngine.getGame() as {
+            tileset?: { tiles?: Array<{ id?: number | string; mergeEdges?: boolean }> };
+        };
+        const tile = game.tileset?.tiles?.find((entry) => String(entry.id) === String(tileId));
+        if (tile) tile.mergeEdges = this.tileMergeEdgesDraft;
+    }
+
+    private readTileMergeEdgesFromGame(tileId: number | string): boolean {
+        const game = this.manager?.gameEngine.getGame() as {
+            tileset?: { tiles?: Array<{ id?: number | string; mergeEdges?: boolean }> };
+        } | undefined;
+        return game?.tileset?.tiles?.find((entry) => String(entry.id) === String(tileId))?.mergeEdges === true;
+    }
+
     private resolveTileId(key: string): number | string {
         const asNum = Number(key);
         return Number.isFinite(asNum) ? asNum : key;
@@ -455,6 +491,11 @@ export class PixelArtEditorController {
         return 'none';
     }
 
+    private getPresetTileMergeEdges(key: string): boolean {
+        const tileId = this.resolveTileId(key);
+        return TileDefinitions.TILE_PRESETS.find((tile) => String(tile.id) === String(tileId))?.mergeEdges === true;
+    }
+
     // ── Events (bound once in init) ─────────────────────────────
 
     private bindStaticEvents(): void {
@@ -481,6 +522,11 @@ export class PixelArtEditorController {
         this.dom?.paeTileEffect?.addEventListener('change', () => {
             if (this.group !== 'tile') return;
             this.tileEffectDraft = (this.dom?.paeTileEffect?.value ?? 'none') as TileVisualEffectKind;
+        });
+        this.dom?.paeTileMergeEdges?.addEventListener('change', () => {
+            if (this.group === 'tile') {
+                this.tileMergeEdgesDraft = this.dom?.paeTileMergeEdges?.checked === true;
+            }
         });
 
         this.dom?.paePalette?.addEventListener('click', (e) => {

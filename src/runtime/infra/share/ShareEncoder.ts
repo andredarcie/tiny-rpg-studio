@@ -48,7 +48,7 @@ type ShareGameData = {
     variables?: unknown[];
     rooms?: unknown[];
     tileset?: {
-        tiles?: Array<{ id?: string | number; visualEffect?: string }>;
+        tiles?: Array<{ id?: string | number; visualEffect?: string; mergeEdges?: boolean }>;
         maps?: unknown;
         map?: unknown;
     } | unknown;
@@ -99,6 +99,15 @@ class ShareEncoder {
             }
         }
         return map;
+    }
+
+    static collectTileMergeEdges(
+        tiles: Array<{ id?: string | number; mergeEdges?: boolean }> | undefined
+    ): string[] {
+        if (!Array.isArray(tiles)) return [];
+        return Array.from(new Set(tiles
+            .filter((tile) => tile.id !== undefined && tile.mergeEdges === true)
+            .map((tile) => String(tile.id))));
     }
 
     private static resolveBaseFrame(entry: CustomSpriteEntryLike): (number | null)[][] | null {
@@ -648,25 +657,26 @@ class ShareEncoder {
             }
         }
 
-        // Per-tile liquid visual effects (VERSION_36+), payload key '0':
-        // ShareTextCodec JSON map of tileId → "water" | "lava" | "none".
+        // Tile metadata envelope, payload key '0': effects/definitions plus
+        // VERSION_41 `m`, the IDs whose borders merge with opted-in neighbors.
         {
             const tiles =
                 gameData?.tileset &&
                 typeof gameData.tileset === 'object' &&
                 Array.isArray((gameData.tileset as { tiles?: unknown }).tiles)
-                    ? (gameData.tileset as { tiles: Array<{ id?: string | number; visualEffect?: string }> }).tiles
+                    ? (gameData.tileset as { tiles: Array<{ id?: string | number; visualEffect?: string; mergeEdges?: boolean }> }).tiles
                     : undefined;
             const definitions = normalizeCustomTileEffects(gameData?.customTileEffects);
             const effectMap = ShareEncoder.collectTileVisualEffects(tiles, definitions);
-            if (Object.keys(effectMap).length > 0 || definitions.length > 0) {
+            const mergeEdges = ShareEncoder.collectTileMergeEdges(tiles);
+            if (Object.keys(effectMap).length > 0 || definitions.length > 0 || mergeEdges.length > 0) {
                 const compactDefinitions = definitions.map((definition) => [
                     definition.id.slice('custom:'.length),
                     definition.name,
                     definition.baseEffectIds.map((id) => BASE_TILE_EFFECT_IDS.indexOf(id)),
                     ...(definition.color ? [definition.color.slice(1)] : []),
                 ]);
-                const envelope = { a: effectMap, d: compactDefinitions };
+                const envelope = { a: effectMap, d: compactDefinitions, ...(mergeEdges.length ? { m: mergeEdges } : {}) };
                 parts.push('0' + ShareTextCodec.encodeText(JSON.stringify(envelope)));
             }
         }

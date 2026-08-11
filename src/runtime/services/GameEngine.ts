@@ -445,11 +445,16 @@ export class GameEngine {
     this.tileManager.ensureDefaultTiles();
     const game = this.gameState.getGame() as ReturnType<GameEngine['gameState']['getGame']> & {
       tileVisualEffects?: Record<string, TileVisualEffectKind>;
+      tileMergeEdges?: string[];
     };
     // VERSION_36: apply share-encoded liquid effects after presets exist.
     if (game.tileVisualEffects) {
       this.tileManager.applyTileVisualEffects(game.tileVisualEffects);
       delete game.tileVisualEffects;
+    }
+    if (game.tileMergeEdges) {
+      this.tileManager.applyTileMergeEdges(game.tileMergeEdges);
+      delete game.tileMergeEdges;
     }
     if (Array.isArray(game.customPalette) && game.customPalette.length === 16) {
       this.setCustomPalette(game.customPalette);

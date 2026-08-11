@@ -1,4 +1,6 @@
-import type { TileId } from '../../domain/definitions/tileTypes';
+import type { TileDefinition, TileId } from '../../domain/definitions/tileTypes';
+import { GameConfig } from '../../../config/GameConfig';
+import { applyTileEdgeMerging } from './TileEdgeMerger';
 
 type RoomState = {
     bg: number;
@@ -18,6 +20,8 @@ type TileMapState = {
 
 type TileManagerApi = {
     getTileMap: (roomIndex: number) => TileMapState | null;
+    getTile: (tileId: TileId) => TileDefinition | null;
+    getTilePixels: (tile: TileDefinition) => (string | null)[][] | null;
 };
 
 type PaletteManagerApi = {
@@ -81,6 +85,15 @@ class RendererTileRenderer {
                 }
             }
         }
+
+        applyTileEdgeMerging({
+            ctx,
+            tileMap: { ground: groundMap, overlay: overlayMap },
+            getTile: (tileId) => this.tileManager.getTile(tileId),
+            getTilePixels: (tile) => this.tileManager.getTilePixels(tile),
+            tileSize,
+            roomSize: GameConfig.world.roomSize,
+        });
     }
 
     drawWalls(ctx: CanvasRenderingContext2D) {

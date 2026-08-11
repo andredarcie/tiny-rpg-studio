@@ -202,6 +202,22 @@ class TileManager {
     return 'none';
   }
 
+  applyTileMergeEdges(enabledIds: readonly string[] | null | undefined): void {
+    const enabled = new Set(Array.isArray(enabledIds) ? enabledIds.map(String) : []);
+    for (const tile of this.gameState.game.tileset.tiles) {
+      tile.mergeEdges = tile.id !== undefined && enabled.has(String(tile.id));
+    }
+  }
+
+  setTileMergeEdges(tileId: TileId, enabled: boolean): void {
+    const tile = this.gameState.game.tileset.tiles.find((entry) => entry.id === tileId);
+    if (tile) tile.mergeEdges = enabled === true;
+  }
+
+  getTileMergeEdges(tileId: TileId): boolean {
+    return this.getTile(tileId)?.mergeEdges === true;
+  }
+
   updateTile(tileId: TileId, data: Partial<TileDefinition>): void {
     // Mutate the tileset entry directly (getTile may return a spread copy with custom frames).
     const stored = this.gameState.game.tileset.tiles.find((t) => t.id === tileId);

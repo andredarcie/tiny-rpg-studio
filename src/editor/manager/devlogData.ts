@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-08-11-tile-edge-merging',
+    date: '2026-08-11',
+    title: 'Blend neighboring tiles',
+    description:
+      'Tiles can now softly blend their borders with adjacent tiles. Enable “Merge with adjacent tiles” for both tiles in the pixel art editor; the setting travels with project files, share links, and HTML exports.',
+  },
+  {
     id: '2026-08-09-disappearing-npcs',
     date: '2026-08-09',
     title: 'NPCs can leave after talking',

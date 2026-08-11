@@ -15,6 +15,8 @@ export type TileDefinition = {
   layouts?: (number | null)[][][];
   /** Explicit built-in or project-defined visual effect. */
   visualEffect?: TileVisualEffectKind;
+  /** Blend cardinal borders with adjacent tile stacks that also opt in. */
+  mergeEdges?: boolean;
 };
 
 export type TileMapLayer = (TileId | null)[][];

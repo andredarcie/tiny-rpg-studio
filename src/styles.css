@@ -4880,6 +4880,14 @@ body.game-mode .tab-button.active {
     transition: color 0.15s, border-color 0.15s;
 }
 
+.pae-tile-merge-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+    cursor: pointer;
+}
+
 .npc-dialog-heading {
     display: flex;
     align-items: center;

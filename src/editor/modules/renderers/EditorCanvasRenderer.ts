@@ -1,6 +1,8 @@
 
 import { EditorRendererBase } from './EditorRendererBase';
 import { ITEM_TYPES } from '../../../runtime/domain/constants/itemTypes';
+import { GameConfig } from '../../../config/GameConfig';
+import { applyTileEdgeMerging } from '../../../runtime/adapters/renderer/TileEdgeMerger';
 
 type CanvasObject = {
     type: string;
@@ -60,6 +62,15 @@ class EditorCanvasRenderer extends EditorRendererBase {
                 }
             }
         }
+
+        applyTileEdgeMerging({
+            ctx,
+            tileMap: { ground, overlay },
+            getTile: (tileId) => this.manager.gameEngine.tileManager.getTile(tileId),
+            getTilePixels: (tile) => this.manager.gameEngine.tileManager.getTilePixels(tile),
+            tileSize,
+            roomSize: GameConfig.world.roomSize,
+        });
 
         ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         for (let x = 0; x <= 8; x++) {

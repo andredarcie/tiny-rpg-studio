@@ -659,14 +659,18 @@ class ShareDecoder {
         const skillCustomizations = payload.C ? this.decodeSkillCustomizations(payload.C) : undefined;
 
         const decodedEffects = version >= ShareConstants.CUSTOM_TILE_EFFECT_VERSION && payload['0']
-            ? this.decodeCustomTileEffectsEnvelope(payload['0'])
+            ? this.decodeCustomTileEffectsEnvelope(
+                payload['0'],
+                version >= ShareConstants.TILE_MERGE_EDGES_VERSION
+            )
             : {
                 tileVisualEffects: version >= ShareConstants.TILE_VISUAL_EFFECT_VERSION && payload['0']
                     ? this.decodeTileVisualEffects(payload['0'])
                     : undefined,
                 customTileEffects: undefined,
+                tileMergeEdges: undefined,
             };
-        const { tileVisualEffects, customTileEffects } = decodedEffects;
+        const { tileVisualEffects, customTileEffects, tileMergeEdges } = decodedEffects;
 
         const result: Record<string, unknown> = {
             title,
@@ -700,6 +704,9 @@ class ShareDecoder {
         }
         if (customTileEffects && customTileEffects.length > 0) {
             result.customTileEffects = customTileEffects;
+        }
+        if (tileMergeEdges && tileMergeEdges.length > 0) {
+            result.tileMergeEdges = tileMergeEdges;
         }
 
         if (customPalette) {
@@ -763,9 +770,10 @@ class ShareDecoder {
         }
     }
 
-    private static decodeCustomTileEffectsEnvelope(encoded: string): {
+    private static decodeCustomTileEffectsEnvelope(encoded: string, includeMergeEdges = false): {
         tileVisualEffects?: Record<string, TileVisualEffectKind>;
         customTileEffects?: CustomTileEffectDefinition[];
+        tileMergeEdges?: string[];
     } {
         try {
             const json = ShareTextCodec.decodeText(encoded, '');
@@ -809,9 +817,13 @@ class ShareDecoder {
                     }
                 }
             }
+            const tileMergeEdges = includeMergeEdges && Array.isArray(envelope.m)
+                ? Array.from(new Set(envelope.m.filter((id): id is string => typeof id === 'string')))
+                : [];
             return {
                 customTileEffects: customTileEffects.length ? customTileEffects : undefined,
                 tileVisualEffects: Object.keys(tileVisualEffects).length ? tileVisualEffects : undefined,
+                tileMergeEdges: tileMergeEdges.length ? tileMergeEdges : undefined,
             };
         } catch {
             return {};

@@ -12,6 +12,7 @@ type TileDefinitionData = {
     layouts?: (number | null)[][][]; // Store original numeric layouts for palette regeneration
     /** Explicit liquid visual effect; when unset, renderer falls back to name/category heuristics. */
     visualEffect?: TileVisualEffectKind;
+    mergeEdges?: boolean;
 };
 
 class Tile {
@@ -25,6 +26,7 @@ class Tile {
     category: string;
     layouts?: (number | null)[][][]; // Store original numeric layouts for palette regeneration
     visualEffect?: TileVisualEffectKind;
+    mergeEdges?: boolean;
 
     constructor(data: TileDefinitionData) {
         this.id = data.id;
@@ -37,6 +39,7 @@ class Tile {
         this.category = data.category;
         this.layouts = data.layouts;
         this.visualEffect = data.visualEffect;
+        this.mergeEdges = data.mergeEdges === true;
     }
 }
 

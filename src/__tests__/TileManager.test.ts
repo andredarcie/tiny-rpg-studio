@@ -69,6 +69,20 @@ describe('TileManager business rules', () => {
     expect(manager.getTileVisualEffect(1)).toBe('custom:0');
   });
 
+  it('stores and applies mergeEdges as literal booleans', () => {
+    const gameState = createGameState();
+    gameState.game.tileset.tiles = [{ id: 1 }, { id: 2, mergeEdges: true }];
+    const manager = new TileManager(gameState);
+
+    expect(manager.getTileMergeEdges(1)).toBe(false);
+    expect(manager.getTileMergeEdges(2)).toBe(true);
+    manager.setTileMergeEdges(1, true);
+    expect(manager.getTileMergeEdges(1)).toBe(true);
+
+    manager.applyTileMergeEdges(['2']);
+    expect(gameState.game.tileset.tiles.map((tile) => tile.mergeEdges)).toEqual([false, true]);
+  });
+
   it('initializes default tiles and maps when empty', () => {
     const gameState = createGameState();
     const manager = new TileManager(gameState);

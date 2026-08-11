@@ -108,6 +108,34 @@ describe('StateDataManager', () => {
     expect(objectManager.normalizeObjects).not.toHaveBeenCalled();
   });
 
+  it('preserves only literal true for imported tile mergeEdges', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {
+        normalizeRooms: vi.fn(() => []),
+        normalizeTileMaps: vi.fn(() => [{ ground: [[1]], overlay: [[null]] }]),
+        clampCoordinate: vi.fn((value: number) => value),
+        clampRoomIndex: vi.fn((value: number) => value),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: { normalizeObjects: vi.fn(() => []), setGame: vi.fn() } as unknown as StateObjectManager,
+      variableManager: { normalizeVariables: vi.fn(() => []), setGame: vi.fn() } as unknown as StateVariableManager,
+    });
+
+    manager.importGameData({
+      tileset: {
+        tiles: [
+          { id: 1, mergeEdges: true },
+          { id: 2, mergeEdges: false },
+          { id: 3, mergeEdges: 'true' },
+        ],
+      },
+    } as never);
+
+    expect(game.tileset.tiles.map((tile) => tile.mergeEdges)).toEqual([true, false, false]);
+  });
+
   it('omits runtime NPC disappearance from exported data', () => {
     const game = makeGame();
     game.sprites = [{

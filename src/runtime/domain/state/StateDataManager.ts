@@ -66,6 +66,8 @@ type ImportData = {
     customTileEffects?: CustomTileEffectDefinition[];
     /** VERSION_36 share map: tileId → water|lava (applied after default tiles load). */
     tileVisualEffects?: Record<string, TileVisualEffectKind>;
+    /** VERSION_41 share IDs applied after default tiles load. */
+    tileMergeEdges?: string[];
 };
 
 class StateDataManager {
@@ -166,6 +168,7 @@ class StateDataManager {
             if (Object.prototype.hasOwnProperty.call(clone, 'visualEffect')) {
                 clone.visualEffect = normalizeTileVisualEffect(clone.visualEffect, customTileEffects);
             }
+            clone.mergeEdges = clone.mergeEdges === true;
             return clone;
         });
         const normalizedRooms = this.worldManager.normalizeRooms(data.rooms, totalRooms, worldCols);
@@ -246,6 +249,13 @@ class StateDataManager {
                 data.tileVisualEffects;
         } else {
             delete (this.game as GameDefinition & { tileVisualEffects?: unknown }).tileVisualEffects;
+        }
+
+        if (Array.isArray(data.tileMergeEdges)) {
+            (this.game as GameDefinition & { tileMergeEdges?: string[] }).tileMergeEdges =
+                data.tileMergeEdges.filter((id): id is string => typeof id === 'string');
+        } else {
+            delete (this.game as GameDefinition & { tileMergeEdges?: unknown }).tileMergeEdges;
         }
 
         const start = {

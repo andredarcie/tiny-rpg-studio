@@ -14,6 +14,7 @@ const makeManager = (customSprites: CustomSpriteEntry[] = []) => {
             tiles: [
                 {
                     id: 1,
+                    mergeEdges: true,
                     layouts: [Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 3))]
                 },
                 {
@@ -88,6 +89,10 @@ const makeDom = () => {
     const copyButton = document.createElement('button');
     const pasteButton = document.createElement('button');
     pasteButton.disabled = true;
+    const tileEffectRow = document.createElement('div');
+    const tileEffect = document.createElement('select');
+    const tileMergeEdges = document.createElement('input');
+    tileMergeEdges.type = 'checkbox';
     const dom = {
         pixelArtEditorModal: modalHost,
         paeCanvas: canvas,
@@ -101,6 +106,9 @@ const makeDom = () => {
         paePasteCode: pasteButton,
         paeToolPaint: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
         paeToolErase: { addEventListener: vi.fn(), classList: { toggle: vi.fn() } },
+        paeTileEffectRow: tileEffectRow,
+        paeTileEffect: tileEffect,
+        paeTileMergeEdges: tileMergeEdges,
     } as unknown as PixelArtEditorDom;
     return { dom, context2d };
 };
@@ -236,6 +244,26 @@ describe('PixelArtEditorController', () => {
             expect(renderAll).toHaveBeenCalled();
             expect(pushCurrentState).toHaveBeenCalled();
         });
+
+        it('loads and saves mergeEdges per tile without leaking draft state', () => {
+            const { manager, game } = makeManager();
+            const { dom } = makeDom();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, dom);
+
+            controller.open('tile', '1');
+            expect(dom.paeTileMergeEdges?.checked).toBe(true);
+            controller.open('tile', '2');
+            expect(dom.paeTileMergeEdges?.checked).toBe(false);
+
+            if (!dom.paeTileMergeEdges) throw new Error('Expected merge checkbox');
+            dom.paeTileMergeEdges.checked = true;
+            dom.paeTileMergeEdges.dispatchEvent(new Event('change'));
+            controller.save();
+
+            expect(game.tileset.tiles[0].mergeEdges).toBe(true);
+            expect(game.tileset.tiles[1].mergeEdges).toBe(true);
+        });
     });
 
     describe('resetToDefault', () => {
@@ -267,6 +295,19 @@ describe('PixelArtEditorController', () => {
 
             expect(invalidate).not.toHaveBeenCalled();
             expect(renderAll).not.toHaveBeenCalled();
+        });
+
+        it('resets mergeEdges to the preset default without saving immediately', () => {
+            const { manager, game } = makeManager();
+            const { dom } = makeDom();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, dom);
+            controller.open('tile', '1');
+
+            controller.resetToDefault();
+
+            expect(dom.paeTileMergeEdges?.checked).toBe(false);
+            expect(game.tileset.tiles[0].mergeEdges).toBe(true);
         });
     });
 
