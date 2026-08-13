@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-08-13-animated-dialogue-text',
+    date: '2026-08-13',
+    title: 'Animate dialogue text',
+    description:
+      'Dialogue can now {wvy}wave{wvy}, {shk}shake{shk}, cycle through {rbw}rainbow{rbw} colors, and use any project palette [CLR8]color[CLR8] with simple inline tags. Effects work together in editor previews and exported games.',
+  },
+  {
     id: '2026-08-11-tile-edge-merging',
     date: '2026-08-11',
     title: 'Blend neighboring tiles',

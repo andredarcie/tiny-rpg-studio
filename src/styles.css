@@ -4899,6 +4899,70 @@ body.game-mode .tab-button.active {
     margin-top: 0;
 }
 
+.npc-dialog-hints {
+    align-self: flex-end;
+}
+
+.npc-dialog-hints__button {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted, #90a4ae);
+    font-weight: var(--fw-bold);
+    line-height: 20px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.npc-dialog-hints__button:hover,
+.npc-dialog-hints__button[aria-expanded="true"] {
+    color: var(--text);
+    border-color: var(--text-muted, #90a4ae);
+}
+
+.npc-dialog-hints__bubble {
+    position: fixed;
+    z-index: 1100;
+    width: min(280px, calc(100vw - 48px));
+    box-sizing: border-box;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    background: #0f172a;
+    color: var(--text);
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+    text-align: left;
+}
+
+.npc-dialog-hints__bubble::before {
+    content: '';
+    position: absolute;
+    top: -5px;
+    right: 7px;
+    width: 8px;
+    height: 8px;
+    border-top: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    background: #0f172a;
+    transform: rotate(45deg);
+}
+
+.npc-dialog-hints__bubble[data-placement="above"]::before {
+    top: auto;
+    bottom: -5px;
+    transform: rotate(225deg);
+}
+
+.npc-dialog-hints__bubble ul {
+    margin: 0;
+    padding-left: 16px;
+}
+
+.npc-dialog-hints__bubble li + li {
+    margin-top: 5px;
+}
+
 .pae-paste-code-btn {
     margin-right: auto;
 }

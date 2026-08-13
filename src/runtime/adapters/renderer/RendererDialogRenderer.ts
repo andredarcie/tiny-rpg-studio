@@ -2,6 +2,8 @@ import { FONT_NAME, FONT_SIZE } from '../../../config/FontConfig';
 import { GameConfig } from '../../../config/GameConfig';
 import { soundEngine } from '../../services/SoundEngine';
 import type { DialogChoiceState } from '../../../types/gameState';
+import { RendererAnimatedText, createPlainCharacter } from './RendererAnimatedText';
+import type { AnimatedCharacter } from './RendererAnimatedText';
 
 type DialogState = {
     active: boolean;
@@ -64,8 +66,9 @@ class RendererDialogRenderer {
     private lineHeightPx = 0;
 
     /** Cached pagination — recomputed only when the text/layout key changes. */
-    private pages: string[] = [''];
+    private pages: AnimatedCharacter[][] = [[]];
     private pagesKey = '';
+    private animatedText = new RendererAnimatedText();
 
     private overlay: HTMLElement | null = null;
     private containerEl: HTMLElement | null = null;
@@ -85,7 +88,6 @@ class RendererDialogRenderer {
     private soundedChars = 0;
     private skip = false;
     private rafHandle = 0;
-    private lastRenderedText = '';
 
     constructor(
         gameState: DialogGameState,
@@ -243,10 +245,11 @@ class RendererDialogRenderer {
     private fill(dialog: DialogState): void {
         const fullText = dialog.text ?? '';
         const typewriter = this.requestRedraw !== null;
+        const timestamp = this.now();
 
         const pagesKey = `${fullText}|${this.textEl?.clientWidth ?? 0}|${Math.round(this.fontPx * 100)}`;
         if (pagesKey !== this.pagesKey) {
-            this.pages = this.computePages(fullText);
+            this.pages = this.computePages(this.animatedText.parse(fullText));
             this.pagesKey = pagesKey;
             this.applyPageHeight();
         }
@@ -258,46 +261,43 @@ class RendererDialogRenderer {
         if (dialog.page !== pageIndex + 1) {
             dialog.page = pageIndex + 1;
         }
-        const pageText = this.pages[pageIndex] ?? '';
+        const pageCharacters = this.pages[pageIndex] ?? [];
+        const pageText = this.animatedText.toText(pageCharacters);
         const isLastPage = pageIndex === totalPages - 1;
 
         // Typewriter reveal of the current page (restarts whenever the page changes).
         const key = `${pageIndex}:${pageText}`;
         if (key !== this.revealKey) {
             this.revealKey = key;
-            this.revealStart = this.now();
+            this.revealStart = timestamp;
             this.skip = false;
             this.soundedChars = 0;
             // Clear immediately so a reopened dialog never flashes the previous text
             // for a frame before the typewriter starts.
-            if (this.textEl) {
-                this.textEl.textContent = '';
-            }
-            this.lastRenderedText = '';
+            if (this.textEl) this.animatedText.clear(this.textEl);
         }
-        this.totalChars = pageText.length;
-        let revealed = pageText.length;
+        this.totalChars = pageCharacters.length;
+        let revealed = pageCharacters.length;
         if (typewriter && !this.skip) {
-            revealed = Math.min(pageText.length, Math.floor((this.now() - this.revealStart) / TYPEWRITER_CHAR_MS));
+            revealed = Math.min(pageCharacters.length, Math.floor((timestamp - this.revealStart) / TYPEWRITER_CHAR_MS));
         }
         this.revealedCount = revealed;
 
         if (typewriter && revealed > this.soundedChars) {
-            if (/\S/.test(pageText.slice(this.soundedChars, revealed))) {
+            if (/\S/.test(this.animatedText.toText(pageCharacters.slice(this.soundedChars, revealed)))) {
                 soundEngine.play('typewriter');
             }
             this.soundedChars = revealed;
         }
 
-        const revealedText = pageText.slice(0, revealed);
-        if (this.textEl && revealedText !== this.lastRenderedText) {
-            this.textEl.textContent = revealedText;
-            this.lastRenderedText = revealedText;
-        }
+        const revealedCharacters = pageCharacters.slice(0, revealed);
+        if (this.textEl) this.animatedText.paint(this.textEl, revealedCharacters, this.paletteManager, timestamp);
 
         // The Yes/No buttons appear only on the last page, once it has fully revealed.
         const choice = dialog.choice;
-        const showButtons = Boolean(choice && choice.phase !== 'branch') && isLastPage && revealed >= pageText.length;
+        const showButtons = Boolean(choice && choice.phase !== 'branch')
+            && isLastPage
+            && revealed >= pageCharacters.length;
         if (this.buttonsEl) {
             this.buttonsEl.style.display = showButtons ? 'flex' : 'none';
         }
@@ -305,7 +305,7 @@ class RendererDialogRenderer {
             this.renderButtons(choice);
         }
 
-        if (typewriter && revealed < pageText.length) {
+        if (typewriter && (revealed < pageCharacters.length || this.animatedText.hasAnimation(revealedCharacters))) {
             this.scheduleRevealFrame();
         } else {
             this.stopRevealLoop();
@@ -369,22 +369,22 @@ class RendererDialogRenderer {
      * page; a doubled backslash is an escaped literal one. Authors use this to
      * control pacing without counting characters.
      */
-    private splitPageBreaks(text: string): string[] {
-        const segments: string[] = [];
-        let current = '';
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            if (char !== '\\') {
-                current += char;
+    private splitPageBreaks(characters: AnimatedCharacter[]): AnimatedCharacter[][] {
+        const segments: AnimatedCharacter[][] = [];
+        let current: AnimatedCharacter[] = [];
+        for (let i = 0; i < characters.length; i++) {
+            const character = characters[i];
+            if (character.value !== '\\') {
+                current.push(character);
                 continue;
             }
-            if (text[i + 1] === '\\') {
-                current += '\\';
+            if (characters[i + 1]?.value === '\\') {
+                current.push(character);
                 i++;
                 continue;
             }
             segments.push(current);
-            current = '';
+            current = [];
         }
         segments.push(current);
         return segments;
@@ -398,11 +398,11 @@ class RendererDialogRenderer {
      * the right edge and then jumping. Line widths are measured against the real DOM
      * so they match CSS wrapping.
      */
-    private computePages(text: string): string[] {
+    private computePages(characters: AnimatedCharacter[]): AnimatedCharacter[][] {
         const measurer = this.measurerEl;
         const textEl = this.textEl;
         if (!measurer || !textEl) {
-            return [text];
+            return [characters];
         }
 
         const cs = getComputedStyle(textEl);
@@ -426,23 +426,26 @@ class RendererDialogRenderer {
 
         // A page break never merges two segments, so an authored break always starts
         // a new page even when the previous one is nearly empty.
-        const segments = this.splitPageBreaks(text).filter((segment) => segment.trim().length > 0);
-        const pages: string[] = [];
-        for (const segment of (segments.length ? segments : [''])) {
-            const wrappedLines: string[] = [];
-            for (const rawLine of segment.split('\n')) {
-                const words = rawLine.split(/\s+/).filter((word) => word.length > 0);
+        const segments = this.splitPageBreaks(characters)
+            .filter((segment) => this.animatedText.toText(segment).trim().length > 0);
+        const pages: AnimatedCharacter[][] = [];
+        for (const segment of (segments.length ? segments : [[]])) {
+            const wrappedLines: AnimatedCharacter[][] = [];
+            for (const rawLine of this.splitLines(segment)) {
+                const words = this.splitWords(rawLine);
                 if (!words.length) {
-                    wrappedLines.push('');
+                    wrappedLines.push([]);
                     continue;
                 }
-                let line = '';
+                let line: AnimatedCharacter[] = [];
                 for (const word of words) {
-                    const candidate = line ? `${line} ${word}` : word;
-                    measurer.textContent = candidate;
-                    if (measurer.offsetWidth > availWidth && line) {
+                    const candidate = line.length
+                        ? [...line, createPlainCharacter(' '), ...word]
+                        : word.slice();
+                    measurer.textContent = this.animatedText.toText(candidate);
+                    if (measurer.offsetWidth > availWidth && line.length) {
                         wrappedLines.push(line);
-                        line = word;
+                        line = word.slice();
                     } else {
                         line = candidate;
                     }
@@ -455,19 +458,52 @@ class RendererDialogRenderer {
                 // page with nothing on it that the player still has to dismiss.
                 const pageLines = this.trimBlankEdges(wrappedLines.slice(i, i + maxLines));
                 if (!pageLines.length) continue;
-                pages.push(pageLines.join('\n'));
+                pages.push(this.joinLines(pageLines));
             }
         }
-        return pages.length ? pages : [''];
+        return pages.length ? pages : [[]];
     }
 
     /** Drops empty lines from both ends, so a page starts and ends on real text. */
-    private trimBlankEdges(lines: string[]): string[] {
+    private trimBlankEdges(lines: AnimatedCharacter[][]): AnimatedCharacter[][] {
         let start = 0;
         let end = lines.length;
-        while (start < end && !lines[start].trim()) start++;
-        while (end > start && !lines[end - 1].trim()) end--;
+        while (start < end && !this.animatedText.toText(lines[start]).trim()) start++;
+        while (end > start && !this.animatedText.toText(lines[end - 1]).trim()) end--;
         return lines.slice(start, end);
+    }
+
+    private splitLines(characters: AnimatedCharacter[]): AnimatedCharacter[][] {
+        const lines: AnimatedCharacter[][] = [[]];
+        for (const character of characters) {
+            if (character.value === '\n') lines.push([]);
+            else lines.at(-1)?.push(character);
+        }
+        return lines;
+    }
+
+    private splitWords(characters: AnimatedCharacter[]): AnimatedCharacter[][] {
+        const words: AnimatedCharacter[][] = [];
+        let word: AnimatedCharacter[] = [];
+        for (const character of characters) {
+            if (/\s/.test(character.value)) {
+                if (word.length) words.push(word);
+                word = [];
+            } else {
+                word.push(character);
+            }
+        }
+        if (word.length) words.push(word);
+        return words;
+    }
+
+    private joinLines(lines: AnimatedCharacter[][]): AnimatedCharacter[] {
+        const characters: AnimatedCharacter[] = [];
+        lines.forEach((line, index) => {
+            if (index > 0) characters.push(createPlainCharacter('\n'));
+            characters.push(...line);
+        });
+        return characters;
     }
 
     /**
@@ -481,7 +517,10 @@ class RendererDialogRenderer {
         if (!this.textEl) return;
         const lineHeight = this.lineHeightPx > 0 ? this.lineHeightPx : this.fontPx * FALLBACK_LINE_HEIGHT;
         const lines = this.pages.reduce(
-            (tallest, page) => Math.max(tallest, page.split('\n').length),
+            (tallest, page) => Math.max(
+                tallest,
+                page.reduce((count, character) => count + (character.value === '\n' ? 1 : 0), 1),
+            ),
             1,
         );
         this.pageTextHeightPx = lines * lineHeight;
@@ -490,7 +529,6 @@ class RendererDialogRenderer {
 
     private hide(): void {
         this.revealKey = '';
-        this.lastRenderedText = '';
         this.stopRevealLoop();
         if (this.overlay) {
             this.overlay.style.display = 'none';

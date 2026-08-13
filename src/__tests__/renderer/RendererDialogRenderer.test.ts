@@ -382,6 +382,56 @@ describe('RendererDialogRenderer (HTML overlay)', () => {
     });
   });
 
+  describe('animated dialogue text', () => {
+    it('reveals visible characters without spending time on tags', () => {
+      let now = 1_000;
+      const nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => now);
+      const dialog: TestDialog = { active: true, text: '{wvy}HEY{wvy}', choice: null };
+      const { renderer, ctx } = setup(dialog, 392, () => {});
+
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+      expect(document.querySelector('.game-dialog-text')?.textContent).toBe('');
+
+      now += 110;
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+      expect(document.querySelector('.game-dialog-text')?.textContent).toBe('HE');
+
+      now += 55;
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+      expect(document.querySelector('.game-dialog-text')?.textContent).toBe('HEY');
+      expect(renderer.isRevealComplete()).toBe(true);
+
+      dialog.active = false;
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+      nowSpy.mockRestore();
+    });
+
+    it('ignores tags while wrapping and preserves effects on later pages', () => {
+      const restore = installFakeTextLayout(10 * 16);
+      try {
+        const message = Array.from({ length: 9 }, () => 'ABCDEFGHIJ').join(' ');
+        const dialog: TestDialog = {
+          active: true,
+          text: `{wvy}${message}{wvy}`,
+          choice: null,
+        };
+        const { renderer, ctx } = setup(dialog);
+        renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+        expect(dialog.maxPages).toBe(3);
+        expect(document.querySelector('.game-dialog-text')?.textContent).not.toContain('{wvy}');
+
+        dialog.page = 3;
+        renderer.drawDialog(ctx, { width: 128, height: 160 });
+        const span = document.querySelector('.game-dialog-text span') as HTMLElement;
+        expect(span.style.display).toBe('inline-block');
+        expect(span.style.transform).not.toBe('');
+      } finally {
+        restore();
+      }
+    });
+  });
+
   describe('manual page breaks', () => {
     it('starts a new page at a backslash', () => {
       const restore = installFakeTextLayout(10 * 16);
@@ -410,6 +460,23 @@ describe('RendererDialogRenderer (HTML overlay)', () => {
 
         expect(dialog.maxPages).toBe(1);
         expect(document.querySelector('.game-dialog-text')?.textContent).toBe('ONE\\TWO');
+      } finally {
+        restore();
+      }
+    });
+
+    it('preserves effects across an authored page break', () => {
+      const restore = installFakeTextLayout(10 * 16);
+      try {
+        const dialog: TestDialog = { active: true, text: '{shk}ONE\\TWO{shk}', choice: null };
+        const { renderer, ctx } = setup(dialog);
+        renderer.drawDialog(ctx, { width: 128, height: 160 });
+
+        dialog.page = 2;
+        renderer.drawDialog(ctx, { width: 128, height: 160 });
+        const text = document.querySelector('.game-dialog-text') as HTMLElement;
+        expect(text.textContent).toBe('TWO');
+        expect((text.querySelector('span') as HTMLElement).style.transform).not.toBe('');
       } finally {
         restore();
       }

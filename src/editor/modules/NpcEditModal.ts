@@ -38,6 +38,8 @@ class NpcEditModal extends EditorRendererBase {
     private conditionalExpanded = false;
     private choiceExpanded = false;
     private readonly modal: EditorModal;
+    private hintsBubble: HTMLElement | null = null;
+    private removeHintsListeners: (() => void) | null = null;
 
     constructor(service: EditorRenderService) {
         super(service);
@@ -80,6 +82,7 @@ class NpcEditModal extends EditorRendererBase {
     }
 
     close(preserveNpcSelection = false): void {
+        this.removeHintsBubble();
         this.modal.close();
         if (!preserveNpcSelection) {
             this.manager.state.selectedNpcId = null;
@@ -103,6 +106,7 @@ class NpcEditModal extends EditorRendererBase {
     }
 
     private buildBody(npc: EditorNpc): HTMLElement {
+        this.removeHintsBubble();
         const body = document.createElement('div');
         body.className = 'object-edit-modal__config npc-edit-modal__body';
 
@@ -147,13 +151,89 @@ class NpcEditModal extends EditorRendererBase {
         });
         dialogGroup.appendChild(dialogTextarea);
 
-        const dialogHint = document.createElement('div');
-        dialogHint.className = 'object-config-hint';
-        dialogHint.textContent = this.t(
-            'npc.dialog.pageBreakHint',
-            'Use \\ para quebrar a página do diálogo.',
-        );
-        body.appendChild(dialogHint);
+        const hints = document.createElement('div');
+        hints.className = 'npc-dialog-hints';
+
+        const hintsButton = document.createElement('button');
+        hintsButton.type = 'button';
+        hintsButton.className = 'npc-dialog-hints__button';
+        hintsButton.textContent = 'i';
+        hintsButton.setAttribute('aria-label', this.t('project.group.info', 'Information'));
+        hintsButton.setAttribute('aria-controls', 'npc-dialog-hints-bubble');
+        hintsButton.setAttribute('aria-expanded', 'false');
+
+        const hintsBubble = document.createElement('div');
+        hintsBubble.id = 'npc-dialog-hints-bubble';
+        hintsBubble.className = 'npc-dialog-hints__bubble';
+        hintsBubble.hidden = true;
+        hintsBubble.setAttribute('role', 'note');
+
+        const hintsList = document.createElement('ul');
+        const hintItems = [
+            this.t('npc.dialog.pageBreakHint', 'Use \\ to start a new dialogue page.'),
+            this.t('npc.dialog.waveHint', 'Use {wvy}text{wvy} to make text wave.'),
+            this.t('npc.dialog.rainbowHint', 'Use {rbw}text{rbw} to cycle through palette colors.'),
+            this.t('npc.dialog.shakeHint', 'Use {shk}text{shk} to make text shake.'),
+            this.t('npc.dialog.colorHint', 'Use [CLR0]text[CLR0] through [CLR15] to apply a palette color.'),
+        ];
+        hintItems.forEach((hint) => {
+            const item = document.createElement('li');
+            item.textContent = hint;
+            hintsList.appendChild(item);
+        });
+        hintsBubble.appendChild(hintsList);
+
+        const setHintsOpen = (open: boolean) => {
+            hintsBubble.hidden = !open;
+            hintsButton.setAttribute('aria-expanded', String(open));
+            if (open) positionHintsBubble();
+        };
+        hintsButton.addEventListener('click', () => setHintsOpen(hintsBubble.hidden));
+
+        const positionHintsBubble = () => {
+            if (hintsBubble.hidden) return;
+            const buttonRect = hintsButton.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            const edgeGap = 8;
+            const bubbleGap = 7;
+            hintsBubble.style.right = `${Math.max(edgeGap, viewportWidth - buttonRect.right)}px`;
+            hintsBubble.style.top = `${buttonRect.bottom + bubbleGap}px`;
+            hintsBubble.dataset.placement = 'below';
+
+            const bubbleRect = hintsBubble.getBoundingClientRect();
+            const fitsBelow = buttonRect.bottom + bubbleGap + bubbleRect.height <= viewportHeight - edgeGap;
+            if (!fitsBelow && buttonRect.top >= bubbleRect.height + bubbleGap + edgeGap) {
+                hintsBubble.style.top = `${buttonRect.top - bubbleRect.height - bubbleGap}px`;
+                hintsBubble.dataset.placement = 'above';
+            }
+        };
+        const closeHintsFromOutside = (event: Event) => {
+            const target = event.target;
+            if (target instanceof Node && !hintsButton.contains(target) && !hintsBubble.contains(target)) {
+                setHintsOpen(false);
+            }
+        };
+        const closeHintsFromEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setHintsOpen(false);
+        };
+        const repositionHints = () => positionHintsBubble();
+
+        document.addEventListener('pointerdown', closeHintsFromOutside);
+        document.addEventListener('keydown', closeHintsFromEscape);
+        window.addEventListener('resize', repositionHints);
+        window.addEventListener('scroll', repositionHints, true);
+        this.removeHintsListeners = () => {
+            document.removeEventListener('pointerdown', closeHintsFromOutside);
+            document.removeEventListener('keydown', closeHintsFromEscape);
+            window.removeEventListener('resize', repositionHints);
+            window.removeEventListener('scroll', repositionHints, true);
+        };
+        this.hintsBubble = hintsBubble;
+
+        hints.appendChild(hintsButton);
+        dialogGroup.appendChild(hints);
+        document.body.appendChild(hintsBubble);
 
         // Reward variable
         const rewardLabel = document.createElement('label');
@@ -241,6 +321,13 @@ class NpcEditModal extends EditorRendererBase {
         body.appendChild(choiceSection);
 
         return body;
+    }
+
+    private removeHintsBubble(): void {
+        this.removeHintsListeners?.();
+        this.removeHintsListeners = null;
+        this.hintsBubble?.remove();
+        this.hintsBubble = null;
     }
 
     private buildChoiceSection(npc: EditorNpc, container: HTMLElement): void {
