@@ -194,9 +194,8 @@ export type DefeatVariableConfig = {
 export type EnemyDefinitionData = {
   hasEyes?: boolean;
   damage?: number;
+  boss?: boolean;
   activateVariableOnDefeat?: DefeatVariableConfig | null;
-  defeatActivationMessageKey?: string;
-  defeatActivationMessage?: string;
 };
 
 // ========== Enemy Movement ==========

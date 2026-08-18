@@ -5,6 +5,7 @@ import { MovementManager } from '../../runtime/services/engine/MovementManager';
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
 import { TextResources } from '../../runtime/adapters/TextResources';
 import { GameConfig } from '../../config/GameConfig';
+import { soundEngine } from '../../runtime/services/SoundEngine';
 import { createEnemyGameState } from '../helpers/createEnemyGameState';
 import type { GameData } from '../../types/managerTypes';
 
@@ -1286,7 +1287,7 @@ describe('EnemyManager', () => {
       expect(enemies[3].lives).toBe(5);
     });
 
-    it('builds defeat variable config from enemy override/base config/message key and fallback message sources', () => {
+    it('builds defeat variable config from enemy override and base config messages', () => {
       const gameState = createEnemyGameState({
         normalizeVariableId: vi.fn((id: string | null) => (id ? id.trim() : null)),
       });
@@ -1294,12 +1295,9 @@ describe('EnemyManager', () => {
 
       vi.spyOn(manager, 'getEnemyDefinition').mockReturnValue({
         activateVariableOnDefeat: { variableId: ' base-var ', persist: false, messageKey: 'enemy.unlock' },
-        defeatActivationMessageKey: 'enemy.defeat.key',
-        defeatActivationMessage: 'Defeat fallback',
       } as never);
       getSpy.mockImplementation((key: string | null | undefined, fallback?: string) => {
         if (key === 'enemy.unlock') return 'Unlocked via key';
-        if (key === 'enemy.defeat.key') return 'Defeat via enemy key';
         return fallback || '';
       });
 
@@ -1315,23 +1313,11 @@ describe('EnemyManager', () => {
         message: 'Direct message',
       });
 
-      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce({
-        activateVariableOnDefeat: { variableId: 'base2' },
-        defeatActivationMessageKey: 'enemy.defeat.key',
-      } as never);
-      expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)?.message).toBe('Defeat via enemy key');
-
-      vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce({
-        activateVariableOnDefeat: { variableId: 'base3' },
-        defeatActivationMessage: '  Plain defeat msg ',
-      } as never);
-      expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)?.message).toBe('Plain defeat msg');
-
       vi.spyOn(manager, 'getEnemyDefinition').mockReturnValueOnce(null);
       expect(manager.getDefeatVariableConfig({ type: 'rat' } as never)).toBeNull();
     });
 
-    it('triggers defeat variable success/failure paths and indicator message', () => {
+    it('triggers defeat variable success/failure paths, indicator messages, and boss gate sound', () => {
       const gameState = createEnemyGameState({
         setVariableValue: vi.fn()
           .mockReturnValueOnce([false, false])
@@ -1344,6 +1330,8 @@ describe('EnemyManager', () => {
       });
       const manager = new EnemyManager(gameState, renderer, tileManager);
       const cfgSpy = vi.spyOn(manager, 'getDefeatVariableConfig');
+      const definitionSpy = vi.spyOn(manager, 'getEnemyDefinition');
+      const playSpy = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
 
       cfgSpy.mockReturnValueOnce(null);
       expect(manager.tryTriggerDefeatVariable({ type: 'rat' } as never)).toBe(false);
@@ -1352,8 +1340,10 @@ describe('EnemyManager', () => {
       expect(manager.tryTriggerDefeatVariable({ type: 'rat' } as never)).toBe(false);
 
       cfgSpy.mockReturnValueOnce({ variableId: 'v2', persist: false, message: 'Done' });
+      definitionSpy.mockReturnValueOnce({ boss: true } as never);
       expect(manager.tryTriggerDefeatVariable({ type: 'rat' } as never)).toBe(true);
       expect(renderer.showCombatIndicator).toHaveBeenCalledWith('Done', { duration: 900 });
+      expect(playSpy).toHaveBeenCalledWith('magicGateOpen');
     });
 
     it('triggerEnemyWindup returns when telegraph renderer is unavailable and activates with direction when available', () => {

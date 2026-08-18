@@ -15,8 +15,6 @@ type EnemyDefinitionData = {
     sprite: SpriteMatrix;
     aliases?: string[];
     boss?: boolean;
-    defeatActivationMessage?: string;
-    defeatActivationMessageKey?: string;
     activateVariableOnDefeat?: {
         variableId: string;
         message?: string;
@@ -39,8 +37,6 @@ class Enemy {
     sprite: SpriteMatrix;
     aliases?: string[];
     boss?: boolean;
-    defeatActivationMessage?: string;
-    defeatActivationMessageKey?: string;
     activateVariableOnDefeat?: {
         variableId: string;
         message?: string;
@@ -62,8 +58,6 @@ class Enemy {
         this.sprite = data.sprite;
         this.aliases = data.aliases;
         this.boss = data.boss;
-        this.defeatActivationMessage = data.defeatActivationMessage;
-        this.defeatActivationMessageKey = data.defeatActivationMessageKey;
         this.activateVariableOnDefeat = data.activateVariableOnDefeat;
     }
 

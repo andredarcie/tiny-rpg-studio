@@ -896,13 +896,6 @@ class EnemyManager {
       message = baseConfig.message.trim();
     } else if (baseConfig?.messageKey) {
       message = getEnemyLocaleText(baseConfig.messageKey, baseConfig.message || '');
-    } else if (definition?.defeatActivationMessageKey) {
-      message = getEnemyLocaleText(
-        definition.defeatActivationMessageKey,
-        definition.defeatActivationMessage?.trim() || '',
-      );
-    } else if (typeof definition?.defeatActivationMessage === 'string' && definition.defeatActivationMessage.trim().length) {
-      message = definition.defeatActivationMessage.trim();
     }
     return { variableId, persist, message };
   }
@@ -919,6 +912,9 @@ class EnemyManager {
 
     if (config.message) {
       this.renderer.showCombatIndicator(config.message, { duration: 900 });
+    }
+    if (this.getEnemyDefinition(enemy.type)?.boss) {
+      soundEngine.play('magicGateOpen');
     }
     return true;
   }
