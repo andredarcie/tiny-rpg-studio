@@ -5,7 +5,7 @@ import { isTrapActive } from '../../domain/state/TrapState';
 import { isChestAccessible } from '../../domain/state/ChestState';
 import { bitmapFont } from './BitmapFont';
 import { FONT_SIZE } from '../../../config/FontConfig';
-import { drawExclamationMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
+import { drawExclamationMarker, drawLockMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
 
 type FlashState = {
     color: string;
@@ -198,8 +198,6 @@ class RendererEntityRenderer {
                 : 0;
             const py = Math.round(object.y * tileSize + floatOffset);
             this.drawWorldSprite(ctx, sprite, px, py, step, object.roomIndex, object.x, object.y);
-            const chestHasReward = object.randomItem === true
-                || (typeof object.containsItemType === 'string' && object.containsItemType.length > 0);
             const chestIsAccessible = isChestAccessible(
                 object,
                 this.gameState.isVariableOn
@@ -209,8 +207,8 @@ class RendererEntityRenderer {
                     ? (variableId) => this.gameState.normalizeVariableId?.(variableId) ?? null
                     : undefined
             );
-            if (object.type === OT.CHEST && !object.opened && chestHasReward && chestIsAccessible) {
-                drawExclamationMarker(ctx, this.paletteManager, px, py, tileSize);
+            if (object.type === OT.CHEST && !object.opened && !chestIsAccessible) {
+                drawLockMarker(ctx, this.paletteManager, px, py, tileSize);
             }
         }
     }

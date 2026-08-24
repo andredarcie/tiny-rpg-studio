@@ -1,0 +1,6 @@
+interface:
+  display_name: "Plan Checker"
+  short_description: "Check implementation status against a plan"
+  default_prompt: "Use $plan-checker to check a completed implementation against its Markdown plan."
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Plan Creator"
+  short_description: "Create and review concise, codebase-aware plans"
+  default_prompt: "Use $plan-creator to create or review a concise implementation plan in a Markdown file."
+policy:
+  allow_implicit_invocation: true

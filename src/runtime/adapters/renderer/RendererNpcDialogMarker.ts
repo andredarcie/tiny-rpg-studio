@@ -51,4 +51,21 @@ const drawExclamationMarker = (
   bitmapFont.drawText(ctx, '!', iconX, iconY, Math.max(8, Math.round(tileSize * 0.8)), iconColor);
 };
 
-export { drawExclamationMarker, shouldDrawUnreadNpcDialogMarker };
+const drawLockMarker = (
+  ctx: CanvasRenderingContext2D,
+  paletteManager: PaletteManagerApi,
+  px: number,
+  py: number,
+  tileSize: number,
+): void => {
+  const pixel = Math.max(1, Math.round(tileSize / 8));
+  const iconX = Math.round(px + tileSize * 0.75);
+  const iconY = Math.round(py + tileSize * 0.1);
+  const iconColor = paletteManager.getColor(6) || '#C2C3C7';
+
+  ctx.fillStyle = iconColor;
+  ctx.fillRect(iconX + pixel, iconY, pixel * 2, pixel);
+  ctx.fillRect(iconX, iconY + pixel, pixel * 4, pixel * 3);
+};
+
+export { drawExclamationMarker, drawLockMarker, shouldDrawUnreadNpcDialogMarker };
