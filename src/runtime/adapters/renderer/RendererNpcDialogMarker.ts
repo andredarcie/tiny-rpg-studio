@@ -27,6 +27,19 @@ type PaletteManagerApi = {
   getColor: (index: number) => string;
 };
 
+type PixelMatrix = (number | null)[][];
+
+const LockMarkerMatrix: PixelMatrix = [
+  [ null,  6,  6, null, null, null, null, null ],
+        [  6, null, null,  6, null, null, null, null ],
+        [  6,  6,  6,  6, null, null, null, null ],
+        [  6,  6,  0,  6, null, null, null, null ],
+        [  6,  6,  6,  6, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ],
+        [ null, null, null, null, null, null, null, null ]
+];
+
 const shouldDrawUnreadNpcDialogMarker = (gameState: GameStateApi, npc: NpcState): boolean => {
   if (!npc.id || !gameState.hasUnreadNpcDialog) {
     return false;
@@ -61,11 +74,17 @@ const drawLockMarker = (
   const pixel = Math.max(1, Math.round(tileSize / 8));
   const iconX = Math.round(px + tileSize * 0.75);
   const iconY = Math.round(py + tileSize * 0.1);
-  const iconColor = paletteManager.getColor(6) || '#C2C3C7';
+  const colors = new Map<number, string>();
 
-  ctx.fillStyle = iconColor;
-  ctx.fillRect(iconX + pixel, iconY, pixel * 2, pixel);
-  ctx.fillRect(iconX, iconY + pixel, pixel * 4, pixel * 3);
+  LockMarkerMatrix.forEach((row, y) => {
+    row.forEach((colorIndex, x) => {
+      if (colorIndex === null) return;
+      const color = colors.get(colorIndex) ?? (paletteManager.getColor(colorIndex) || '#C2C3C7');
+      colors.set(colorIndex, color);
+      ctx.fillStyle = color;
+      ctx.fillRect(iconX + x * pixel, iconY + y * pixel, pixel, pixel);
+    });
+  });
 };
 
-export { drawExclamationMarker, drawLockMarker, shouldDrawUnreadNpcDialogMarker };
+export { LockMarkerMatrix, drawExclamationMarker, drawLockMarker, shouldDrawUnreadNpcDialogMarker };

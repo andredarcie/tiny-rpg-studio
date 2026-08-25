@@ -268,9 +268,9 @@ describe('RendererEntityRenderer', () => {
     renderer.drawObjects(asCanvasCtx(ctx));
 
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(4);
-    expect(ctx.fillRect).toHaveBeenCalledTimes(2);
-    expect(ctx.fillRect).toHaveBeenNthCalledWith(1, 30, 18, 4, 2);
-    expect(ctx.fillRect).toHaveBeenNthCalledWith(2, 28, 20, 8, 6);
+    expect(ctx.fillRect).toHaveBeenCalledTimes(14);
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(1, 30, 18, 2, 2);
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(14, 34, 24, 2, 2);
   });
 
   it('drawObjects uses the same active and deactivated sprites for damage and solid traps', () => {
