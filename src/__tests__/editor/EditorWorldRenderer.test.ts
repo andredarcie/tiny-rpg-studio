@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { EditorWorldRenderer } from '../../editor/modules/renderers/EditorWorldRenderer';
+import { ShareUrlHelper } from '../../runtime/infra/share/ShareUrlHelper';
 
 type WorldRendererService = ConstructorParameters<typeof EditorWorldRenderer>[0];
 type WorldRendererServiceFixture = ReturnType<typeof makeService>;
@@ -40,6 +41,7 @@ function makeService(stateOverrides: Record<string, unknown> = {}, gameOverrides
         rooms: [{}, {}, {}, {}],
         ...gameOverrides,
       })),
+      exportGameData: vi.fn(),
     },
     t: vi.fn<(key: string, fallback?: string) => string>((key: string, fallback = ''): string => fallback || key),
     tf: vi.fn<(_key: string, params?: Record<string, unknown>, fallback?: string) => string>(
@@ -61,10 +63,13 @@ function renderMetrics(gameOverrides: Record<string, unknown> = {}) {
   return { svc, values: getMetricValues(svc.dom.worldMetrics) };
 }
 
-const METRIC = { NPCs: 0, Enemies: 1, Items: 2, Objects: 3, Endings: 4, CondDialogs: 5, VariablesInUse: 6, RoomsWithTiles: 7, PaintedTiles: 8, Walls: 9, DialogWords: 10, CustomSprites: 11 };
+const METRIC = { NPCs: 0, Enemies: 1, Items: 2, Objects: 3, Endings: 4, CondDialogs: 5, VariablesInUse: 6, RoomsWithTiles: 7, PaintedTiles: 8, Walls: 9, DialogWords: 10, CustomSprites: 11, ShareUrlLength: 12 };
 
 describe('EditorWorldRenderer', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(ShareUrlHelper, 'estimateShareUrlLength').mockReturnValue(100);
+  });
 
   // ─── renderWorldGrid ─────────────────────────────────────────────────────
 
@@ -237,10 +242,29 @@ describe('EditorWorldRenderer', () => {
       expect(() => renderer.renderWorldMetrics()).not.toThrow();
     });
 
-    it('renders title and 12 metric rows', () => {
+    it('renders title and 13 metric rows', () => {
       const { svc } = renderMetrics();
       expect(svc.dom.worldMetrics.querySelector('.world-metrics-title')).not.toBeNull();
-      expect(svc.dom.worldMetrics.querySelectorAll('.world-metric-row').length).toBe(12);
+      expect(svc.dom.worldMetrics.querySelectorAll('.world-metric-row').length).toBe(13);
+    });
+
+    it('renders a localized approximate share URL length from the live game', () => {
+      const estimateSpy = vi.spyOn(ShareUrlHelper, 'estimateShareUrlLength').mockReturnValue(1234);
+      const svc = makeService({}, { title: 'Live game' });
+      const game = svc.gameEngine.getGame();
+      svc.gameEngine.getGame.mockClear();
+      const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
+
+      renderer.renderWorldMetrics();
+
+      const rows = Array.from(svc.dom.worldMetrics.querySelectorAll('.world-metric-row'));
+      const row = rows[METRIC.ShareUrlLength] as HTMLElement;
+      expect(row.querySelector('.world-metric-label')?.textContent).toBe('URL Length');
+      expect(row.querySelector('.world-metric-value')?.textContent).toBe(`~${(1234).toLocaleString()} chars`);
+      expect(row.title).toBe('Estimated character length of the generated share URL.');
+      expect(estimateSpy).toHaveBeenCalledWith(game);
+      expect(svc.gameEngine.exportGameData).not.toHaveBeenCalled();
+      estimateSpy.mockRestore();
     });
 
     it('each metric row has a tooltip (title attribute)', () => {
@@ -348,44 +372,45 @@ describe('EditorWorldRenderer', () => {
 
     // ── Conditional dialogs ───────────────────────────────────────────────────
 
-    it('Cond. dialogs: counts placed sprites with non-empty conditionText', () => {
+    it('Cond. dialogs: counts selected condition variables even when alternate text is empty', () => {
       const { values } = renderMetrics({
         sprites: [
-          { placed: true, conditionText: 'If variable is on, say this.' },
-          { placed: true, conditionText: 'Another branch.' },
-          { placed: true, conditionText: '' },
-          { placed: false, conditionText: 'Should not count.' },
+          { placed: true, conditionVariableId: 'var-1', conditionText: '' },
+          { placed: true, conditionVariableId: 'var-2', conditionText: 'Alternate text.' },
         ],
       });
       expect(values[METRIC.CondDialogs]).toBe('2');
     });
 
-    it('Cond. dialogs: counts placed sprites with choiceEnabled (branching dialogs)', () => {
+    it('Cond. dialogs: ignores alternate text without a selected condition variable', () => {
+      const { values } = renderMetrics({
+        sprites: [
+          { placed: true, conditionText: 'Text only.' },
+          { placed: true, conditionVariableId: '', conditionText: 'Empty selection.' },
+          { placed: true, conditionVariableId: null, conditionText: 'Null selection.' },
+        ],
+      });
+      expect(values[METRIC.CondDialogs]).toBe('0');
+    });
+
+    it('Cond. dialogs: counts enabled choice dialogs independently', () => {
       const { values } = renderMetrics({
         sprites: [
           { placed: true, choiceEnabled: true },
-          { placed: true, choiceEnabled: true, conditionText: '' },
-          { placed: true, choiceEnabled: false },
+          { placed: true, choiceEnabled: true, conditionVariableId: 'var-1' },
+          { placed: true, choiceEnabled: false, conditionVariableId: 'var-2' },
+        ],
+      });
+      expect(values[METRIC.CondDialogs]).toBe('4');
+    });
+
+    it('Cond. dialogs: ignores all dialog configurations on unplaced NPCs', () => {
+      const { values } = renderMetrics({
+        sprites: [
+          { placed: false, conditionVariableId: 'var-1' },
           { placed: false, choiceEnabled: true },
+          { placed: false, conditionVariableId: 'var-2', choiceEnabled: true },
         ],
-      });
-      expect(values[METRIC.CondDialogs]).toBe('2');
-    });
-
-    it('Cond. dialogs: does not double-count NPC with both conditionText and choice', () => {
-      const { values } = renderMetrics({
-        sprites: [
-          { placed: true, choiceEnabled: true, conditionText: 'Alt text' },
-          { placed: true, choiceEnabled: true },
-          { placed: true, conditionText: 'Only conditional' },
-        ],
-      });
-      expect(values[METRIC.CondDialogs]).toBe('3');
-    });
-
-    it('Cond. dialogs: whitespace-only conditionText does not count', () => {
-      const { values } = renderMetrics({
-        sprites: [{ placed: true, conditionText: '   ' }],
       });
       expect(values[METRIC.CondDialogs]).toBe('0');
     });

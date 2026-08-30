@@ -44,6 +44,56 @@ describe('ShareUrlHelper', () => {
     spy.mockRestore();
   });
 
+  it.each([
+    ['empty game', {}],
+    ['Unicode text', { title: 'Olá 世界', author: 'André' }],
+    ['tiles and objects', {
+      tileset: { maps: [{ ground: [[1, 2]], overlay: [[null, 3]] }] },
+      objects: [{ type: 'key', x: 2, y: 3, roomIndex: 0 }],
+    }],
+    ['custom sprites', {
+      customSprites: [{
+        group: 'tile',
+        key: 'custom:test',
+        frames: [Array.from({ length: 8 }, () => Array<number | null>(8).fill(null))],
+      }],
+    }],
+  ])('estimates the exact local share URL length for %s', (_name, gameData) => {
+    globalThis.history.replaceState({}, '', '/share');
+
+    expect(ShareUrlHelper.estimateShareUrlLength(gameData)).toBe(
+      ShareUrlHelper.buildShareUrl(gameData).length,
+    );
+  });
+
+  it('includes the canonical production base URL in the estimate', () => {
+    const originalLocation = globalThis.location;
+    delete (globalThis as { location?: Location }).location;
+    globalThis.location = {
+      ...originalLocation,
+      hostname: 'example.com',
+      origin: 'https://example.com',
+      pathname: '/embedded/',
+    } as Location;
+
+    expect(ShareUrlHelper.estimateShareUrlLength({ title: 'Production' })).toBe(
+      ShareUrlHelper.buildShareUrl({ title: 'Production' }).length,
+    );
+
+    globalThis.location = originalLocation;
+  });
+
+  it('estimates without calling either public URL/code builder', () => {
+    const urlSpy = vi.spyOn(ShareUrlHelper, 'buildShareUrl');
+    const codeSpy = vi.spyOn(ShareEncoder, 'buildShareCode');
+
+    const length = ShareUrlHelper.estimateShareUrlLength({ title: 'Measured only' });
+
+    expect(length).toBeGreaterThan(ShareUrlHelper.getBaseUrl().length);
+    expect(urlSpy).not.toHaveBeenCalled();
+    expect(codeSpy).not.toHaveBeenCalled();
+  });
+
   it('extracts game data from a location hash', () => {
     const spy = vi.spyOn(ShareDecoder, 'decodeShareCode').mockReturnValue({ title: 'ok' });
 

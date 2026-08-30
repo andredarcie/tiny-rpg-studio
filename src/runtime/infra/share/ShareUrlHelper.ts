@@ -33,6 +33,12 @@ class ShareUrlHelper {
         return `${base}#${code}`;
     }
 
+    static estimateShareUrlLength(gameData: Record<string, unknown> | null | undefined): number {
+        const codeLength = ShareEncoder.measureShareCodeLength(gameData);
+        const baseLength = ShareUrlHelper.getBaseUrl().length;
+        return baseLength + (codeLength > 0 ? 1 + codeLength : 0);
+    }
+
     static extractGameDataFromLocation(location: { hash?: string } | null | undefined) {
         if (!location) return null;
         const hash = location.hash || '';

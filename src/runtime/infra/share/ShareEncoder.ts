@@ -299,7 +299,7 @@ class ShareEncoder {
         return ShareBase64.toBase64Url(Uint8Array.from(bytes));
     }
 
-    static buildShareCode(gameData: ShareGameData | null | undefined) {
+    private static buildShareSegments(gameData: ShareGameData | null | undefined): string[] {
         const OT = ITEM_TYPES;
         const roomCount = ShareConstants.WORLD_ROOM_COUNT;
         const data = gameData as Parameters<typeof ShareMatrixCodec.collectGroundMatrices>[0];
@@ -739,7 +739,17 @@ class ShareEncoder {
             }
         }
 
-        return parts.join('.');
+        return parts;
+    }
+
+    static buildShareCode(gameData: ShareGameData | null | undefined): string {
+        return ShareEncoder.buildShareSegments(gameData).join('.');
+    }
+
+    static measureShareCodeLength(gameData: ShareGameData | null | undefined): number {
+        const segments = ShareEncoder.buildShareSegments(gameData);
+        if (segments.length === 0) return 0;
+        return segments.reduce((length, segment) => length + segment.length, segments.length - 1);
     }
 }
 

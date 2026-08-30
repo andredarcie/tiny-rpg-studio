@@ -108,6 +108,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       renderObjectCatalog: vi.fn(),
       renderObjects: vi.fn(),
       updateNpcForm: vi.fn(),
+      renderWorldMetrics: vi.fn(),
     },
     gameEngine: {
       getGame: vi.fn<() => EditorGameFixture>(() => ({
@@ -200,6 +201,7 @@ describe('EditorUIController', () => {
     expect(mgr.gameEngine.refreshIntroScreen).toHaveBeenCalled();
     // updateJSON is a real method on the controller; check its side effect
     expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
+    expect(mgr.renderService.renderWorldMetrics).toHaveBeenCalled();
   });
 
   // ─── toggleVariablePanel ─────────────────────────────────────────────

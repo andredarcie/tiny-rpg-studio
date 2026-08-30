@@ -20,16 +20,17 @@ describe('drawLockMarker', () => {
     drawLockMarker(ctx as unknown as CanvasRenderingContext2D, paletteManager, 16, 32, 16);
 
     expect(paletteManager.getColor).toHaveBeenCalledWith(6);
+    expect(paletteManager.getColor).toHaveBeenCalledWith(0);
     expect(ctx.fillStyle).toBe('#C2C3C7');
-    expect(ctx.fillRect).toHaveBeenCalledTimes(14);
+    expect(ctx.fillRect).toHaveBeenCalledTimes(16);
     expect(ctx.fillRect).toHaveBeenNthCalledWith(1, 30, 34, 2, 2);
-    expect(ctx.fillRect).toHaveBeenNthCalledWith(14, 34, 40, 2, 2);
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(16, 34, 42, 2, 2);
 
     drawLockMarker(ctx as unknown as CanvasRenderingContext2D, paletteManager, 16, 32, 8);
 
-    expect(ctx.fillRect).toHaveBeenCalledTimes(28);
-    expect(ctx.fillRect).toHaveBeenNthCalledWith(15, 23, 33, 1, 1);
-    expect(ctx.fillRect).toHaveBeenNthCalledWith(28, 25, 36, 1, 1);
+    expect(ctx.fillRect).toHaveBeenCalledTimes(32);
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(17, 23, 33, 1, 1);
+    expect(ctx.fillRect).toHaveBeenNthCalledWith(32, 25, 37, 1, 1);
   });
 
   it('defines the lock marker as an 8x8 pixel matrix', () => {

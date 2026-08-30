@@ -61,6 +61,7 @@ class EditorUIController extends EditorManagerModule {
         this.renderService.renderVariableUsage();
         this.renderService.renderSkillList();
         this.renderService.renderTestTools();
+        this.renderService.renderWorldMetrics();
     }
 
     toggleVariablePanel() {

@@ -2,6 +2,7 @@ import { EditorRendererBase } from './EditorRendererBase';
 import { ITEM_TYPES, type ItemType } from '../../../runtime/domain/constants/itemTypes';
 import { NPC_END_GAME_REWARD_ID } from '../../../runtime/domain/constants/npcRewards';
 import { itemCatalog } from '../../../runtime/domain/services/ItemCatalog';
+import { ShareUrlHelper } from '../../../runtime/infra/share/ShareUrlHelper';
 
 type GameWithWorld = {
     world?: { rows?: number; cols?: number };
@@ -266,10 +267,8 @@ class EditorWorldRenderer extends EditorRendererBase {
         for (const sprite of sprites) {
             if (sprite.placed) {
                 placedNpcs++;
-                // Conditional alternate text OR choice (branching) dialog.
-                if (sprite.conditionText?.trim() || sprite.choiceEnabled === true) {
-                    conditionalDialogs++;
-                }
+                if (sprite.conditionVariableId) conditionalDialogs++;
+                if (sprite.choiceEnabled === true) conditionalDialogs++;
             }
             dialogWords += countWords(sprite.text)
                 + countWords(sprite.conditionText)
@@ -315,7 +314,9 @@ class EditorWorldRenderer extends EditorRendererBase {
             if (enemy.defeatVariableId) usedVariableIds.add(enemy.defeatVariableId);
         }
 
-        const metrics: { label: string; value: number; tooltip: string }[] = [
+        const shareUrlLength = ShareUrlHelper.estimateShareUrlLength(game as Record<string, unknown>);
+        const formattedShareUrlLength = shareUrlLength.toLocaleString();
+        const metrics: { label: string; value: number | string; tooltip: string }[] = [
             { label: this.t('metrics.npcs', 'NPCs'), value: placedNpcs, tooltip: this.t('metrics.tooltip.npcs') },
             { label: this.t('metrics.enemies', 'Enemies'), value: (game.enemies ?? []).length, tooltip: this.t('metrics.tooltip.enemies') },
             { label: this.t('metrics.items', 'Items'), value: placedItems, tooltip: this.t('metrics.tooltip.items') },
@@ -328,6 +329,18 @@ class EditorWorldRenderer extends EditorRendererBase {
             { label: this.t('metrics.walls', 'Walls'), value: wallCount, tooltip: this.t('metrics.tooltip.walls') },
             { label: this.t('metrics.dialogWords', 'Dialog words'), value: dialogWords, tooltip: this.t('metrics.tooltip.dialogWords') },
             { label: this.t('metrics.customSprites', 'Custom sprites'), value: (game.customSprites ?? []).length, tooltip: this.t('metrics.tooltip.customSprites') },
+            {
+                label: this.t('metrics.shareUrlLength', 'URL Length'),
+                value: this.tf(
+                    'metrics.shareUrlLength.value',
+                    { count: formattedShareUrlLength },
+                    `~${formattedShareUrlLength} chars`
+                ),
+                tooltip: this.t(
+                    'metrics.tooltip.shareUrlLength',
+                    'Estimated character length of the generated share URL.'
+                )
+            },
         ];
 
         container.innerHTML = '';
@@ -351,7 +364,9 @@ class EditorWorldRenderer extends EditorRendererBase {
 
             const value = document.createElement('span');
             value.className = 'world-metric-value';
-            value.textContent = metric.value.toLocaleString();
+            value.textContent = typeof metric.value === 'number'
+                ? metric.value.toLocaleString()
+                : metric.value;
 
             row.appendChild(label);
             row.appendChild(value);

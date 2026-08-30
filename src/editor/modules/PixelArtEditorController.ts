@@ -149,12 +149,12 @@ export class PixelArtEditorController {
         const objectDef = this.group === 'object' ? this.findObjectDef(this.key) : undefined;
 
         if (this.hasDualStateSprite(objectDef)) {
-            game.customSprites = CustomSpriteLookup.upsert(game.customSprites ?? [], {
+            game.customSprites = this.upsertOrRemoveDefault(game.customSprites ?? [], {
                 group: 'object', key: this.key, variant: 'base', frames: [this.frames[0]]
-            });
-            game.customSprites = CustomSpriteLookup.upsert(game.customSprites ?? [], {
+            }, objectDef.sprite ? [objectDef.sprite] : []);
+            game.customSprites = this.upsertOrRemoveDefault(game.customSprites ?? [], {
                 group: 'object', key: this.key, variant: 'on', frames: [this.frames[1]]
-            });
+            }, [objectDef.spriteOn]);
             this.invalidateAndRefresh();
             this.close();
             return;
@@ -166,7 +166,8 @@ export class PixelArtEditorController {
             variant: this.variant,
             frames: this.frames,
         };
-        game.customSprites = CustomSpriteLookup.upsert(game.customSprites ?? [], entry);
+        const defaultFrames = this.loadBaseFrames(this.group, this.key, this.variant);
+        game.customSprites = this.upsertOrRemoveDefault(game.customSprites ?? [], entry, defaultFrames);
         this.invalidateAndRefresh();
         this.close();
     }
@@ -720,6 +721,29 @@ export class PixelArtEditorController {
 
     private cloneFrame(frame: CustomSpriteFrame): CustomSpriteFrame {
         return frame.map((row) => row.slice());
+    }
+
+    private upsertOrRemoveDefault(
+        entries: CustomSpriteEntry[],
+        entry: CustomSpriteEntry,
+        defaultFrames: CustomSpriteFrame[]
+    ): CustomSpriteEntry[] {
+        if (defaultFrames.length > 0 && this.framesEqual(entry.frames, defaultFrames)) {
+            return CustomSpriteLookup.remove(entries, entry.group, entry.key, entry.variant);
+        }
+        return CustomSpriteLookup.upsert(entries, entry);
+    }
+
+    private framesEqual(left: CustomSpriteFrame[], right: CustomSpriteFrame[]): boolean {
+        return left.length === right.length && left.every((frame, frameIndex) => {
+            const otherFrame = right[frameIndex];
+            return frame.length === otherFrame.length && frame.every((row, rowIndex) => {
+                const otherRow = otherFrame[rowIndex];
+                return row.length === otherRow.length && row.every((pixel, pixelIndex) =>
+                    pixel === otherRow[pixelIndex]
+                );
+            });
+        });
     }
 
     private invalidateAndRefresh(): void {

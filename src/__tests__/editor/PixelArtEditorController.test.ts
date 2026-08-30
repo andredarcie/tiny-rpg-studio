@@ -1,10 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PixelArtEditorController } from '../../editor/modules/PixelArtEditorController';
 import { TextResources } from '../../runtime/adapters/TextResources';
-import type { CustomSpriteEntry } from '../../types/gameState';
+import type { CustomSpriteEntry, CustomSpriteFrame } from '../../types/gameState';
 
 type PixelArtEditorManager = Parameters<PixelArtEditorController['init']>[0];
 type PixelArtEditorDom = Parameters<PixelArtEditorController['init']>[1];
+
+const cloneFrames = (frames: CustomSpriteFrame[]): CustomSpriteFrame[] =>
+    frames.map((frame) => frame.map((row) => row.slice()));
 
 // Minimal manager stub
 const makeManager = (customSprites: CustomSpriteEntry[] = []) => {
@@ -243,6 +246,75 @@ describe('PixelArtEditorController', () => {
 
             expect(renderAll).toHaveBeenCalled();
             expect(pushCurrentState).toHaveBeenCalled();
+        });
+
+        it('removes a restored regular sprite override without touching unrelated entries', () => {
+            const unrelated: CustomSpriteEntry = {
+                group: 'enemy', key: 'slime', variant: 'base', frames: [[[6]]]
+            };
+            const { manager, game, renderAll, updateJSON, pushCurrentState } = makeManager();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, makeDom().dom);
+            controller.open('npc', 'old-mage', 'base');
+            game.customSprites.push(
+                { group: 'npc', key: 'old-mage', variant: 'base', frames: [[[9]]] },
+                unrelated
+            );
+            controller.open('npc', 'old-mage', 'base');
+
+            controller.resetToDefault();
+            controller.save();
+
+            expect(game.customSprites).toEqual([unrelated]);
+            expect(renderAll).toHaveBeenCalledTimes(1);
+            expect(updateJSON).toHaveBeenCalledTimes(1);
+            expect(pushCurrentState).toHaveBeenCalledTimes(1);
+        });
+
+        it('removes a restored tile override and persists preset tile metadata', () => {
+            const { manager, game } = makeManager([
+                { group: 'tile', key: '1', variant: 'base', frames: [[[9]]] },
+            ]);
+            const tile = game.tileset.tiles[0] as {
+                visualEffect?: string;
+                mergeEdges?: boolean;
+            };
+            tile.visualEffect = 'lava';
+            tile.mergeEdges = true;
+            const controller = new PixelArtEditorController();
+            controller.init(manager, makeDom().dom);
+            controller.open('tile', '1', 'base');
+
+            controller.resetToDefault();
+            controller.save();
+
+            expect(game.customSprites).toEqual([]);
+            expect(tile.visualEffect).toBe('none');
+            expect(tile.mergeEdges).toBe(false);
+        });
+
+        it('removes and retains dual-state object variants independently', () => {
+            const { manager, game } = makeManager();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, makeDom().dom);
+            controller.open('object', 'switch', 'base');
+            const defaults = cloneFrames(controller.getCurrentFrames());
+            expect(defaults).toHaveLength(2);
+
+            game.customSprites.push(
+                { group: 'object', key: 'switch', variant: 'base', frames: [[[9]]] },
+                { group: 'object', key: 'switch', variant: 'on', frames: [[[8]]] }
+            );
+            controller.open('object', 'switch', 'base');
+            const editedOn = cloneFrames([defaults[1]])[0];
+            editedOn[0][0] = editedOn[0][0] === 1 ? 2 : 1;
+            controller.setFrames([defaults[0], editedOn]);
+
+            controller.save();
+
+            expect(game.customSprites).toEqual([
+                { group: 'object', key: 'switch', variant: 'on', frames: [editedOn] },
+            ]);
         });
 
         it('loads and saves mergeEdges per tile without leaking draft state', () => {
