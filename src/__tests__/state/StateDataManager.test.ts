@@ -108,6 +108,20 @@ describe('StateDataManager', () => {
     expect(objectManager.normalizeObjects).not.toHaveBeenCalled();
   });
 
+  it('preserves a normalized custom enemy experience override on export', () => {
+    const game = makeGame();
+    game.enemies = [{ id: 'enemy-xp', type: 'giant-rat', roomIndex: 0, x: 1, y: 1, lastX: 1, experience: 0 }];
+    const manager = new StateDataManager({
+      game,
+      worldManager: {} as StateWorldManager,
+      objectManager: {} as StateObjectManager,
+      variableManager: {} as StateVariableManager,
+    });
+
+    const exported = manager.exportGameData() as { enemies?: Array<{ experience?: number }> };
+    expect(exported.enemies?.[0].experience).toBe(0);
+  });
+
   it('preserves only literal true for imported tile mergeEdges', () => {
     const game = makeGame();
     const manager = new StateDataManager({

@@ -96,6 +96,26 @@ describe('EnemyManager', () => {
     expect(renderer.draw).toHaveBeenCalled();
   });
 
+  it('forwards custom experience when adding an enemy', () => {
+    const gameState = createEnemyGameState();
+    const manager = new EnemyManager(gameState, renderer, tileManager);
+
+    manager.addEnemy({ type: 'rat', roomIndex: 0, x: 0, y: 0, experience: 0 });
+
+    expect(gameState.addEnemy).toHaveBeenCalledWith(expect.objectContaining({ experience: 0 }));
+  });
+
+  it('awards the instance experience override on defeat capped at 16', () => {
+    const enemy = { id: 'enemy-xp', type: 'rat', roomIndex: 0, x: 0, y: 0, lastX: 0, experience: 99 };
+    const gameState = createEnemyGameState({ getEnemies: vi.fn(() => [enemy]) });
+    const manager = new EnemyManager(gameState, renderer, tileManager);
+
+    (manager as unknown as { handleEnemyDefeated: (id: string, value: typeof enemy) => void })
+      .handleEnemyDefeated(enemy.id, enemy);
+
+    expect(gameState.handleEnemyDefeated).toHaveBeenCalledWith(16);
+  });
+
   it('normalizes miss chance', () => {
     const manager = new EnemyManager(createEnemyGameState(), renderer, tileManager);
 

@@ -4439,6 +4439,7 @@ body.game-mode .tab-button.active {
 .enemy-stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
+    grid-auto-rows: 1fr;
     gap: 6px;
 }
 
@@ -4461,6 +4462,19 @@ body.game-mode .tab-button.active {
 
 .enemy-stat-cell__value {
     color: var(--text);
+    font-weight: var(--fw-bold);
+}
+
+.enemy-stat-cell__input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    font: inherit;
     font-weight: var(--fw-bold);
 }
 

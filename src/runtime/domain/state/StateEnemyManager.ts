@@ -1,5 +1,6 @@
 
 import { EnemyDefinitions } from '../definitions/EnemyDefinitions';
+import { normalizeEnemyExperienceOverride } from '../definitions/enemyExperience';
 import type { GameDefinition, RuntimeState, EnemyDefinition, VariableDefinition } from '../../../types/gameState';
 import type { StateWorldManager } from './StateWorldManager';
 class StateEnemyManager {
@@ -43,6 +44,7 @@ class StateEnemyManager {
                 y: this.worldManager.clampCoordinate(enemy.y),
                 lastX: this.worldManager.clampCoordinate(enemy.x),
                 lives: enemy.lives,
+                ...this.enemyExperienceFields(normalizedType, enemy.experience),
                 defeatVariableId: this.normalizeEnemyVariableId(enemy.defeatVariableId),
                 playerInVision: false,
                 alertUntil: null,
@@ -92,6 +94,7 @@ class StateEnemyManager {
             y: this.worldManager.clampCoordinate(enemy.y),
             lastX: this.worldManager.clampCoordinate(enemy.x),
             ...(typeof enemy.lives === 'number' ? { lives: enemy.lives } : {}),
+            ...this.enemyExperienceFields(normalizedType, enemy.experience),
             defeatVariableId: this.normalizeEnemyVariableId(enemy.defeatVariableId)
         };
         const runtimeEntry = {
@@ -170,6 +173,43 @@ class StateEnemyManager {
             changed = true;
         }
         return changed;
+    }
+
+    setEnemyExperience(enemyId: string | number, experience: unknown = null): boolean {
+        if (!this.game || !this.state) return false;
+        let changed = false;
+        const update = (enemy: EnemyDefinition | undefined) => {
+            if (!enemy) return;
+            const normalized = normalizeEnemyExperienceOverride(enemy.type, experience);
+            if (normalized === undefined) {
+                if (Object.prototype.hasOwnProperty.call(enemy, 'experience')) {
+                    delete enemy.experience;
+                    changed = true;
+                }
+                return;
+            }
+            if (enemy.experience !== normalized) {
+                enemy.experience = normalized;
+                changed = true;
+            }
+        };
+        update(this.game.enemies.find((enemy) => enemy.id === enemyId));
+        update(this.state.enemies.find((enemy) => enemy.id === enemyId));
+        return changed;
+    }
+
+    normalizeAuthoredEnemies(): void {
+        if (!this.game) return;
+        for (const enemy of this.game.enemies) {
+            const normalized = normalizeEnemyExperienceOverride(enemy.type, enemy.experience);
+            if (normalized === undefined) delete enemy.experience;
+            else enemy.experience = normalized;
+        }
+    }
+
+    private enemyExperienceFields(type: string, experience: unknown): { experience?: number } {
+        const normalized = normalizeEnemyExperienceOverride(type, experience);
+        return normalized === undefined ? {} : { experience: normalized };
     }
 
     normalizeEnemyType(type: string | null | undefined): string {

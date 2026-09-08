@@ -433,6 +433,16 @@ class ShareEncoder {
             if (enemyVariableCode) {
                 parts.push('w' + enemyVariableCode);
             }
+            // VERSION_42 custom XP overrides. '-' is the remaining URL-safe payload key.
+            const enemyExperienceCode = enemies
+                .map((enemy, index) => enemy.experience === undefined
+                    ? ''
+                    : `${index.toString(36)}:${enemy.experience.toString(36)}`)
+                .filter(Boolean)
+                .join(',');
+            if (enemyExperienceCode) {
+                parts.push('-' + enemyExperienceCode);
+            }
         }
 
         if (doorPositions.length) {

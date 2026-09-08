@@ -1,5 +1,6 @@
 
 import { ShareConstants } from '../runtime/infra/share/ShareConstants';
+import { normalizeEnemyExperienceOverride } from '../runtime/domain/definitions/enemyExperience';
 import { resolveVariableId, type VariableRef } from './variables';
 import type {
     ChestItemType,
@@ -81,6 +82,8 @@ type EnemyOptions = {
     y: number;
     /** Variable set ON when this enemy is defeated. */
     defeatVariable?: VariableRef | number;
+    /** XP awarded when this enemy is defeated. Defaults to the enemy type's reward. */
+    experience?: number;
 };
 
 class RoomBuilder {
@@ -120,6 +123,13 @@ class RoomBuilder {
             throw new Error(`Room already has ${MAX_ENEMIES_PER_ROOM} enemies (maximum)`);
         }
         const enemy: SdkEnemy = { type: opts.type, x: opts.x, y: opts.y, roomIndex: 0 };
+        if (opts.experience !== undefined) {
+            if (!Number.isSafeInteger(opts.experience) || opts.experience < 0) {
+                throw new Error(`experience must be a safe non-negative integer, got ${opts.experience}`);
+            }
+            const normalizedExperience = normalizeEnemyExperienceOverride(opts.type, opts.experience);
+            if (normalizedExperience !== undefined) enemy.experience = normalizedExperience;
+        }
         if (opts.defeatVariable !== undefined) {
             enemy.defeatVariableId = resolveVariableId(opts.defeatVariable);
         }

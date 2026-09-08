@@ -148,6 +148,17 @@ class EditorEnemyService {
         this.manager.history.pushCurrentState();
     }
 
+    handleEnemyExperienceChange(enemyId: string, value: string) {
+        const trimmed = value.trim();
+        const experience = trimmed.length ? Number(trimmed) : null;
+        const changed = this.gameEngine.setEnemyExperience(enemyId, experience);
+        if (!changed) return;
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+    }
+
     selectEnemyType(type: string) {
         const definition = this.getEnemyDefinition(type);
         if (!definition) return;

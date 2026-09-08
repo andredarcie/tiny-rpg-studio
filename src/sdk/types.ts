@@ -71,6 +71,7 @@ export type SdkEnemy = {
     y: number;
     roomIndex: number;
     defeatVariableId?: string | null;
+    experience?: number;
 };
 
 export type SdkVariable = {

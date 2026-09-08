@@ -132,6 +132,18 @@ describe('TinyRPGBuilder', () => {
             expect(() => new TinyRPG().room(0).addEnemy({ type: 'invalid' as never, x: 1, y: 1 })).toThrow(/Unknown enemy type/);
         });
 
+        it('addEnemy preserves valid custom XP and rejects invalid XP', () => {
+            const game = new TinyRPG();
+            game.room(0).addEnemy({ type: 'skeleton', x: 1, y: 1, experience: 0 });
+            expect(game.toSharePayload().enemies?.[0].experience).toBe(0);
+            expect(() => new TinyRPG().room(0).addEnemy({ type: 'skeleton', x: 1, y: 1, experience: -1 })).toThrow(/experience/);
+            expect(() => new TinyRPG().room(0).addEnemy({ type: 'skeleton', x: 1, y: 1, experience: 1.5 })).toThrow(/experience/);
+
+            const capped = new TinyRPG();
+            capped.room(0).addEnemy({ type: 'skeleton', x: 1, y: 1, experience: 99 });
+            expect(capped.toSharePayload().enemies?.[0].experience).toBe(16);
+        });
+
         it('addEnemy with x out of range throws Error', () => {
             const max = ShareConstants.MATRIX_SIZE;
             expect(() => new TinyRPG().room(0).addEnemy({ type: 'skeleton', x: max, y: 0 })).toThrow(/x must be between/);

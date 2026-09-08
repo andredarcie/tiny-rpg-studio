@@ -8,6 +8,7 @@ import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { ShareConstants } from './ShareConstants';
 import { ShareMath } from './ShareMath';
 import { ShareVariableCodec } from './ShareVariableCodec';
+import { normalizeEnemyExperienceOverride } from '../../domain/definitions/enemyExperience';
 
 type ShareSpriteInput = {
     id?: string;
@@ -46,6 +47,7 @@ type ShareEnemyInput = {
     y?: number;
     roomIndex?: number;
     defeatVariableId?: string | null;
+    experience?: unknown;
 };
 
 type ShareObjectInput = {
@@ -84,6 +86,7 @@ type NpcDefinitionLookup = {
 
 type EnemyDefinitionLookup = {
     type: string;
+    experience?: number;
 };
 
 type NormalizedSprite = {
@@ -117,6 +120,7 @@ type NormalizedEnemy = {
     roomIndex: number;
     defeatVariableId: string | null;
     variableNibble: number;
+    experience?: number;
 };
 
 type PositionEntry = {
@@ -234,6 +238,7 @@ class ShareDataNormalizer {
                     ? defs.findIndex((def) => def.type === type)
                     : -1;
                 const defeatVariableId = ShareDataNormalizer.normalizeEnemyVariable(enemy.defeatVariableId);
+                const experience = normalizeEnemyExperienceOverride(type, enemy.experience);
                 return {
                     x: ShareMath.clamp(Number(enemy.x), 0, ShareConstants.MATRIX_SIZE - 1, 0),
                     y: ShareMath.clamp(Number(enemy.y), 0, ShareConstants.MATRIX_SIZE - 1, 0),
@@ -242,7 +247,8 @@ class ShareDataNormalizer {
                     id: enemy.id || `enemy-${index + 1}`,
                     typeIndex,
                     defeatVariableId,
-                    variableNibble: ShareVariableCodec.variableIdToNibble(defeatVariableId)
+                    variableNibble: ShareVariableCodec.variableIdToNibble(defeatVariableId),
+                    ...(experience === undefined ? {} : { experience })
                 };
             })
             .filter((enemy) => {

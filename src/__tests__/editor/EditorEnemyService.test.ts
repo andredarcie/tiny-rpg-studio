@@ -52,6 +52,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       removeEnemy: vi.fn(),
       moveEnemyById: vi.fn(() => true),
       setEnemyVariable: vi.fn(() => true),
+      setEnemyExperience: vi.fn(() => true),
       renderer: { showCombatIndicator: vi.fn() },
       draw: vi.fn(),
     },
@@ -252,6 +253,27 @@ describe('EditorEnemyService', () => {
       expect(manager.renderService.renderEditor).toHaveBeenCalled();
       expect(manager.updateJSON).toHaveBeenCalled();
       expect(manager.history.pushCurrentState).toHaveBeenCalled();
+    });
+  });
+
+  describe('handleEnemyExperienceChange', () => {
+    it('forwards an empty value as a cleared override', () => {
+      service.handleEnemyExperienceChange('enemy-1', '');
+      expect(manager.gameEngine.setEnemyExperience).toHaveBeenCalledWith('enemy-1', null);
+    });
+
+    it('forwards a numeric edit and updates editor history only on change', () => {
+      service.handleEnemyExperienceChange('enemy-1', '12');
+      expect(manager.gameEngine.setEnemyExperience).toHaveBeenCalledWith('enemy-1', 12);
+      expect(manager.renderService.renderWorldGrid).toHaveBeenCalled();
+      expect(manager.renderService.renderEditor).toHaveBeenCalled();
+      expect(manager.updateJSON).toHaveBeenCalled();
+      expect(manager.history.pushCurrentState).toHaveBeenCalled();
+
+      vi.clearAllMocks();
+      manager.gameEngine.setEnemyExperience.mockReturnValue(false);
+      service.handleEnemyExperienceChange('enemy-1', '12');
+      expect(manager.history.pushCurrentState).not.toHaveBeenCalled();
     });
   });
 

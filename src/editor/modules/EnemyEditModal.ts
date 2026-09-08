@@ -6,6 +6,7 @@ import type { EditorModalButton } from './EditorModal';
 import type { EditorRenderService } from './EditorRenderService';
 import type { EnemyDefinitionData } from '../../runtime/domain/entities/Enemy';
 import type { EnemyDefinition } from '../../types/gameState';
+import { MAX_ENEMY_EXPERIENCE } from '../../runtime/domain/definitions/enemyExperience';
 
 class EnemyEditModal extends EditorRendererBase {
     private currentEnemyId: string | null = null;
@@ -61,7 +62,7 @@ class EnemyEditModal extends EditorRendererBase {
         const body = document.createElement('div');
         body.className = 'object-edit-modal__config';
 
-        body.appendChild(this.buildStats(definition));
+        body.appendChild(this.buildStats(enemy, definition));
 
         // Variable toggled when this enemy is defeated.
         const label = document.createElement('label');
@@ -81,7 +82,7 @@ class EnemyEditModal extends EditorRendererBase {
         return body;
     }
 
-    private buildStats(definition: EnemyDefinitionData | null): HTMLElement {
+    private buildStats(enemy: EnemyDefinition, definition: EnemyDefinitionData | null): HTMLElement {
         const grid = document.createElement('div');
         grid.className = 'enemy-stats-grid';
 
@@ -90,7 +91,7 @@ class EnemyEditModal extends EditorRendererBase {
 
         grid.appendChild(this.buildStat(this.t('enemies.stats.life', 'Vida'), this.formatNumber(definition?.lives)));
         grid.appendChild(this.buildStat(this.t('enemies.stats.damage', 'Dano'), this.formatNumber(definition?.damage)));
-        grid.appendChild(this.buildStat(this.t('enemies.stats.experience', 'XP'), this.formatNumber(definition?.experience)));
+        grid.appendChild(this.buildExperienceStat(enemy, definition));
         grid.appendChild(this.buildStat(this.t('enemies.stats.missChance', 'Esquiva'), this.formatPercent(definition?.missChance)));
         grid.appendChild(this.buildStat(this.t('enemies.stats.vision', 'Visão'), definition?.hasEyes ? yes : no));
         grid.appendChild(this.buildStat(
@@ -99,6 +100,33 @@ class EnemyEditModal extends EditorRendererBase {
         ));
 
         return grid;
+    }
+
+    private buildExperienceStat(enemy: EnemyDefinition, definition: EnemyDefinitionData | null): HTMLElement {
+        const label = this.t('enemies.stats.experience', 'XP');
+        const cell = document.createElement('label');
+        cell.className = 'enemy-stat-cell';
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'enemy-stat-cell__label';
+        labelEl.textContent = label;
+
+        const input = document.createElement('input');
+        input.className = 'enemy-stat-cell__input';
+        input.type = 'number';
+        input.min = '0';
+        input.max = String(MAX_ENEMY_EXPERIENCE);
+        input.step = '1';
+        input.setAttribute('aria-label', label);
+        const effective = enemy.experience ?? definition?.experience;
+        input.value = Number.isSafeInteger(effective) ? String(effective) : '';
+        input.addEventListener('change', () => {
+            this.manager.enemyService.handleEnemyExperienceChange(enemy.id, input.value);
+            this.refresh();
+        });
+
+        cell.append(labelEl, input);
+        return cell;
     }
 
     private buildStat(label: string, value: string): HTMLElement {

@@ -20,6 +20,7 @@ import type {
   EnemyDefinitionData,
 } from '../../../types/managerTypes';
 import { EnemyMovementResult as EnemyMovementResultConst } from '../../../types/managerTypes';
+import { getEnemyExperienceReward } from '../../domain/definitions/enemyExperience';
 
 const getEnemyLocaleText = (key: string, fallback = ''): string => {
   const value = TextResources.get(key, fallback) as string;
@@ -108,6 +109,7 @@ class EnemyManager {
       lastX: enemy.lastX ?? enemy.x,
       lastY: enemy.lastY ?? enemy.y,
       lives: maxLives,
+      ...(enemy.experience === undefined ? {} : { experience: enemy.experience }),
       defeatVariableId: enemy.defeatVariableId ?? null,
     });
     if (!addedId) {
@@ -342,7 +344,7 @@ class EnemyManager {
     this.tryTriggerDefeatVariable(enemy);
 
     // Award experience
-    const experienceReward = this.getExperienceReward(enemy.type);
+    const experienceReward = this.getExperienceReward(enemy.type, enemy.experience);
     const defeatResult = this.gameState.handleEnemyDefeated(experienceReward);
 
     if (defeatResult?.leveledUp) {
@@ -856,8 +858,8 @@ class EnemyManager {
     this.combatManager.ensureEnemyLives(enemy);
   }
 
-  getExperienceReward(type: string): number {
-    return EnemyDefinitions.getExperienceReward(type);
+  getExperienceReward(type: string, override?: unknown): number {
+    return getEnemyExperienceReward(type, override);
   }
 
   getEnemyMissChance(type: string): number {

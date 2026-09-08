@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-08-custom-enemy-xp',
+    date: '2026-09-08',
+    title: 'Customize enemy XP',
+    description:
+      'Every placed enemy can now award its own amount of XP, up to 16. Custom rewards travel with project files, share links, SDK games, and HTML exports.',
+  },
+  {
     id: '2026-08-13-animated-dialogue-text',
     date: '2026-08-13',
     title: 'Animate dialogue text',

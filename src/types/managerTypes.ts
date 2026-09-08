@@ -14,6 +14,7 @@ export type GameStateApi = {
   getEnemies: () => EnemyState[];
   addEnemy?: (enemy: EnemyState) => string | null;
   removeEnemy?: (id: string) => void;
+  setEnemyExperience?: (id: string | number, experience?: number | null) => boolean;
   getGame?: () => GameData;
   getPlayer: () => PlayerState;
   isPlayerOnDamageCooldown: () => boolean;
@@ -182,6 +183,7 @@ export type EnemyInput = {
   lastX?: number;
   lastY?: number;
   defeatVariableId?: string | null;
+  experience?: number;
 };
 
 export type DefeatVariableConfig = {

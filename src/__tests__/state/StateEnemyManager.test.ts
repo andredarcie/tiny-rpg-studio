@@ -14,6 +14,52 @@ const createWorldManager = () => ({
 });
 
 describe('StateEnemyManager', () => {
+  it('normalizes custom experience overrides across add, update, clone, and reset', () => {
+    const game = { enemies: [] as EnemyDefinition[], variables: [] };
+    const state = { enemies: [] as EnemyDefinition[] };
+    const manager = new StateEnemyManager(game as never, state as never, createWorldManager() as never);
+
+    manager.addEnemy({ id: 'enemy-xp', type: 'giant-rat', roomIndex: 0, x: 1, y: 1, lastX: 1, experience: 0 });
+    expect(game.enemies[0].experience).toBe(0);
+    expect(state.enemies[0].experience).toBe(0);
+
+    expect(manager.setEnemyExperience('enemy-xp', 12)).toBe(true);
+    expect(game.enemies[0].experience).toBe(12);
+    expect(state.enemies[0].experience).toBe(12);
+    expect(manager.setEnemyExperience('enemy-xp', 12)).toBe(false);
+
+    expect(manager.setEnemyExperience('enemy-xp', 99)).toBe(true);
+    expect(game.enemies[0].experience).toBe(16);
+    expect(state.enemies[0].experience).toBe(16);
+
+    manager.resetRuntime();
+    expect(state.enemies[0].experience).toBe(16);
+
+    expect(manager.setEnemyExperience('enemy-xp', 3)).toBe(true);
+    expect(game.enemies[0]).not.toHaveProperty('experience');
+    expect(state.enemies[0]).not.toHaveProperty('experience');
+  });
+
+  it('removes invalid, unsafe, and default-equal authored experience overrides', () => {
+    const game = {
+      enemies: [
+        { id: 'valid', type: 'bandit', roomIndex: 0, x: 0, y: 0, lastX: 0, experience: 9 },
+        { id: 'default', type: 'bandit', roomIndex: 0, x: 1, y: 0, lastX: 1, experience: 4 },
+        { id: 'fraction', type: 'bandit', roomIndex: 0, x: 2, y: 0, lastX: 2, experience: 1.5 },
+        { id: 'unsafe', type: 'bandit', roomIndex: 0, x: 3, y: 0, lastX: 3, experience: Number.MAX_SAFE_INTEGER + 1 },
+        { id: 'capped', type: 'bandit', roomIndex: 0, x: 4, y: 0, lastX: 4, experience: 99 },
+      ] as EnemyDefinition[],
+      variables: [],
+    };
+    const manager = new StateEnemyManager(game as never, { enemies: [] } as never, createWorldManager() as never);
+
+    manager.normalizeAuthoredEnemies();
+
+    expect(game.enemies[0].experience).toBe(9);
+    expect(game.enemies.slice(1, 4).every((enemy) => !Object.hasOwn(enemy, 'experience'))).toBe(true);
+    expect(game.enemies[4].experience).toBe(16);
+  });
+
   it('keeps only one boss enemy at a time', () => {
     const game: { enemies: unknown[]; variables: unknown[] } = { enemies: [], variables: [] };
     const state: { enemies: unknown[] } = { enemies: [] };

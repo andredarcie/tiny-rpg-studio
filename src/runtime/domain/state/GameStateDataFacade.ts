@@ -17,6 +17,7 @@ class GameStateDataFacade {
     importGameData(data: unknown): void {
         this.dataManager.importGameData(data as Parameters<StateDataManager['importGameData']>[0]);
         this.gameState.enemyManager.setGame(this.gameState.game);
+        this.gameState.enemyManager.normalizeAuthoredEnemies();
         this.gameState.itemManager.setGame(this.gameState.game);
         this.gameState.objectManager.setGame(this.gameState.game);
         this.gameState.variableManager.setGame(this.gameState.game);

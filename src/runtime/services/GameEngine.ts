@@ -871,6 +871,13 @@ export class GameEngine {
     return changed;
   }
 
+  setEnemyExperience(enemyId: string | number, experience: number | null = null): boolean {
+    if (typeof this.gameState.setEnemyExperience !== 'function') return false;
+    const changed = this.gameState.setEnemyExperience(enemyId, experience);
+    if (changed) this.renderer.draw();
+    return changed;
+  }
+
   startEnemyLoop(): void {
     // Do not run the enemy simulation while editing. Halt the timer entirely
     // instead of relying on a per-tick no-op so nothing ticks in the background.

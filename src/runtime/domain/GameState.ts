@@ -821,6 +821,11 @@ class GameState {
         return this.enemyManager.setEnemyVariable(normalizedEnemyId, normalized);
     }
 
+    setEnemyExperience(enemyId: string | number, experience: number | null = null): boolean {
+        const normalizedEnemyId = typeof enemyId === 'string' ? enemyId : String(enemyId);
+        return this.enemyManager.setEnemyExperience(normalizedEnemyId, experience);
+    }
+
     damagePlayer(amount = 1, options: { autoGameOver?: boolean } = {}) {
         const lives = this.playerManager.damage(amount);
         // Reaching 0 lives (with no revive) is a defeat. By default we mark

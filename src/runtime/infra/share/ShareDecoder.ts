@@ -23,6 +23,7 @@ import {
     type CustomTileEffectDefinition,
     type TileVisualEffectKind,
 } from '../../domain/definitions/customTileEffects';
+import { normalizeEnemyExperienceOverride } from '../../domain/definitions/enemyExperience';
 
 type SharePayload = Record<string, string>;
 
@@ -350,6 +351,29 @@ class ShareDecoder {
         const enemyVariableNibbles = version >= ShareConstants.ENEMY_VARIABLE_VERSION
             ? decodeVarRef(payload.w, enemyPositions.length)
             : (new Array(enemyPositions.length).fill(0) as number[]);
+        const enemyExperienceOverrides = new Map<number, number>();
+        if (version >= ShareConstants.ENEMY_EXPERIENCE_VERSION && payload['-']) {
+            const seen = new Set<number>();
+            let valid = true;
+            for (const pair of payload['-'].split(',')) {
+                const match = /^([0-9a-z]+):([0-9a-z]+)$/.exec(pair);
+                if (!match) {
+                    valid = false;
+                    break;
+                }
+                const index = parseInt(match[1], 36);
+                const experience = parseInt(match[2], 36);
+                if (!Number.isSafeInteger(index) || index < 0 || index >= enemyPositions.length
+                    || !Number.isSafeInteger(experience) || experience < 0 || seen.has(index)
+                    || index.toString(36) !== match[1] || experience.toString(36) !== match[2]) {
+                    valid = false;
+                    break;
+                }
+                seen.add(index);
+                enemyExperienceOverrides.set(index, experience);
+            }
+            if (!valid) enemyExperienceOverrides.clear();
+        }
         const doorPositions = version >= ShareConstants.OBJECTS_VERSION ? SharePositionCodec.decodePositions(payload.d || '') : [];
         const keyPositions = version >= ShareConstants.OBJECTS_VERSION ? SharePositionCodec.decodePositions(payload.k || '') : [];
         const magicDoorPositions = version >= ShareConstants.MAGIC_DOOR_VERSION ? SharePositionCodec.decodePositions(payload.m || '') : [];
@@ -563,19 +587,22 @@ class ShareDecoder {
         const enemyDefinitions = ShareConstants.ENEMY_DEFINITIONS as Array<{ type?: string }>;
         const enemies = enemyPositions.map((pos, index) => {
             const nibble: number = enemyVariableNibbles[index] ?? 0;
+            const type = (() => {
+                const idx = enemyTypeIndexes[index];
+                if (Number.isFinite(idx) && idx >= 0 && idx < enemyDefinitions.length) {
+                    return ShareDataNormalizer.normalizeEnemyType(enemyDefinitions[idx].type);
+                }
+                return defaultEnemyType;
+            })();
+            const experience = normalizeEnemyExperienceOverride(type, enemyExperienceOverrides.get(index));
             return {
                 id: `enemy-${index + 1}`,
-                type: (() => {
-                    const idx = enemyTypeIndexes[index];
-                    if (Number.isFinite(idx) && idx >= 0 && idx < enemyDefinitions.length) {
-                        return ShareDataNormalizer.normalizeEnemyType(enemyDefinitions[idx].type);
-                    }
-                    return defaultEnemyType;
-                })(),
+                type,
                 x: pos.x,
                 y: pos.y,
                 roomIndex: pos.roomIndex,
-                defeatVariableId: ShareVariableCodec.nibbleToVariableId(nibble)
+                defeatVariableId: ShareVariableCodec.nibbleToVariableId(nibble),
+                ...(experience === undefined ? {} : { experience })
             };
         });
 

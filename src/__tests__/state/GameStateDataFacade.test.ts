@@ -35,7 +35,7 @@ describe('GameStateDataFacade', () => {
       importGameData: vi.fn(),
     } as unknown as StateDataManager;
 
-    const enemyManager = { setGame: vi.fn() };
+    const enemyManager = { setGame: vi.fn(), normalizeAuthoredEnemies: vi.fn() };
     const itemManager = { setGame: vi.fn() };
     const objectManager = { setGame: vi.fn() };
     const variableManager = { setGame: vi.fn() };
@@ -60,6 +60,7 @@ describe('GameStateDataFacade', () => {
 
     expect(dataManager.importGameData).toHaveBeenCalledWith(payload);
     expect(enemyManager.setGame).toHaveBeenCalledWith(gameState.game);
+    expect(enemyManager.normalizeAuthoredEnemies).toHaveBeenCalledTimes(1);
     expect(itemManager.setGame).toHaveBeenCalledWith(gameState.game);
     expect(objectManager.setGame).toHaveBeenCalledWith(gameState.game);
     expect(variableManager.setGame).toHaveBeenCalledWith(gameState.game);
