@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-08-armor-durability',
+    date: '2026-09-08',
+    title: 'Armor now wears down',
+    description:
+      'Armor now protects you from five hits before it breaks. Small squares above its inventory icon show exactly how many protected hits remain.',
+  },
+  {
     id: '2026-09-08-custom-enemy-xp',
     date: '2026-09-08',
     title: 'Customize enemy XP',

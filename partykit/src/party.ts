@@ -18,6 +18,7 @@ type PlayerState = {
     swordType?: string | null;
     swordDurability?: number;
     armorEquipped?: boolean;
+    armorDurability?: number;
     bootsEquipped?: boolean;
     skills?: string[];
     connectedAt: number;
@@ -283,6 +284,7 @@ export default class GameParty implements Party.Server {
             swordType: null,
             swordDurability: 0,
             armorEquipped: false,
+            armorDurability: 0,
             bootsEquipped: false,
             skills: [],
             connectedAt: Date.now(),
@@ -323,6 +325,7 @@ export default class GameParty implements Party.Server {
         if (typeof msg.swordType === 'string' || msg.swordType === null) player.swordType = msg.swordType;
         if (typeof msg.swordDurability === 'number') player.swordDurability = msg.swordDurability;
         if (typeof msg.armorEquipped === 'boolean') player.armorEquipped = msg.armorEquipped;
+        if (typeof msg.armorDurability === 'number') player.armorDurability = msg.armorDurability;
         if (typeof msg.bootsEquipped === 'boolean') player.bootsEquipped = msg.bootsEquipped;
         if (Array.isArray(msg.skills)) {
             player.skills = msg.skills.filter((skill): skill is string => typeof skill === 'string' && skill.length > 0);
@@ -384,6 +387,7 @@ export default class GameParty implements Party.Server {
             swordType: p.swordType ?? null,
             swordDurability: p.swordDurability,
             armorEquipped: p.armorEquipped,
+            armorDurability: p.armorDurability,
             bootsEquipped: p.bootsEquipped,
             skills: p.skills ?? [],
         }));

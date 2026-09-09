@@ -72,6 +72,8 @@ export const GameConfig = new GameConfigSchema({
     experienceGrowth: 1.35,
     /** Maximum number of keys that can be carried */
     maxKeys: 9,
+    /** Number of hits reduced by a newly equipped armor */
+    armorDurability: 5,
     /** Damage cooldown time after room change (ms) */
     roomChangeDamageCooldown: 1000,
   },

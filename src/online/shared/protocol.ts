@@ -16,6 +16,7 @@ export type PlayerInfo = {
     swordType?: string | null;
     swordDurability?: number;
     armorEquipped?: boolean;
+    armorDurability?: number;
     bootsEquipped?: boolean;
     skills?: string[];
 };
@@ -127,6 +128,7 @@ export type PlayerPositionMsg = {
     swordType?: string | null;
     swordDurability?: number;
     armorEquipped?: boolean;
+    armorDurability?: number;
     bootsEquipped?: boolean;
     skills?: string[];
 };

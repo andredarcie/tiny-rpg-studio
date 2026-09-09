@@ -176,7 +176,7 @@ class RendererHudRenderer {
             equipX -= equipSize;
             this.canvasHelper.drawSprite(ctx, swordSprite, equipX, equipY, equipStep);
             // Current remaining hits — same square markers as enemy lives, above the icon.
-            this.drawSwordDurabilityMarkers(
+            this.drawDurabilityMarkers(
                 ctx,
                 equipX,
                 equipY,
@@ -197,6 +197,13 @@ class RendererHudRenderer {
         if (this.gameState.hasArmor?.() && armorSprite) {
             equipX -= equipSize;
             this.canvasHelper.drawSprite(ctx, armorSprite, equipX, equipY, equipStep);
+            this.drawDurabilityMarkers(
+                ctx,
+                equipX,
+                equipY,
+                equipSize,
+                this.gameState.getArmorDurability?.() ?? 0,
+            );
         }
 
         ctx.restore();
@@ -211,10 +218,10 @@ class RendererHudRenderer {
     }
 
     /**
-     * Draw remaining sword durability as small squares above the inventory sword,
+     * Draw remaining equipment durability as small squares above its inventory icon,
      * matching the enemy lives markers (one square per remaining hit).
      */
-    drawSwordDurabilityMarkers(
+    drawDurabilityMarkers(
         ctx: CanvasRenderingContext2D,
         px: number,
         py: number,
@@ -378,6 +385,7 @@ type GameStateApi = {
     getDamageShieldMax: () => number;
     getSwordType: () => string | null;
     getSwordDurability?: () => number;
+    getArmorDurability?: () => number;
     hasBoots?: () => boolean;
     hasArmor?: () => boolean;
     getLevel: () => number;

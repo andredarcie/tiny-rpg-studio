@@ -29,6 +29,7 @@ describe('GameConfigSchema', () => {
       experienceBase: 6,
       experienceGrowth: 1.35,
       maxKeys: 9,
+      armorDurability: 5,
       roomChangeDamageCooldown: 1000,
     },
     combat: {

@@ -33,6 +33,7 @@ export interface GamePlayerConfig {
   readonly experienceBase: number;
   readonly experienceGrowth: number;
   readonly maxKeys: number;
+  readonly armorDurability: number;
   readonly roomChangeDamageCooldown: number;
 }
 
@@ -352,6 +353,7 @@ export class GameConfigSchema {
     this.assertPositiveNumber(player.experienceBase, 'experience base');
     this.assertPositiveNumber(player.experienceGrowth, 'experience growth');
     this.assertNonNegativeInteger(player.maxKeys, 'max keys');
+    this.assertPositiveInteger(player.armorDurability, 'armor durability');
     this.assertNonNegativeInteger(player.roomChangeDamageCooldown, 'room change damage cooldown');
 
     if (player.startLevel > player.maxLevel) {

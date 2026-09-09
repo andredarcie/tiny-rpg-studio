@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { StatePlayerManager } from '../../runtime/domain/state/StatePlayerManager';
+import { GameConfig } from '../../config/GameConfig';
+import { createRuntimeStateMock } from './mocks';
 
 const createWorldManager = () => ({
   clampRoomIndex: (value: number) => {
@@ -155,5 +157,78 @@ describe('StatePlayerManager', () => {
 
     expect(manager.hasArmor()).toBe(false);
     expect(manager.hasBoots()).toBe(false);
+    expect(manager.getArmorDurability()).toBe(0);
+  });
+
+  it('equips armor at full durability and normalizes durability changes', () => {
+    const state = createRuntimeStateMock();
+    const manager = new StatePlayerManager(state, createWorldManager());
+
+    manager.setArmorEquipped();
+    expect(manager.getArmorDurability()).toBe(GameConfig.player.armorDurability);
+
+    manager.setArmorDurability(3.9);
+    expect(manager.getArmorDurability()).toBe(3);
+    manager.setArmorDurability(99);
+    expect(manager.getArmorDurability()).toBe(GameConfig.player.armorDurability);
+    manager.setArmorDurability(Number.NaN);
+    expect(manager.getArmorDurability()).toBe(0);
+    expect(manager.hasArmor()).toBe(false);
+  });
+
+  it('treats legacy equipped armor without durability as full', () => {
+    const state = createRuntimeStateMock();
+    state.player.armorEquipped = true;
+    delete state.player.armorDurability;
+    const manager = new StatePlayerManager(state, createWorldManager());
+
+    expect(manager.getArmorDurability()).toBe(GameConfig.player.armorDurability);
+    expect(state.player.armorDurability).toBe(GameConfig.player.armorDurability);
+  });
+
+  it('uses all five armor charges, protects on the final charge, then breaks', () => {
+    const state = createRuntimeStateMock();
+    const manager = new StatePlayerManager(state, createWorldManager());
+    manager.setArmorEquipped();
+
+    for (let remaining = 4; remaining >= 0; remaining -= 1) {
+      manager.damage(1);
+      expect(manager.getArmorDurability()).toBe(remaining);
+    }
+
+    expect(state.player.currentLives).toBe(3);
+    expect(manager.hasArmor()).toBe(false);
+    manager.damage(1);
+    expect(state.player.currentLives).toBe(2);
+  });
+
+  it('does not consume armor when incoming damage is zero or iron-body negates it', () => {
+    const state = createRuntimeStateMock();
+    const skillManager = { hasSkill: (skillId: string) => skillId === 'iron-body' };
+    const manager = new StatePlayerManager(state, createWorldManager(), skillManager);
+    manager.setArmorEquipped();
+
+    manager.damage(0);
+    manager.damage(1);
+
+    expect(manager.getArmorDurability()).toBe(GameConfig.player.armorDurability);
+    expect(state.player.currentLives).toBe(state.player.maxLives);
+  });
+
+  it('keeps armor before shield and god-mode in the existing damage order', () => {
+    const state = createRuntimeStateMock();
+    const manager = new StatePlayerManager(state, createWorldManager());
+    manager.setArmorEquipped();
+    manager.addDamageShield(2);
+
+    manager.damage(3);
+    expect(manager.getArmorDurability()).toBe(GameConfig.player.armorDurability - 1);
+    expect(state.player.damageShield).toBe(0);
+    expect(state.player.lastDamageReduction).toBe(2);
+
+    manager.setGodMode(true);
+    manager.damage(2);
+    expect(manager.getArmorDurability()).toBe(GameConfig.player.armorDurability - 2);
+    expect(state.player.currentLives).toBe(state.player.maxLives);
   });
 });

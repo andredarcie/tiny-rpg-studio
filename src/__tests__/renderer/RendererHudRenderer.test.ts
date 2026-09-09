@@ -50,6 +50,7 @@ type GameStateOverrides = {
   maxKeys?: number;
   hasBoots?: boolean;
   hasArmor?: boolean;
+  armorDurability?: number;
 };
 
 function makeFixture(overrides: GameStateOverrides = {}) {
@@ -61,6 +62,7 @@ function makeFixture(overrides: GameStateOverrides = {}) {
     maxKeys = 9,
     hasBoots = false,
     hasArmor = false,
+    armorDurability = 0,
   } = overrides;
 
   const gameState = {
@@ -75,6 +77,7 @@ function makeFixture(overrides: GameStateOverrides = {}) {
     getSwordDurability: vi.fn(() => swordDurability),
     hasBoots: vi.fn(() => hasBoots),
     hasArmor: vi.fn(() => hasArmor),
+    getArmorDurability: vi.fn(() => armorDurability),
     getLevel: vi.fn(() => 1),
     getGame: vi.fn(() => ({ world: { rows: 1, cols: 1 } })),
     getPlayer: vi.fn(() => ({ roomIndex: 0 })),
@@ -119,20 +122,20 @@ function makeFixture(overrides: GameStateOverrides = {}) {
   return { renderer, gameState, canvasHelper, paletteManager, objectSprites };
 }
 
-describe('RendererHudRenderer sword durability markers', () => {
+describe('RendererHudRenderer equipment durability markers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   // ─── drawSwordDurabilityMarkers ───────────────────────────────────────────
 
-  describe('drawSwordDurabilityMarkers', () => {
+  describe('drawDurabilityMarkers', () => {
     it('draws nothing when durability is 0 or negative', () => {
       const { renderer } = makeFixture();
       const ctx = createCtx();
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, 0);
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, -3);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, 0);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, -3);
 
       expect(ctx.fillRect).not.toHaveBeenCalled();
       expect(ctx.strokeRect).not.toHaveBeenCalled();
@@ -142,8 +145,8 @@ describe('RendererHudRenderer sword durability markers', () => {
       const { renderer } = makeFixture();
       const ctx = createCtx();
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, Number.NaN);
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, Number.POSITIVE_INFINITY);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, Number.NaN);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 10, 20, 16, Number.POSITIVE_INFINITY);
 
       expect(ctx.fillRect).not.toHaveBeenCalled();
       expect(ctx.strokeRect).not.toHaveBeenCalled();
@@ -153,7 +156,7 @@ describe('RendererHudRenderer sword durability markers', () => {
       const { renderer } = makeFixture();
       const ctx = createCtx();
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 3);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 3);
 
       expect(ctx.fillRect).toHaveBeenCalledTimes(3);
       expect(ctx.strokeRect).toHaveBeenCalledTimes(3);
@@ -163,7 +166,7 @@ describe('RendererHudRenderer sword durability markers', () => {
       const { renderer } = makeFixture();
       const ctx = createCtx();
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 2.9);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 2.9);
 
       expect(ctx.fillRect).toHaveBeenCalledTimes(2);
       expect(ctx.strokeRect).toHaveBeenCalledTimes(2);
@@ -177,7 +180,7 @@ describe('RendererHudRenderer sword durability markers', () => {
       const iconSize = 16;
       const durability = 3;
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), px, py, iconSize, durability);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), px, py, iconSize, durability);
 
       const size = Math.max(3, Math.floor(iconSize / 5));
       const gap = Math.max(2, Math.floor(size * 0.4));
@@ -203,7 +206,7 @@ describe('RendererHudRenderer sword durability markers', () => {
       const { renderer, paletteManager } = makeFixture();
       const ctx = createCtx();
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 1);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 1);
 
       expect(paletteManager.getColor).toHaveBeenCalledWith(6);
       expect(ctx.fillStyle).toBe('#C2C3C7');
@@ -215,7 +218,7 @@ describe('RendererHudRenderer sword durability markers', () => {
       vi.mocked(paletteManager.getColor).mockReturnValue('');
       const ctx = createCtx();
 
-      renderer.drawSwordDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 1);
+      renderer.drawDurabilityMarkers(asCanvasCtx(ctx), 0, 20, 16, 1);
 
       expect(ctx.fillStyle).toBe('#C2C3C7');
       expect(ctx.fillRect).toHaveBeenCalledTimes(1);
@@ -228,7 +231,7 @@ describe('RendererHudRenderer sword durability markers', () => {
     it('does not draw durability markers when no sword is equipped', () => {
       const { renderer } = makeFixture({ swordType: null, swordDurability: 5 });
       const ctx = createCtx();
-      const markerSpy = vi.spyOn(renderer, 'drawSwordDurabilityMarkers');
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
 
       renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
 
@@ -239,7 +242,7 @@ describe('RendererHudRenderer sword durability markers', () => {
     it('does not draw markers when sword type has no sprite', () => {
       const { renderer } = makeFixture({ swordType: 'unknown-sword', swordDurability: 3 });
       const ctx = createCtx();
-      const markerSpy = vi.spyOn(renderer, 'drawSwordDurabilityMarkers');
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
 
       renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
 
@@ -252,7 +255,7 @@ describe('RendererHudRenderer sword durability markers', () => {
         swordDurability: 3,
       });
       const ctx = createCtx();
-      const markerSpy = vi.spyOn(renderer, 'drawSwordDurabilityMarkers');
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
 
       renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
 
@@ -274,7 +277,7 @@ describe('RendererHudRenderer sword durability markers', () => {
         swordDurability: 5,
       });
       const ctx = createCtx();
-      const markerSpy = vi.spyOn(renderer, 'drawSwordDurabilityMarkers');
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
 
       renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
       expect(markerSpy).toHaveBeenLastCalledWith(expect.anything(), expect.any(Number), expect.any(Number), 16, 5);
@@ -319,7 +322,7 @@ describe('RendererHudRenderer sword durability markers', () => {
         isGameOver: true,
       });
       const ctx = createCtx();
-      const markerSpy = vi.spyOn(renderer, 'drawSwordDurabilityMarkers');
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
 
       renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
 
@@ -332,7 +335,7 @@ describe('RendererHudRenderer sword durability markers', () => {
         swordDurability: 2,
       });
       const ctx = createCtx(128);
-      const markerSpy = vi.spyOn(renderer, 'drawSwordDurabilityMarkers');
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
       const padding = 2;
       const width = 128;
       const height = 32;
@@ -344,6 +347,55 @@ describe('RendererHudRenderer sword durability markers', () => {
       renderer.drawInventory(asCanvasCtx(ctx), { width, height, padding });
 
       expect(markerSpy).toHaveBeenCalledWith(expect.anything(), equipX, equipY, equipSize, 2);
+    });
+  });
+
+  describe('drawInventory (armor durability visual)', () => {
+    it('draws armor with one marker per remaining use', () => {
+      const { renderer, canvasHelper, gameState, objectSprites } = makeFixture({
+        hasArmor: true,
+        armorDurability: 4,
+      });
+      const ctx = createCtx();
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
+
+      renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
+
+      expect(canvasHelper.drawSprite).toHaveBeenCalledWith(
+        expect.anything(),
+        objectSprites[ITEM_TYPES.ARMOR],
+        expect.any(Number),
+        expect.any(Number),
+        2,
+      );
+      expect(markerSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.any(Number),
+        expect.any(Number),
+        16,
+        4,
+      );
+      expect(gameState.getArmorDurability).toHaveBeenCalled();
+    });
+
+    it('does not draw broken armor or durability markers', () => {
+      const { renderer, canvasHelper, objectSprites } = makeFixture({
+        hasArmor: false,
+        armorDurability: 0,
+      });
+      const ctx = createCtx();
+      const markerSpy = vi.spyOn(renderer, 'drawDurabilityMarkers');
+
+      renderer.drawInventory(asCanvasCtx(ctx), { width: 128, height: 32, padding: 2 });
+
+      expect(canvasHelper.drawSprite).not.toHaveBeenCalledWith(
+        expect.anything(),
+        objectSprites[ITEM_TYPES.ARMOR],
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number),
+      );
+      expect(markerSpy).not.toHaveBeenCalled();
     });
   });
 });

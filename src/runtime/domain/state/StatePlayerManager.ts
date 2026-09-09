@@ -89,6 +89,7 @@ class StatePlayerManager {
         this.player.lastAttackTime = 0;
         this.player.stunUntil = 0;
         this.player.armorEquipped = false;
+        this.player.armorDurability = 0;
         this.player.bootsEquipped = false;
     }
 
@@ -150,8 +151,9 @@ class StatePlayerManager {
         if (this.skillManager?.hasSkill?.('iron-body')) {
             delta = Math.max(0, delta - 1);
         }
-        if (this.player.armorEquipped) {
+        if (delta > 0 && this.hasArmor()) {
             delta = Math.max(0, delta - 1);
+            this.consumeArmorDurability();
         }
         if (this.player.godMode) {
             this.player.lastDamageReduction = delta;
@@ -210,6 +212,7 @@ class StatePlayerManager {
     setArmorEquipped() {
         if (!this.player) return;
         this.player.armorEquipped = true;
+        this.player.armorDurability = GameConfig.player.armorDurability;
     }
 
     setBootsEquipped() {
@@ -222,7 +225,44 @@ class StatePlayerManager {
     }
 
     hasArmor() {
-        return Boolean(this.player?.armorEquipped);
+        return Boolean(this.player?.armorEquipped) && this.getArmorDurability() > 0;
+    }
+
+    getArmorDurability(): number {
+        if (!this.player) return 0;
+        if (this.player.armorDurability === undefined && this.player.armorEquipped) {
+            const maximum = GameConfig.player.armorDurability;
+            this.player.armorDurability = maximum;
+            return maximum;
+        }
+        const durability = Number.isFinite(this.player.armorDurability)
+            ? Math.max(0, Math.min(GameConfig.player.armorDurability, Math.floor(this.player.armorDurability as number)))
+            : 0;
+        this.player.armorDurability = durability;
+        if (durability === 0) {
+            this.player.armorEquipped = false;
+        }
+        return durability;
+    }
+
+    setArmorDurability(durability: number) {
+        if (!this.player) return;
+        const normalized = Number.isFinite(durability)
+            ? Math.max(0, Math.min(GameConfig.player.armorDurability, Math.floor(durability)))
+            : 0;
+        this.player.armorDurability = normalized;
+        this.player.armorEquipped = normalized > 0;
+    }
+
+    consumeArmorDurability(): boolean {
+        if (!this.player) return false;
+        const remaining = Math.max(0, this.getArmorDurability() - 1);
+        this.player.armorDurability = remaining;
+        if (remaining === 0) {
+            this.player.armorEquipped = false;
+            return true;
+        }
+        return false;
     }
 
     getDamageShieldMax() {

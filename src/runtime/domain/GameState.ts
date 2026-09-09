@@ -128,6 +128,7 @@ class GameState {
                 damageShieldMax: 0,
                 swordType: null,
                 swordDurability: 0,
+                armorDurability: 0,
                 lastDamageReduction: 0,
                 godMode: false,
                 lastAttackTime: 0,
@@ -632,6 +633,14 @@ class GameState {
 
     hasArmor() {
         return this.playerManager.hasArmor();
+    }
+
+    getArmorDurability() {
+        return this.playerManager.getArmorDurability();
+    }
+
+    setArmorDurability(durability: number) {
+        this.playerManager.setArmorDurability(durability);
     }
 
     getDamageShield() {

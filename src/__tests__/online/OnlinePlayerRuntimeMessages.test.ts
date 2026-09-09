@@ -36,6 +36,7 @@ describe('online player runtime messages', () => {
                     swordType: 'sword-bronze',
                     swordDurability: 2,
                     armorEquipped: true,
+                    armorDurability: 4,
                     bootsEquipped: false,
                 }),
                 getOwnedSkills: () => ['keyless-doors', 'water-walker'],
@@ -57,6 +58,7 @@ describe('online player runtime messages', () => {
             swordType: 'sword-bronze',
             swordDurability: 2,
             armorEquipped: true,
+            armorDurability: 4,
             bootsEquipped: false,
             skills: ['keyless-doors', 'water-walker'],
         });

@@ -13,6 +13,7 @@ type PlayerStateRef = {
         swordType?: string | null;
         swordDurability?: number;
         armorEquipped?: boolean;
+        armorDurability?: number;
         bootsEquipped?: boolean;
     } | null;
     getOwnedSkills?(): string[];
@@ -83,6 +84,7 @@ export class OnlinePositionSender {
             swordType: p.swordType ?? null,
             swordDurability: p.swordDurability,
             armorEquipped: p.armorEquipped,
+            armorDurability: p.armorDurability,
             bootsEquipped: p.bootsEquipped,
             skills: this.gameState.getOwnedSkills?.() ?? [],
         });

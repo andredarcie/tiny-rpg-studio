@@ -35,6 +35,7 @@ export type PlayerRuntimeState = {
     lastAttackTime: number;
     stunUntil: number;
     armorEquipped?: boolean;
+    armorDurability?: number;
     bootsEquipped?: boolean;
 };
 

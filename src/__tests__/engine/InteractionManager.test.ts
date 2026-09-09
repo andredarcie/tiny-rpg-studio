@@ -319,6 +319,18 @@ describe('InteractionManager', () => {
     expect(gameState.setArmorEquipped).toHaveBeenCalled();
   });
 
+  it('direct armor pickup initializes full durability through GameState', () => {
+    const gameState = new GameState();
+    const manager = new InteractionManager(gameState as never, dialogManager);
+    const armor = { type: 'armor', collected: false, roomIndex: 0, x: 0, y: 0 };
+
+    expect(manager.handleCollectibleObject(armor as never)).toBe(true);
+    gameState.hidePickupOverlay();
+
+    expect(gameState.hasArmor()).toBe(true);
+    expect(gameState.getArmorDurability()).toBe(5);
+  });
+
   // --- Boots ---
   it('boots pickup sets bootsEquipped via overlay effect', () => {
     const gameState = createInteractionGameState();
@@ -458,6 +470,18 @@ describe('InteractionManager', () => {
     const effect = (gameState.showPickupOverlay as ReturnType<typeof vi.fn>).mock.calls[0][0] as { effect?: () => void };
     effect.effect?.();
     expect(gameState.addKeys).toHaveBeenCalledWith(1);
+  });
+
+  it('armor chest initializes full durability through GameState', () => {
+    const gameState = new GameState();
+    const manager = new InteractionManager(gameState as never, dialogManager);
+    const chest = { type: 'chest', opened: false, containsItemType: 'armor', roomIndex: 0, x: 0, y: 0 };
+
+    expect(manager.handleChest(chest as never)).toBe(true);
+    gameState.hidePickupOverlay();
+
+    expect(gameState.hasArmor()).toBe(true);
+    expect(gameState.getArmorDurability()).toBe(5);
   });
 
   it('chest does not open if already opened', () => {
