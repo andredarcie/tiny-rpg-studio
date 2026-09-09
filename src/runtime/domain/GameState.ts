@@ -323,12 +323,7 @@ class GameState {
             return null;
         }
         const choice = this.skillManager.completeSelection(index);
-        if (choice?.id === 'max-life') {
-            this.playerManager.healToFull();
-        }
-        if (choice?.id === 'xp-boost') {
-            // XP boost applies passively; no extra action needed.
-        }
+        if (choice) this.acquireSkill(choice.id);
         if (this.skillManager.hasPendingSelections()) {
             const started = this.skillManager.startLevelSelection();
             if (started) {
@@ -448,7 +443,7 @@ class GameState {
         const startLevel = Number.isFinite(settings.startLevel) ? settings.startLevel : 1;
         this.playerManager.setLevel(startLevel);
         if (!this.areSkillsDisabled() && Array.isArray(settings.skills) && settings.skills.length) {
-            settings.skills.forEach((id) => this.skillManager.addSkill(id));
+            settings.skills.forEach((id) => this.acquireSkill(id));
         }
         this.playerManager.ensurePlayerStats();
         this.playerManager.setGodMode(settings.godMode);
@@ -633,6 +628,21 @@ class GameState {
 
     hasArmor() {
         return this.playerManager.hasArmor();
+    }
+
+    acquireSkill(skillId: string): boolean {
+        if (this.skillManager.hasSkill(skillId)) return false;
+        const skill = this.skillManager.addSkill(skillId);
+        if (!skill) return false;
+
+        if (skillId === 'blackmith' && this.playerManager.getSwordType()) {
+            this.playerManager.setSwordDurability(this.playerManager.getSwordDurability() + 1);
+        } else if (skillId === 'blessed') {
+            this.skillManager.addBonusMaxLife(1);
+            this.playerManager.ensurePlayerStats();
+            this.playerManager.gainLives(1);
+        }
+        return true;
     }
 
     getArmorDurability() {

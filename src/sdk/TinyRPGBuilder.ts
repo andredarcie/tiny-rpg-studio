@@ -111,7 +111,12 @@ class TinyRPGBuilder {
         if (unknown.length) {
             throw new Error(`Unknown skill id(s): ${unknown.join(', ')}`);
         }
-        this._skillOrder = [...ids];
+        const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
+        if (duplicates.length) {
+            throw new Error(`Duplicate skill id(s): ${Array.from(new Set(duplicates)).join(', ')}`);
+        }
+        const normalized = SkillDefinitions.normalizeSkillOrder(ids);
+        this._skillOrder = SkillDefinitions.isDefaultSkillOrder(normalized) ? undefined : normalized;
         return this;
     }
 

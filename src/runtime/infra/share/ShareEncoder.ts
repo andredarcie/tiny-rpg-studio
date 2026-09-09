@@ -700,13 +700,11 @@ class ShareEncoder {
         // Skill Order
         const skillOrder = Array.isArray(gameData?.skillOrder) ? gameData.skillOrder : [];
         if (skillOrder.length > 0) {
-            const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
-            const isDefault = skillOrder.length === defaultOrder.length &&
-                skillOrder.every((id, i) => id === defaultOrder[i]);
-            if (!isDefault) {
-                const encoded = skillOrder.map((id) => {
+            const normalizedOrder = SkillDefinitions.normalizeSkillOrder(skillOrder);
+            if (!SkillDefinitions.isDefaultSkillOrder(normalizedOrder)) {
+                const encoded = normalizedOrder.map((id) => {
                     const idx = SkillDefinitions.SKILL_DEFINITION_DATA.findIndex((s) => s.id === id);
-                    return (idx >= 0 ? idx : 0).toString(16);
+                    return idx.toString(16);
                 }).join('');
                 parts.push('Q' + encoded);
             }

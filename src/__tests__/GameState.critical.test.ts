@@ -182,33 +182,52 @@ describe('GameState - Critical Path Tests', () => {
       expect(state.getPlayerDamage()).toBe(4);
     });
 
-    it('heals player to full when max-life skill is selected', () => {
+    it('Blessed fills only its newly added max-life heart when selected', () => {
       const state = new GameState();
-
-      // Trigger level-up to queue skill choices
-      state.processLevelUpResult({
-        leveledUp: true,
-        levelsGained: 1,
-        level: 2,
-      });
-
-      // Wait for celebration to end
-      state.hideLevelUpCelebration();
-
-      // Damage player
+      const previousMax = state.getMaxLives();
       state.getState().player.currentLives = 1;
-
-      // Select max-life skill (assumes it's available)
+      state.getState().player.lives = 1;
       const overlay = state.getLevelUpOverlay();
-      if (overlay.choices.some(c => c.id === 'max-life')) {
-        const choice = state.selectLevelUpSkill(
-          overlay.choices.findIndex(c => c.id === 'max-life')
-        );
+      overlay.active = true;
+      overlay.cursor = 0;
+      overlay.choices = [{
+        id: 'blessed',
+        nameKey: 'skills.blessed.name',
+        descriptionKey: 'skills.blessed.desc',
+        icon: '💖',
+      }];
 
-        if (choice?.id === 'max-life') {
-          expect(state.getLives()).toBe(state.getMaxLives());
-        }
-      }
+      expect(state.selectLevelUpSkill(0)?.id).toBe('blessed');
+      expect(state.getMaxLives()).toBe(previousMax + 1);
+      expect(state.getLives()).toBe(2);
+      expect(state.acquireSkill('blessed')).toBe(false);
+      expect(state.getMaxLives()).toBe(previousMax + 1);
+      expect(state.getLives()).toBe(2);
+    });
+
+    it('Blackmith upgrades an equipped sword once and Booksmart does not affect ordinary XP', () => {
+      const state = new GameState();
+      state.setSwordType('sword');
+      state.setSwordDurability(2);
+
+      expect(state.acquireSkill('blackmith')).toBe(true);
+      expect(state.getSwordDurability()).toBe(3);
+      expect(state.acquireSkill('blackmith')).toBe(false);
+      expect(state.getSwordDurability()).toBe(3);
+
+      expect(state.acquireSkill('booksmart')).toBe(true);
+      state.addExperience(2);
+      expect(state.getExperience()).toBe(2);
+    });
+
+    it('applies Blessed through test settings after resetting runtime state', () => {
+      const state = new GameState();
+      state.setTestSettings({ skills: ['blessed'] });
+      state.resetGame();
+
+      expect(state.hasSkill('blessed')).toBe(true);
+      expect(state.getMaxLives()).toBe(4);
+      expect(state.getLives()).toBe(4);
     });
   });
 

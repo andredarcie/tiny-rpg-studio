@@ -23,6 +23,13 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-08-three-new-skills',
+    date: '2026-09-08',
+    title: 'Three new skills',
+    description:
+      'Booksmart quadruples XP from scrolls, Blackmith makes swords last longer, and Blessed grants a filled heart. Drag them into one of the six level slots to use them in a game.',
+  },
+  {
     id: '2026-09-08-armor-durability',
     date: '2026-09-08',
     title: 'Armor now wears down',

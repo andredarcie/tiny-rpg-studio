@@ -78,6 +78,8 @@ const mocks = vi.hoisted(() => {
     getAll: vi.fn<() => unknown[]>(),
     getById: vi.fn<(id: string) => unknown | null>((id) => ({ id })),
     getDefaultSkillOrder: vi.fn<() => string[]>(() => []),
+    normalizeSkillOrder: vi.fn<(order: unknown) => string[]>((order) => Array.isArray(order) ? order as string[] : []),
+    isDefaultSkillOrder: vi.fn<(order: unknown) => boolean>(() => false),
     getDisplayName: vi.fn<(skill: unknown, customizations: unknown, getText: (key: string) => string) => string>(
       (skill, _c, getText) => {
         const s = skill as { nameKey?: string; id?: string };
@@ -298,6 +300,8 @@ describe('EditorRenderService', () => {
     });
     mocks.picoColors.splice(0, mocks.picoColors.length, '#000000', '#FFFFFF', '#FF00FF');
     mocks.skillDefinitions.getAll.mockReturnValue([]);
+    mocks.skillDefinitions.normalizeSkillOrder.mockImplementation((order) => Array.isArray(order) ? order as string[] : []);
+    mocks.skillDefinitions.isDefaultSkillOrder.mockReturnValue(false);
     mocks.skillDefinitions.LEVEL_SKILLS = {};
     mocks.canvasInstances.length = 0;
     mocks.tilePanelInstances.length = 0;
@@ -601,6 +605,23 @@ describe('EditorRenderService', () => {
     expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal:');
     expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.heal.desc:');
     expect(fixture.domCache.projectSkillsList.textContent).toContain('T:skill.mystery:');
+  });
+
+  it('renders a localized unassigned badge after the configured level slots', () => {
+    const fixture = createManagerFixture();
+    const skills = ['one', 'two', 'three'].map((id) => ({ id, nameKey: id, descriptionKey: `${id}.desc`, icon: '' }));
+    mocks.skillDefinitions.getAll.mockReturnValue(skills);
+    mocks.skillDefinitions.getById.mockImplementation((id: string) => skills.find((skill) => skill.id === id) ?? null);
+    mocks.skillDefinitions.getDefaultSkillOrder.mockReturnValue(skills.map((skill) => skill.id));
+    mocks.skillDefinitions.normalizeSkillOrder.mockReturnValue(skills.map((skill) => skill.id));
+    mocks.skillDefinitions.DEFAULT_LEVEL_SLOTS = [{ level: 2, count: 2 }];
+    mocks.textGet.mockImplementation((key, fallback) => key === 'project.skills.levelUnassigned' ? 'Level -' : fallback);
+    const { service } = createService(fixture);
+
+    service.renderSkillList();
+
+    const badges = fixture.domCache.projectSkillsList.querySelectorAll('.project-skill-level-badge');
+    expect(badges[2].textContent).toBe('Level -');
   });
 
   it('opens the skill edit modal from the list and preloads existing custom values', () => {

@@ -238,9 +238,7 @@ class InteractionManager {
         object.collected = true;
         soundEngine.play('itemPickup');
         this.showPickupOverlay(object.type, () => {
-          const xpToNext = this.gameState.getExperienceToNext?.() ?? 0;
-          const gain = xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0;
-          this.gameState.addExperience?.(gain);
+          this.gameState.addExperience?.(this.getXpScrollReward());
         });
         return true;
       }
@@ -253,18 +251,8 @@ class InteractionManager {
         object.collected = true;
         soundEngine.play('itemPickup');
         const swordType = object.type;
-        const durability = this.getSwordDurability(swordType);
-        const gameStateWithSword = this.gameState as typeof this.gameState & {
-          setSwordType?: (type: ItemType) => void;
-          setSwordDurability?: (durability: number) => void;
-        };
         this.showPickupOverlay(object.type, () => {
-          if (gameStateWithSword.setSwordType) {
-            gameStateWithSword.setSwordType(swordType);
-          }
-          if (gameStateWithSword.setSwordDurability) {
-            gameStateWithSword.setSwordDurability(durability);
-          }
+          this.equipSword(swordType);
         });
         return true;
       }
@@ -463,9 +451,7 @@ class InteractionManager {
         }
         break;
       case OT.XP_SCROLL: {
-        const xpToNext = this.gameState.getExperienceToNext?.() ?? 0;
-        const gain = xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0;
-        this.gameState.addExperience?.(gain);
+        this.gameState.addExperience?.(this.getXpScrollReward());
         break;
       }
       case OT.ARMOR:
@@ -477,16 +463,26 @@ class InteractionManager {
       case OT.SWORD:
       case OT.SWORD_BRONZE:
       case OT.SWORD_WOOD: {
-        const durability = this.getSwordDurability(type);
-        const gs = this.gameState as typeof this.gameState & {
-          setSwordType?: (t: ItemType) => void;
-          setSwordDurability?: (d: number) => void;
-        };
-        gs.setSwordType?.(type);
-        gs.setSwordDurability?.(durability);
+        this.equipSword(type);
         break;
       }
     }
+  }
+
+  getXpScrollReward(): number {
+    const xpToNext = this.gameState.getExperienceToNext?.() ?? 0;
+    const baseGain = xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0;
+    return this.gameState.hasSkill?.('booksmart') ? baseGain * 4 : baseGain;
+  }
+
+  equipSword(type: ItemType): void {
+    const gameStateWithSword = this.gameState as typeof this.gameState & {
+      setSwordType?: (swordType: ItemType) => void;
+      setSwordDurability?: (durability: number) => void;
+    };
+    const bonus = this.gameState.hasSkill?.('blackmith') ? 1 : 0;
+    gameStateWithSword.setSwordType?.(type);
+    gameStateWithSword.setSwordDurability?.(this.getSwordDurability(type) + bonus);
   }
 
   checkPressurePlates(player: PlayerPosition): void {

@@ -29,6 +29,20 @@ describe('ShareEncoder', () => {
     });
   });
 
+  it('normalizes custom skill orders to nine entries and omits the default order', () => {
+    const customCode = ShareEncoder.buildShareCode({ skillOrder: ['booksmart', 'necromancer'] });
+    const customSegment = customCode.split('.').find((segment) => segment.startsWith('Q'));
+    const decoded = ShareDecoder.decodeShareCode(customCode) as { skillOrder?: string[] } | null;
+
+    expect(customSegment).toHaveLength(10);
+    expect(decoded?.skillOrder).toHaveLength(9);
+
+    const defaultCode = ShareEncoder.buildShareCode({
+      skillOrder: ['necromancer', 'charisma', 'stealth', 'potion-master', 'lava-walker', 'keyless-doors', 'booksmart', 'blackmith', 'blessed'],
+    });
+    expect(defaultCode.split('.').some((segment) => segment.startsWith('Q'))).toBe(false);
+  });
+
   it('builds a share code with version and data segments', () => {
     const size = ShareConstants.MATRIX_SIZE;
     const ground = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));

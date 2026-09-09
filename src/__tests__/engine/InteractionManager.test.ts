@@ -472,6 +472,50 @@ describe('InteractionManager', () => {
     expect(gameState.addKeys).toHaveBeenCalledWith(1);
   });
 
+  it.each([
+    ['direct pickup', false],
+    ['chest reward', true],
+  ])('Booksmart quadruples XP-scroll XP for %s', (_label, fromChest) => {
+    const gameState = createInteractionGameState();
+    (gameState.getExperienceToNext as ReturnType<typeof vi.fn>).mockReturnValue(20);
+    (gameState.hasSkill as ReturnType<typeof vi.fn>).mockImplementation((id: string) => id === 'booksmart');
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    if (fromChest) {
+      manager.applyItemEffect('xp-scroll');
+    } else {
+      const scroll = { type: 'xp-scroll', collected: false, roomIndex: 0, x: 0, y: 0 };
+      expect(manager.handleCollectibleObject(scroll as never)).toBe(true);
+      const options = (gameState.showPickupOverlay as ReturnType<typeof vi.fn>).mock.calls[0][0] as { effect?: () => void };
+      options.effect?.();
+    }
+
+    expect(gameState.addExperience).toHaveBeenCalledWith(40);
+  });
+
+  it.each([
+    ['direct pickup', false],
+    ['chest reward', true],
+  ])('Blackmith adds one durability to swords from %s', (_label, fromChest) => {
+    const setSwordType = vi.fn();
+    const setSwordDurability = vi.fn();
+    const gameState = createInteractionGameState({ setSwordType, setSwordDurability } as never);
+    (gameState.hasSkill as ReturnType<typeof vi.fn>).mockImplementation((id: string) => id === 'blackmith');
+    const manager = new InteractionManager(gameState, dialogManager);
+
+    if (fromChest) {
+      manager.applyItemEffect('sword');
+    } else {
+      const sword = { type: 'sword', collected: false, roomIndex: 0, x: 0, y: 0 };
+      expect(manager.handleCollectibleObject(sword as never)).toBe(true);
+      const options = (gameState.showPickupOverlay as ReturnType<typeof vi.fn>).mock.calls[0][0] as { effect?: () => void };
+      options.effect?.();
+    }
+
+    expect(setSwordType).toHaveBeenCalledWith('sword');
+    expect(setSwordDurability).toHaveBeenCalledWith(3);
+  });
+
   it('armor chest initializes full durability through GameState', () => {
     const gameState = new GameState();
     const manager = new InteractionManager(gameState as never, dialogManager);

@@ -48,6 +48,24 @@ class SkillDefinitions {
             descriptionKey: 'skills.potionMaster.desc',
             icon: '🧪'
         },
+        {
+            id: 'booksmart',
+            nameKey: 'skills.booksmart.name',
+            descriptionKey: 'skills.booksmart.desc',
+            icon: '📚'
+        },
+        {
+            id: 'blackmith',
+            nameKey: 'skills.blackmith.name',
+            descriptionKey: 'skills.blackmith.desc',
+            icon: '🔨'
+        },
+        {
+            id: 'blessed',
+            nameKey: 'skills.blessed.name',
+            descriptionKey: 'skills.blessed.desc',
+            icon: '💖'
+        },
     ];
 
     static SKILLS: Skill[] = SkillDefinitions.SKILL_DEFINITION_DATA.map((entry) => new Skill(entry));
@@ -69,26 +87,62 @@ class SkillDefinitions {
         { level: 10, count: 1 },
     ];
 
+    static DEFAULT_SKILL_ORDER: string[] = [
+        'necromancer',
+        'charisma',
+        'stealth',
+        'potion-master',
+        'lava-walker',
+        'keyless-doors',
+        'booksmart',
+        'blackmith',
+        'blessed',
+    ];
+
     static getAll(): Skill[] {
         return this.SKILLS;
     }
 
-    /** Returns the default flat skill order derived from LEVEL_SKILLS and DEFAULT_LEVEL_SLOTS. */
+    /** Returns the complete default display order, including unassigned skills. */
     static getDefaultSkillOrder(): string[] {
-        const flat: string[] = [];
-        for (const slot of this.DEFAULT_LEVEL_SLOTS) {
-            const ids = (this.LEVEL_SKILLS[slot.level] || []) as string[];
-            flat.push(...ids);
+        return this.DEFAULT_SKILL_ORDER.slice();
+    }
+
+    static getAssignedSkillCapacity(): number {
+        return this.DEFAULT_LEVEL_SLOTS.reduce((total, slot) => total + Math.max(0, slot.count), 0);
+    }
+
+    static normalizeSkillOrder(skillOrder: unknown): string[] {
+        const knownIds = new Set(this.SKILL_DEFINITION_DATA.map((entry) => entry.id));
+        const normalized: string[] = [];
+        if (Array.isArray(skillOrder)) {
+            skillOrder.forEach((id) => {
+                if (typeof id !== 'string' || !knownIds.has(id) || normalized.includes(id)) return;
+                normalized.push(id);
+            });
         }
-        return flat;
+        this.DEFAULT_SKILL_ORDER.forEach((id) => {
+            if (knownIds.has(id) && !normalized.includes(id)) normalized.push(id);
+        });
+        this.SKILL_DEFINITION_DATA.forEach(({ id }) => {
+            if (!normalized.includes(id)) normalized.push(id);
+        });
+        return normalized;
+    }
+
+    static isDefaultSkillOrder(skillOrder: unknown): boolean {
+        const normalized = this.normalizeSkillOrder(skillOrder);
+        return normalized.length === this.DEFAULT_SKILL_ORDER.length &&
+            normalized.every((id, index) => id === this.DEFAULT_SKILL_ORDER[index]);
     }
 
     /** Remaps skills to level slots according to a custom order. */
     static getLevelSkillsForOrder(skillOrder: string[]): Partial<Record<number, string[]>> {
         const result: Partial<Record<number, string[]>> = {};
+        const assignedOrder = this.normalizeSkillOrder(skillOrder).slice(0, this.getAssignedSkillCapacity());
         let index = 0;
         for (const slot of this.DEFAULT_LEVEL_SLOTS) {
-            const ids = skillOrder.slice(index, index + slot.count).filter((id) => !!this.getById(id));
+            const ids = assignedOrder.slice(index, index + slot.count);
             if (ids.length) {
                 result[slot.level] = ids;
             }
@@ -180,7 +234,10 @@ class SkillDefinitions {
     static buildQueueForLevel(level: number, carryover: string[] = [], owned: string[] = [], skillOrder?: string[]): string[] {
         const normalizedCarry = Array.isArray(carryover) ? carryover : [];
         const ownedSet = new Set(Array.isArray(owned) ? owned : []);
-        const levelSkillMap = skillOrder ? this.getLevelSkillsForOrder(skillOrder) : this.LEVEL_SKILLS;
+        const normalizedOrder = this.normalizeSkillOrder(skillOrder);
+        const assignedOrder = normalizedOrder.slice(0, this.getAssignedSkillCapacity());
+        const assignedSet = new Set(assignedOrder);
+        const levelSkillMap = this.getLevelSkillsForOrder(normalizedOrder);
         const numeric = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
         const list = levelSkillMap[numeric] || [];
         const base: string[] = [];
@@ -192,6 +249,7 @@ class SkillDefinitions {
         const queue: string[] = [];
         [...normalizedCarry, ...base].forEach((id) => {
             if (typeof id !== 'string' || !id) return;
+            if (!assignedSet.has(id)) return;
             if (ownedSet.has(id)) return;
             if (!this.getById(id)) return;
             if (!queue.includes(id)) {
@@ -199,9 +257,7 @@ class SkillDefinitions {
             }
         });
         if (!queue.length) {
-            const fallback = skillOrder
-                ? skillOrder.filter((id) => this.getById(id) && !ownedSet.has(id))
-                : this.getAll().filter((skill) => !ownedSet.has(skill.id)).map((s) => s.id);
+            const fallback = assignedOrder.filter((id) => !ownedSet.has(id));
             fallback.forEach((id) => {
                 if (!queue.includes(id)) queue.push(id);
             });

@@ -586,7 +586,12 @@ export class GameEngine {
 
   setSkillOrder(order: string[] | undefined): void {
     const game = this.gameState.getGame();
-    game.skillOrder = Array.isArray(order) && order.length ? order : undefined;
+    const normalized = Array.isArray(order) && order.length
+      ? SkillDefinitions.normalizeSkillOrder(order)
+      : undefined;
+    game.skillOrder = normalized && !SkillDefinitions.isDefaultSkillOrder(normalized)
+      ? normalized
+      : undefined;
     this.gameState.skillManager.setSkillOrder(game.skillOrder);
   }
 

@@ -565,6 +565,19 @@ describe('StateDataManager - customSprites', () => {
     variableManager: { normalizeVariables: vi.fn(() => []), setGame: vi.fn() } as unknown as StateVariableManager,
   });
 
+  it('normalizes legacy, duplicate, and unknown skill-order entries on import and export', () => {
+    const game = makeGame();
+    const manager = makeImportManager(game);
+
+    manager.importGameData({ skillOrder: ['booksmart', 'necromancer', 'booksmart', 'unknown'] });
+
+    expect(game.skillOrder).toEqual([
+      'booksmart', 'necromancer', 'charisma', 'stealth', 'potion-master',
+      'lava-walker', 'keyless-doors', 'blackmith', 'blessed',
+    ]);
+    expect(manager.exportGameData().skillOrder).toEqual(game.skillOrder);
+  });
+
   it('imports online config and validates spawn points', () => {
     const game = makeGame();
     const manager = makeImportManager(game);

@@ -860,11 +860,23 @@ class ShareDecoder {
     private static decodeSkillOrder(encoded: string): string[] | null {
         try {
             const data = SkillDefinitions.SKILL_DEFINITION_DATA;
-            const ids = encoded.split('').map((ch) => {
+            const indexes = encoded.split('').map((ch) => {
                 const idx = parseInt(ch, 16);
-                return (Number.isFinite(idx) && idx >= 0 && idx < data.length) ? data[idx].id : null;
-            }).filter((id): id is string => id !== null);
-            return ids.length === data.length ? ids : null;
+                return Number.isFinite(idx) && idx >= 0 && idx < data.length ? idx : null;
+            });
+            if (indexes.some((idx) => idx === null)) return null;
+            const validIndexes = indexes as number[];
+            if (new Set(validIndexes).size !== validIndexes.length) return null;
+
+            const isCurrentOrder = validIndexes.length === data.length &&
+                validIndexes.every((idx) => idx < data.length);
+            const isLegacyOrder = validIndexes.length === 6 &&
+                validIndexes.every((idx) => idx < 6) &&
+                new Set(validIndexes).size === 6;
+            if (!isCurrentOrder && !isLegacyOrder) return null;
+
+            const ids = validIndexes.map((idx) => data[idx].id);
+            return isLegacyOrder ? SkillDefinitions.normalizeSkillOrder(ids) : ids;
         } catch {
             return null;
         }

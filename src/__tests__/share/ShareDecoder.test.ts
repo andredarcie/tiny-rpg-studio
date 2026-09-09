@@ -46,6 +46,24 @@ describe('ShareDecoder', () => {
     expect(decoded).toBeNull();
   });
 
+  it('appends new unassigned skills to valid legacy six-entry orders', () => {
+    const decoded = ShareDecoder.decodeShareCode(`v${ShareConstants.VERSION_42.toString(36)}.Q210543`) as { skillOrder?: string[] } | null;
+
+    expect(decoded?.skillOrder).toEqual([
+      'necromancer', 'charisma', 'keyless-doors', 'potion-master', 'lava-walker', 'stealth',
+      'booksmart', 'blackmith', 'blessed',
+    ]);
+  });
+
+  it('rejects malformed and duplicate skill-order segments', () => {
+    const version = ShareConstants.VERSION_42.toString(36);
+    const duplicate = ShareDecoder.decodeShareCode(`v${version}.Q001234`) as { skillOrder?: string[] } | null;
+    const invalid = ShareDecoder.decodeShareCode(`v${version}.Q01234z`) as { skillOrder?: string[] } | null;
+
+    expect(duplicate?.skillOrder).toBeUndefined();
+    expect(invalid?.skillOrder).toBeUndefined();
+  });
+
   it('defaults backgroundMusicVolume for legacy URLs without the segment', () => {
     const legacyCode = `v${ShareConstants.VERSION_32.toString(36)}.Mt0ihNLLZNi0`;
 

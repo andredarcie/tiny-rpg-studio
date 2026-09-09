@@ -265,8 +265,7 @@ class EditorRenderService {
 
         const defaultOrder = SkillDefinitions.getDefaultSkillOrder();
         const hasCustomOrder = Array.isArray(game.skillOrder) && game.skillOrder.length > 0 &&
-            !(game.skillOrder.length === defaultOrder.length &&
-              game.skillOrder.every((id, i) => id === (defaultOrder as string[])[i]));
+            !SkillDefinitions.isDefaultSkillOrder(game.skillOrder);
         if (this.dom.projectSkillsResetOrder) {
             this.dom.projectSkillsResetOrder.hidden = !hasCustomOrder;
         }
@@ -301,10 +300,7 @@ class EditorRenderService {
         const rawOrder: string[] = Array.isArray(game.skillOrder) && game.skillOrder.length
             ? game.skillOrder
             : defaultOrder;
-        // Ensure all skill IDs are present (add missing at end, remove unknowns)
-        const knownIds = new Set(allSkills.map((s) => s.id));
-        const ordered = rawOrder.filter((id) => knownIds.has(id));
-        allSkills.forEach((s) => { if (!ordered.includes(s.id)) ordered.push(s.id); });
+        const ordered = SkillDefinitions.normalizeSkillOrder(rawOrder);
 
         // Level label per position using DEFAULT_LEVEL_SLOTS
         const levelAtPosition: number[] = [];
@@ -352,7 +348,7 @@ class EditorRenderService {
             badge.className = 'project-skill-level-badge';
             badge.textContent = levelLabel
                 ? this.tf('project.skills.level', { value: levelLabel }, `Nível ${levelLabel}`)
-                : '';
+                : this.t('project.skills.levelUnassigned', 'Nível -');
 
             const desc = document.createElement('p');
             desc.className = 'project-skill-desc';

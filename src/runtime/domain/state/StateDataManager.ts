@@ -140,8 +140,9 @@ class StateDataManager {
             ...(Array.isArray(this.game.customSprites) && this.game.customSprites.length
                 ? { customSprites: this.game.customSprites }
                 : {}),
-            ...(Array.isArray(this.game.skillOrder) && this.game.skillOrder.length
-                ? { skillOrder: this.game.skillOrder }
+            ...(Array.isArray(this.game.skillOrder) && this.game.skillOrder.length &&
+                !SkillDefinitions.isDefaultSkillOrder(this.game.skillOrder)
+                ? { skillOrder: SkillDefinitions.normalizeSkillOrder(this.game.skillOrder) }
                 : {}),
             ...(this.game.skillCustomizations
                 ? { skillCustomizations: this.game.skillCustomizations }
@@ -224,7 +225,8 @@ class StateDataManager {
         }
 
         if (Array.isArray(data.skillOrder) && data.skillOrder.length) {
-            this.game.skillOrder = data.skillOrder.filter((id) => typeof id === 'string' && !!id);
+            const normalized = SkillDefinitions.normalizeSkillOrder(data.skillOrder);
+            this.game.skillOrder = SkillDefinitions.isDefaultSkillOrder(normalized) ? undefined : normalized;
         } else {
             this.game.skillOrder = undefined;
         }

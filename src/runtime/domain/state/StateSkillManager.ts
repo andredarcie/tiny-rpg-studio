@@ -14,7 +14,9 @@ class StateSkillManager {
     }
 
     setSkillOrder(order: string[] | undefined) {
-        this.skillOrder = Array.isArray(order) && order.length ? order : undefined;
+        this.skillOrder = Array.isArray(order) && order.length
+            ? SkillDefinitions.normalizeSkillOrder(order)
+            : undefined;
     }
 
     setState(state: RuntimeState | null) {
@@ -308,9 +310,6 @@ class StateSkillManager {
         overlay.choices = [];
         overlay.cursor = 0;
 
-        if (choice) {
-            this.addSkill(choice.id);
-        }
         const runtime = this.ensureRuntime();
         const chosenId = choice ? choice.id : null;
         const pool = Array.isArray(runtime.currentChoicePool) ? runtime.currentChoicePool : [];

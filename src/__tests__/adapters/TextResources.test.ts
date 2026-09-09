@@ -25,6 +25,19 @@ describe('TextResources', () => {
     expect(result).toBe('2 / 5 enemies');
   });
 
+  it('defines the new skills and unassigned level label in every locale', () => {
+    for (const locale of Object.keys(TextResources.bundles)) {
+      const strings = TextResources.getStrings(locale);
+      expect(strings['skills.booksmart.name']).toBeTruthy();
+      expect(strings['skills.booksmart.desc']).toBeTruthy();
+      expect(strings['skills.blackmith.name']).toBeTruthy();
+      expect(strings['skills.blackmith.desc']).toBeTruthy();
+      expect(strings['skills.blessed.name']).toBeTruthy();
+      expect(strings['skills.blessed.desc']).toBeTruthy();
+      expect(strings['project.skills.levelUnassigned']).toContain('-');
+    }
+  });
+
   it('detects browser locale from navigator', () => {
     vi.stubGlobal('navigator', { languages: ['pt-BR'], language: 'pt-BR' } as unknown as Navigator);
 

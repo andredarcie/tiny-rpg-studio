@@ -214,6 +214,28 @@ describe('SDK NPC and enemy variable wiring', () => {
 });
 
 describe('SDK game-level flags', () => {
+    it('accepts new skill ids and completes partial skill orders', () => {
+        const payload = new TinyRPG()
+            .setSkillOrder(['booksmart', 'blackmith', 'blessed'])
+            .toSharePayload();
+
+        expect(payload.skillOrder).toEqual([
+            'booksmart',
+            'blackmith',
+            'blessed',
+            'necromancer',
+            'charisma',
+            'stealth',
+            'potion-master',
+            'lava-walker',
+            'keyless-doors',
+        ]);
+    });
+
+    it('rejects duplicate skill ids', () => {
+        expect(() => new TinyRPG().setSkillOrder(['booksmart', 'booksmart'])).toThrow(/Duplicate skill/);
+    });
+
     it('background music id + volume', () => {
         const g = new TinyRPG().setBackgroundMusic('dQw4w9WgXcQ', 40);
         const p = g.toSharePayload();
