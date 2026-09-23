@@ -128,16 +128,17 @@ describe('TileManager - Critical Edge Cases', () => {
       expect(next).toBe(0); // Should wrap to start
     });
 
-    it('does not advance frame when max frames is 1', () => {
+    it('advances through the two default tile frames', () => {
       const gameState = createGameState();
       const manager = new TileManager(gameState);
       manager.ensureDefaultTiles();
 
-      // No animated tiles, so max frames = 1
+      expect(manager.getAnimationFrameCount()).toBe(2);
       manager.setAnimationFrameIndex(0);
       const next = manager.advanceAnimationFrame();
 
-      expect(next).toBe(0); // Should stay at 0
+      expect(next).toBe(1);
+      expect(manager.advanceAnimationFrame()).toBe(0);
     });
   });
 
@@ -216,8 +217,8 @@ describe('TileManager - Critical Edge Cases', () => {
       const manager = new TileManager(gameState);
       manager.ensureDefaultTiles();
 
-      // Initially no animated tiles
-      expect(manager.getAnimationFrameCount()).toBe(1);
+      // Every default tile has two editable frames.
+      expect(manager.getAnimationFrameCount()).toBe(2);
 
       // Add animated tile
       manager.updateTile(1, {

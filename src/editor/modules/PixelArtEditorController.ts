@@ -105,6 +105,9 @@ export class PixelArtEditorController {
         } else {
             const custom = CustomSpriteLookup.find(game.customSprites, group, key, variant);
             this.frames = custom ? this.cloneFrames(custom.frames) : this.loadBaseFrames(group, key, variant);
+            if (group === 'tile' && this.frames.length === 1) {
+                this.frames.push(this.cloneFrame(this.frames[0]));
+            }
         }
 
         this.ensureModal()?.open();
@@ -707,7 +710,7 @@ export class PixelArtEditorController {
                     tiles?: {
                         id: number;
                         layouts?: CustomSpriteFrame[];
-                        frames?: string[][];
+                        frames?: string[][][];
                         pixels?: string[][];
                     }[];
                 };
@@ -718,16 +721,22 @@ export class PixelArtEditorController {
                 return this.cloneFrames(rawTile.layouts);
             }
 
-            if (rawTile?.pixels) {
-                const palette = TileDefinitions.PICO8_COLORS.map((color) => color.toUpperCase());
-                const raw = rawTile.pixels.map((row) =>
+            const pixelFrames = rawTile?.frames?.length ? rawTile.frames : rawTile?.pixels ? [rawTile.pixels] : [];
+            if (pixelFrames.length) {
+                const palette = this.getActivePalette().map((color) => color.toUpperCase());
+                const fallback = TileDefinitions.PICO8_COLORS.map((color) => color.toUpperCase());
+                const layouts = pixelFrames.map((frame) => frame.map((row) =>
                     row.map((value) => {
                         if (!value || value === 'transparent') return null;
-                        const paletteIndex = palette.indexOf(String(value).toUpperCase());
-                        return paletteIndex >= 0 ? paletteIndex : null;
+                        const color = String(value).toUpperCase();
+                        const activeIndex = palette.indexOf(color);
+                        if (activeIndex >= 0) return activeIndex;
+                        const fallbackIndex = fallback.indexOf(color);
+                        return fallbackIndex >= 0 ? fallbackIndex : null;
                     })
-                );
-                return this.cloneFrames([raw]);
+                ));
+                if (layouts.length === 1) layouts.push(this.cloneFrame(layouts[0]));
+                return layouts;
             }
         }
 

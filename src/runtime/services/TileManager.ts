@@ -14,6 +14,7 @@ import {
 } from '../domain/definitions/customTileEffects';
 import { TILE_PRESETS_SOURCE } from '../domain/definitions/tilePresets';
 import { TileDefinitions } from '../domain/definitions/TileDefinitions';
+import { normalizeTileFrames, normalizeTileSpriteFrames } from '../domain/definitions/normalizeTileFrames';
 import { CustomSpriteLookup } from '../domain/sprites/CustomSpriteLookup';
 import type { CustomSpriteEntry } from '../../types/gameState';
 
@@ -87,7 +88,17 @@ class TileManager {
 
     if (!Array.isArray(tileset.tiles) || tileset.tiles.length === 0) {
       tileset.tiles = this.presets.map((tile) => this.cloneTile(tile));
+    } else {
+      const existingIds = new Set(tileset.tiles.map((tile) => String(tile.id)));
+      for (const preset of this.presets) {
+        if (!existingIds.has(String(preset.id))) {
+          tileset.tiles.push(this.cloneTile(preset));
+          existingIds.add(String(preset.id));
+        }
+      }
     }
+    tileset.tiles.forEach(normalizeTileFrames);
+    normalizeTileSpriteFrames((this.gameState.game as { customSprites?: CustomSpriteEntry[] }).customSprites);
 
     if (!Array.isArray(tileset.maps) || tileset.maps.length === 0) {
       const defaultTileId = tileset.tiles[0]?.id ?? null;

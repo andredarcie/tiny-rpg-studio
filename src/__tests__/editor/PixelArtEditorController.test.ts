@@ -218,6 +218,39 @@ describe('PixelArtEditorController', () => {
     });
 
     describe('save', () => {
+        it('edits frame two of a new tile and preserves frame one', () => {
+            const { manager, game, invalidate } = makeManager();
+            const layout = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 3));
+            game.tileset.tiles.push({ id: 18, layouts: [layout, layout.map((row) => row.slice())] } as never);
+            const controller = new PixelArtEditorController();
+            controller.init(manager, makeDom().dom);
+            controller.open('tile', '18');
+            const frames = cloneFrames(controller.getCurrentFrames());
+            frames[1][0][0] = 8;
+            controller.setFrames(frames);
+            controller.save();
+            expect(game.customSprites[0].frames).toEqual(frames);
+            expect(game.customSprites[0].frames[0][0][0]).toBe(3);
+            expect(invalidate).toHaveBeenCalled();
+        });
+
+        it('loads every pixel-only legacy frame through the active palette', () => {
+            const { manager, game } = makeManager();
+            game.tileset.tiles.push({
+                id: 90,
+                frames: [[['#123456']], [['#654321']]],
+                pixels: [['#123456']],
+            } as never);
+            manager.gameEngine.renderer.paletteManager.getActivePalette = vi.fn(() => [
+                '#123456', '#654321', ...Array.from({ length: 14 }, () => '#000000')
+            ]);
+            const controller = new PixelArtEditorController();
+            controller.init(manager, makeDom().dom);
+            controller.open('tile', '90');
+            expect(controller.getCurrentFrames()).toEqual([[[0]], [[1]]]);
+            controller.save();
+            expect(game.customSprites).toEqual([]);
+        });
         it('upserts into game.customSprites', () => {
             const { manager, game } = makeManager();
             const controller = new PixelArtEditorController();

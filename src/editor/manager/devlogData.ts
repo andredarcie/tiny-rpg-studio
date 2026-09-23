@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-23-all-animated-tiles',
+    date: '2026-09-23',
+    title: 'Animate any tile',
+    description: 'Every tile now has two editable frames. Add a cactus, a second large rock, or a wood roof, and share your animated art in project files, links, and HTML exports.',
+  },
+  {
     id: '2026-09-23-custom-solid-tiles',
     date: '2026-09-23',
     title: 'Choose which tiles are solid',

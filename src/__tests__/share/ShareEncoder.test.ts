@@ -11,6 +11,25 @@ type ShareCustomSpriteInput = {
 };
 
 describe('ShareEncoder', () => {
+  it('round trips a placed new tile and its edited second frame', () => {
+    const ground = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 0));
+    ground[2][3] = 20;
+    const overlay = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => null));
+    const frames = [
+      Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 4)),
+      Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 5)),
+    ];
+    const code = ShareEncoder.buildShareCode({
+      tileset: { map: { ground, overlay }, maps: [{ ground, overlay }] },
+      customSprites: [{ group: 'tile', key: '20', variant: 'base', frames }],
+    });
+    const decoded = ShareDecoder.decodeShareCode(code) as {
+      tileset?: { maps?: Array<{ ground: number[][] }> };
+      customSprites?: CustomSpriteEntry[];
+    } | null;
+    expect(decoded?.tileset?.maps?.[0].ground[2][3]).toBe(20);
+    expect(decoded?.customSprites?.[0].frames).toEqual(frames);
+  });
   beforeAll(() => {
     setupShareGlobals({
       objectTypes: {

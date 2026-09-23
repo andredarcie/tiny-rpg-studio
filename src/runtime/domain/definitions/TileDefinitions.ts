@@ -34,9 +34,16 @@ class TileDefinitions {
         palette?: string[],
         nameKey?: string
     ) {
-        const layoutList = Array.isArray(layouts) ? layouts.filter(Boolean) : [layouts];
-        const frames = (layoutList.length ? layoutList : [this.createEmptyLayout()])
-            .map((layout) => this.toPixels(layout as (number | null)[][], palette));
+        const input = layouts as (number | null)[][][];
+        const layoutList = Array.isArray(input[0]?.[0])
+            ? input
+            : [layouts as (number | null)[][]];
+        const source = layoutList.length ? layoutList : [this.createEmptyLayout()];
+        const copiedLayouts = source.map((layout) => layout.map((row) => row.slice()));
+        if (copiedLayouts.length === 1) {
+            copiedLayouts.push(copiedLayouts[0].map((row) => row.slice()));
+        }
+        const frames = copiedLayouts.map((layout) => this.toPixels(layout, palette));
         // Default liquid effects for classic water/lava presets (overridable in the editor).
         let visualEffect: TileDefinitionData['visualEffect'];
         const cat = (category || '').toLowerCase();
@@ -51,7 +58,7 @@ class TileDefinitions {
             frames: frames as TileFrame[],
             collision,
             category,
-            layouts: layoutList as (number | null)[][][],
+            layouts: copiedLayouts,
             visualEffect
         };
         return new Tile(data);
@@ -308,7 +315,40 @@ class TileDefinitions {
             [ null, null, null,  4, null, null, null, null ],
             [ null, null, null, null, null, null, null, null ],
             [ null, null, null, null, null, null, null, null ]
-        ], true, 'Decoracao', null, 'tiles.names.wallTorch')
+        ], true, 'Decoracao', null, 'tiles.names.wallTorch'),
+
+        this.tile(18, 'Cacto', [
+            [null, null, null, 11, 11, null, null, null],
+            [null, null, null, 11, 11, null, null, null],
+            [null, 11, null, 11, 11, null, null, null],
+            [null, 11, 11, 11, 11, null, 11, null],
+            [null, 11, 11, 11, 11, 11, 11, null],
+            [null, null, null, 11, 11, 11, 11, null],
+            [null, null, null, 11, 11, null, null, null],
+            [null, null, null, 11, 11, null, null, null]
+        ], true, 'Natureza', null, 'tiles.names.cactus'),
+
+        this.tile(19, 'Pedra Grande 2', [
+            [null, null, null, null, null, null, null, null],
+            [null, null, null,  7,  7, null, null, null],
+            [null, null,  6,  6,  6,  7, null, null],
+            [null, 13,  6,  6,  6,  6,  7, null],
+            [null, 13,  6,  6,  6,  6,  7, null],
+            [null,  5, 13,  6,  6, 13,  5, null],
+            [null, null,  5,  5,  5,  5, null, null],
+            [null, null, null, null, null, null, null, null]
+        ], true, 'Natureza', null, 'tiles.names.bigRock2'),
+
+        this.tile(20, 'Telhado de Madeira', [
+            [  4,  4,  5,  4,  4,  4,  5,  4],
+            [  9,  9,  9,  9,  9,  9,  9,  9],
+            [  4,  5,  4,  4,  5,  4,  4,  5],
+            [  9,  9,  9,  9,  9,  9,  9,  9],
+            [  4,  4,  4,  5,  4,  4,  5,  4],
+            [  9,  9,  9,  9,  9,  9,  9,  9],
+            [  5,  4,  4,  4,  5,  4,  4,  4],
+            [  9,  9,  9,  9,  9,  9,  9,  9]
+        ], true, 'Construcoes', null, 'tiles.names.woodRoof')
     ];
 
     static get presets() {

@@ -69,6 +69,26 @@ describe('TileManager business rules', () => {
     expect(manager.getTileVisualEffect(1)).toBe('custom:0');
   });
 
+  it('appends missing presets once without replacing existing IDs or maps', () => {
+    presets = [
+      { id: 18, name: 'Cactus', frames: [makeFrame('green'), makeFrame('green')] },
+      { id: 19, name: 'Rock', frames: [makeFrame('gray'), makeFrame('gray')] },
+    ];
+    const state = createGameState();
+    const occupied = { id: 18, name: 'Imported cactus', frames: [makeFrame('red')], pixels: makeFrame('red') };
+    state.game.tileset.tiles = [occupied];
+    const map = { ground: [[18]], overlay: [[null]] };
+    state.game.tileset.maps = [map];
+    const manager = new TileManager(state);
+    manager.ensureDefaultTiles();
+    manager.ensureDefaultTiles();
+    expect(state.game.tileset.tiles[0]).toBe(occupied);
+    expect(state.game.tileset.tiles.map((tile) => tile.id)).toEqual([18, 19]);
+    expect(state.game.tileset.maps[0]).toBe(map);
+    expect(occupied.frames).toHaveLength(2);
+    expect(occupied.frames[0]).not.toBe(occupied.frames[1]);
+  });
+
   it('stores and applies mergeEdges as literal booleans', () => {
     const gameState = createGameState();
     gameState.game.tileset.tiles = [{ id: 1 }, { id: 2, mergeEdges: true }];

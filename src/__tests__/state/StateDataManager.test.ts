@@ -568,6 +568,35 @@ describe('StateDataManager - customSprites', () => {
     variableManager: { normalizeVariables: vi.fn(() => []), setGame: vi.fn() } as unknown as StateVariableManager,
   });
 
+  it('upgrades legacy tile frames and tile overrides without changing other sprites', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({ game, ...makeImportManagers() });
+    const customPalette = Array.from({ length: 16 }, (_, index) => `#${index.toString(16).padStart(6, '0')}`);
+    const layout = [[3, null]];
+    const pixels = [[customPalette[3], 'transparent']];
+    manager.importGameData({
+      customPalette,
+      tileset: { tiles: [
+        { id: 7, name: 'Legacy', layouts: [layout], frames: [pixels], pixels, collision: true },
+        { id: 8, name: 'Pixels only', frames: [pixels], pixels },
+      ] },
+      customSprites: [
+        { group: 'tile', key: '7', frames: [layout] },
+        { group: 'npc', key: 'wizard', frames: [layout] },
+      ],
+    } as never);
+
+    expect(game.tileset.tiles[0].layouts).toEqual([layout, layout]);
+    expect(game.tileset.tiles[0].layouts?.[0]).not.toBe(game.tileset.tiles[0].layouts?.[1]);
+    expect(game.tileset.tiles[0].frames).toEqual([pixels, pixels]);
+    expect(game.tileset.tiles[1].layouts).toBeUndefined();
+    expect(game.tileset.tiles[1].frames).toEqual([pixels, pixels]);
+    expect(game.customSprites?.[0].frames).toEqual([layout, layout]);
+    expect(game.customSprites?.[0].frames[0]).not.toBe(game.customSprites?.[0].frames[1]);
+    expect(game.customSprites?.[1].frames).toHaveLength(1);
+    expect(manager.exportGameData().tileset?.tiles?.[0]).toEqual(game.tileset.tiles[0]);
+  });
+
   it('normalizes legacy, duplicate, and unknown skill-order entries on import and export', () => {
     const game = makeGame();
     const manager = makeImportManager(game);

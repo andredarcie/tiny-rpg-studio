@@ -247,6 +247,19 @@ describe('EditorExportService', () => {
     expect(anchorClickSpy).toHaveBeenCalledOnce();
   });
 
+  it('embeds the share code generated from a placed new tile and edited frames', async () => {
+    const frame = Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 4));
+    const gameData = {
+      tileset: { maps: [{ ground: [[20]], overlay: [[null]] }] },
+      customSprites: [{ group: 'tile', key: '20', frames: [frame, frame.map((row) => row.slice())] }],
+    };
+    mockState.api = makeApi({ exportGameData: vi.fn(() => gameData) });
+    mockState.shareEncode.mockReturnValue('TILE20_FRAME2');
+    await new EditorExportService().exportProjectAsHtml();
+    expect(mockState.shareEncode).toHaveBeenCalledWith(gameData);
+    expect(await readExportHtml()).toContain('TILE20_FRAME2');
+  });
+
   it('does not depend on the live game container', async () => {
     document.getElementById('game-container')?.remove();
     await new EditorExportService().exportProjectAsHtml();

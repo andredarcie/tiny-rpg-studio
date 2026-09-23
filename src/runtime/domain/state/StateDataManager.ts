@@ -3,6 +3,8 @@ import type { StateWorldManager } from './StateWorldManager';
 import type { StateObjectManager, ObjectEntry } from './StateObjectManager';
 import type { StateVariableManager } from './StateVariableManager';
 import { SkillDefinitions } from '../definitions/SkillDefinitions';
+import { normalizeTileFrames, normalizeTileSpriteFrames } from '../definitions/normalizeTileFrames';
+import type { TileDefinition } from '../definitions/tileTypes';
 import {
     normalizeBackgroundMusicVideoId,
     normalizeBackgroundMusicVolume,
@@ -174,6 +176,7 @@ class StateDataManager {
             if (Object.prototype.hasOwnProperty.call(clone, 'collision') && typeof clone.collision !== 'boolean') {
                 delete clone.collision;
             }
+            normalizeTileFrames(clone as TileDefinition);
             return clone;
         });
         const normalizedRooms = this.worldManager.normalizeRooms(data.rooms, totalRooms, worldCols);
@@ -224,6 +227,7 @@ class StateDataManager {
 
         if (Array.isArray(data.customSprites)) {
             this.game.customSprites = data.customSprites as CustomSpriteEntry[];
+            normalizeTileSpriteFrames(this.game.customSprites);
         } else {
             this.game.customSprites = undefined;
         }
