@@ -424,6 +424,10 @@ class EditorManager {
         this.gameEngine.draw();
     }
 
+    setShowNewDialogExclamation(active: boolean) {
+        this.uiController.setShowNewDialogExclamation(active);
+    }
+
     setSpriteOutline(active: boolean) {
         this.uiController.setSpriteOutline(active);
     }

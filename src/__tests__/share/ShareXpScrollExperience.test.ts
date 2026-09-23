@@ -12,7 +12,7 @@ const decode = (code: string) => (ShareDecoder.decodeShareCode(code) as { object
 
 describe('VERSION_43 XP scroll experience', () => {
   it('is the current supported share version', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_44);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_45);
     expect(ShareConstants.XP_SCROLL_EXPERIENCE_VERSION).toBe(ShareConstants.VERSION_43);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_43)).toBe(true);
   });

@@ -22,7 +22,7 @@ describe('VERSION_44 tile collision', () => {
       { id: solid.id, collision: false },
       { id: 'unknown', collision: true },
     ]) as never);
-    expect(code.startsWith(`v${ShareConstants.VERSION_44.toString(36)}.`)).toBe(true);
+    expect(code.startsWith(`v${ShareConstants.VERSION_45.toString(36)}.`)).toBe(true);
     const decoded = ShareDecoder.decodeShareCode(code) as { tileCollisions?: Record<string, boolean> };
     expect(decoded.tileCollisions).toEqual({ [String(walkable.id)]: true, [String(solid.id)]: false });
   });

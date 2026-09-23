@@ -32,6 +32,7 @@ type ProjectGameSettings = {
     author?: string;
     hideHud?: boolean;
     enableEffects?: boolean;
+    showNewDialogExclamation?: boolean;
     spriteOutline?: boolean;
     spriteOutlineColor?: number;
     disableSkills?: boolean;
@@ -116,6 +117,11 @@ class EditorUIController extends EditorManagerModule {
         // Game canvas redraws in GameEngine.setEnableEffects; also refresh editor
         // tile list / map / previews that paint through the same effect path.
         this.refreshTileEffectViews();
+    }
+
+    setShowNewDialogExclamation(active: boolean = true) {
+        this.gameEngine.setShowNewDialogExclamation(active);
+        this.updateJSON();
     }
 
     setSpriteOutline(active: boolean = true) {
@@ -309,6 +315,9 @@ class EditorUIController extends EditorManagerModule {
         }
         if (this.dom.projectEnableEffects) {
             this.dom.projectEnableEffects.checked = game.enableEffects !== false;
+        }
+        if (this.dom.projectShowNewDialogExclamation) {
+            this.dom.projectShowNewDialogExclamation.checked = game.showNewDialogExclamation !== false;
         }
         if (this.dom.projectHideHud) {
             this.dom.projectHideHud.checked = Boolean(game.hideHud);

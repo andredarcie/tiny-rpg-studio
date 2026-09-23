@@ -249,7 +249,7 @@ class RendererEntityRenderer {
             if (!sprite) continue;
             sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
             this.drawWorldSprite(ctx, sprite, px, py, step, npc.roomIndex, npc.x, npc.y);
-            if (shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
+            if (game.showNewDialogExclamation !== false && shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
                 drawExclamationMarker(ctx, this.paletteManager, px, py, tileSize);
             }
         }
@@ -738,6 +738,7 @@ type GameData = {
     objects: GameObjectState[];
     items: ItemState[];
     sprites: NpcState[];
+    showNewDialogExclamation?: boolean;
 };
 
 type GameStateApi = {

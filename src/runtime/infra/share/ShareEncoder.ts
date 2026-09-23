@@ -37,6 +37,7 @@ type ShareGameData = {
     backgroundMusicVolume?: unknown;
     hideHud?: unknown;
     enableEffects?: unknown;
+    showNewDialogExclamation?: unknown;
     spriteOutline?: unknown;
     spriteOutlineColor?: unknown;
     disableSkills?: unknown;
@@ -668,6 +669,9 @@ class ShareEncoder {
         //   missing → enabled (default); "~0" → disabled.
         if (gameData?.enableEffects === false) {
             parts.push('~0');
+        }
+        if (gameData?.showNewDialogExclamation === false) {
+            parts.push('?0');
         }
         // Outline payload key '1' (VERSION_35+), default off + color 1:
         //   missing  → off, color 1

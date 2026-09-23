@@ -510,6 +510,8 @@ class ShareDecoder {
             version < ShareConstants.TILE_VISUAL_EFFECT_VERSION
                 ? true
                 : payload['~'] !== '0';
+        const showNewDialogExclamation =
+            version < ShareConstants.NEW_DIALOG_EXCLAMATION_VERSION || payload['?'] !== '0';
         // Outline (VERSION_35+): default off + color 1. See ShareEncoder for formats.
         let spriteOutline = false;
         let spriteOutlineColor = 1;
@@ -736,6 +738,7 @@ class ShareDecoder {
             backgroundMusicVolume,
             hideHud,
             enableEffects,
+            showNewDialogExclamation,
             spriteOutline,
             spriteOutlineColor,
             disableSkills,

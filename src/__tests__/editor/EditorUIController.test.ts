@@ -21,6 +21,7 @@ type EditorGameFixture = {
   title: string;
   author: string;
   hideHud: boolean;
+  showNewDialogExclamation?: boolean;
   spriteOutline?: boolean;
   spriteOutlineColor?: number;
   disableSkills: boolean;
@@ -52,6 +53,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
   const authorInput = makeInput('');
   const projectHideHud = document.createElement('input');
   projectHideHud.type = 'checkbox';
+  const projectShowNewDialogExclamation = document.createElement('input');
+  projectShowNewDialogExclamation.type = 'checkbox';
   const projectSpriteOutline = document.createElement('input');
   projectSpriteOutline.type = 'checkbox';
   projectSpriteOutline.checked = false;
@@ -85,6 +88,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       titleInput,
       authorInput,
       projectHideHud,
+      projectShowNewDialogExclamation,
       projectSpriteOutline,
       projectSpriteOutlineColor,
       projectDisableSkills,
@@ -131,6 +135,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       getMaxPlayerLevel: vi.fn(() => 20),
       updateTestSettings: vi.fn(),
       setHideHud: vi.fn(),
+      setShowNewDialogExclamation: vi.fn(),
       setSpriteOutline: vi.fn(),
       setSpriteOutlineColor: vi.fn(),
       getCustomPalette: vi.fn(() => undefined),
@@ -296,6 +301,21 @@ describe('EditorUIController', () => {
     ctrl.setHideHud(true);
     expect(mgr.gameEngine.setHideHud).toHaveBeenCalledWith(true);
     expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
+  });
+
+  it('updates the exclamation setting and refreshes its checkbox after loading', () => {
+    const mgr = makeManager();
+    const ctrl = makeController(mgr);
+    ctrl.setShowNewDialogExclamation(false);
+    expect(mgr.gameEngine.setShowNewDialogExclamation).toHaveBeenCalledWith(false);
+    expect(mgr.renderService.renderVariableUsage).toHaveBeenCalled();
+
+    mgr.gameEngine.getGame.mockReturnValue({ ...mgr.gameEngine.getGame(), showNewDialogExclamation: false });
+    ctrl.syncUI();
+    expect(mgr.domCache.projectShowNewDialogExclamation.checked).toBe(false);
+    mgr.gameEngine.getGame.mockReturnValue({ ...mgr.gameEngine.getGame(), showNewDialogExclamation: undefined });
+    ctrl.syncUI();
+    expect(mgr.domCache.projectShowNewDialogExclamation.checked).toBe(true);
   });
 
   it('setSpriteOutline updates engine state, JSON, and editor views', () => {

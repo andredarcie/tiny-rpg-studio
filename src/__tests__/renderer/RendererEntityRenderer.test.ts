@@ -94,6 +94,7 @@ function makeFixture() {
   const game = {
     objects: [] as Array<Record<string, unknown>>,
     items: [] as Array<Record<string, unknown>>,
+    showNewDialogExclamation: true,
     sprites: [] as Array<Record<string, unknown>>
   };
   const player: { roomIndex: number; x: number; y: number; lastX?: number } = { roomIndex: 1, x: 2, y: 3, lastX: 1 };
@@ -448,6 +449,29 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(3);
     expect(drawTextSpy).toHaveBeenCalledTimes(1);
     expect(drawTextSpy).toHaveBeenCalledWith(ctx, '!', 44, 34, expect.any(Number), expect.any(String));
+  });
+
+  it('hides only the unread NPC marker and restores it when re-enabled', () => {
+    const { renderer, game, spriteFactory, canvasHelper, gameState } = makeFixture();
+    const ctx = createCtx();
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({ default: sprite(9) });
+    game.sprites = [{ id: 'npc-unread', placed: true, roomIndex: 1, x: 2, y: 2, type: 'villager', text: 'Unread' }];
+    const unread = vi.fn(() => true);
+    (gameState as unknown as { hasUnreadNpcDialog: typeof unread }).hasUnreadNpcDialog = unread;
+    const marker = vi.spyOn(bitmapFont, 'drawText').mockImplementation(() => {});
+
+    game.showNewDialogExclamation = false;
+    renderer.drawNPCs(asCanvasCtx(ctx));
+    expect(marker).not.toHaveBeenCalled();
+    expect(canvasHelper.drawSprite).toHaveBeenCalledOnce();
+
+    game.showNewDialogExclamation = true;
+    renderer.drawNPCs(asCanvasCtx(ctx));
+    expect(marker).toHaveBeenCalledOnce();
+    expect(unread).toHaveBeenCalled();
+    game.showNewDialogExclamation = undefined as unknown as boolean;
+    renderer.drawNPCs(asCanvasCtx(ctx));
+    expect(marker).toHaveBeenCalledTimes(2);
   });
 
   it('drawEnemies handles no enemy list and empty list', () => {

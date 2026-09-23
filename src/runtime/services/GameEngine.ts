@@ -54,6 +54,7 @@ type GameData = {
   author?: string;
   hideHud?: boolean;
   enableEffects?: boolean;
+  showNewDialogExclamation?: boolean;
   spriteOutline?: boolean;
   spriteOutlineColor?: number;
   disableSkills?: boolean;
@@ -598,6 +599,11 @@ export class GameEngine {
       ? normalized
       : undefined;
     this.gameState.skillManager.setSkillOrder(game.skillOrder);
+  }
+
+  setShowNewDialogExclamation(active = true): void {
+    this.gameState.getGame().showNewDialogExclamation = active !== false;
+    this.draw();
   }
 
   getCustomPalette(): string[] | undefined {

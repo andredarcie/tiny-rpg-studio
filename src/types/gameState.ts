@@ -218,6 +218,7 @@ export type GameDefinition = {
      * Default true (VERSION_36+). Missing/undefined is treated as enabled.
      */
     enableEffects?: boolean;
+    showNewDialogExclamation?: boolean;
     customTileEffects?: CustomTileEffectDefinition[];
     /** When true, entity sprites/tiles get a 1px palette outline (default off). */
     spriteOutline?: boolean;

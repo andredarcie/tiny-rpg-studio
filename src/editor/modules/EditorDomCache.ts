@@ -61,6 +61,7 @@ class EditorDomCache {
     spritesClearButton: HTMLButtonElement | null;
     projectSkillsResetOrder: HTMLButtonElement | null;
     projectEnableEffects: HTMLInputElement | null;
+    projectShowNewDialogExclamation: HTMLInputElement | null;
     customTileEffectOpen: HTMLButtonElement | null = null;
     customEffectsImportButton: HTMLButtonElement | null = null;
     customEffectsExportButton: HTMLButtonElement | null = null;
@@ -183,6 +184,7 @@ class EditorDomCache {
             this.spritesClearButton = null;
             this.projectSkillsResetOrder = null;
             this.projectEnableEffects = null;
+            this.projectShowNewDialogExclamation = null;
             this.projectHideHud = null;
             this.projectSpriteOutline = null;
             this.projectSpriteOutlineColor = null;
@@ -290,6 +292,7 @@ class EditorDomCache {
         this.spritesClearButton = root.querySelector('#sprites-clear-button') as HTMLButtonElement | null;
         this.projectSkillsResetOrder = root.querySelector('#project-skills-reset-order') as HTMLButtonElement | null;
         this.projectEnableEffects = root.querySelector('#project-enable-effects') as HTMLInputElement | null;
+        this.projectShowNewDialogExclamation = root.querySelector('#project-show-new-dialog-exclamation') as HTMLInputElement | null;
         this.customTileEffectOpen = root.querySelector('#custom-effect-open') as HTMLButtonElement | null;
         this.customEffectsImportButton = root.querySelector('#custom-effects-import-button') as HTMLButtonElement | null;
         this.customEffectsExportButton = root.querySelector('#custom-effects-export-button') as HTMLButtonElement | null;

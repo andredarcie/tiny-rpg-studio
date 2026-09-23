@@ -89,6 +89,7 @@ class GameState {
             backgroundMusicVolume: DEFAULT_BACKGROUND_MUSIC_VOLUME,
             hideHud: false,
             enableEffects: true,
+            showNewDialogExclamation: true,
             spriteOutline: false,
             spriteOutlineColor: 1,
             disableSkills: false,

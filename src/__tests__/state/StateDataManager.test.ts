@@ -62,6 +62,7 @@ describe('StateDataManager', () => {
       backgroundMusicVolume: 100,
       hideHud: false,
       enableEffects: true,
+      showNewDialogExclamation: true,
       spriteOutline: false,
       spriteOutlineColor: 1,
       disableSkills: false,
@@ -106,6 +107,25 @@ describe('StateDataManager', () => {
     expect(manager.importGameData(null)).toBeNull();
     expect(worldManager.normalizeRooms).not.toHaveBeenCalled();
     expect(objectManager.normalizeObjects).not.toHaveBeenCalled();
+  });
+
+  it('preserves explicit false and defaults missing dialog marker settings to true', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {
+        normalizeRooms: vi.fn(() => []), normalizeTileMaps: vi.fn(() => []),
+        clampCoordinate: vi.fn((value: number) => value), clampRoomIndex: vi.fn((value: number) => value),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: { normalizeObjects: vi.fn(() => []), setGame: vi.fn() } as unknown as StateObjectManager,
+      variableManager: { normalizeVariables: vi.fn(() => []), setGame: vi.fn() } as unknown as StateVariableManager,
+    });
+    manager.importGameData({ showNewDialogExclamation: false });
+    expect(game.showNewDialogExclamation).toBe(false);
+    expect(manager.exportGameData().showNewDialogExclamation).toBe(false);
+    manager.importGameData({});
+    expect(game.showNewDialogExclamation).toBe(true);
   });
 
   it('preserves a normalized custom enemy experience override on export', () => {

@@ -42,6 +42,7 @@ class EditorEventBinder extends EditorManagerModule {
             projectTestGodMode,
             projectTestDebugVision,
             projectEnableEffects,
+            projectShowNewDialogExclamation,
             projectHideHud,
             projectSpriteOutline,
             projectSpriteOutlineColor,
@@ -104,6 +105,9 @@ class EditorEventBinder extends EditorManagerModule {
         projectEnableEffects?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setEnableEffects(target.checked);
+        });
+        projectShowNewDialogExclamation?.addEventListener('change', (ev: Event) => {
+            manager.setShowNewDialogExclamation((ev.target as HTMLInputElement).checked);
         });
         projectHideHud?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;

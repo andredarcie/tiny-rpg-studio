@@ -12,7 +12,7 @@ const mockState = vi.hoisted(() => ({
   shareEncode: vi.fn<(data: Record<string, unknown>) => string>(),
   trGet: vi.fn<(key: string, fallback?: string) => string>(),
   trLocale: 'en-US',
-  version: '1',
+  version: '1' as string | number,
 }));
 
 vi.mock('../../runtime/infra/TinyRpgApi', () => ({
@@ -34,13 +34,20 @@ vi.mock('../../runtime/adapters/TextResources', () => ({
   },
 }));
 
-vi.mock('../../runtime/infra/share/ShareConstants', () => ({
-  ShareConstants: {
-    get VERSION() { return mockState.version; },
-  },
-}));
+vi.mock('../../runtime/infra/share/ShareConstants', async (importOriginal) => {
+  const actual = await importOriginal() as { ShareConstants: object };
+  return {
+    ShareConstants: new Proxy(actual.ShareConstants, {
+      get(target, property, receiver) {
+        return property === 'VERSION' ? mockState.version : Reflect.get(target, property, receiver) as unknown;
+      },
+    }),
+  };
+});
 
 import { EditorExportService } from '../../editor/modules/EditorExportService';
+import { ShareEncoder } from '../../runtime/infra/share/ShareEncoder';
+import { ShareDecoder } from '../../runtime/infra/share/ShareDecoder';
 
 type FakeResponse = {
   ok: boolean;
@@ -258,6 +265,25 @@ describe('EditorExportService', () => {
     await new EditorExportService().exportProjectAsHtml();
     expect(mockState.shareEncode).toHaveBeenCalledWith(gameData);
     expect(await readExportHtml()).toContain('TILE20_FRAME2');
+  });
+
+  it('embeds a disabled dialog marker setting that HTML import restores', async () => {
+    mockState.version = 45;
+    const data = {
+      start: { x: 1, y: 1, roomIndex: 0 }, rooms: [], sprites: [], enemies: [], objects: [], variables: [],
+      showNewDialogExclamation: false,
+    };
+    mockState.api = makeApi({ exportGameData: vi.fn(() => data) });
+    mockState.shareEncode.mockImplementation((value) => ShareEncoder.buildShareCode(value));
+    mockState.shareDecode.mockImplementation((code) => ShareDecoder.decodeShareCode(code));
+    await new EditorExportService().exportProjectAsHtml();
+    const html = await readExportHtml();
+    const encoded = JSON.parse(html.match(/__TINY_RPG_SHARED_CODE\s*=\s*([^;]+);/)?.[1] ?? '""') as string;
+    expect(encoded).toContain('.?0');
+    const importApi = makeApi();
+    mockState.api = importApi;
+    await new EditorExportService().importFromHtml(fileLike(html));
+    expect(importApi.importGameData).toHaveBeenCalledWith(expect.objectContaining({ showNewDialogExclamation: false }));
   });
 
   it('does not depend on the live game container', async () => {

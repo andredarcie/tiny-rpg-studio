@@ -42,6 +42,7 @@ type ImportData = {
     backgroundMusicVolume?: unknown;
     hideHud?: boolean;
     enableEffects?: boolean;
+    showNewDialogExclamation?: boolean;
     spriteOutline?: boolean;
     spriteOutlineColor?: number;
     disableSkills?: boolean;
@@ -113,6 +114,7 @@ class StateDataManager {
             hideHud: Boolean(this.game.hideHud),
             // Default on; only persist explicit false so exports stay compact.
             enableEffects: this.game.enableEffects === false ? false : true,
+            showNewDialogExclamation: this.game.showNewDialogExclamation !== false,
             ...(normalizeCustomTileEffects(this.game.customTileEffects).length
                 ? { customTileEffects: normalizeCustomTileEffects(this.game.customTileEffects) }
                 : {}),
@@ -202,6 +204,7 @@ class StateDataManager {
             hideHud: Boolean(data.hideHud),
             // Missing means enabled (default true for pre-v36 and new games).
             enableEffects: data.enableEffects === false ? false : true,
+            showNewDialogExclamation: data.showNewDialogExclamation !== false,
             customTileEffects: customTileEffects.length ? customTileEffects : undefined,
             spriteOutline: Boolean(data.spriteOutline),
             spriteOutlineColor: normalizeSpriteOutlineColor(data.spriteOutlineColor),

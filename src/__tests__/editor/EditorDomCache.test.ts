@@ -14,6 +14,7 @@ describe('EditorDomCache', () => {
     expect(cache.npcText).toBeNull();
     expect(cache.projectTestPanel).toBeNull();
     expect(cache.jsonArea).toBeNull();
+    expect(cache.projectShowNewDialogExclamation).toBeNull();
   });
 
   it('should cache elements from the provided root', () => {
@@ -70,6 +71,7 @@ describe('EditorDomCache', () => {
       <input id="project-test-god-mode" />
       <input id="project-test-debug-vision" />
       <input id="project-hide-hud" />
+      <input id="project-show-new-dialog-exclamation" type="checkbox" checked />
       <input id="project-disable-skills" />
       <input id="project-background-music-url" />
       <input id="project-background-music-volume" />
@@ -92,6 +94,7 @@ describe('EditorDomCache', () => {
     expect(cache.projectTabButtons).toHaveLength(2);
     expect(cache.projectTabPanels).toHaveLength(2);
     expect(cache.projectTestStartLevel).toBeInstanceOf(HTMLSelectElement);
+    expect(cache.projectShowNewDialogExclamation?.checked).toBe(true);
     expect(cache.projectTestGodMode).toBeInstanceOf(HTMLInputElement);
     expect(cache.projectTestDebugVision).toBeInstanceOf(HTMLInputElement);
     expect(cache.projectHideHud).toBeInstanceOf(HTMLInputElement);

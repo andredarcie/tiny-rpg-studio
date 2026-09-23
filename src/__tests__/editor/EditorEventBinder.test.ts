@@ -90,6 +90,8 @@ function makeDom() {
     projectTestDebugVision.type = 'checkbox';
     const projectHideHud = document.createElement('input');
     projectHideHud.type = 'checkbox';
+    const projectShowNewDialogExclamation = document.createElement('input');
+    projectShowNewDialogExclamation.type = 'checkbox';
     const projectSpriteOutline = document.createElement('input');
     projectSpriteOutline.type = 'checkbox';
     projectSpriteOutline.checked = false;
@@ -137,6 +139,7 @@ function makeDom() {
         projectTestGodMode,
         projectTestDebugVision,
         projectHideHud,
+        projectShowNewDialogExclamation,
         projectSpriteOutline,
         projectSpriteOutlineColor,
         projectDisableSkills,
@@ -238,6 +241,7 @@ function makeManager() {
         setTestStartLevel: vi.fn(),
         setGodMode: vi.fn(),
         setHideHud: vi.fn(),
+        setShowNewDialogExclamation: vi.fn(),
         setSpriteOutline: vi.fn(),
         setSpriteOutlineColor: vi.fn(),
         setDisableSkills: vi.fn(),
@@ -291,6 +295,15 @@ describe('EditorEventBinder', () => {
 
         svc = new EditorEventBinder(asEventBinderManager(manager));
         svc.bind();
+    });
+
+    it('passes both checkbox states to the new dialog marker setting', () => {
+        dom.projectShowNewDialogExclamation.checked = false;
+        dom.projectShowNewDialogExclamation.dispatchEvent(new Event('change'));
+        expect(manager.setShowNewDialogExclamation).toHaveBeenLastCalledWith(false);
+        dom.projectShowNewDialogExclamation.checked = true;
+        dom.projectShowNewDialogExclamation.dispatchEvent(new Event('change'));
+        expect(manager.setShowNewDialogExclamation).toHaveBeenLastCalledWith(true);
     });
 
     it('restores the show-variable-links preference and syncs the checkbox', () => {
