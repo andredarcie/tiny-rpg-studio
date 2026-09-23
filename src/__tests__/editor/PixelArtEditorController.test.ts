@@ -18,10 +18,12 @@ const makeManager = (customSprites: CustomSpriteEntry[] = []) => {
                 {
                     id: 1,
                     mergeEdges: true,
+                    collision: undefined as boolean | undefined,
                     layouts: [Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 3))]
                 },
                 {
                     id: 2,
+                    collision: undefined as boolean | undefined,
                     layouts: [
                         Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 1)),
                         Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => 2)),
@@ -96,6 +98,8 @@ const makeDom = () => {
     const tileEffect = document.createElement('select');
     const tileMergeEdges = document.createElement('input');
     tileMergeEdges.type = 'checkbox';
+    const tileSolid = document.createElement('input');
+    tileSolid.type = 'checkbox';
     const dom = {
         pixelArtEditorModal: modalHost,
         paeCanvas: canvas,
@@ -112,6 +116,7 @@ const makeDom = () => {
         paeTileEffectRow: tileEffectRow,
         paeTileEffect: tileEffect,
         paeTileMergeEdges: tileMergeEdges,
+        paeTileSolid: tileSolid,
     } as unknown as PixelArtEditorDom;
     return { dom, context2d };
 };
@@ -336,6 +341,26 @@ describe('PixelArtEditorController', () => {
             expect(game.tileset.tiles[0].mergeEdges).toBe(true);
             expect(game.tileset.tiles[1].mergeEdges).toBe(true);
         });
+        it('drafts solid changes and saves only the selected tile', () => {
+            const { manager, game } = makeManager();
+            const { dom } = makeDom();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, dom);
+            controller.open('tile', '1');
+            expect(dom.paeTileSolid?.checked).toBe(false);
+            if (!dom.paeTileSolid) throw new Error('Expected solid checkbox');
+            dom.paeTileSolid.checked = true;
+            dom.paeTileSolid.dispatchEvent(new Event('change'));
+            expect(game.tileset.tiles[0].collision).toBeUndefined();
+            controller.open('tile', '2');
+            expect(dom.paeTileSolid.checked).toBe(false);
+            controller.open('tile', '1');
+            dom.paeTileSolid.checked = true;
+            dom.paeTileSolid.dispatchEvent(new Event('change'));
+            controller.save();
+            expect(game.tileset.tiles[0].collision).toBe(true);
+            expect(game.tileset.tiles[1].collision).toBeUndefined();
+        });
     });
 
     describe('resetToDefault', () => {
@@ -380,6 +405,20 @@ describe('PixelArtEditorController', () => {
 
             expect(dom.paeTileMergeEdges?.checked).toBe(false);
             expect(game.tileset.tiles[0].mergeEdges).toBe(true);
+        });
+        it('resets solid to the preset value as a draft', () => {
+            const { manager, game } = makeManager();
+            const { dom } = makeDom();
+            const controller = new PixelArtEditorController();
+            controller.init(manager, dom);
+            game.tileset.tiles[0].collision = true;
+            controller.open('tile', '1');
+            expect(dom.paeTileSolid?.checked).toBe(true);
+            controller.resetToDefault();
+            expect(dom.paeTileSolid?.checked).toBe(false);
+            expect(game.tileset.tiles[0].collision).toBe(true);
+            controller.save();
+            expect(game.tileset.tiles[0].collision).toBe(false);
         });
     });
 

@@ -104,6 +104,7 @@ class EditorDomCache {
     paeTileEffectRow: HTMLElement | null = null;
     paeTileEffect: HTMLSelectElement | null = null;
     paeTileMergeEdges: HTMLInputElement | null = null;
+    paeTileSolid: HTMLInputElement | null = null;
     npcEditModal: HTMLElement | null = null;
     repositionIndicator: HTMLElement | null = null;
     objectEditModal: HTMLElement | null = null;
@@ -225,6 +226,7 @@ class EditorDomCache {
             this.paeTileEffectRow = null;
             this.paeTileEffect = null;
             this.paeTileMergeEdges = null;
+            this.paeTileSolid = null;
             return;
         }
 
@@ -335,6 +337,7 @@ class EditorDomCache {
         this.paeTileEffectRow = root.querySelector('#pae-tile-effect-row') as HTMLElement | null;
         this.paeTileEffect = root.querySelector('#pae-tile-effect') as HTMLSelectElement | null;
         this.paeTileMergeEdges = root.querySelector('#pae-tile-merge-edges') as HTMLInputElement | null;
+        this.paeTileSolid = root.querySelector('#pae-tile-solid') as HTMLInputElement | null;
         this.skillEditModal = root.querySelector('#skill-edit-modal') as HTMLElement | null;
         this.skillEditIconInput = root.querySelector('#skill-edit-icon') as HTMLInputElement | null;
         this.skillEditIconPreview = root.querySelector('#skill-edit-icon-preview') as HTMLElement | null;

@@ -26,6 +26,8 @@ type ManagerDeps = {
             setTileVisualEffect?(id: number | string, effect: TileVisualEffectKind): void;
             getTileMergeEdges?(id: number | string): boolean;
             setTileMergeEdges?(id: number | string, enabled: boolean): void;
+            getTileCollision?(id: number | string): boolean;
+            setTileCollision?(id: number | string, solid: boolean): void;
         };
     };
     renderAll(): void;
@@ -52,6 +54,7 @@ type DomDeps = {
     paeTileEffectRow?: HTMLElement | null;
     paeTileEffect?: HTMLSelectElement | null;
     paeTileMergeEdges?: HTMLInputElement | null;
+    paeTileSolid?: HTMLInputElement | null;
 };
 
 export class PixelArtEditorController {
@@ -70,6 +73,7 @@ export class PixelArtEditorController {
     private languageEventsReady = false;
     private tileEffectDraft: TileVisualEffectKind = 'none';
     private tileMergeEdgesDraft = false;
+    private tileSolidDraft = false;
     private copiedTileFrame: CustomSpriteFrame | null = null;
 
     init(manager: ManagerDeps, dom: DomDeps): void {
@@ -90,6 +94,7 @@ export class PixelArtEditorController {
         this.selectedColor = 0;
         this.tileEffectDraft = 'none';
         this.tileMergeEdgesDraft = false;
+        this.tileSolidDraft = false;
 
         const game = this.manager.gameEngine.getGame() as { customSprites?: CustomSpriteEntry[] };
 
@@ -144,6 +149,7 @@ export class PixelArtEditorController {
         if (this.group === 'tile') {
             this.persistTileVisualEffect();
             this.persistTileMergeEdges();
+            this.persistTileCollision();
         }
 
         const objectDef = this.group === 'object' ? this.findObjectDef(this.key) : undefined;
@@ -186,6 +192,8 @@ export class PixelArtEditorController {
             if (this.dom?.paeTileMergeEdges) {
                 this.dom.paeTileMergeEdges.checked = this.tileMergeEdgesDraft;
             }
+            this.tileSolidDraft = this.getPresetTileCollision(this.key);
+            if (this.dom?.paeTileSolid) this.dom.paeTileSolid.checked = this.tileSolidDraft;
         }
         this.renderFrameBar();
         if (this.group === 'tile' && this.dom?.paeTileEffect) {
@@ -395,6 +403,9 @@ export class PixelArtEditorController {
             this.readTileMergeEdgesFromGame(tileId);
         this.tileMergeEdgesDraft = mergeEdges;
         if (this.dom?.paeTileMergeEdges) this.dom.paeTileMergeEdges.checked = mergeEdges;
+        this.tileSolidDraft = this.manager?.gameEngine.tileManager.getTileCollision?.(tileId) ??
+            this.readTileCollisionFromGame(tileId);
+        if (this.dom?.paeTileSolid) this.dom.paeTileSolid.checked = this.tileSolidDraft;
     }
 
     private rebuildTileEffectOptions(): void {
@@ -452,6 +463,27 @@ export class PixelArtEditorController {
         if (tile) tile.mergeEdges = this.tileMergeEdgesDraft;
     }
 
+    private persistTileCollision(): void {
+        if (!this.manager || this.group !== 'tile') return;
+        const tileId = this.resolveTileId(this.key);
+        if (this.manager.gameEngine.tileManager.setTileCollision) {
+            this.manager.gameEngine.tileManager.setTileCollision(tileId, this.tileSolidDraft);
+            return;
+        }
+        const game = this.manager.gameEngine.getGame() as {
+            tileset?: { tiles?: Array<{ id?: number | string; collision?: boolean }> };
+        };
+        const tile = game.tileset?.tiles?.find((entry) => String(entry.id) === String(tileId));
+        if (tile) tile.collision = this.tileSolidDraft;
+    }
+
+    private readTileCollisionFromGame(tileId: number | string): boolean {
+        const game = this.manager?.gameEngine.getGame() as {
+            tileset?: { tiles?: Array<{ id?: number | string; collision?: boolean }> };
+        } | undefined;
+        return game?.tileset?.tiles?.find((entry) => String(entry.id) === String(tileId))?.collision === true;
+    }
+
     private readTileMergeEdgesFromGame(tileId: number | string): boolean {
         const game = this.manager?.gameEngine.getGame() as {
             tileset?: { tiles?: Array<{ id?: number | string; mergeEdges?: boolean }> };
@@ -497,6 +529,11 @@ export class PixelArtEditorController {
         return TileDefinitions.TILE_PRESETS.find((tile) => String(tile.id) === String(tileId))?.mergeEdges === true;
     }
 
+    private getPresetTileCollision(key: string): boolean {
+        const tileId = this.resolveTileId(key);
+        return TileDefinitions.TILE_PRESETS.find((tile) => String(tile.id) === String(tileId))?.collision === true;
+    }
+
     // ── Events (bound once in init) ─────────────────────────────
 
     private bindStaticEvents(): void {
@@ -528,6 +565,9 @@ export class PixelArtEditorController {
             if (this.group === 'tile') {
                 this.tileMergeEdgesDraft = this.dom?.paeTileMergeEdges?.checked === true;
             }
+        });
+        this.dom?.paeTileSolid?.addEventListener('change', () => {
+            if (this.group === 'tile') this.tileSolidDraft = this.dom?.paeTileSolid?.checked === true;
         });
 
         this.dom?.paePalette?.addEventListener('click', (e) => {

@@ -20,7 +20,7 @@ const gameData = {
 
 describe('VERSION_41 tile edge merging', () => {
   it('registers the feature version', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_43);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_44);
     expect(ShareConstants.TILE_MERGE_EDGES_VERSION).toBe(ShareConstants.VERSION_41);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_41)).toBe(true);
   });

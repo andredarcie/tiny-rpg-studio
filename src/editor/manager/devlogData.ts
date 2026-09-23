@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-23-custom-solid-tiles',
+    date: '2026-09-23',
+    title: 'Choose which tiles are solid',
+    description: 'Set any tile as solid or walkable in the pixel art editor. The setting works on placed tiles and travels with project files, share links, and HTML exports.',
+  },
+  {
     id: '2026-09-22-custom-xp-scroll-rewards',
     date: '2026-09-22',
     title: 'Customize XP scroll rewards',

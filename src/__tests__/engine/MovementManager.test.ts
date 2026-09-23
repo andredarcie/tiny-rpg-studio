@@ -222,6 +222,36 @@ describe('MovementManager', () => {
     expect(dialogManager.showDialog).not.toHaveBeenCalled();
   });
 
+  it('checks both tile layers for movement and push destinations', () => {
+    const gameState = {
+      ...createGameState(false),
+      getGame: () => ({ sprites: [], rooms: [{}] }),
+    };
+    const layeredTiles = {
+      getTileMap: vi.fn(() => ({ ground: [[null, 1]], overlay: [[null, 2]] })),
+      getTile: vi.fn((id: string | number) => id === 1
+        ? { collision: true, category: 'Structure' }
+        : { collision: false }),
+    };
+    const manager = new MovementManager({
+      gameState, tileManager: layeredTiles, renderer, dialogManager, interactionManager, enemyManager,
+    });
+    manager.tryMove(1, 0);
+    expect(gameState.setPlayerPosition).not.toHaveBeenCalled();
+    expect(manager.canPushBoxTo(0, 1, 0, undefined)).toBe(false);
+    layeredTiles.getTile.mockImplementation((id: string | number) => id === 1
+      ? { collision: true, category: 'agua' }
+      : { collision: false });
+    gameState.hasSkill.mockImplementation((skill: string) => skill === 'water-walker');
+    expect(manager.canPushBoxTo(0, 1, 0, undefined)).toBe(true);
+    layeredTiles.getTile.mockImplementation((id: string | number) => id === 2
+      ? { collision: true, category: 'perigo' }
+      : { collision: false });
+    expect(manager.canPushBoxTo(0, 1, 0, undefined)).toBe(false);
+    gameState.hasSkill.mockImplementation((skill: string) => skill === 'lava-walker');
+    expect(manager.canPushBoxTo(0, 1, 0, undefined)).toBe(true);
+  });
+
   it('does not treat disappeared NPCs as occupied tiles', () => {
     const gameState = createGameState(false);
     gameState.getGame = (() => ({

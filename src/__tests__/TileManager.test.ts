@@ -83,6 +83,21 @@ describe('TileManager business rules', () => {
     expect(gameState.game.tileset.tiles.map((tile) => tile.mergeEdges)).toEqual([false, true]);
   });
 
+  it('applies literal collision overrides to placed and future tiles', () => {
+    const gameState = createGameState();
+    const manager = new TileManager(gameState);
+    manager.ensureDefaultTiles();
+    expect(manager.getTileCollision(1)).toBe(false);
+    expect(manager.getTileCollision(2)).toBe(true);
+    manager.applyTileCollisions({ '1': true, '2': false, missing: true, '3': 'true' as never });
+    expect(manager.getTileCollision(1)).toBe(true);
+    expect(manager.getTileCollision(2)).toBe(false);
+    manager.setMapTile(1, 1, 1);
+    expect(gameState.game.tileset.maps[0].overlay[1][1]).toBe(1);
+    manager.setMapTile(2, 2, 2);
+    expect(gameState.game.tileset.maps[0].ground[2][2]).toBe(2);
+  });
+
   it('initializes default tiles and maps when empty', () => {
     const gameState = createGameState();
     const manager = new TileManager(gameState);
@@ -286,6 +301,44 @@ describe('TileManager business rules', () => {
     expect(map.ground[1][1]).toBe(1);
     expect(map.overlay[1][1]).toBeNull();
     expect(map.overlay[2][2]).toBe(2);
+  });
+
+  it('keeps the previous ground under transparent walkable tiles', () => {
+    const gameState = createGameState();
+    const manager = new TileManager(gameState);
+    manager.ensureDefaultTiles();
+    manager.setTileCollision(2, false);
+    manager.updateTile(2, { pixels: makeFrame('transparent') });
+    manager.setMapTile(3, 3, 1);
+    manager.setMapTile(3, 3, 2);
+
+    const map = manager.getTileMap();
+    expect(map.ground[3][3]).toBe(1);
+    expect(map.overlay[3][3]).toBe(2);
+
+    manager.setMapTile(3, 3, 1);
+    expect(map.ground[3][3]).toBe(1);
+    expect(map.overlay[3][3]).toBeNull();
+  });
+
+  it('keeps ground under tiles with transparent animation or custom sprite frames', () => {
+    const gameState = createGameState();
+    const manager = new TileManager(gameState);
+    manager.ensureDefaultTiles();
+    manager.setTileCollision(2, false);
+    manager.setMapTile(1, 1, 2);
+    manager.updateTile(1, { frames: [makeFrame('green'), makeFrame('transparent')] });
+    manager.setMapTile(1, 1, 1);
+    expect(manager.getTileMap().ground[1][1]).toBe(2);
+    expect(manager.getTileMap().overlay[1][1]).toBe(1);
+
+    (gameState.game as typeof gameState.game & { customSprites: unknown }).customSprites = [{
+      group: 'tile', key: '2', variant: 'base',
+      frames: [Array.from({ length: 8 }, () => Array.from({ length: 8 }, () => null))],
+    }];
+    manager.setTileCollision(2, false);
+    manager.setMapTile(2, 2, 2);
+    expect(manager.getTileMap().overlay[2][2]).toBe(2);
   });
 
   it('ignores map writes that are out of bounds', () => {

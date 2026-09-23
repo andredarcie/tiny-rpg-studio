@@ -348,9 +348,8 @@ class MovementManager {
     const tileMap = this.tileManager.getTileMap(targetRoomIndex);
     const overlayId = tileMap?.overlay?.[targetY]?.[targetX] ?? null;
     const groundId = tileMap?.ground?.[targetY]?.[targetX] ?? null;
-    const candidateId = overlayId ?? groundId;
-    if (candidateId !== null) {
-      const tile = this.tileManager.getTile(candidateId);
+    for (const tileId of [overlayId, groundId]) {
+      const tile = tileId === null ? null : this.tileManager.getTile(tileId);
       if (tile?.collision && !this.canTraverseCollisionTile(tile)) {
         if (enteringNewRoom) {
           this.flashBlockedEdge(direction, { x: targetX, y: targetY });
@@ -552,9 +551,8 @@ class MovementManager {
     const tileMap = this.tileManager.getTileMap(roomIndex);
     const overlayId = tileMap?.overlay?.[y]?.[x] ?? null;
     const groundId = tileMap?.ground?.[y]?.[x] ?? null;
-    const candidateId = overlayId ?? groundId;
-    if (candidateId !== null) {
-      const tile = this.tileManager.getTile(candidateId);
+    for (const tileId of [overlayId, groundId]) {
+      const tile = tileId === null ? null : this.tileManager.getTile(tileId);
       if (tile?.collision && !this.canTraverseCollisionTile(tile)) return false;
     }
     // A box must not be pushed onto a tile occupied by an enemy or an NPC.

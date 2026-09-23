@@ -3,6 +3,7 @@ import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
 import { SkillDefinitions } from '../../domain/definitions/SkillDefinitions';
 import { ShareConstants } from './ShareConstants';
+import { TileDefinitions } from '../../domain/definitions/TileDefinitions';
 import { ShareDataNormalizer } from './ShareDataNormalizer';
 import { ShareBase64 } from './ShareBase64';
 import { ShareMatrixCodec } from './ShareMatrixCodec';
@@ -715,7 +716,8 @@ class ShareDecoder {
         const decodedEffects = version >= ShareConstants.CUSTOM_TILE_EFFECT_VERSION && payload['0']
             ? this.decodeCustomTileEffectsEnvelope(
                 payload['0'],
-                version >= ShareConstants.TILE_MERGE_EDGES_VERSION
+                version >= ShareConstants.TILE_MERGE_EDGES_VERSION,
+                version >= ShareConstants.TILE_COLLISION_VERSION
             )
             : {
                 tileVisualEffects: version >= ShareConstants.TILE_VISUAL_EFFECT_VERSION && payload['0']
@@ -723,8 +725,9 @@ class ShareDecoder {
                     : undefined,
                 customTileEffects: undefined,
                 tileMergeEdges: undefined,
+                tileCollisions: undefined,
             };
-        const { tileVisualEffects, customTileEffects, tileMergeEdges } = decodedEffects;
+        const { tileVisualEffects, customTileEffects, tileMergeEdges, tileCollisions } = decodedEffects;
 
         const result: Record<string, unknown> = {
             title,
@@ -761,6 +764,9 @@ class ShareDecoder {
         }
         if (tileMergeEdges && tileMergeEdges.length > 0) {
             result.tileMergeEdges = tileMergeEdges;
+        }
+        if (tileCollisions && Object.keys(tileCollisions).length > 0) {
+            result.tileCollisions = tileCollisions;
         }
 
         if (customPalette) {
@@ -824,10 +830,11 @@ class ShareDecoder {
         }
     }
 
-    private static decodeCustomTileEffectsEnvelope(encoded: string, includeMergeEdges = false): {
+    private static decodeCustomTileEffectsEnvelope(encoded: string, includeMergeEdges = false, includeCollisions = false): {
         tileVisualEffects?: Record<string, TileVisualEffectKind>;
         customTileEffects?: CustomTileEffectDefinition[];
         tileMergeEdges?: string[];
+        tileCollisions?: Record<string, boolean>;
     } {
         try {
             const json = ShareTextCodec.decodeText(encoded, '');
@@ -874,10 +881,18 @@ class ShareDecoder {
             const tileMergeEdges = includeMergeEdges && Array.isArray(envelope.m)
                 ? Array.from(new Set(envelope.m.filter((id): id is string => typeof id === 'string')))
                 : [];
+            const tileCollisions: Record<string, boolean> = {};
+            if (includeCollisions && envelope.c && typeof envelope.c === 'object' && !Array.isArray(envelope.c)) {
+                const knownIds = new Set(TileDefinitions.TILE_PRESETS.map((tile) => String(tile.id)));
+                for (const [id, value] of Object.entries(envelope.c)) {
+                    if (knownIds.has(id) && typeof value === 'boolean') tileCollisions[id] = value;
+                }
+            }
             return {
                 customTileEffects: customTileEffects.length ? customTileEffects : undefined,
                 tileVisualEffects: Object.keys(tileVisualEffects).length ? tileVisualEffects : undefined,
                 tileMergeEdges: tileMergeEdges.length ? tileMergeEdges : undefined,
+                tileCollisions: Object.keys(tileCollisions).length ? tileCollisions : undefined,
             };
         } catch {
             return {};

@@ -1195,13 +1195,14 @@ describe('EnemyManager', () => {
       expect(manager.hasBlockingObject(0, 0, 3)).toBe(true);
     });
 
-    it('checks tile collision with overlay precedence and null tile maps', () => {
+    it('checks tile collision on both layers and null tile maps', () => {
       const customTileManager = {
         getTileMap: vi
           .fn()
           .mockReturnValueOnce(null)
           .mockReturnValueOnce({ ground: [[1]], overlay: [[2]] })
-          .mockReturnValueOnce({ ground: [[1]], overlay: [[]] }),
+          .mockReturnValueOnce({ ground: [[1]], overlay: [[]] })
+          .mockReturnValueOnce({ ground: [[2]], overlay: [[1]] }),
         getTile: vi.fn((id: unknown) => {
           if (id === 2) return { collision: true };
           if (id === 1) return { collision: false };
@@ -1213,6 +1214,7 @@ describe('EnemyManager', () => {
       expect(manager.isTileBlocked(0, 0, 0)).toBe(false);
       expect(manager.isTileBlocked(0, 0, 0)).toBe(true);
       expect(manager.isTileBlocked(0, 0, 0)).toBe(false);
+      expect(manager.isTileBlocked(0, 0, 0)).toBe(true);
     });
 
     it('checks occupancy and npc presence helpers', () => {

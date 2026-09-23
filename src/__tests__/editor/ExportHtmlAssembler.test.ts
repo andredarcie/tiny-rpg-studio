@@ -3,6 +3,9 @@ import {
     assembleExportHtml,
     createExportGameMarkup,
 } from '../../editor/modules/export/ExportHtmlAssembler';
+import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
+import { ShareDecoder } from '../../runtime/infra/share/ShareDecoder';
+import { ShareEncoder } from '../../runtime/infra/share/ShareEncoder';
 
 const makeOptions = () => ({
     css: '@font-face{src:url("pixel-operator.woff")}body{color:white}',
@@ -65,5 +68,21 @@ describe('ExportHtmlAssembler', () => {
         expect(html).toContain('<title>&lt;Game&gt;</title>');
         expect(match).not.toBeNull();
         expect(JSON.parse(match?.[1] ?? '""')).toBe(options.gameCode);
+    });
+
+    it('retains solid overrides in the embedded share code', () => {
+        const tile = TileDefinitions.TILE_PRESETS.find((entry) => entry.collision === false);
+        if (!tile) throw new Error('Expected a walkable preset');
+        const options = makeOptions();
+        options.gameCode = ShareEncoder.buildShareCode({
+            title: 'Solid', start: { x: 1, y: 1, roomIndex: 0 },
+            rooms: [], sprites: [], enemies: [], objects: [], variables: [],
+            tileset: { tiles: [{ id: tile.id, collision: true }], maps: [] },
+        } as never);
+        const { html } = assembleExportHtml(options);
+        const match = html.match(/__TINY_RPG_SHARED_CODE\s*=\s*([^;]+);/);
+        const embedded = JSON.parse(match?.[1] ?? '""') as string;
+        const decoded = ShareDecoder.decodeShareCode(embedded) as { tileCollisions?: Record<string, boolean> };
+        expect(decoded.tileCollisions).toEqual({ [String(tile.id)]: true });
     });
 });

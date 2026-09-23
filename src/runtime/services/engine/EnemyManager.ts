@@ -717,10 +717,7 @@ class EnemyManager {
     const overlayRow = Array.isArray(tileMap.overlay) ? tileMap.overlay[y] : undefined;
     const groundId = groundRow ? groundRow[x] : null;
     const overlayId = overlayRow ? overlayRow[x] : null;
-    const candidateId = overlayId ?? groundId;
-    if (candidateId === null) return false;
-    const tile = this.tileManager.getTile(candidateId);
-    return Boolean(tile && tile.collision);
+    return [overlayId, groundId].some((id) => id !== null && this.tileManager.getTile(id)?.collision === true);
   }
 
   hasBlockingObject(roomIndex: number, x: number, y: number): boolean {

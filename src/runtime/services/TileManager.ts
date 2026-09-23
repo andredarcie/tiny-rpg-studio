@@ -218,6 +218,27 @@ class TileManager {
     return this.getTile(tileId)?.mergeEdges === true;
   }
 
+  applyTileCollisions(overrides: Record<string, boolean> | null | undefined): void {
+    if (!overrides || typeof overrides !== 'object' || Array.isArray(overrides)) return;
+    const presetIds = new Set(this.presets.map((tile) => String(tile.id)));
+    for (const tile of this.gameState.game.tileset.tiles) {
+      const id = String(tile.id);
+      if (presetIds.has(id) && Object.prototype.hasOwnProperty.call(overrides, id) &&
+          typeof overrides[id] === 'boolean') {
+        tile.collision = overrides[id];
+      }
+    }
+  }
+
+  setTileCollision(tileId: TileId, solid: boolean): void {
+    const tile = this.gameState.game.tileset.tiles.find((entry) => entry.id === tileId);
+    if (tile && typeof solid === 'boolean') tile.collision = solid;
+  }
+
+  getTileCollision(tileId: TileId): boolean {
+    return this.getTile(tileId)?.collision === true;
+  }
+
   updateTile(tileId: TileId, data: Partial<TileDefinition>): void {
     // Mutate the tileset entry directly (getTile may return a spread copy with custom frames).
     const stored = this.gameState.game.tileset.tiles.find((t) => t.id === tileId);
@@ -247,7 +268,11 @@ class TileManager {
 
     const tile = this.getTile(tileId);
     if (!tile) return;
-    if (tile.collision) {
+    const frames = tile.frames?.length ? tile.frames : tile.pixels ? [tile.pixels] : [];
+    const hasTransparentPixels = frames.some((frame) => frame.some((row) =>
+      row.some((pixel) => pixel === 'transparent')
+    ));
+    if (tile.collision || hasTransparentPixels) {
       map.overlay[y][x] = tileId;
     } else {
       map.ground[y][x] = tileId;

@@ -140,14 +140,17 @@ describe('StateDataManager', () => {
     manager.importGameData({
       tileset: {
         tiles: [
-          { id: 1, mergeEdges: true },
-          { id: 2, mergeEdges: false },
-          { id: 3, mergeEdges: 'true' },
+          { id: 1, mergeEdges: true, collision: true },
+          { id: 2, mergeEdges: false, collision: false },
+          { id: 3, mergeEdges: 'true', collision: 'true' },
         ],
       },
     } as never);
 
     expect(game.tileset.tiles.map((tile) => tile.mergeEdges)).toEqual([true, false, false]);
+    expect(game.tileset.tiles.map((tile) => tile.collision)).toEqual([true, false, undefined]);
+    const exported = manager.exportGameData() as { tileset: { tiles: Array<{ collision?: boolean }> } };
+    expect(exported.tileset.tiles.map((tile) => tile.collision)).toEqual([true, false, undefined]);
   });
 
   it('omits runtime NPC disappearance from exported data', () => {

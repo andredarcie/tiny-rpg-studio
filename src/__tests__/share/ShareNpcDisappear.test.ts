@@ -54,7 +54,7 @@ describe('VERSION_40 disappearing NPCs', () => {
   });
 
   it('registers the new version without moving older feature boundaries', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_43);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_44);
     expect(ShareConstants.NPC_DISAPPEAR_VERSION).toBe(ShareConstants.VERSION_40);
     expect(ShareConstants.NPC_END_GAME_VERSION).toBe(ShareConstants.VERSION_39);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_40)).toBe(true);
