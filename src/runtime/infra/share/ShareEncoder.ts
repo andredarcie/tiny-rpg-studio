@@ -315,7 +315,7 @@ class ShareEncoder {
         const doorPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.DOOR);
         const keyPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.KEY);
         const lifePotionPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.LIFE_POTION);
-        const xpScrollPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.XP_SCROLL);
+        const xpScrollPositions = ShareDataNormalizer.normalizeXpScrollObjects(objects);
         const swordPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.SWORD);
         const swordBronzePositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.SWORD_BRONZE);
         const swordWoodPositions = ShareDataNormalizer.normalizeObjectPositions(objects, OT.SWORD_WOOD);
@@ -482,6 +482,13 @@ class ShareEncoder {
             if (xpCode) {
                 parts.push('x' + xpCode);
             }
+            const xpExperienceCode = xpScrollPositions
+                .map((scroll, index) => scroll.experience === undefined
+                    ? ''
+                    : `${index.toString(36)}:${scroll.experience.toString(36)}`)
+                .filter(Boolean)
+                .join(',');
+            if (xpExperienceCode) parts.push('*' + xpExperienceCode);
         }
 
         if (swordPositions.length) {

@@ -2,6 +2,7 @@
 import { ITEM_TYPES, type ItemType } from '../constants/itemTypes';
 import { itemCatalog } from '../services/ItemCatalog';
 import { normalizeChestVariableId } from './ChestState';
+import { normalizeXpScrollExperienceOverride } from '../definitions/xpScrollExperience';
 const PLAYER_END_TEXT_LIMIT = 40;
 
 type RawObjectInput = {
@@ -22,6 +23,7 @@ type RawObjectInput = {
     hiddenInGame?: boolean;
     containsItemType?: string | null;
     randomItem?: boolean;
+    experience?: unknown;
 };
 
 type ObjectEntry = {
@@ -54,6 +56,7 @@ type ObjectEntry = {
     hiddenInGame?: boolean;
     containsItemType?: string | null;
     randomItem?: boolean;
+    experience?: number;
     activated?: boolean;
     originalX?: number;
     originalY?: number;
@@ -220,6 +223,10 @@ class StateObjectManager {
                     const rawContains = raw.containsItemType;
                     base.containsItemType = typeof rawContains === 'string' && rawContains ? rawContains : null;
                     base.randomItem = Boolean(raw.randomItem);
+                }
+                if (type === OT.XP_SCROLL) {
+                    const experience = normalizeXpScrollExperienceOverride(raw.experience);
+                    if (experience !== undefined) base.experience = experience;
                 }
                 if (type === StateObjectManager.SWITCH_TYPE) {
                     base.on = Boolean(raw.on);
@@ -546,6 +553,16 @@ class StateObjectManager {
         const entry = this.getObjects().find((object) => object.id === id);
         if (!entry) return;
         entry.randomItem = randomItem;
+    }
+
+    setXpScrollExperienceById(id: string, value: number): boolean {
+        const entry = this.getObjects().find((object) => object.id === id && object.type === ITEM_TYPES.XP_SCROLL);
+        if (!entry || !Number.isSafeInteger(value) || value < 0) return false;
+        const experience = normalizeXpScrollExperienceOverride(value);
+        if (entry.experience === experience) return false;
+        if (experience === undefined) delete entry.experience;
+        else entry.experience = experience;
+        return true;
     }
 
     setTrapSolidById(id: string, solid: boolean): boolean {

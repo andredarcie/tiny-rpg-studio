@@ -10,6 +10,7 @@ import { CustomSpriteLookup } from '../../../runtime/domain/sprites/CustomSprite
 import { isTrapActive } from '../../../runtime/domain/state/TrapState';
 import type { CustomSpriteEntry } from '../../../types/gameState';
 import { ONLINE_PLAYER_START_2_TYPE } from '../EditorObjectService';
+import { DEFAULT_XP_SCROLL_EXPERIENCE, normalizeXpScrollExperienceOverride } from '../../../runtime/domain/definitions/xpScrollExperience';
 
 const EditorObjectTypes = ITEM_TYPES;
 const PLAYER_END_TYPE = EditorObjectTypes.PLAYER_END;
@@ -40,6 +41,7 @@ type EditorObject = {
     isSingleInputGate?: boolean;
     isLed?: boolean;
     hiddenInGame?: boolean;
+    experience?: number;
 };
 
 class EditorObjectRenderer extends EditorRendererBase {
@@ -284,6 +286,38 @@ class EditorObjectRenderer extends EditorRendererBase {
             this.manager.history.pushCurrentState();
             onAfterChange?.();
         };
+
+        if (object.type === EditorObjectTypes.XP_SCROLL) {
+            const config = document.createElement('div');
+            config.className = 'object-config';
+            const label = document.createElement('label');
+            label.className = 'object-config-label';
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.className = 'object-config-input';
+            input.min = '0';
+            input.max = String(Number.MAX_SAFE_INTEGER);
+            input.step = '1';
+            let currentValue = normalizeXpScrollExperienceOverride(object.experience) ?? DEFAULT_XP_SCROLL_EXPERIENCE;
+            input.value = String(currentValue);
+            input.addEventListener('change', () => {
+                const value = input.value.trim() === '' ? NaN : Number(input.value);
+                if (!Number.isSafeInteger(value) || value < 0 || value === currentValue
+                    || !this.gameEngine.setXpScrollExperienceById(object.id ?? '', value)) {
+                    input.value = String(currentValue);
+                    return;
+                }
+                currentValue = value;
+                refresh();
+            });
+            label.append(`${this.t('objects.xpScroll.experienceLabel')} `, input);
+            config.appendChild(label);
+            const hint = document.createElement('div');
+            hint.className = 'object-status';
+            hint.textContent = this.t('objects.xpScroll.experienceHint');
+            config.appendChild(hint);
+            wrapper.appendChild(config);
+        }
 
         if (object.type === EditorObjectTypes.SWITCH || object.type === DOOR_VARIABLE_TYPE) {
             const config = document.createElement('div');

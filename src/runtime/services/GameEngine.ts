@@ -876,6 +876,12 @@ export class GameEngine {
     return changed;
   }
 
+  setXpScrollExperienceById(id: string, experience: number): boolean {
+    const changed = this.gameState.setXpScrollExperienceById(id, experience);
+    if (changed) this.renderer.draw();
+    return changed;
+  }
+
   setEnemyExperience(enemyId: string | number, experience: number | null = null): boolean {
     if (typeof this.gameState.setEnemyExperience !== 'function') return false;
     const changed = this.gameState.setEnemyExperience(enemyId, experience);

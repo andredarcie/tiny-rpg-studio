@@ -609,6 +609,32 @@ describe('InteractionManager', () => {
     expect(gameState.setVariableValue).toHaveBeenCalledWith('var-1', false);
   });
 
+  it('uses custom XP scroll rewards and Booksmart while keeping default and chest rewards dynamic', () => {
+    const gameState = createInteractionGameState();
+    const manager = new InteractionManager(gameState, dialogManager);
+    const rewardFor = (experience?: number) => {
+      const object = { type: 'xp-scroll', collected: false, roomIndex: 0, x: 0, y: 0, experience };
+      manager.handleCollectibleObject(object as never);
+      const overlay = gameState.showPickupOverlay as ReturnType<typeof vi.fn>;
+      const effect = (overlay.mock.lastCall?.[0] as { effect?: () => void }).effect;
+      effect?.();
+    };
+    rewardFor(7);
+    expect(gameState.addExperience).toHaveBeenLastCalledWith(7);
+    rewardFor(0);
+    expect(gameState.addExperience).toHaveBeenLastCalledWith(0);
+    rewardFor();
+    expect(gameState.addExperience).toHaveBeenLastCalledWith(50);
+
+    (gameState.hasSkill as ReturnType<typeof vi.fn>).mockImplementation((id: string) => id === 'booksmart');
+    rewardFor(7);
+    expect(gameState.addExperience).toHaveBeenLastCalledWith(28);
+    rewardFor(Number.MAX_SAFE_INTEGER);
+    expect(gameState.addExperience).toHaveBeenLastCalledWith(Number.MAX_SAFE_INTEGER);
+    manager.applyItemEffect('xp-scroll' as never);
+    expect(gameState.addExperience).toHaveBeenLastCalledWith(200);
+  });
+
   it.each([
     ['empty', null, false, true],
     ['ON', 'var-1', true, true],

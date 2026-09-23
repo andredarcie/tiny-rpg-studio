@@ -15,7 +15,7 @@ const enemy = (type: string, experience?: unknown, roomIndex = 0, x = 0) => ({
 
 describe('VERSION_42 custom enemy experience', () => {
   it('is the current supported share version', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_42);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_43);
     expect(ShareConstants.ENEMY_EXPERIENCE_VERSION).toBe(ShareConstants.VERSION_42);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_42)).toBe(true);
   });

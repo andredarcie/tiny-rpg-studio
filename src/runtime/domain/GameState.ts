@@ -540,6 +540,10 @@ class GameState {
         return this.objectManager.setObjectVariableById(id, variableId);
     }
 
+    setXpScrollExperienceById(id: string, experience: number): boolean {
+        return this.objectManager.setXpScrollExperienceById(id, experience);
+    }
+
     setObjectContainsItemById(id: string, containsItemType: string | null): void {
         this.objectManager.setObjectContainsItemById(id, containsItemType);
     }

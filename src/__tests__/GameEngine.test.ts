@@ -130,6 +130,7 @@ type GameEngineApi = {
   updateTestSettings: (settings: { startLevel?: number; skills?: string[]; godMode?: boolean }) => void;
   setPlayerEndText: (roomIndex: number, text: string) => string;
   setObjectVariable: (type: string, roomIndex: number, variableId: string | null) => unknown;
+  setXpScrollExperienceById: (id: string, experience: number) => boolean;
   getSprites: () => unknown[];
   importGameData: (data: unknown) => void;
   destroy: () => void;
@@ -558,6 +559,19 @@ describe('GameEngine business rules (legacy)', () => {
 
     expect(result).toEqual({ type: 'door', roomIndex: 1, variableId: 'var-1' })
     expect(engine.renderer.draw.mock.calls.length).toBeGreaterThan(drawsBefore)
+  })
+
+  it('forwards XP scroll edits and redraws only when the value changes', () => {
+    const engine = createEngine()
+    const state = engine.gameState as unknown as { setXpScrollExperienceById: ReturnType<typeof vi.fn> }
+    state.setXpScrollExperienceById = vi.fn().mockReturnValueOnce(false).mockReturnValueOnce(true)
+    const drawsBefore = engine.renderer.draw.mock.calls.length
+
+    expect(engine.setXpScrollExperienceById('xp-scroll-0', 7)).toBe(false)
+    expect(engine.renderer.draw.mock.calls.length).toBe(drawsBefore)
+    expect(engine.setXpScrollExperienceById('xp-scroll-0', 7)).toBe(true)
+    expect(engine.renderer.draw.mock.calls.length).toBe(drawsBefore + 1)
+    expect(state.setXpScrollExperienceById).toHaveBeenCalledWith('xp-scroll-0', 7)
   })
 
   it('ensures sprites are available by bootstrapping NPC defaults', () => {

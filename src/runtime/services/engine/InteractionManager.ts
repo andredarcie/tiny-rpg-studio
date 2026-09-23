@@ -5,6 +5,7 @@ import { isChestAccessible } from '../../domain/state/ChestState';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
 import { resolveChoiceDialog, resolveNpcDialog, type ResolvedNpcDialog } from './resolveNpcDialog';
+import { normalizeXpScrollExperienceOverride } from '../../domain/definitions/xpScrollExperience';
 import type { DialogChoiceOption } from '../../../types/gameState';
 
 type DialogManagerApi = {
@@ -44,6 +45,7 @@ type GameObjectState = {
   _activatedBy?: Record<string, boolean>;
   containsItemType?: string | null;
   randomItem?: boolean;
+  experience?: number;
 };
 
 type NpcState = {
@@ -238,7 +240,7 @@ class InteractionManager {
         object.collected = true;
         soundEngine.play('itemPickup');
         this.showPickupOverlay(object.type, () => {
-          this.gameState.addExperience?.(this.getXpScrollReward());
+          this.gameState.addExperience?.(this.getXpScrollReward(object.experience));
         });
         return true;
       }
@@ -469,10 +471,13 @@ class InteractionManager {
     }
   }
 
-  getXpScrollReward(): number {
+  getXpScrollReward(override?: number): number {
     const xpToNext = this.gameState.getExperienceToNext?.() ?? 0;
-    const baseGain = xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0;
-    return this.gameState.hasSkill?.('booksmart') ? baseGain * 4 : baseGain;
+    const baseGain = normalizeXpScrollExperienceOverride(override)
+      ?? (xpToNext > 0 ? Math.max(1, Math.floor(xpToNext * 0.5)) : 0);
+    return this.gameState.hasSkill?.('booksmart')
+      ? Math.min(Number.MAX_SAFE_INTEGER, baseGain * 4)
+      : baseGain;
   }
 
   equipSword(type: ItemType): void {

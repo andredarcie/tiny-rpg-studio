@@ -19,6 +19,32 @@ const createVariableManager = () => ({
 });
 
 describe('StateObjectManager', () => {
+  it('normalizes XP scroll overrides and changes them only by scroll ID', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+    const normalized = manager.normalizeObjects([
+      { type: ITEM_TYPES.XP_SCROLL, roomIndex: 0, x: 1, y: 0, experience: 3 },
+      { type: ITEM_TYPES.XP_SCROLL, roomIndex: 1, x: 1, y: 0, experience: 0 },
+      { type: ITEM_TYPES.XP_SCROLL, roomIndex: 2, x: 1, y: 0, experience: '7' },
+      { type: ITEM_TYPES.KEY, roomIndex: 3, x: 1, y: 0, experience: 7 },
+    ]);
+    expect(normalized[0]).not.toHaveProperty('experience');
+    expect(normalized[1].experience).toBe(0);
+    expect(normalized[2]).not.toHaveProperty('experience');
+    expect(normalized[3]).not.toHaveProperty('experience');
+
+    const first = manager.setObjectPosition(ITEM_TYPES.XP_SCROLL, 4, 1, 0);
+    const key = manager.setObjectPosition(ITEM_TYPES.KEY, 4, 2, 0);
+    if (!first || !key) throw new Error('objects not created');
+    expect(manager.setXpScrollExperienceById(first.id, 7)).toBe(true);
+    expect(first.experience).toBe(7);
+    expect(manager.setXpScrollExperienceById(first.id, 7)).toBe(false);
+    expect(manager.setXpScrollExperienceById(first.id, -1)).toBe(false);
+    expect(manager.setXpScrollExperienceById(key.id, 7)).toBe(false);
+    expect(manager.setXpScrollExperienceById('missing', 7)).toBe(false);
+    expect(manager.setXpScrollExperienceById(first.id, 3)).toBe(true);
+    expect(first).not.toHaveProperty('experience');
+  });
   it('ensures a player start marker exists and normalizes end text', () => {
     const game = {
       start: { x: 2, y: 3, roomIndex: 1 },

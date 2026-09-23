@@ -44,7 +44,7 @@ describe('VERSION_39 NPC END_GAME rewards', () => {
   });
 
   it('registers VERSION_39 without moving older feature boundaries', () => {
-    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_42);
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_43);
     expect(ShareConstants.NPC_END_GAME_VERSION).toBe(ShareConstants.VERSION_39);
     expect(ShareConstants.TRAP_SOLID_VERSION).toBe(ShareConstants.VERSION_38);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_39)).toBe(true);

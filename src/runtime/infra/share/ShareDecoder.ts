@@ -24,6 +24,7 @@ import {
     type TileVisualEffectKind,
 } from '../../domain/definitions/customTileEffects';
 import { normalizeEnemyExperienceOverride } from '../../domain/definitions/enemyExperience';
+import { normalizeXpScrollExperienceOverride } from '../../domain/definitions/xpScrollExperience';
 
 type SharePayload = Record<string, string>;
 
@@ -386,6 +387,29 @@ class ShareDecoder {
         const xpScrollPositions = version >= ShareConstants.XP_SCROLL_VERSION
             ? SharePositionCodec.decodePositions(payload.x || '')
             : [];
+        const xpScrollExperienceOverrides = new Map<number, number>();
+        if (version >= ShareConstants.XP_SCROLL_EXPERIENCE_VERSION && payload['*']) {
+            const seen = new Set<number>();
+            let valid = true;
+            for (const pair of payload['*'].split(',')) {
+                const match = /^([0-9a-z]+):([0-9a-z]+)$/.exec(pair);
+                if (!match) {
+                    valid = false;
+                    break;
+                }
+                const index = parseInt(match[1], 36);
+                const experience = parseInt(match[2], 36);
+                if (!Number.isSafeInteger(index) || index < 0 || index >= xpScrollPositions.length
+                    || !Number.isSafeInteger(experience) || experience < 0 || seen.has(index)
+                    || index.toString(36) !== match[1] || experience.toString(36) !== match[2]) {
+                    valid = false;
+                    break;
+                }
+                seen.add(index);
+                xpScrollExperienceOverrides.set(index, experience);
+            }
+            if (!valid) xpScrollExperienceOverrides.clear();
+        }
         const swordPositions = version >= ShareConstants.SWORD_VERSION
             ? SharePositionCodec.decodePositions(payload.a || '')
             : [];
@@ -650,7 +674,10 @@ class ShareDecoder {
             ...ShareDataNormalizer.buildObjectEntries(keyPositions, OT.KEY),
             ...ShareDataNormalizer.buildObjectEntries(magicDoorPositions, OT.DOOR_VARIABLE, { variableNibbles: magicDoorVariableNibbles }),
             ...ShareDataNormalizer.buildObjectEntries(lifePotionPositions, OT.LIFE_POTION),
-            ...ShareDataNormalizer.buildObjectEntries(xpScrollPositions, OT.XP_SCROLL),
+            ...ShareDataNormalizer.buildObjectEntries(xpScrollPositions, OT.XP_SCROLL).map((entry, index) => {
+                const experience = normalizeXpScrollExperienceOverride(xpScrollExperienceOverrides.get(index));
+                return experience === undefined ? entry : { ...entry, experience };
+            }),
             ...ShareDataNormalizer.buildObjectEntries(swordPositions, OT.SWORD),
             ...ShareDataNormalizer.buildObjectEntries(swordBronzePositions, OT.SWORD_BRONZE),
             ...ShareDataNormalizer.buildObjectEntries(swordWoodPositions, OT.SWORD_WOOD),

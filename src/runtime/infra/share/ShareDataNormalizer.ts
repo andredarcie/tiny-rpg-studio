@@ -9,6 +9,7 @@ import { ShareConstants } from './ShareConstants';
 import { ShareMath } from './ShareMath';
 import { ShareVariableCodec } from './ShareVariableCodec';
 import { normalizeEnemyExperienceOverride } from '../../domain/definitions/enemyExperience';
+import { normalizeXpScrollExperienceOverride } from '../../domain/definitions/xpScrollExperience';
 
 type ShareSpriteInput = {
     id?: string;
@@ -65,6 +66,7 @@ type ShareObjectInput = {
     hiddenInGame?: boolean;
     containsItemType?: string | null;
     randomItem?: boolean;
+    experience?: unknown;
 };
 
 type SharePositionOptions = {
@@ -447,6 +449,26 @@ class ShareDataNormalizer {
             result.push({ x, y, roomIndex, variableNibble });
         }
         return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
+    }
+
+    static normalizeXpScrollObjects(list: unknown[] | null | undefined): Array<PositionEntry & { experience?: number }> {
+        if (!Array.isArray(list)) return [];
+        const seenRooms = new Set<number>();
+        const result: Array<PositionEntry & { experience?: number }> = [];
+        for (const raw of list) {
+            const entry = raw as ShareObjectInput;
+            if (entry.type !== ITEM_TYPES.XP_SCROLL) continue;
+            const x = ShareMath.clamp(Number(entry.x), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            const y = ShareMath.clamp(Number(entry.y), 0, ShareConstants.MATRIX_SIZE - 1, 0);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const roomIndex = ShareMath.clampRoomIndex(entry.roomIndex);
+            if (seenRooms.has(roomIndex)) continue;
+            seenRooms.add(roomIndex);
+            const experience = normalizeXpScrollExperienceOverride(entry.experience);
+            result.push({ x, y, roomIndex, ...(experience === undefined ? {} : { experience }) });
+        }
+        return result.sort((a, b) =>
+            (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
     }
 
     static normalizeTrapObjects(list: unknown[] | null | undefined) {

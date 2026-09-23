@@ -61,6 +61,7 @@ type EditorObjectMock = {
   opened?: boolean;
   collected?: boolean;
   endingText?: string;
+  experience?: number;
 };
 type PreviewCtxMock = Pick<CanvasRenderingContext2D, 'clearRect' | 'fillRect'> & {
   fillStyle: string | CanvasGradient | CanvasPattern;
@@ -120,6 +121,7 @@ function createFixture() {
     setObjectContainsItemById: vi.fn(),
     setObjectRandomItemById: vi.fn(),
     setTrapSolidById: vi.fn(),
+    setXpScrollExperienceById: vi.fn(() => true),
     setGateInputVariableById: vi.fn(),
     setGateOutputVariableById: vi.fn(),
     setObjectHiddenInGameById: vi.fn(),
@@ -364,6 +366,41 @@ describe('EditorObjectRenderer', () => {
     renderer.renderObjects();
     expect(fixture.manager.npcService.populateVariableSelect).toHaveBeenCalledWith(expect.any(HTMLSelectElement), '');
     expect(fixture.gameEngine.isVariableOn).toHaveBeenCalledWith('');
+  });
+
+  it('edits XP scroll experience only for valid changes and refreshes history once', () => {
+    const fixture = createFixture();
+    const renderer = new EditorObjectRenderer(asEditorRenderService(fixture.service));
+    const object = { id: 'xp-scroll-0', type: ITEM_TYPES.XP_SCROLL, roomIndex: 0, x: 0, y: 0 };
+    const afterChange = vi.fn();
+    const area = renderer.buildObjectConfigArea(object, afterChange);
+    const input = area.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(input.value).toBe('3');
+    expect(input.min).toBe('0');
+    expect(area.textContent).toContain('t:objects.xpScroll.experienceLabel');
+    expect(area.textContent).toContain('t:objects.xpScroll.experienceHint');
+
+    for (const value of ['', '-1', '1.5', '9007199254740992', '3']) {
+      input.value = value;
+      input.dispatchEvent(new Event('change'));
+    }
+    expect(fixture.gameEngine.setXpScrollExperienceById).not.toHaveBeenCalled();
+    expect(fixture.manager.history.pushCurrentState).not.toHaveBeenCalled();
+
+    input.value = '0';
+    input.dispatchEvent(new Event('change'));
+    expect(fixture.gameEngine.setXpScrollExperienceById).toHaveBeenCalledWith('xp-scroll-0', 0);
+    expect(fixture.manager.history.pushCurrentState).toHaveBeenCalledTimes(1);
+    expect(fixture.manager.updateJSON).toHaveBeenCalledTimes(1);
+    expect(afterChange).toHaveBeenCalledTimes(1);
+
+    const customArea = renderer.buildObjectConfigArea({ ...object, experience: 7 }, afterChange);
+    const customInput = customArea.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(customInput.value).toBe('7');
+    customInput.value = '3';
+    customInput.dispatchEvent(new Event('change'));
+    expect(fixture.gameEngine.setXpScrollExperienceById).toHaveBeenCalledWith('xp-scroll-0', 3);
+    expect(fixture.manager.history.pushCurrentState).toHaveBeenCalledTimes(2);
   });
 
   it('renders and updates the solid trap checkbox with activation status', () => {
