@@ -247,7 +247,9 @@ class RendererEntityRenderer {
             const py = npc.y * tileSize;
             let sprite = npcSprites[npc.type] || npcSprites.default;
             if (!sprite) continue;
-            sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
+            if (npc.type !== 'thought-bubble' && npc.type !== 'wooden-sign') {
+                sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
+            }
             this.drawWorldSprite(ctx, sprite, px, py, step, npc.roomIndex, npc.x, npc.y);
             if (game.showNewDialogExclamation !== false && shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
                 drawExclamationMarker(ctx, this.paletteManager, px, py, tileSize);

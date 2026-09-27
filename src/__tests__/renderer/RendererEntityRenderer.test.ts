@@ -399,6 +399,41 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    ['thought-bubble', false, true],
+    ['wooden-sign', false, true],
+    ['thought-bubble', true, true],
+    ['wooden-sign', true, true],
+    ['villager', false, false],
+    ['unknown-type', true, false],
+  ] as const)('drawNPCs preserves facing across player movement for %s (fallback: %s)', (type, fallback, stationary) => {
+    const { renderer, game, player, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    const original: SpriteMatrix = [['1', null], ['2', '3']];
+    const mirrored: SpriteMatrix = [[null, '1'], ['3', '2']];
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue(
+      fallback ? { default: original } : { [type]: original }
+    );
+    vi.mocked(spriteFactory.turnSpriteHorizontally).mockImplementation(
+      (matrix) => matrix.map((row) => [...row].reverse())
+    );
+    game.sprites = [{ placed: true, roomIndex: 1, x: 2, y: 3, type }];
+
+    for (const [index, playerX] of [1, 3, 2, 1, 3].entries()) {
+      player.x = playerX;
+      renderer.drawNPCs(asCanvasCtx(ctx));
+
+      const expected = stationary || playerX >= 2 ? original : mirrored;
+      expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(index + 1, ctx, expected, 32, 48, 2);
+      expect(canvasHelper.drawWaterReflectionForSprite).toHaveBeenNthCalledWith(
+        index + 1, ctx, expected, 32, 48, 2, 1, 2, 3
+      );
+    }
+    expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(5);
+    expect(canvasHelper.drawWaterReflectionForSprite).toHaveBeenCalledTimes(5);
+    expect(original).toEqual([['1', null], ['2', '3']]);
+  });
+
   it('drawNPCs skips npc when neither typed nor default sprite exists', () => {
     const { renderer, game, spriteFactory, canvasHelper } = makeFixture();
     const ctx = createCtx();
