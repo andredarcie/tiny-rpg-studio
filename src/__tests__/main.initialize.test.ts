@@ -90,6 +90,10 @@ vi.mock('../runtime/adapters/TextResources', () => ({
 // vi.clearAllMocks() in beforeEach resets call counts between tests.
 import { TinyRPGApplication } from '../main';
 import { getTinyRpgApi } from '../runtime/infra/TinyRpgApi';
+import { PluginsModal } from '../editor/modules/PluginsModal';
+import { PLUGIN_STORAGE_KEY } from '../editor/manager/PluginManager';
+
+vi.mock('../editor/modules/PluginsModal', () => ({ PluginsModal: vi.fn() }));
 
 describe('TinyRPGApplication.initializeApplication / boot', () => {
   beforeEach(() => {
@@ -179,6 +183,19 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     const createNewGame = bindResetSpy.mock.calls[0]?.[1];
     await createNewGame?.();
     expect(mocks.editorManagerInstance.createNewGame).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores plugin metadata during startup before the browser is opened', () => {
+    const plugin = { id: 'saved', title: 'Saved', shortDescription: 'Short', fullDescription: 'Full' };
+    localStorage.setItem(PLUGIN_STORAGE_KEY, JSON.stringify([plugin]));
+    document.body.innerHTML = '<canvas id="game-canvas"></canvas>';
+    vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
+    vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
+    vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
+    vi.spyOn(TinyRPGApplication, 'bindLanguageSelector').mockImplementation(() => {});
+    TinyRPGApplication.initializeApplication();
+    expect(PluginsModal).toHaveBeenCalledWith(expect.objectContaining({ installed: [plugin] }));
+    localStorage.removeItem(PLUGIN_STORAGE_KEY);
   });
 
   it('initializeApplication skips EditorManager in export mode and api.renderAll is safe', () => {

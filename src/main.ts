@@ -4,6 +4,8 @@ import { applyFontConfig } from './config/FontConfig';
 import type { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
 import { ExploreModal } from './editor/modules/ExploreModal';
+import { PluginManager } from './editor/manager/PluginManager';
+import { PluginsModal } from './editor/modules/PluginsModal';
 import { DevlogModal } from './editor/modules/DevlogModal';
 import { AboutModal } from './editor/modules/AboutModal';
 import { GameEngine } from './runtime/services/GameEngine';
@@ -174,6 +176,7 @@ class TinyRPGApplication {
     new EditorExportService();
     new ExploreModal();
     new DevlogModal();
+    if (!isExportMode) new PluginsModal(new PluginManager());
     new AboutModal();
     this.bindResetButton(gameEngine, async () => {
       await ensureEditor();

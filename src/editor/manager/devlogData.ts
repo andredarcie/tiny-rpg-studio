@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-28-plugin-browser-preview',
+    date: '2026-09-28',
+    title: 'Preview the plugin browser',
+    description: 'Browse a small mock plugin catalog from the Editor tab, read descriptions, and manage saved installations. This is a UI preview: installations remember listings on this browser and have no effect on your games.',
+  },
+  {
     id: '2026-09-23-all-animated-tiles',
     date: '2026-09-23',
     title: 'Animate any tile',
