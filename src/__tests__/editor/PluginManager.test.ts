@@ -53,3 +53,54 @@ describe('PluginManager', () => {
     expect(await searchPlugins('no-such-plugin')).toEqual([]);
   });
 });
+
+it('extracts executable blocks inertly and upgrades legacy records', () => {
+  localStorage.clear();
+  const metadata = { id: 'example', title: 'Example', shortDescription: 'Short', fullDescription: 'Full' };
+  const source = `<script id="tiny-rpg-plugin" type="application/json">${JSON.stringify({ ...metadata, apiVersion: 1 })}</script><style data-tiny-rpg-plugin>body{}</style><script type="module" data-tiny-rpg-plugin>export function activate() {}</script>`;
+  const parsed = parsePluginHtml(source);
+  expect(parsed).toEqual({ ...metadata, payload: { apiVersion: 1, css: 'body{}', javascript: 'export function activate() {}' } });
+  const manager = new PluginManager();
+  manager.install(metadata);
+  manager.install(parsed);
+  expect(new PluginManager().installed).toEqual([parsed]);
+  expect(() => parsePluginHtml(source.replace('"apiVersion":1', '"apiVersion":2'))).toThrow();
+  expect(() => parsePluginHtml(source.replace('type="module"', 'type="module" src="bad.js"'))).toThrow();
+  expect(() => parsePluginHtml(source + '<script type="module" data-tiny-rpg-plugin>x</script>')).toThrow();
+});
+it('rejects direct invalid payloads and quarantines stored invalid payloads', () => {
+  localStorage.clear();
+  const bad = { ...plugin, payload: { apiVersion: 2, javascript: 'bad' } };
+  const manager = new PluginManager();
+  expect(manager.install(bad)).toBe(false);
+  expect(manager.lastError).toBe('validation');
+  localStorage.setItem(PLUGIN_STORAGE_KEY, JSON.stringify([bad, { ...plugin, id: 'valid' }]));
+  const restored = new PluginManager();
+  expect(restored.installed).toEqual([plugin, { ...plugin, id: 'valid' }]);
+  expect(restored.validationErrors[plugin.id]).toBeTruthy();
+});
+
+it.each([
+  '',
+  '<script data-tiny-rpg-plugin>export function activate() {}</script>',
+  '<script type="module" data-tiny-rpg-plugin></script>',
+  '<style data-tiny-rpg-plugin></style><style data-tiny-rpg-plugin></style><script type="module" data-tiny-rpg-plugin>export function activate() {}</script>',
+])('rejects invalid marked blocks: %s', blocks => {
+  expect(() => parsePluginHtml(`<script id="tiny-rpg-plugin" type="application/json">${JSON.stringify({ ...plugin, apiVersion: 1 })}</script>${blocks}`)).toThrow();
+});
+
+it('does not notify or replace persisted code when storage fails', () => {
+  localStorage.clear();
+  const manager = new PluginManager();
+  const original = { ...plugin, payload: { apiVersion: 1, javascript: 'original' } };
+  manager.install(original);
+  const listener = vi.fn();
+  const unsubscribe = manager.subscribe(listener);
+  const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('quota'); });
+  expect(manager.install({ ...original, payload: { apiVersion: 1, javascript: 'replacement' } })).toBe(false);
+  expect(manager.lastError).toBe('storage');
+  expect(manager.installed).toEqual([original]);
+  expect(listener).not.toHaveBeenCalled();
+  spy.mockRestore();
+  unsubscribe();
+});

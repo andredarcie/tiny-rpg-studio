@@ -1,5 +1,7 @@
 import html from '../../../index.html?raw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PluginRuntime } from '../../editor/manager/PluginRuntime';
+import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import { PluginsModal } from '../../editor/modules/PluginsModal';
 import { PluginManager, type PluginMetadata } from '../../editor/manager/PluginManager';
 import { TextResources } from '../../runtime/adapters/TextResources';
@@ -37,6 +39,23 @@ describe('PluginsModal', () => {
     click('#btn-plugins');
   });
   afterEach(() => { modal.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerHTML = ''; });
+  it('explains trust, labels previews and shows activation errors separately', async () => {
+    expect(element('#plugins-trust').textContent).toContain('without a sandbox');
+    manager.install(plugin);
+    click('#plugins-manage');
+    expect(element('.plugin-lifecycle').textContent).toBe('Inert preview');
+    modal.destroy();
+    const runtime = new PluginRuntime(manager, () => Promise.reject(Error('module failed')));
+    modal = new PluginsModal(manager, search, runtime);
+    modal.open();
+    manager.install({ ...plugin, payload: { apiVersion: 1, javascript: 'broken' } });
+    runtime.start(element('#tab-editor'), {} as TinyRpgApi);
+    click('#plugins-manage');
+    await runtime.settled();
+    expect(element('.plugin-lifecycle').textContent).toContain('module failed');
+    expect(element('#plugins-storage-error').textContent).toBe('');
+    await runtime.destroy();
+  });
   it('places the button between Load and Updates and hides it outside Editor', async () => {
     const button = element('#btn-plugins');
     expect(button.previousElementSibling?.classList.contains('history-dropdown-wrapper')).toBe(true);

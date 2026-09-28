@@ -91,6 +91,7 @@ vi.mock('../runtime/adapters/TextResources', () => ({
 import { TinyRPGApplication } from '../main';
 import { getTinyRpgApi } from '../runtime/infra/TinyRpgApi';
 import { PluginsModal } from '../editor/modules/PluginsModal';
+import { PluginRuntime } from '../editor/manager/PluginRuntime';
 import { PLUGIN_STORAGE_KEY } from '../editor/manager/PluginManager';
 
 vi.mock('../editor/modules/PluginsModal', () => ({ PluginsModal: vi.fn() }));
@@ -185,6 +186,24 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     expect(mocks.editorManagerInstance.createNewGame).toHaveBeenCalledTimes(1);
   });
 
+  it('starts plugins only after editor construction and does not restart on rerenders', async () => {
+    document.body.innerHTML = '<canvas id="game-canvas"></canvas><div id="tab-editor"></div>';
+    vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
+    vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
+    const start = vi.spyOn(PluginRuntime.prototype, 'start');
+    TinyRPGApplication.initializeApplication();
+    expect(start).not.toHaveBeenCalled();
+    document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));
+    await vi.waitFor(() => expect(mocks.EditorManagerCtor).toHaveBeenCalled());
+    expect(start).toHaveBeenCalledWith(document.getElementById('tab-editor'), getTinyRpgApi());
+    const calls = start.mock.calls.length;
+    getTinyRpgApi()?.renderAll();
+    document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));
+    await Promise.resolve();
+    expect(start).toHaveBeenCalledTimes(calls);
+    start.mockRestore();
+  });
+
   it('restores plugin metadata during startup before the browser is opened', () => {
     const plugin = { id: 'saved', title: 'Saved', shortDescription: 'Short', fullDescription: 'Full' };
     localStorage.setItem(PLUGIN_STORAGE_KEY, JSON.stringify([plugin]));
@@ -194,7 +213,7 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     vi.spyOn(TinyRPGApplication, 'bindResetButton').mockImplementation(() => {});
     vi.spyOn(TinyRPGApplication, 'bindLanguageSelector').mockImplementation(() => {});
     TinyRPGApplication.initializeApplication();
-    expect(PluginsModal).toHaveBeenCalledWith(expect.objectContaining({ installed: [plugin] }));
+    expect(PluginsModal).toHaveBeenCalledWith(expect.objectContaining({ installed: [plugin] }), undefined, expect.anything());
     localStorage.removeItem(PLUGIN_STORAGE_KEY);
   });
 

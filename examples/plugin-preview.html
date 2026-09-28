@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Example plugin</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "example-plugin",
+      "title": "Example plugin",
+      "shortDescription": "Swap Tiles and NPCs to the top and hide World.",
+      "fullDescription": "Moves Tiles to the top of the right column and NPCs to the top of the left column. Hides the entire World section. Removal restores the layout. Runs trusted code in your editor only.",
+      "apiVersion": 1
+    }
+  </script>
+  <style data-tiny-rpg-plugin>
+    #tab-editor .editor-section--world,
+    #tab-editor [data-mobile-target="world"] { display: none; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ editorRoot, onCleanup }) {
+      for (const [panelSelector, columnSelector] of [
+        ['.editor-section--tiles', '.editor-right'],
+        ['.editor-section--npcs', '.editor-left']
+      ]) {
+        const panel = editorRoot.querySelector(panelSelector);
+        const column = editorRoot.querySelector(columnSelector);
+        if (!panel || !column) throw new Error('Required editor panels are missing');
+        const placeholder = document.createComment('example-plugin panel position');
+        const parent = panel.parentNode;
+        const next = panel.nextSibling;
+        onCleanup(() => {
+          if (placeholder.parentNode) placeholder.replaceWith(panel);
+          else parent.insertBefore(panel, next?.parentNode === parent ? next : null);
+        });
+        panel.before(placeholder);
+        column.prepend(panel);
+      }
+    }
+  </script>
+</head>
+<body></body>
+</html>

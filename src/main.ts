@@ -4,6 +4,7 @@ import { applyFontConfig } from './config/FontConfig';
 import type { EditorManager } from './editor/EditorManager';
 import { EditorExportService } from './editor/modules/EditorExportService';
 import { ExploreModal } from './editor/modules/ExploreModal';
+import { PluginRuntime } from './editor/manager/PluginRuntime';
 import { PluginManager } from './editor/manager/PluginManager';
 import { PluginsModal } from './editor/modules/PluginsModal';
 import { DevlogModal } from './editor/modules/DevlogModal';
@@ -113,6 +114,8 @@ class TinyRPGApplication {
     performanceProfiler.time('boot.loadShared', () => this.loadSharedGameIfAvailable(gameEngine));
     this.setupPerformanceProfiler(gameEngine);
     const isExportMode = Boolean((globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE);
+    const pluginManager = isExportMode ? null : new PluginManager();
+    const pluginRuntime = pluginManager ? new PluginRuntime(pluginManager) : null;
     let editorLoad: Promise<void> | null = null;
     // The editor bundle is code-split and loaded on first editor activation, so a
     // player who only opens a shared game never downloads it. See AP-8.
@@ -122,6 +125,9 @@ class TinyRPGApplication {
       editorLoad = import('./editor/EditorManager')
         .then(({ EditorManager }) => {
           editorManager = new EditorManager(gameEngine);
+          const root = document.getElementById('tab-editor');
+          const bridge = getTinyRpgApi();
+          if (root && bridge) pluginRuntime?.start(root, bridge);
         })
         .catch((error: unknown) => {
           console.error('[TinyRPG] Failed to load the editor module.', error);
@@ -176,7 +182,16 @@ class TinyRPGApplication {
     new EditorExportService();
     new ExploreModal();
     new DevlogModal();
-    if (!isExportMode) new PluginsModal(new PluginManager());
+    if (pluginManager) {
+      const pluginsModal = new PluginsModal(pluginManager, undefined, pluginRuntime ?? undefined);
+      const teardownPlugins = (event: PageTransitionEvent) => {
+        if (event.persisted) return;
+        globalThis.removeEventListener('pagehide', teardownPlugins);
+        pluginsModal.destroy();
+        void pluginRuntime?.destroy();
+      };
+      globalThis.addEventListener('pagehide', teardownPlugins);
+    }
     new AboutModal();
     this.bindResetButton(gameEngine, async () => {
       await ensureEditor();

@@ -23,10 +23,10 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
-    id: '2026-09-28-plugin-browser-preview',
+    id: '2026-09-28-executable-editor-plugins',
     date: '2026-09-28',
-    title: 'Preview the plugin browser',
-    description: 'Browse a small mock plugin catalog from the Editor tab, read descriptions, and manage saved installations. This is a UI preview: installations remember listings on this browser and have no effect on your games.',
+    title: 'Customize your editor with plugins',
+    description: 'Plugins let you personalize the editor with new tools, styles, and layouts. Open Plugins from the Editor tab to explore descriptions, import plugins, and manage your collection. Try the included example or create your own to make the editor work your way.',
   },
   {
     id: '2026-09-23-all-animated-tiles',

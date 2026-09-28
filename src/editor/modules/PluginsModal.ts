@@ -4,12 +4,17 @@ import type { PluginManager, PluginMetadata } from '../manager/PluginManager';
 import { parsePluginHtml } from '../manager/PluginManager';
 import { searchPlugins } from '../manager/pluginCatalog';
 
+import type { PluginRuntime } from '../manager/PluginRuntime';
+
 type Search = (query: string) => Promise<PluginMetadata[]>;
 type Mode = 'search' | 'manage';
 const text = (key: string) => TextResources.get(`plugins.${key}`);
 
 export class PluginsModal {
+  private runtime?: PluginRuntime;
   private modal: Modal;
+  private unsubscribeRuntime?: () => void;
+  private trust = document.createElement('p');
   private button = document.getElementById('btn-plugins');
   private editor = document.getElementById('tab-editor');
   private body = document.createElement('div');
@@ -41,7 +46,8 @@ export class PluginsModal {
     if (!active) this.close();
   };
 
-  constructor(manager: PluginManager, search: Search = searchPlugins) {
+  constructor(manager: PluginManager, search: Search = searchPlugins, runtime?: PluginRuntime) {
+    this.runtime = runtime;
     this.manager = manager;
     this.search = search;
     this.modal = new Modal({ size: 'xl', className: 'plugins-modal', onClose: () => this.close() });
@@ -75,7 +81,9 @@ export class PluginsModal {
     const content = document.createElement('section');
     content.id = 'plugins-content';
     content.append(this.searchField, this.status, this.storageStatus, this.grid);
-    this.body.append(navigation, content);
+    this.trust.id = 'plugins-trust';
+    this.trust.textContent = text('trust');
+    this.body.append(navigation, this.trust, content);
     this.fileInput.type = 'file';
     this.fileInput.accept = '.html,.htm,text/html';
     this.fileInput.id = 'plugins-file';
@@ -90,6 +98,12 @@ export class PluginsModal {
     if (this.editor) this.observer.observe(this.editor, { attributes: true, attributeFilter: ['class'] });
     this.boundVisibility();
     this.selectMode('search');
+    this.unsubscribeRuntime = runtime?.subscribe(() => {
+      for (const card of this.grid.querySelectorAll<HTMLElement>('.plugin-card')) {
+        const lifecycle = card.querySelector<HTMLElement>('.plugin-lifecycle');
+        if (lifecycle) lifecycle.textContent = this.lifecycleText(card.dataset.pluginId ?? '');
+      }
+    });
   }
 
   open(): void {
@@ -100,6 +114,7 @@ export class PluginsModal {
     const label = this.searchField.querySelector('label');
     if (label) label.textContent = text('query');
     this.modal.root.querySelector('.tiny-modal__close')?.setAttribute('aria-label', TextResources.get('buttons.close', 'Close'));
+    this.trust.textContent = text('trust');
     this.modal.open();
     this.selectMode('search');
   }
@@ -195,7 +210,8 @@ export class PluginsModal {
           this.selectMode('manage');
           this.manageButton.focus();
         } else {
-          this.storageStatus.textContent = text('storageError');
+          if (this.manager.lastError === 'validation') this.status.textContent = text('importError');
+          else this.storageStatus.textContent = text('storageError');
         }
       } catch {
         this.status.textContent = text('importError');
@@ -229,8 +245,16 @@ export class PluginsModal {
     action.className = 'btn-secondary plugin-action';
     action.disabled = this.mode === 'search' && this.manager.has(plugin.id);
     action.textContent = text(this.mode === 'manage' ? 'remove' : action.disabled ? 'installed' : 'install');
-    card.append(title, summary, more, description, action);
+    const lifecycle = document.createElement('p');
+    lifecycle.className = 'plugin-lifecycle';
+    lifecycle.textContent = this.lifecycleText(plugin.id);
+    card.append(title, summary, lifecycle, more, description, action);
     return card;
+  }
+
+  private lifecycleText(id: string): string {
+    const state = this.runtime?.getState(id);
+    return state ? `${text(state.status)}${state.error ? ': ' + state.error : ''}` : text('inert');
   }
 
   private handleClick(event: MouseEvent): void {
@@ -265,6 +289,7 @@ export class PluginsModal {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.unsubscribeRuntime?.();
     this.close();
     this.observer.disconnect();
     this.button?.removeEventListener('click', this.boundOpen);
