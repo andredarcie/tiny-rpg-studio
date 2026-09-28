@@ -26,7 +26,7 @@ export const DEVLOG_ENTRIES: DevlogEntry[] = [
     id: '2026-09-28-executable-editor-plugins',
     date: '2026-09-28',
     title: 'Customize your editor with plugins',
-    description: 'Plugins let you personalize the editor with new tools, styles, and layouts. Open Plugins from the Editor tab to explore descriptions, import plugins, and manage your collection. Try the included example or create your own to make the editor work your way.',
+    description: 'Plugins let you personalize the editor with new tools, styles, and layouts. Open Plugins from the Editor tab to discover and install plugins, import your own files, and manage your collection. Try the Example plugin to customize your layout.',
   },
   {
     id: '2026-09-23-all-animated-tiles',

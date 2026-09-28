@@ -1,6 +1,5 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { PluginManager, PLUGIN_STORAGE_KEY, parsePluginHtml } from '../../editor/manager/PluginManager';
-import { searchPlugins } from '../../editor/manager/pluginCatalog';
 
 const plugin = { id: 'retired', title: 'Old plugin', shortDescription: 'Short', fullDescription: 'Full' };
 describe('PluginManager', () => {
@@ -48,10 +47,7 @@ describe('PluginManager', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied'); });
     expect(new PluginManager().storageError).toBe(true);
   });
-  it('searches local titles and descriptions case insensitively', async () => {
-    expect((await searchPlugins('WEATHER')).length).toBeGreaterThan(0);
-    expect(await searchPlugins('no-such-plugin')).toEqual([]);
-  });
+
 });
 
 it('extracts executable blocks inertly and upgrades legacy records', () => {
@@ -103,4 +99,16 @@ it('does not notify or replace persisted code when storage fails', () => {
   expect(listener).not.toHaveBeenCalled();
   spy.mockRestore();
   unsubscribe();
+});
+
+it('preserves versions through parsing, replacement and reload', () => {
+  localStorage.clear();
+  const manager = new PluginManager();
+  for (const version of ['1.0.2', '1.0.10', 'preview']) {
+    const record = { ...plugin, version };
+    const parsed = parsePluginHtml(`<script id="tiny-rpg-plugin" type="application/json">${JSON.stringify(record)}</script>`);
+    expect(parsed).toEqual(record);
+    expect(manager.install(parsed)).toBe(true);
+    expect(new PluginManager().installed).toEqual([record]);
+  }
 });

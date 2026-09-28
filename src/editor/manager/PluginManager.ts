@@ -1,4 +1,5 @@
 export interface PluginMetadata {
+  version?: string;
   id: string;
   title: string;
   shortDescription: string;
@@ -12,7 +13,9 @@ function metadata(value: unknown): PluginMetadata | null {
   const record = value as Record<string, unknown>;
   const keys = ['id', 'title', 'shortDescription', 'fullDescription'] as const;
   if (!keys.every(key => typeof record[key] === 'string' && record[key].trim())) return null;
-  return Object.fromEntries(keys.map(key => [key, record[key]])) as unknown as PluginMetadata;
+  return { ...Object.fromEntries(keys.map(key => [key, record[key]])),
+    ...(typeof record.version === 'string' && record.version.trim() ? { version: record.version } : {}),
+  } as unknown as PluginMetadata;
 }
 function validate(value: unknown): InstalledPlugin {
   const record = metadata(value);

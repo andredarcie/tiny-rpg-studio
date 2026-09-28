@@ -70,7 +70,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg'],
       workbox: {
-        globIgnores: ['**/version.json'],
+        globIgnores: ['**/version.json', '**/plugins/**'],
       },
       manifest: {
         name: 'Tiny RPG Studio',

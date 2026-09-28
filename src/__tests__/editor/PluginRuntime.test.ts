@@ -111,6 +111,7 @@ it('keeps active effects unchanged after a storage failure', async () => {
   await runtime.settled();
   const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('quota'); });
   expect(manager.remove(pkg.id)).toBe(false);
+  expect(manager.install({ ...pkg, version: '2.0.0' })).toBe(false);
   await runtime.settled();
   expect(cleanup).not.toHaveBeenCalled();
   expect(runtime.getState(pkg.id).status).toBe('active');
@@ -137,5 +138,105 @@ it('cleans effects registered during asynchronous activation after removal', asy
   await runtime.settled();
   expect(cleanup).toHaveBeenCalledOnce();
   expect(document.querySelector('style[data-plugin-id]')).toBeNull();
+  await runtime.destroy();
+});
+
+
+it('applies Minimalist UI to current and new cards and restores the localized interface', async () => {
+  const { default: html } = await import('../../../index.html?raw');
+  const { default: source } = await import('../../../examples/minimalist-ui.html?raw');
+  const { default: published } = await import('../../../public/plugins/minimalist-ui/1.0.2/plugin.html?raw');
+  const { default: catalog } = await import('../../../public/plugins/catalog.json');
+  const { parsePluginHtml } = await import('../../editor/manager/PluginManager');
+  expect(published).toBe(source);
+  const plugin = parsePluginHtml(source);
+  const entry = catalog.plugins.find(entry => entry.id === plugin.id);
+  expect(entry).toMatchObject({ id: plugin.id, title: plugin.title, shortDescription: plugin.shortDescription, fullDescription: plugin.fullDescription, version: '1.0.2', file: 'minimalist-ui/1.0.2/plugin.html' });
+  document.body.innerHTML = html;
+  const root = document.getElementById('tab-editor') as HTMLElement;
+  root.insertAdjacentHTML('beforeend', '<div class="enemy-xp-block">XP</div><div class="npc-card"><canvas></canvas><div class="meta">NPC name</div><button class="sprite-edit-btn">Edit</button></div><div class="enemy-card"><canvas></canvas><div class="enemy-meta">Enemy name</div></div><div class="object-type-card"><canvas></canvas><div class="object-type-meta">Object description</div></div>');
+  const manager = new PluginManager();
+  const runtime = new PluginRuntime(manager, source => {
+    const factory = new Function(source.replace('export function activate', 'function activate') + ';return { activate };') as () => PluginModule;
+    return Promise.resolve(factory());
+  });
+  const developmentTab = root.querySelector<HTMLButtonElement>('[data-project-tab-button="development"]');
+  const infoTab = root.querySelector<HTMLButtonElement>('[data-project-tab-button="info"]');
+  if (!developmentTab || !infoTab) throw Error('Missing project tabs');
+  const originalTitle = developmentTab.textContent;
+  const selectInfo = vi.spyOn(infoTab, 'click');
+  const restoreTab = vi.spyOn(developmentTab, 'click');
+  manager.install(plugin);
+  runtime.start(root, {} as TinyRpgApi);
+  await runtime.settled();
+  expect(runtime.getState(plugin.id).status).toBe('active');
+  const element = (selector: string): HTMLElement => {
+    const found = document.querySelector<HTMLElement>(selector);
+    if (!found) throw Error('Missing ' + selector);
+    return found;
+  };
+  const selectors = ['.enemy-xp-block', '.npc-card .meta', '.enemy-meta', '.object-type-meta', '.editor-section--world', '#pixel-art-editor-modal .tiny-modal__header', '.pae-sprite-meta', '.pae-tile-effect-label', '.pae-tools'];
+  for (const selector of selectors) expect(getComputedStyle(element(selector)).display).toBe('none');
+  const project = element('[data-text-key="sections.project"]').closest('details');
+  expect(project?.open).toBe(false);
+  project?.setAttribute('open', '');
+  expect(project?.open).toBe(true);
+  const tab = element('[data-project-tab-button="development"]');
+  expect(tab.textContent).toBe(originalTitle);
+  expect(selectInfo).toHaveBeenCalledOnce();
+  project?.removeAttribute('open');
+  const label = element('[data-text-key="pixelArtEditor.mergeEdges"]');
+  expect(label.nextElementSibling?.textContent).toBe('Merge');
+  label.textContent = 'Updated localized label';
+  root.insertAdjacentHTML('beforeend', '<div class="npc-card"><div class="meta" id="new-npc-name">New name</div></div>');
+  expect(getComputedStyle(element('#new-npc-name')).display).toBe('none');
+  expect(getComputedStyle(element('.npc-card canvas')).display).not.toBe('none');
+  expect(getComputedStyle(element('.sprite-edit-btn')).display).not.toBe('none');
+  manager.remove(plugin.id);
+  await runtime.settled();
+  for (const selector of selectors) expect(getComputedStyle(element(selector)).display).not.toBe('none');
+  expect(label.nextElementSibling).toBeNull();
+  expect(label.textContent).toBe('Updated localized label');
+  expect(project?.open).toBe(true);
+  expect(tab.textContent).toBe(originalTitle);
+  expect(restoreTab).toHaveBeenCalledOnce();
+  expect(tab.dataset.textKey).toBe('project.group.development');
+  await runtime.destroy();
+});
+
+it('cleans old effects and styles before version-only replacement activation', async () => {
+  const manager = new PluginManager();
+  const events: string[] = [];
+  const runtime = new PluginRuntime(manager, () => {
+    expect(document.querySelector('style[data-plugin-id]')).toBeNull();
+    return Promise.resolve({ activate: context => {
+      events.push('activate');
+      context.onCleanup(() => { events.push('cleanup'); });
+    } });
+  });
+  manager.install({ ...pkg, version: '1.0.0' });
+  runtime.start(document.body, {} as TinyRpgApi);
+  await runtime.settled();
+  manager.install({ ...pkg, version: '1.0.1' });
+  await runtime.settled();
+  expect(events).toEqual(['activate', 'cleanup', 'activate']);
+  await runtime.destroy();
+});
+
+it('reports replacement activation failures after cleaning the old runtime', async () => {
+  const manager = new PluginManager();
+  const cleanup = vi.fn();
+  const loader = vi.fn().mockResolvedValueOnce({ activate: ({ onCleanup }: PluginContext) => onCleanup(cleanup) })
+    .mockRejectedValueOnce(Error('replacement failed'));
+  const runtime = new PluginRuntime(manager, loader);
+  manager.install({ ...pkg, version: '1.0.0' });
+  runtime.start(document.body, {} as TinyRpgApi);
+  await runtime.settled();
+  manager.install({ ...pkg, version: '1.0.1' });
+  await runtime.settled();
+  expect(cleanup).toHaveBeenCalledOnce();
+  expect(document.querySelector('style[data-plugin-id]')).toBeNull();
+  expect(runtime.getState(pkg.id)).toEqual({ status: 'failed', error: 'replacement failed' });
+  expect(new PluginManager().installed).toEqual([{ ...pkg, version: '1.0.1' }]);
   await runtime.destroy();
 });

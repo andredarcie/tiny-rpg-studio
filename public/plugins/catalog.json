@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "plugins": [
+    {
+      "id": "example-plugin",
+      "title": "Example plugin",
+      "shortDescription": "Swap Tiles and NPCs to the top and hide World.",
+      "fullDescription": "Moves Tiles to the top of the right column and NPCs to the top of the left column. Hides the entire World section. Removal restores the layout. Runs trusted code in your editor only.",
+      "version": "1.0.0",
+      "file": "example-plugin/1.0.0/plugin.html"
+    },
+    {
+      "id": "minimalist-ui",
+      "title": "Minimalist UI",
+      "shortDescription": "A quieter editor with pixel-art catalogs and fewer labels.",
+      "fullDescription": "Shows NPC, object, and enemy catalog artwork without names, descriptions, or stats. Hides World and enemy XP, starts Project collapsed with Information selected, and simplifies the pixel-art editor: no header, sprite metadata, effect label, or Paint/Erase buttons, and a short merge label. Sprite editing and object configuration remain available. Use Escape or Save to close the pixel-art editor. Removing this trusted editor-only plugin restores the interface.",
+      "version": "1.0.2",
+      "file": "minimalist-ui/1.0.2/plugin.html"
+    }
+  ]
+}
