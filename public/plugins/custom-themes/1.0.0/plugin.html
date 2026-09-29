@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Custom Themes</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+{
+  "id": "custom-themes",
+  "title": "Custom Themes",
+  "shortDescription": "Seven editor palettes in a compact theme dropdown.",
+  "fullDescription": "Adds a theme dropdown to the top left of the Editor tab. Choose Default, Darker, Dracula, Powershell, Light, Forest, or Sepia. The plugin remembers your selection in localStorage and restores it on startup, using Default when no valid selection is saved. Themes change editor colors without changing game artwork. Removing this trusted editor-only plugin restores the original colors and removes the dropdown.",
+  "version": "1.0.0",
+  "apiVersion": 1
+}
+  </script>
+  <style data-tiny-rpg-plugin>
+    body.editor-mode main:has(#tab-editor[data-custom-theme="darker"]) {
+      --bg: #000000; --panel: #080808; --text: #f4f4f4;
+      --muted: #bcbcbc; --accent: #86efac; --border: #303030;
+      --theme-control: #111111; --theme-hover: #202020; color-scheme: dark;
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme="dracula"]) {
+      --bg: #080609; --panel: #130c12; --text: #fff1f3;
+      --muted: #d5b6c0; --accent: #ff6178; --border: #482330;
+      --theme-control: #211019; --theme-hover: #391723; color-scheme: dark;
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme="powershell"]) {
+      --bg: #012456; --panel: #07346d; --text: #ffffff;
+      --muted: #d2e4ff; --accent: #ffdf70; --border: #376ba5;
+      --theme-control: #0b407e; --theme-hover: #155398; color-scheme: dark;
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme="light"]) {
+      --bg: #ffffff; --panel: #f5f7fa; --text: #17202e;
+      --muted: #495568; --accent: #08783b; --border: #b7c1cf;
+      --theme-control: #ffffff; --theme-hover: #e2eaf2; color-scheme: light;
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme="forest"]) {
+      --bg: #07150d; --panel: #10251a; --text: #edf8ee;
+      --muted: #b4d2bc; --accent: #b8e986; --border: #355b42;
+      --theme-control: #193523; --theme-hover: #284c33; color-scheme: dark;
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme="sepia"]) {
+      --bg: #fbf3e3; --panel: #f1e5ce; --text: #392a1c;
+      --muted: #69513b; --accent: #885020; --border: #bca582;
+      --theme-control: #fff8eb; --theme-hover: #e4d4b6; color-scheme: light;
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme]) {
+      background: var(--bg); color: var(--text);
+    }
+    #tab-editor[data-custom-theme] { color: var(--text); }
+    body.editor-mode main:has(#tab-editor[data-custom-theme]) .tabs {
+      background: var(--panel); border-color: var(--border);
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme]) .tabs-title { color: var(--text); }
+    body.editor-mode main:has(#tab-editor[data-custom-theme]) :is(
+      .tab-button, .tab-action-button, .btn-manual-save, .btn-history-dropdown, .btn-plugins, .btn-devlog
+    ) {
+      background: var(--theme-control); color: var(--text); border-color: var(--border);
+    }
+    body.editor-mode main:has(#tab-editor[data-custom-theme]) :is(
+      .tab-button.active, .tab-button:hover, .tab-action-button:hover,
+      .btn-manual-save:hover, .btn-history-dropdown:hover, .btn-plugins:hover, .btn-devlog:hover
+    ) {
+      background: var(--theme-hover); color: var(--text); border-color: var(--accent);
+    }
+    #tab-editor[data-custom-theme] :is(button, input, select, textarea) {
+      background: var(--theme-control); color: var(--text); border-color: var(--border);
+    }
+    #tab-editor[data-custom-theme] :is(button:hover, button[aria-selected="true"], input[type="checkbox"]:checked, .selected) {
+      background: var(--theme-hover); color: var(--text); border-color: var(--accent);
+    }
+    #tab-editor[data-custom-theme] :is(.npc-name, .object-name, .enemy-name, .object-config-label, .object-status) { color: var(--text); }
+    #tab-editor[data-custom-theme] .object-config { background: var(--theme-control); }
+    #tab-editor .custom-themes-toolbar {
+      position: relative; align-self: flex-start; flex-shrink: 0;
+      margin: 10px 10px 0; color: var(--text);
+    }
+    #tab-editor .custom-themes-trigger { padding: 8px 12px; cursor: pointer; }
+    #tab-editor .custom-themes-menu {
+      position: absolute; top: calc(100% + 4px); left: 0; z-index: 50;
+      display: grid; min-width: 150px; padding: 4px;
+      border: 2px solid var(--border); background: var(--panel);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+    #tab-editor .custom-themes-menu[hidden] { display: none; }
+    #tab-editor .custom-themes-menu button {
+      padding: 8px 12px; text-align: left; cursor: pointer;
+      color: var(--text); background: var(--panel); border: 2px solid transparent;
+    }
+    #tab-editor .custom-themes-menu button[aria-checked="true"] { border-color: var(--accent); }
+    #tab-editor .custom-themes-menu button:focus-visible,
+    #tab-editor .custom-themes-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ editorRoot, onCleanup }) {
+      const doc = editorRoot.ownerDocument;
+      const themes = ['Default', 'Darker', 'Dracula', 'Powershell', 'Light', 'Forest', 'Sepia'];
+      const storageKey = 'tiny-rpg-custom-themes-theme-v1';
+      let selected = 0;
+      try {
+        const saved = doc.defaultView.localStorage.getItem(storageKey);
+        const index = themes.findIndex(theme => theme.toLowerCase() === saved);
+        if (index >= 0) selected = index;
+      } catch {
+        // Keep the theme menu usable when browser storage is unavailable.
+      }
+      const previousTheme = editorRoot.getAttribute('data-custom-theme');
+      onCleanup(() => {
+        if (previousTheme === null) editorRoot.removeAttribute('data-custom-theme');
+        else editorRoot.setAttribute('data-custom-theme', previousTheme);
+      });
+      editorRoot.removeAttribute('data-custom-theme');
+
+      const toolbar = doc.createElement('div');
+      toolbar.className = 'custom-themes-toolbar';
+      const trigger = doc.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'custom-themes-trigger';
+      trigger.textContent = 'Theme: Default ▾';
+      trigger.setAttribute('aria-haspopup', 'menu');
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.setAttribute('aria-controls', 'custom-themes-menu');
+      const menu = doc.createElement('div');
+      menu.id = 'custom-themes-menu';
+      menu.className = 'custom-themes-menu';
+      menu.setAttribute('role', 'menu');
+      menu.setAttribute('aria-label', 'Editor theme');
+      menu.hidden = true;
+      const close = (restoreFocus = false) => {
+        menu.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        if (restoreFocus) trigger.focus();
+      };
+      const buttons = themes.map((theme, index) => {
+        const button = doc.createElement('button');
+        button.type = 'button';
+        button.textContent = theme;
+        button.tabIndex = -1;
+        button.setAttribute('role', 'menuitemradio');
+        button.setAttribute('aria-checked', String(index === selected));
+        menu.append(button);
+        return button;
+      });
+      const open = (index = selected) => {
+        menu.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        buttons[index].focus();
+      };
+      const clickTrigger = () => menu.hidden ? open() : close();
+      const applyTheme = index => {
+        selected = index;
+        if (index === 0) editorRoot.removeAttribute('data-custom-theme');
+        else editorRoot.setAttribute('data-custom-theme', themes[index].toLowerCase());
+        trigger.textContent = `Theme: ${themes[index]} ▾`;
+        buttons.forEach((button, i) => button.setAttribute('aria-checked', String(i === selected)));
+      };
+      applyTheme(selected);
+      const select = event => {
+        const index = buttons.indexOf(event.target.closest('button'));
+        if (index < 0) return;
+        applyTheme(index);
+        try {
+          doc.defaultView.localStorage.setItem(storageKey, themes[index].toLowerCase());
+        } catch {
+          // Apply the selection for this session even when it cannot be saved.
+        }
+        close(true);
+      };
+      const keydown = event => {
+        if (event.target === trigger && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+          event.preventDefault();
+          open(event.key === 'ArrowUp' ? buttons.length - 1 : selected);
+        } else if (!menu.hidden) {
+          const index = buttons.indexOf(doc.activeElement);
+          if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1
+              : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+            buttons[next].focus();
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            close(true);
+          } else if (event.key === 'Tab') close();
+        }
+      };
+      const outside = event => { if (!toolbar.contains(event.target)) close(); };
+      const focusout = event => { if (!toolbar.contains(event.relatedTarget)) close(); };
+      onCleanup(() => toolbar.remove());
+      onCleanup(() => {
+        trigger.removeEventListener('click', clickTrigger);
+        menu.removeEventListener('click', select);
+        toolbar.removeEventListener('keydown', keydown);
+        toolbar.removeEventListener('focusout', focusout);
+        doc.removeEventListener('pointerdown', outside);
+      });
+      trigger.addEventListener('click', clickTrigger);
+      menu.addEventListener('click', select);
+      toolbar.addEventListener('keydown', keydown);
+      toolbar.addEventListener('focusout', focusout);
+      doc.addEventListener('pointerdown', outside);
+      toolbar.append(trigger, menu);
+      editorRoot.prepend(toolbar);
+    }
+  </script>
+</head>
+<body></body>
+</html>

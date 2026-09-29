@@ -110,6 +110,21 @@ Installed packages retain their saved bytes in local storage and work without th
 
 Validate browser behavior with `npx playwright test tests/e2e/plugins.spec.ts`. After `npm run build`, run `npx playwright test -c playwright.plugins.config.ts` to exercise the real production files under `/studio/`.
 
+## Custom Themes
+
+Search for **Custom Themes** in Plugins and install it, or import
+`public/plugins/custom-themes/1.0.0/plugin.html`. The top-left **Theme** button
+opens a compact menu with Default, Darker (pitch black), Dracula (black and red),
+Powershell (blue), Light (white), Forest (green), and Sepia (warm parchment).
+The plugin saves your selection in localStorage under
+`tiny-rpg-custom-themes-theme-v1` and restores it on startup. Missing or invalid
+saved values use Default. If browser storage is unavailable, theme selection
+still works for the current session. Removing the plugin keeps the preference
+for a future reinstall.
+Use arrow keys, Home/End, and Enter/Space to choose a theme, or Escape to close.
+Themes affect the Editor tab, preserve game artwork, and restore the original
+appearance when the plugin is removed.
+
 ## Minimalist UI
 
 Import `examples/minimalist-ui.html` or search for **Minimalist UI** in Plugins and install it. It hides catalog text for NPCs, objects, and enemies, hides World, and simplifies the shared pixel-art editor. Sprite-edit icons and object configuration remain available. With the header hidden, use Escape, the backdrop, or Save to close the pixel-art editor. Removing the plugin restores the original interface.

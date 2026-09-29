@@ -2,6 +2,14 @@
   "schemaVersion": 1,
   "plugins": [
     {
+      "id": "custom-themes",
+      "title": "Custom Themes",
+      "shortDescription": "Seven editor palettes in a compact theme dropdown.",
+      "fullDescription": "Adds a theme dropdown to the top left of the Editor tab. Choose Default, Darker, Dracula, Powershell, Light, Forest, or Sepia. The plugin remembers your selection in localStorage and restores it on startup, using Default when no valid selection is saved. Themes change editor colors without changing game artwork. Removing this trusted editor-only plugin restores the original colors and removes the dropdown.",
+      "version": "1.0.0",
+      "file": "custom-themes/1.0.0/plugin.html"
+    },
+    {
       "id": "example-plugin",
       "title": "Example plugin",
       "shortDescription": "Swap Tiles and NPCs to the top and hide World.",
