@@ -24,6 +24,11 @@ function validateCatalog(value: unknown, directory: URL): CatalogEntry[] {
     const raw = value as Record<string, unknown>;
     if (!keys.every(key => typeof raw[key] === 'string' && raw[key].trim())) throw Error('Invalid catalog metadata');
     const entry = Object.fromEntries(keys.map(key => [key, raw[key]])) as unknown as CatalogEntry;
+    if (raw.capabilities !== undefined) {
+      const capabilities = raw.capabilities;
+      if (!Array.isArray(capabilities) || !capabilities.length || capabilities.some(value => value !== 'editor' && value !== 'gameplay') || new Set(capabilities).size !== capabilities.length) throw Error('Invalid catalog capabilities');
+      entry.capabilities = capabilities as PluginMetadata['capabilities'];
+    }
     if (ids.has(entry.id)) throw Error('Duplicate plugin ID');
     ids.add(entry.id);
     packageUrl(entry.file, directory);
@@ -46,7 +51,7 @@ export function createPluginCatalog(base: string, fetcher: Fetch = (...args) => 
       .then(response => response.json())
       .then((value: unknown) => validateCatalog(value, directory))
       .catch((error: unknown) => { pending = undefined; throw error; });
-    return (await pending).map(entry => ({ ...entry }));
+    return (await pending).map(entry => ({ ...entry, ...(entry.capabilities ? { capabilities: [...entry.capabilities] } : {}) }));
   }
   return {
     all,
@@ -65,6 +70,7 @@ export function createPluginCatalog(base: string, fetcher: Fetch = (...args) => 
       const plugin = parsePluginHtml(source);
       if (plugin.id !== entry.id || !plugin.payload) throw Error('Package does not match catalog or has no executable payload');
       if (plugin.version !== undefined && plugin.version !== entry.version) throw Error('Package version does not match catalog');
+      if (entry.capabilities && (entry.capabilities.length !== (plugin.capabilities ?? ['editor']).length || entry.capabilities.some(mode => !(plugin.capabilities ?? ['editor']).includes(mode)))) throw Error('Package capabilities do not match catalog');
       return { ...plugin, version: entry.version };
     },
   };

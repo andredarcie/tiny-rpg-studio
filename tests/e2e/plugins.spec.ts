@@ -122,6 +122,7 @@ for (const base of ['/', '/studio/']) {
     await expect(page.locator('.tile-card').first()).toBeVisible();
     await page.click('#btn-plugins');
     await expect(page.locator('.plugin-card h3')).toHaveText(['Custom Themes', 'Example plugin', 'Maps+', 'Minimalist UI']);
+    await expect(page.locator('.plugin-card[data-plugin-id="maps-plus"] .plugin-capabilities')).toHaveText('editor + gameplay');
     expect(catalogRequests).toHaveLength(1);
     expect(packageRequests).toHaveLength(0);
     await page.fill('#plugins-query', 'example');
@@ -165,8 +166,12 @@ test('Maps+ is discoverable and installable from the catalog', async ({ page }) 
   await page.fill('#plugins-query', 'Maps+');
   const card = page.locator('.plugin-card[data-plugin-id="maps-plus"]');
   await expect(card).toBeVisible();
+  await expect(card.locator('.plugin-capabilities')).toHaveText('editor + gameplay');
   await card.locator('[data-action="install"]').click();
   await expect(card.locator('[data-action="installed"]')).toBeDisabled();
+  await expect(card.locator('.plugin-capabilities')).toHaveText('editor + gameplay');
+  await page.click('#plugins-manage');
+  await expect(page.locator('.plugin-card[data-plugin-id="maps-plus"] .plugin-capabilities')).toHaveText('editor + gameplay');
   await page.click('#plugins-modal .tiny-modal__close');
   await expect(page.locator('.world-panel .maps-plus-controls select[aria-label="Rows"]')).toBeVisible();
   await expect(page.locator('.project-group--development .maps-plus-controls select[aria-label="Columns"]')).toBeVisible();

@@ -45,9 +45,21 @@ describe('static plugin catalog', () => {
       title: plugin.title,
       shortDescription: plugin.shortDescription,
       fullDescription: plugin.fullDescription,
+      capabilities: plugin.capabilities,
       version: plugin.version,
       file: 'maps-plus/1.0.1/plugin.html',
     });
+  });
+  it('shows gameplay capabilities from the catalog and verifies the package', async () => {
+    const mapsEntry = index.plugins.find(plugin => plugin.id === 'maps-plus');
+    const { catalog, fetcher } = setup({ schemaVersion: 1, plugins: [mapsEntry] });
+    const [listed] = await catalog.search('Maps+');
+    expect(listed.capabilities).toEqual(['editor', 'gameplay']);
+    listed.capabilities?.pop();
+    const [fresh] = await catalog.search('Maps+');
+    expect(fresh.capabilities).toEqual(['editor', 'gameplay']);
+    fetcher.mockResolvedValue(response(publishedMapsPlus, 'https://studio.test/app/plugins/' + fresh.file));
+    expect((await catalog.download(fresh, new AbortController().signal)).capabilities).toEqual(['editor', 'gameplay']);
   });
   it('lists at most ten plugins alphabetically for an empty query and shares the search cache', async () => {
     const titles = ['Zulu', 'alpha', 'Charlie', 'bravo', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet', 'Kilo'];
@@ -86,6 +98,9 @@ describe('static plugin catalog', () => {
     fetcher.mockResolvedValue(response(document));
     expect(await catalog.search('example')).toEqual([entry]);
   });
+  it.each([[], ['editor', 'editor'], ['invalid'], 'gameplay'])('rejects malformed capabilities %#', async capabilities => {
+    await expect(setup({ schemaVersion: 1, plugins: [{ ...entry, capabilities }] }).catalog.search('example')).rejects.toThrow('capabilities');
+  });
   it.each(['../escape.html', '/absolute.html', 'https://evil.test/a', '//evil.test/a', 'a/../b', 'a?x', 'a#x', 'a\\b', '%2e%2e/a', 'a/%2f/b'])('rejects unsafe package path %s', async file => {
     await expect(setup({ schemaVersion: 1, plugins: [{ ...entry, file }] }).catalog.search('example')).rejects.toThrow();
   });
@@ -107,6 +122,13 @@ describe('static plugin catalog', () => {
   it.each([['bad', true], [example.replace('example-plugin', 'wrong-id'), true], [example.replace('"apiVersion": 1', '"ignored": 1'), true], [example, false]])('rejects invalid package %#', async (body, ok) => {
     const { catalog, fetcher } = setup(); fetcher.mockResolvedValue(response(body, '', ok as boolean));
     await expect(catalog.download(entry, new AbortController().signal)).rejects.toThrow();
+  });
+  it('rejects a package whose capabilities differ from the catalog', async () => {
+    const claimed = { ...entry, capabilities: ['editor', 'gameplay'] as const };
+    const { catalog, fetcher } = setup({ schemaVersion: 1, plugins: [claimed] });
+    const [listed] = await catalog.search('example');
+    fetcher.mockResolvedValue(response(example, 'https://studio.test/app/plugins/' + listed.file));
+    await expect(catalog.download(listed, new AbortController().signal)).rejects.toThrow('capabilities');
   });
   it.each(['https://evil.test/plugin.html', 'https://studio.test/outside.html'])('rejects escaped response URLs %s', async url => {
     const { catalog, fetcher } = setup(); fetcher.mockResolvedValue(response(document, url));

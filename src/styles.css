@@ -5690,9 +5690,68 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
     min-width: 0;
 }
 .plugin-card h3, .plugin-card p { margin: 0; }
+.plugins-modal .plugin-card h3 {
+    color: var(--text);
+    font-size: 1.15em;
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-normal);
+}
+.plugins-modal .plugin-capabilities {
+    padding: 3px 7px;
+    border: 1px solid rgba(91, 250, 142, 0.25);
+    background: rgba(91, 250, 142, 0.1);
+    color: var(--accent);
+    font-size: 0.78em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.plugins-modal .plugin-summary {
+    color: rgba(255, 255, 255, 0.82);
+    line-height: var(--lh-text);
+}
+.plugins-modal .plugin-lifecycle {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.82em;
+}
+.plugins-modal .plugin-description {
+    width: 100%;
+    padding: 8px 10px;
+    border-left: 2px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.72);
+    line-height: var(--lh-text);
+}
+.plugins-modal .plugin-description[hidden] { display: none; }
 .plugin-card .plugin-action { margin-top: auto; }
-.plugin-read-more { background: none; border: 0; padding: 4px 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.plugins-modal .plugin-read-more,
+body.editor-mode .plugins-modal button.plugin-read-more {
+    background: none;
+    border: 0;
+    padding: 4px 0;
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    font: inherit;
+}
+.plugins-modal .plugin-read-more:hover,
+body.editor-mode .plugins-modal button.plugin-read-more:hover { color: var(--text); }
 .plugin-read-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.plugins-modal .plugin-action[data-action="install"],
+.plugins-modal .plugin-action[data-action="update"],
+body.editor-mode .plugins-modal button.plugin-action[data-action="install"],
+body.editor-mode .plugins-modal button.plugin-action[data-action="update"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+}
+.plugins-modal .plugin-action[data-action="install"]:hover:not(:disabled),
+.plugins-modal .plugin-action[data-action="update"]:hover:not(:disabled),
+body.editor-mode .plugins-modal button.plugin-action[data-action="install"]:hover:not(:disabled),
+body.editor-mode .plugins-modal button.plugin-action[data-action="update"]:hover:not(:disabled) {
+    background: rgba(91, 250, 142, 0.8);
+    color: var(--bg);
+}
 .plugin-action:disabled { opacity: 0.6; cursor: default; }
 #plugins-storage-error { color: #ffb4a8; }
 

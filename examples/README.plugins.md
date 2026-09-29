@@ -137,13 +137,14 @@ The app serves `public/plugins/catalog.json` with this schema:
     "title": "Example plugin",
     "shortDescription": "Swap Tiles and NPCs to the top and hide World.",
     "fullDescription": "Describe the plugin's behavior and effects here.",
+    "capabilities": ["editor"],
     "version": "1.0.0",
     "file": "example-plugin/1.0.0/plugin.html"
   }]
 }
 ```
 
-All six entry fields must be nonempty strings and IDs must be unique. `file` is relative to the catalog directory; use plain path segments without traversal, URL schemes, percent escapes, queries, or fragments. Packages must contain a matching manifest ID and a valid API version 1 executable block.
+All six required entry fields must be nonempty strings and IDs must be unique. Optional `capabilities` declares `editor`, `gameplay`, or both and must match the package manifest; omitted capabilities display as editor only. `file` is relative to the catalog directory; use plain path segments without traversal, URL schemes, percent escapes, queries, or fragments. Packages must contain a matching manifest ID and a valid API version 1 executable block.
 
 To publish, review the HTML and all JavaScript/CSS as trusted editor-page code. Check activation, cleanup, layout restoration, persistence, and failure behavior. Add the HTML at a new versioned path and add or update its catalog entry. Published version paths are immutable: publish a new directory for each release. Keep the example's published copy identical to `examples/plugin-preview.html`; fixture tests enforce this and matching metadata. Deploy the app normally: Vite copies `public/plugins/` to `docs/plugins/`, including on subdirectory deployments.
 

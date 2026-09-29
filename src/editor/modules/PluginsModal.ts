@@ -302,6 +302,7 @@ export class PluginsModal {
     capabilities.className = 'plugin-capabilities';
     capabilities.textContent = (plugin.capabilities ?? ['editor']).join(' + ');
     const summary = document.createElement('p');
+    summary.className = 'plugin-summary';
     summary.textContent = plugin.shortDescription;
     const more = document.createElement('button');
     more.type = 'button';
