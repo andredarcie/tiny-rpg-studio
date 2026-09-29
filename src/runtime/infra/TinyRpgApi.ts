@@ -1,4 +1,7 @@
+import type { AuthoringApi } from './AuthoringApi';
+
 type TinyRpgApi = {
+  authoring?: AuthoringApi;
   exportGameData: () => unknown;
   importGameData: (data: unknown) => void;
   getState: () => unknown;

@@ -1,6 +1,8 @@
 import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import type { InstalledPlugin, PluginManager } from './PluginManager';
-export interface PluginContext { editorRoot: HTMLElement; api: TinyRpgApi; onCleanup(callback: () => void): void }
+import type { Modal, ModalOptions } from '../../ui/Modal';
+export type PluginUi = { createModal(options?: ModalOptions): Modal; text(key: string, fallback: string): string };
+export interface PluginContext { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi; onCleanup(callback: () => void): void }
 export type PluginModule = { activate(context: PluginContext): void | Promise<void> };
 export type PluginLoader = (source: string) => Promise<PluginModule>;
 export type PluginState = { status: 'inert' | 'pending' | 'active' | 'failed'; error?: string };
@@ -10,7 +12,7 @@ export const loadPluginModule: PluginLoader = async source => {
   finally { URL.revokeObjectURL(url); }
 };
 export class PluginRuntime {
-  private context?: { editorRoot: HTMLElement; api: TinyRpgApi };
+  private context?: { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi };
   private entries = new Map<string, { signature: string; cleanups: (() => void)[]; state: PluginState }>();
   private queue = Promise.resolve();
   private destroyed = false;
@@ -23,9 +25,9 @@ export class PluginRuntime {
     this.loader = loader;
     this.unsubscribe = manager.subscribe(() => this.schedule());
   }
-  start(editorRoot: HTMLElement, api: TinyRpgApi): void {
+  start(editorRoot: HTMLElement, api: TinyRpgApi, ui?: PluginUi): void {
     if (this.destroyed || this.context) return;
-    this.context = { editorRoot, api };
+    this.context = { editorRoot, api, ui };
     this.schedule();
   }
   subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }

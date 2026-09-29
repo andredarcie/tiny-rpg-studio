@@ -6,9 +6,9 @@ import { ShareDecoder } from '../../runtime/infra/share/ShareDecoder';
 const game = { start: { x: 1, y: 1, roomIndex: 0 }, rooms: [], sprites: [], enemies: [], objects: [], variables: [] };
 
 describe('new dialog exclamation share setting', () => {
-  it('round trips explicit false in version 45', () => {
+  it('round trips explicit false in the current version', () => {
     const code = ShareEncoder.buildShareCode({ ...game, showNewDialogExclamation: false });
-    expect(code.startsWith(`v${ShareConstants.VERSION_45.toString(36)}.`)).toBe(true);
+    expect(code.startsWith(`v${ShareConstants.VERSION.toString(36)}.`)).toBe(true);
     expect((ShareDecoder.decodeShareCode(code) as { showNewDialogExclamation?: boolean }).showNewDialogExclamation).toBe(false);
   });
 

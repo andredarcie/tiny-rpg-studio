@@ -127,7 +127,10 @@ class TinyRPGApplication {
           editorManager = new EditorManager(gameEngine);
           const root = document.getElementById('tab-editor');
           const bridge = getTinyRpgApi();
-          if (root && bridge) pluginRuntime?.start(root, bridge);
+          if (root && bridge) {
+            bridge.authoring = editorManager.createAuthoring();
+            pluginRuntime?.start(root, bridge, editorManager.pluginUi);
+          }
         })
         .catch((error: unknown) => {
           console.error('[TinyRPG] Failed to load the editor module.', error);
@@ -160,7 +163,10 @@ class TinyRPGApplication {
 
     const api: TinyRpgApi = {
       exportGameData: () => gameEngine.exportGameData(),
-      importGameData: (data: unknown) => gameEngine.importGameData(data),
+      importGameData: (data: unknown) => {
+        if (editorManager) editorManager.projectGeneration++;
+        gameEngine.importGameData(data);
+      },
       getState: () => gameEngine.getState(),
       draw: () => gameEngine.draw(),
       resetGame: () => gameEngine.resetGame(),

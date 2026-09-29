@@ -36,7 +36,7 @@ for (const base of ['/', '/studio/']) {
       await expect(page.locator('#tab-editor')).not.toHaveAttribute('data-old-plugin');
       await expect(page.locator('style[data-plugin-id="minimalist-ui"]')).toHaveCount(1);
       expect(await page.locator('style[data-plugin-id="minimalist-ui"]').textContent()).not.toContain('--old-plugin-version');
-      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tiny-rpg-plugins-v1')!).map((plugin: { id: string; version: string }) => [plugin.id, plugin.version]))).toEqual([['minimalist-ui', '1.0.2']]);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tiny-rpg-plugins-v1')!).map((plugin: { id: string; version: string }) => [plugin.id, plugin.version]))).toEqual([['minimalist-ui', '1.0.3']]);
       await page.click('#plugins-search');
       await expect(card.locator('[data-action="installed"]')).toBeDisabled();
       await page.click('#plugins-manage');

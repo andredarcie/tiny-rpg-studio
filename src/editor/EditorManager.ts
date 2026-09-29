@@ -31,8 +31,21 @@ import { CustomTileEffectEditorController } from './modules/CustomTileEffectEdit
 import { ProjectSaveManager } from './manager/ProjectSaveManager';
 import { ProjectSaveUI } from './manager/ProjectSaveUI';
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
+import { createAuthoring } from './authoring/EditorAuthoring';
+import { Modal } from '../ui/Modal';
 
 class EditorManager {
+    projectGeneration = 0;
+    createAuthoring() { return createAuthoring(this); }
+    pluginUi = { createModal: (options?: ConstructorParameters<typeof Modal>[0]) => new Modal(options), text: (key: string, fallback: string) => TextResources.get(key, fallback) };
+
+    persistAuthoring(): void {
+        const shareUrl = ShareUtils.buildShareUrl(this.gameEngine.exportGameData() as Record<string, unknown>);
+        if (!shareUrl || !this.projectSaveManager) throw Error('Project save is unavailable');
+        const result = this.projectSaveManager.autoSave(shareUrl, this.dom.titleInput?.value ?? '');
+        if (!result.ok) throw Error('Could not save the edit. Check browser storage.');
+        this.projectSaveUI?.refreshHistoryUI();
+    }
     gameEngine: GameEngine;
     state: EditorState;
     domCache: EditorDomCache;
@@ -609,7 +622,8 @@ class EditorManager {
     }
 
     // Restore & import logic
-    restore(data: Record<string, unknown>, options: { skipHistory?: boolean } = {}) {
+    restore(data: Record<string, unknown>, options: { skipHistory?: boolean; authoring?: boolean } = {}) {
+        if (!options.authoring) this.projectGeneration++;
         const { skipHistory = false } = options;
         this.gameEngine.importGameData(data);
         this.gameEngine.tileManager.ensureDefaultTiles();

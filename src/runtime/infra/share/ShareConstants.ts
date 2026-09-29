@@ -53,9 +53,10 @@ class ShareConstants {
     static get VERSION_43() { return 43; }
     static get VERSION_44() { return 44; }
     static get VERSION_45() { return 45; }
+    static get VERSION_46() { return 46; }
 
     static get VERSION() {
-        return ShareConstants.VERSION_45;
+        return ShareConstants.VERSION_46;
     }
 
     static get LEGACY_VERSION() {
@@ -232,6 +233,10 @@ class ShareConstants {
         return ShareConstants.VERSION_45;
     }
 
+    static get LEGACY_ENTITIES_VERSION() {
+        return ShareConstants.VERSION_46;
+    }
+
     static get MATRIX_SIZE() {
         return GameConfig.world.matrixSize;
     }
@@ -362,7 +367,8 @@ class ShareConstants {
                 ShareConstants.VERSION_42,
                 ShareConstants.VERSION_43,
                 ShareConstants.VERSION_44,
-                ShareConstants.VERSION_45
+                ShareConstants.VERSION_45,
+                ShareConstants.VERSION_46
             ]);
         }
         return this._supportedVersions;

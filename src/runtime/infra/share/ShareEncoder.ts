@@ -9,6 +9,7 @@ import { SharePositionCodec } from './SharePositionCodec';
 import { ShareTextCodec } from './ShareTextCodec';
 import { ShareVariableCodec } from './ShareVariableCodec';
 import { ShareBase64 } from './ShareBase64';
+import { normalizeLegacyEntities } from './ShareLegacyEntities';
 import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
 import { ShareSpriteCatalog } from './ShareSpriteCatalog';
 import type { CustomSpriteEntry, SkillCustomizationMap } from '../../../types/gameState';
@@ -46,6 +47,8 @@ type ShareGameData = {
     sprites?: unknown[];
     enemies?: unknown[];
     objects?: unknown[];
+    items?: unknown[];
+    exits?: unknown[];
     variables?: unknown[];
     rooms?: unknown[];
     tileset?: {
@@ -363,6 +366,11 @@ class ShareEncoder {
 
         const parts = [];
         parts.push('v' + ShareConstants.VERSION.toString(36));
+        const items = normalizeLegacyEntities(gameData?.items, 'items');
+        const exits = normalizeLegacyEntities(gameData?.exits, 'exits');
+        if (items.length || exits.length) {
+            parts.push('@' + ShareTextCodec.encodeText(JSON.stringify({ items, exits })));
+        }
         if (hasGround) {
             parts.push('g' + groundSegments.join(','));
         }

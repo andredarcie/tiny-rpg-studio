@@ -40,6 +40,9 @@ const mocks = vi.hoisted(() => {
   };
 
   const editorManagerInstance = {
+    projectGeneration: 0,
+    createAuthoring: vi.fn(() => ({ capabilities: vi.fn(), begin: vi.fn() })),
+    pluginUi: { createModal: vi.fn(), text: vi.fn() },
     renderAll: vi.fn(),
     createNewGame: vi.fn(),
   };
@@ -195,7 +198,8 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     expect(start).not.toHaveBeenCalled();
     document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));
     await vi.waitFor(() => expect(mocks.EditorManagerCtor).toHaveBeenCalled());
-    expect(start).toHaveBeenCalledWith(document.getElementById('tab-editor'), getTinyRpgApi());
+    expect(start).toHaveBeenCalledWith(document.getElementById('tab-editor'), getTinyRpgApi(), mocks.editorManagerInstance.pluginUi);
+    expect(getTinyRpgApi()?.authoring).toBeDefined();
     const calls = start.mock.calls.length;
     getTinyRpgApi()?.renderAll();
     document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));

@@ -10,6 +10,7 @@ import { ShareMatrixCodec } from './ShareMatrixCodec';
 import { SharePositionCodec } from './SharePositionCodec';
 import { ShareTextCodec } from './ShareTextCodec';
 import { ShareVariableCodec } from './ShareVariableCodec';
+import { normalizeLegacyEntities } from './ShareLegacyEntities';
 import type { CustomSpriteEntry, CustomSpriteVariant } from '../../../types/gameState';
 import { SpriteMatrixRegistry } from '../../domain/sprites/SpriteMatrixRegistry';
 import { ShareSpriteCatalog } from './ShareSpriteCatalog';
@@ -786,6 +787,22 @@ class ShareDecoder {
 
         if (skillCustomizations) {
             result.skillCustomizations = skillCustomizations;
+        }
+
+        if (version >= ShareConstants.LEGACY_ENTITIES_VERSION && payload['@']) {
+            try {
+                const text = ShareTextCodec.decodeText(payload['@'], '');
+                if (text.length <= 3_000_000) {
+                    const parsed = JSON.parse(text) as unknown;
+                    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                        const source = parsed as Record<string, unknown>;
+                        const items = normalizeLegacyEntities(source.items, 'items');
+                        const exits = normalizeLegacyEntities(source.exits, 'exits');
+                        if (items.length) result.items = items;
+                        if (exits.length) result.exits = exits;
+                    }
+                }
+            } catch { /* Ignore malformed optional legacy entities. */ }
         }
 
         const onlineEncoded = payload['8'];

@@ -4,6 +4,7 @@ import { normalizeEnemyExperienceOverride } from '../definitions/enemyExperience
 import type { GameDefinition, RuntimeState, EnemyDefinition, VariableDefinition } from '../../../types/gameState';
 import type { StateWorldManager } from './StateWorldManager';
 class StateEnemyManager {
+    static readonly MAX_ENEMIES_PER_ROOM = 6;
     game: GameDefinition | null;
     state: RuntimeState | null;
     worldManager: StateWorldManager;
@@ -77,7 +78,7 @@ class StateEnemyManager {
         }
 
         const targetRoom = this.worldManager.clampRoomIndex(enemy.roomIndex);
-        const maxEnemiesPerRoom = 6;
+        const maxEnemiesPerRoom = StateEnemyManager.MAX_ENEMIES_PER_ROOM;
         const currentRoomCount = this.game.enemies.reduce((count, entry) => {
             const room = this.worldManager.clampRoomIndex(entry.roomIndex);
             return room === targetRoom ? count + 1 : count;
