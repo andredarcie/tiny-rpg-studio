@@ -65,7 +65,7 @@ export class ProjectSaveUI {
     this.manualSaveBtn.disabled = true;
     try {
       // Always regenerate the URL to capture the current game state
-      await new Promise<void>((resolve) => {
+      if (!shareUrl?.startsWith('snapshot:')) await new Promise<void>((resolve) => {
         const handler = () => resolve();
         document.addEventListener('share-url-ready', handler, { once: true });
         setTimeout(resolve, 2000);

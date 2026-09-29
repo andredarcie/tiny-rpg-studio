@@ -18,6 +18,14 @@
       "file": "example-plugin/1.0.0/plugin.html"
     },
     {
+      "id": "maps-plus",
+      "title": "Maps+",
+      "shortDescription": "Choose a world size from 1×1 to 5×5.",
+      "fullDescription": "Adds synchronized row and column controls to the World panel and Project Development section. Keeps the selected world size in local saves and standalone HTML exports.",
+      "version": "1.0.1",
+      "file": "maps-plus/1.0.1/plugin.html"
+    },
+    {
       "id": "minimalist-ui",
       "title": "Minimalist UI",
       "shortDescription": "A quieter editor with pixel-art catalogs and fewer labels.",

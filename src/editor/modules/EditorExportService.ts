@@ -4,6 +4,9 @@ import { TextResources } from '../../runtime/adapters/TextResources';
 import { getTinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import { ShareConstants } from '../../runtime/infra/share/ShareConstants';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
+import { validatePluginPackage, type PluginManager } from '../manager/PluginManager';
+import type { GameDefinition } from '../../types/gameState';
+import type { GameplayPluginHost } from '../../runtime/infra/GameplayPluginHost';
 import {
     assembleExportHtml,
     createExportGameMarkup,
@@ -18,12 +21,15 @@ const EXPORT_BUNDLE_SRC = 'export.bundle.js';
 const EXPORT_CSS_SRC = 'tiny-rpg-studio-sdk.css';
 
 class EditorExportService {
+    private pluginManager?: PluginManager;
+    private gameplayHost?: GameplayPluginHost;
     btn: HTMLElement | null;
     importBtn: HTMLElement | null;
     importFileInput: HTMLInputElement | null;
     lastExportSections: ExportHtmlSections | null = null;
 
-    constructor() {
+    constructor(pluginManager?: PluginManager) {
+        this.pluginManager = pluginManager;
         this.btn = typeof document !== 'undefined' ? document.getElementById('btn-generate-html') : null;
         if (this.btn) {
             this.btn.addEventListener('click', () => {
@@ -49,9 +55,44 @@ class EditorExportService {
         }
     }
 
+    setPluginManager(pluginManager?: PluginManager): void { this.pluginManager = pluginManager; }
+    setGameplayHost(gameplayHost?: GameplayPluginHost): void { this.gameplayHost = gameplayHost; }
+
     async importFromHtml(file: File): Promise<void> {
         try {
             const html = await file.text();
+            const parsed = new DOMParser().parseFromString(html, 'text/html');
+            const bundled = parsed.getElementById('tiny-rpg-project');
+            if (bundled) {
+                const parsedProject: unknown = JSON.parse(bundled.textContent);
+                if (!parsedProject || typeof parsedProject !== 'object') throw Error('Invalid bundled project');
+                const project = parsedProject as { game?: Record<string, unknown>; plugins?: unknown[] };
+                if (!project.game || !Array.isArray(project.plugins)) throw Error('Invalid bundled project');
+                const packages = project.plugins.map(validatePluginPackage);
+                if (new Set(packages.map(plugin => plugin.id)).size !== packages.length) throw Error('Duplicate bundled gameplay plugins');
+                const required = (project.game as GameDefinition).gameplayPlugins ?? [];
+                if (required.length !== packages.length || required.some(dependency => !packages.some(plugin => plugin.id === dependency.id && plugin.version === dependency.version && plugin.capabilities?.includes('gameplay')))) {
+                    throw Error('Bundled gameplay plugins do not match project dependencies');
+                }
+                const api = getTinyRpgApi();
+                if (!api) throw Error('Engine API is unavailable');
+                const previous = api.exportGameData();
+                const installed = this.pluginManager?.installed ?? [];
+                const available = [...installed.filter(item => !packages.some(plugin => plugin.id === item.id)), ...packages];
+                if (api.loadProjectData) await api.loadProjectData(project.game, available);
+                else api.importGameData(project.game);
+                if (packages.length && !this.pluginManager?.installMany(packages)) {
+                    if (api.loadProjectData) await api.loadProjectData(previous, installed);
+                    else api.importGameData(previous);
+                    throw Error('Unable to save required gameplay plugins');
+                }
+                api.draw();
+                api.renderAll();
+                location.hash = '';
+                const input = document.getElementById('project-share-url') as HTMLInputElement | null;
+                if (input) input.value = '';
+                return;
+            }
             const match = html.match(/__TINY_RPG_SHARED_CODE\s*=\s*([^;]+);/);
             if (!match) {
                 alert(TextResources.get(
@@ -88,7 +129,8 @@ class EditorExportService {
                 return;
             }
 
-            api.importGameData(gameData);
+            if (api.loadProjectData) await api.loadProjectData(gameData);
+            else api.importGameData(gameData);
             api.draw();
             api.renderAll();
 
@@ -104,7 +146,7 @@ class EditorExportService {
             if (urlInput) urlInput.value = shareUrl;
         } catch (error) {
             console.error('Import failed', error);
-            alert(TextResources.get(
+            alert(error instanceof Error ? error.message : TextResources.get(
                 'alerts.importHTML.decodeError',
                 'Unable to decode the game data.',
             ));
@@ -200,7 +242,15 @@ class EditorExportService {
                 this.fetchAssetAsDataUrl(FONT_CSS_SRC, downloadError),
             ]);
 
-            const code = ShareUtils.encode(gameData as Record<string, unknown>);
+            const dependencies = (gameData as GameDefinition).gameplayPlugins ?? [];
+            const plugins = dependencies.map(dependency => {
+                const plugin = this.pluginManager?.installed.find(item => item.id === dependency.id && item.version === dependency.version && item.capabilities?.includes('gameplay'));
+                if (!plugin?.payload?.gameplayJavascript) throw Error(`Required gameplay plugin ${dependency.id}@${dependency.version} cannot be bundled`);
+                if (this.gameplayHost && !this.gameplayHost.isActive(dependency.id, dependency.version)) throw Error(`Required gameplay plugin ${dependency.id}@${dependency.version} is not active`);
+                return plugin;
+            });
+            const fullProject = ShareUtils.needsFullProject(gameData as Record<string, unknown>);
+            const code = fullProject ? '' : ShareUtils.encode(gameData as Record<string, unknown>);
             const exportData = gameData as GameExportData;
             const title = typeof exportData.title === 'string' && exportData.title.trim()
                 ? exportData.title.trim()
@@ -214,6 +264,7 @@ class EditorExportService {
                 editableInStudio,
                 fontDataUrl,
                 gameCode: code,
+                ...(fullProject ? { bundledProject: { game: gameData, plugins } } : {}),
                 gameMarkup: createExportGameMarkup({
                     down: TextResources.get('touchControls.downLabel', 'Move down'),
                     left: TextResources.get('touchControls.leftLabel', 'Move left'),

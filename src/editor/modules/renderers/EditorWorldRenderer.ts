@@ -175,8 +175,11 @@ class EditorWorldRenderer extends EditorRendererBase {
 
         container.innerHTML = '';
 
-        for (let r = 1; r <= 3; r++) {
-            for (let c = 1; c <= 3; c++) {
+        const world = (this.gameEngine.getGame() as unknown as { world: { rows: number; cols: number } }).world;
+        container.style.gridTemplateColumns = `repeat(${world.cols}, 1fr)`;
+        container.style.gridTemplateRows = `repeat(${world.rows}, 1fr)`;
+        for (let r = 1; r <= world.rows; r++) {
+            for (let c = 1; c <= world.cols; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'game-minimap-cell';
                 cell.dataset.mmRow = String(r);

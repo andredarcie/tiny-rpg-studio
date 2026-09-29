@@ -24,12 +24,14 @@ type Host = {
 const clone = <T>(data: T): T => JSON.parse(JSON.stringify(data)) as T;
 const maxPayload = 512_000;
 const roomSize = GameConfig.world.roomSize;
-const rooms = GameConfig.world.rows * GameConfig.world.cols;
-const position = { roomIndex: integer(0, rooms - 1), x: integer(0, roomSize - 1), y: integer(0, roomSize - 1) };
+const roomCount = (data: Data) => Math.max(1, list(data.rooms).length || GameConfig.world.rows * GameConfig.world.cols);
+const worldPosition = (data: Data) => ({ roomIndex: integer(0, roomCount(data) - 1), x: integer(0, roomSize - 1), y: integer(0, roomSize - 1) });
 const list = (data: unknown): Data[] => data as Data[];
 const tool = (name: string, description: string, parameters: JsonSchema): AuthoringTool => ({ type: 'function', function: { name, description, parameters } });
 
 function contract(data: Data): AuthoringCapabilities {
+  const rooms = roomCount(data);
+  const position = worldPosition(data);
   const tiles = list(record(data.tileset).tiles);
   const variables = list(data.variables).map(entry => entry.id);
   const tileId = enumeration([null, ...tiles.map(entry => entry.id)]);
@@ -197,9 +199,9 @@ export function createAuthoring(host: Host): AuthoringApi {
           if (section === 'assets') return clone({ ...contract(draft).assets, customSprites: draft.customSprites, customTileEffects: draft.customTileEffects, skillOrder: draft.skillOrder, skillCustomizations: draft.skillCustomizations, customPalette: draft.customPalette });
           if (section === 'project') return clone(draft);
           if (section === 'summary') return clone({ title: draft.title, author: draft.author, start: draft.start, variables: draft.variables,
-            counts: Object.fromEntries(['sprites', 'enemies', 'objects', 'items', 'exits'].map(kind => [kind, list(draft[kind]).length])), limits: { rooms, roomSize } });
+            counts: Object.fromEntries(['sprites', 'enemies', 'objects', 'items', 'exits'].map(kind => [kind, list(draft[kind]).length])), limits: { rooms: roomCount(draft), roomSize } });
           if (!['room'].includes(section)) throw Error('Unsupported read');
-          validate(position.roomIndex, roomIndex);
+          validate(worldPosition(draft).roomIndex, roomIndex);
           return clone({ room: list(draft.rooms)[roomIndex as number], map: list(record(draft.tileset).maps)[roomIndex as number],
             ...Object.fromEntries(['sprites', 'enemies', 'objects', 'items', 'exits'].map(kind => [kind, list(draft[kind]).filter(entry => entry.roomIndex === roomIndex)])) });
         },

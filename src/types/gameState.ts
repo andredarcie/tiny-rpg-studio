@@ -206,6 +206,7 @@ export type OnlineConfig = {
 };
 
 export type GameDefinition = {
+    gameplayPlugins?: { id: string; version: string }[];
     title: string;
     author: string;
     palette: string[];

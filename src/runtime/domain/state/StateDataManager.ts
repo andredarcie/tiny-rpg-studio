@@ -34,6 +34,7 @@ type StateDataManagerOptions = {
 };
 
 type ImportData = {
+    gameplayPlugins?: { id: string; version: string }[];
     title?: string;
     author?: string;
     palette?: string[];
@@ -105,6 +106,7 @@ class StateDataManager {
 
     exportGameData(): ImportData {
         return {
+            ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
             title: this.game.title,
             author: this.game.author,
             palette: this.game.palette,
@@ -161,8 +163,22 @@ class StateDataManager {
     importGameData(data: ImportData | null): { x: number; y: number; roomIndex: number } | null {
         if (!data) return null;
 
-        const worldRows = 3;
-        const worldCols = 3;
+        const dependencies: unknown = data.gameplayPlugins;
+        if (dependencies !== undefined && (!Array.isArray(dependencies) || dependencies.some((value: unknown) => {
+            if (!value || typeof value !== 'object') return true;
+            const p = value as Record<string, unknown>;
+            return typeof p.id !== 'string' || !p.id.trim() || typeof p.version !== 'string' || !p.version.trim();
+        }))) {
+            throw Error('Invalid gameplay plugin dependencies');
+        }
+
+        const dimension = (value: unknown) => {
+            if (value === undefined) return 3;
+            if (!Number.isInteger(value) || Number(value) < 1 || Number(value) > 5) throw Error('World dimensions must be whole numbers from 1 to 5');
+            return Number(value);
+        };
+        const worldRows = dimension(data.world?.rows);
+        const worldCols = dimension(data.world?.cols);
         const totalRooms = worldRows * worldCols;
 
         const customTileEffects = normalizeCustomTileEffects(data.customTileEffects);
@@ -195,6 +211,7 @@ class StateDataManager {
                 : undefined;
 
         Object.assign(this.game, {
+            gameplayPlugins: data.gameplayPlugins?.map(p => ({ id: p.id, version: p.version })),
             title: typeof data.title === 'string' ? data.title.slice(0, 18) : "My Tiny RPG Game",
             author: typeof data.author === 'string' ? data.author.slice(0, 18) : "",
             palette: Array.isArray(data.palette) && data.palette.length >= 3 ? data.palette.slice(0, 3) : ['#000000', '#1D2B53', '#FFF1E8'],

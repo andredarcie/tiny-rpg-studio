@@ -1,9 +1,12 @@
 import type { AuthoringApi } from './AuthoringApi';
+import type { InstalledPlugin } from '../../editor/manager/PluginManager';
 
 type TinyRpgApi = {
   authoring?: AuthoringApi;
   exportGameData: () => unknown;
   importGameData: (data: unknown) => void;
+  loadProjectData?: (data: unknown, packages?: InstalledPlugin[]) => Promise<void>;
+  resizeWorld?: (rows: number, cols: number, pluginId: string) => Promise<void>;
   getState: () => unknown;
   draw: () => void;
   resetGame: () => void;

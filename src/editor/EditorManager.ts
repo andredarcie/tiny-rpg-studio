@@ -33,18 +33,40 @@ import { ProjectSaveUI } from './manager/ProjectSaveUI';
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
 import { createAuthoring } from './authoring/EditorAuthoring';
 import { Modal } from '../ui/Modal';
+import type { PluginManager } from './manager/PluginManager';
+import type { InstalledPlugin } from './manager/PluginManager';
+import type { GameplayPluginHost } from '../runtime/infra/GameplayPluginHost';
 
 class EditorManager {
+    pluginManager?: PluginManager;
+    gameplayHost?: GameplayPluginHost;
+    private storedProject(data: Record<string, unknown> | null | undefined): string {
+        if (!data) return '';
+        if (this.pluginManager?.installed.some(plugin => plugin.capabilities?.includes('gameplay'))) return `snapshot:${JSON.stringify(data)}`;
+        return ShareUtils.buildStoredProject(data);
+    }
+    async loadProjectData(data: Record<string, unknown>, options: { skipHistory?: boolean } = {}, packages?: InstalledPlugin[]): Promise<void> {
+        if (this.gameplayHost) await this.gameplayHost.load(data, packages);
+        this.restore(data, { ...options, alreadyImported: Boolean(this.gameplayHost) });
+    }
     projectGeneration = 0;
     createAuthoring() { return createAuthoring(this); }
     pluginUi = { createModal: (options?: ConstructorParameters<typeof Modal>[0]) => new Modal(options), text: (key: string, fallback: string) => TextResources.get(key, fallback) };
 
     persistAuthoring(): void {
-        const shareUrl = ShareUtils.buildShareUrl(this.gameEngine.exportGameData() as Record<string, unknown>);
+        const shareUrl = this.storedProject(this.gameEngine.exportGameData() as Record<string, unknown>);
         if (!shareUrl || !this.projectSaveManager) throw Error('Project save is unavailable');
         const result = this.projectSaveManager.autoSave(shareUrl, this.dom.titleInput?.value ?? '');
         if (!result.ok) throw Error('Could not save the edit. Check browser storage.');
         this.projectSaveUI?.refreshHistoryUI();
+    }
+    saveGameplayRemovalBackup(data: Record<string, unknown>): boolean {
+        if (!this.projectSaveManager) return false;
+        const result = this.projectSaveManager.manualSave(`snapshot:${JSON.stringify(data)}`, this.dom.titleInput?.value ?? '');
+        if (!result.ok) return false;
+        this.projectSaveUI?.refreshHistoryUI();
+        this.history.pushCurrentState();
+        return true;
     }
     gameEngine: GameEngine;
     state: EditorState;
@@ -74,8 +96,9 @@ class EditorManager {
     private projectSaveManager?: ProjectSaveManager;
     private projectSaveUI?: ProjectSaveUI;
 
-    constructor(gameEngine: GameEngine) {
+    constructor(gameEngine: GameEngine, pluginManager?: PluginManager) {
         this.gameEngine = gameEngine;
+        this.pluginManager = pluginManager;
         this.state = new EditorState();
         this.domCache = new EditorDomCache(typeof document !== 'undefined' ? document : null);
 
@@ -88,7 +111,7 @@ class EditorManager {
         this.history = new EditorHistoryManager(this);
         this.renderService = new EditorRenderService(this);
         this.tileService = new EditorTileService(this);
-        this.shareService = new EditorShareService(this);
+        this.shareService = new EditorShareService(this, pluginManager);
         this.npcService = new EditorNpcService(this);
         this.enemyService = new EditorEnemyService(this);
         this.objectService = new EditorObjectService(this);
@@ -118,21 +141,26 @@ class EditorManager {
                     // Auto-save only needs a stable serialized URL for persistence.
                     // Avoid mutating window history on a background timer.
                     const gameData = this.gameEngine.exportGameData();
-                    const shareUrl = ShareUtils.buildShareUrl(gameData as Record<string, unknown> | null | undefined);
+                    const shareUrl = this.storedProject(gameData as Record<string, unknown> | null | undefined);
                     const title = this.dom.titleInput?.value ?? '';
                     return shareUrl ? { shareUrl, title } : null;
                 });
                 // pass getters instead of relying on globals
                 // title getter falls back to empty string
-                const getShare = () => this.dom.shareUrlInput?.value ?? null;
+                const getShare = () => this.storedProject(this.gameEngine.exportGameData() as Record<string, unknown>);
                 const getTitle = () => this.dom.titleInput?.value ?? '';
                 const onLoadProject = (shareUrl: string) => {
                     if (!shareUrl) return;
+                    if (shareUrl.startsWith('snapshot:')) {
+                        const snapshot = ShareUtils.readStoredProject(shareUrl);
+                        if (snapshot) void this.loadProjectData(snapshot);
+                        return;
+                    }
                     const hashIndex = shareUrl.indexOf('#');
                     const hash = hashIndex >= 0 ? shareUrl.slice(hashIndex) : '';
                     const gameData = ShareUtils.extractGameDataFromLocation({ hash });
                     if (gameData) {
-                        this.restore(gameData as Record<string, unknown>);
+                        void this.loadProjectData(gameData as Record<string, unknown>);
                         if (typeof window !== 'undefined') {
                             window.location.hash = hash.startsWith('#') ? hash.slice(1) : hash;
                         }
@@ -175,7 +203,7 @@ class EditorManager {
 
         const currentShareUrl = (): string | null => {
             const gameData = this.gameEngine.exportGameData() as Record<string, unknown> | null | undefined;
-            return ShareUtils.buildShareUrl(gameData) || null;
+            return this.storedProject(gameData) || null;
         };
 
         let baselineUrl: string | null = null;
@@ -577,7 +605,7 @@ class EditorManager {
     saveBeforePwaUpdate(): boolean {
         try {
             const gameData = this.gameEngine.exportGameData();
-            const shareUrl = ShareUtils.buildShareUrl(gameData as Record<string, unknown> | null | undefined);
+            const shareUrl = this.storedProject(gameData as Record<string, unknown> | null | undefined);
             if (!shareUrl || !this.projectSaveManager) return false;
             const title = this.dom.titleInput?.value ?? '';
             const result = this.projectSaveManager.manualSave(shareUrl, title);
@@ -622,10 +650,17 @@ class EditorManager {
     }
 
     // Restore & import logic
-    restore(data: Record<string, unknown>, options: { skipHistory?: boolean; authoring?: boolean } = {}) {
+    restore(data: Record<string, unknown>, options: { skipHistory?: boolean; authoring?: boolean; alreadyImported?: boolean } = {}) {
+        if (!options.authoring) {
+            const required = (data as { gameplayPlugins?: { id: string; version: string }[] }).gameplayPlugins ?? [];
+            for (const dependency of required) {
+                if (!this.gameplayHost?.isActive(dependency.id, dependency.version)) throw Error(`Required gameplay plugin ${dependency.id}@${dependency.version} is not active`);
+            }
+            if (!required.length) this.gameplayHost?.destroy();
+        }
         if (!options.authoring) this.projectGeneration++;
         const { skipHistory = false } = options;
-        this.gameEngine.importGameData(data);
+        if (!options.alreadyImported) this.gameEngine.importGameData(data);
         this.gameEngine.tileManager.ensureDefaultTiles();
 
         // Apply custom palette if present
@@ -693,7 +728,7 @@ class EditorManager {
     createNewGame(): boolean {
         try {
             const currentData = this.gameEngine.exportGameData();
-            const shareUrl = ShareUtils.buildShareUrl(currentData as Record<string, unknown> | null | undefined);
+            const shareUrl = this.storedProject(currentData as Record<string, unknown> | null | undefined);
             if (!shareUrl || !this.projectSaveManager) return false;
 
             const title = this.dom.titleInput?.value ?? '';
@@ -732,6 +767,7 @@ class EditorManager {
                 }
             }
         };
+        this.gameplayHost?.destroy();
         this.restore(data);
         return true;
     }

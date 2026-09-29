@@ -3,6 +3,8 @@ import { createPluginCatalog, hasPluginUpdate } from '../../editor/manager/plugi
 import published from '../../../public/plugins/example-plugin/1.0.0/plugin.html?raw';
 import index from '../../../public/plugins/catalog.json';
 import example from '../../../examples/plugin-preview.html?raw';
+import mapsPlus from '../../../examples/maps-plus.html?raw';
+import publishedMapsPlus from '../../../public/plugins/maps-plus/1.0.1/plugin.html?raw';
 import { GameState } from '../../runtime/domain/GameState';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
 import { PluginManager } from '../../editor/manager/PluginManager';
@@ -34,6 +36,18 @@ describe('static plugin catalog', () => {
     expect(published).toBe(example);
     expect(index.schemaVersion).toBe(1);
     expect(index.plugins).toContainEqual(entry);
+  });
+  it('publishes Maps+ with matching package metadata', () => {
+    expect(publishedMapsPlus).toBe(mapsPlus);
+    const plugin = parsePluginHtml(publishedMapsPlus);
+    expect(index.plugins).toContainEqual({
+      id: plugin.id,
+      title: plugin.title,
+      shortDescription: plugin.shortDescription,
+      fullDescription: plugin.fullDescription,
+      version: plugin.version,
+      file: 'maps-plus/1.0.1/plugin.html',
+    });
   });
   it('lists at most ten plugins alphabetically for an empty query and shares the search cache', async () => {
     const titles = ['Zulu', 'alpha', 'Charlie', 'bravo', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India', 'Juliet', 'Kilo'];

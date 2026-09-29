@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-09-29-gameplay-plugins-and-world-size',
+    date: '2026-09-29',
+    title: 'Gameplay plugins and larger worlds',
+    description: 'Gameplay plugins can extend projects with worlds up to 5 by 5 rooms. Projects that use them save locally as complete snapshots and can be exported as one HTML file with their plugin code.',
+  },
+  {
     id: '2026-09-28-executable-editor-plugins',
     date: '2026-09-28',
     title: 'Customize your editor with plugins',

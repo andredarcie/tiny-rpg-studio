@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Maps+</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "maps-plus",
+      "title": "Maps+",
+      "shortDescription": "Choose a world size from 1×1 to 5×5.",
+      "fullDescription": "Adds independent row and column controls to the World panel. Keeps the selected world size in local saves and standalone HTML exports.",
+      "version": "1.0.0",
+      "capabilities": ["editor", "gameplay"],
+      "apiVersion": 1
+    }
+  </script>
+  <style data-tiny-rpg-plugin>
+    #tab-editor .maps-plus-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 8px; margin-bottom: 10px; }
+    #tab-editor .maps-plus-controls label { display: grid; gap: 3px; font-size: 12px; }
+    #tab-editor .maps-plus-controls select,
+    #tab-editor .maps-plus-controls button { min-height: 32px; }
+    #tab-editor .maps-plus-status { flex-basis: 100%; min-height: 1em; font-size: 12px; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ editorRoot, api, onCleanup }) {
+      const panel = editorRoot.querySelector('.world-panel');
+      if (!panel || typeof api.resizeWorld !== 'function') throw Error('Maps+ needs the world editor API');
+
+      const controls = document.createElement('div');
+      controls.className = 'maps-plus-controls';
+      const makeSelect = (name, value) => {
+        const label = document.createElement('label');
+        label.textContent = name;
+        const select = document.createElement('select');
+        select.setAttribute('aria-label', name);
+        for (let size = 1; size <= 5; size++) {
+          const option = document.createElement('option');
+          option.value = String(size);
+          option.textContent = String(size);
+          select.append(option);
+        }
+        select.value = String(value);
+        label.append(select);
+        controls.append(label);
+        return select;
+      };
+      const world = api.exportGameData()?.world ?? { rows: 3, cols: 3 };
+      const rows = makeSelect('Rows', world.rows);
+      const cols = makeSelect('Columns', world.cols);
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.textContent = 'Apply size';
+      const status = document.createElement('span');
+      status.className = 'maps-plus-status';
+      status.setAttribute('role', 'status');
+      controls.append(apply, status);
+
+      const resize = async () => {
+        apply.disabled = true;
+        status.textContent = '';
+        try {
+          await api.resizeWorld(Number(rows.value), Number(cols.value), 'maps-plus');
+          status.textContent = `World resized to ${rows.value} × ${cols.value}.`;
+        } catch (error) {
+          status.textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          apply.disabled = false;
+        }
+      };
+      apply.addEventListener('click', resize);
+      onCleanup(() => apply.removeEventListener('click', resize));
+      onCleanup(() => controls.remove());
+      panel.prepend(controls);
+    }
+  </script>
+  <script type="module" data-tiny-rpg-gameplay-plugin>
+    export function activate({ apiVersion }) {
+      if (apiVersion !== 1) throw Error('Maps+ needs gameplay API version 1');
+    }
+  </script>
+</head>
+<body></body>
+</html>

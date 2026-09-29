@@ -10,6 +10,7 @@ import {
     normalizeBackgroundMusicVideoId,
 } from '../../runtime/infra/share/BackgroundMusicVideoId';
 import { ShareUrlHelper } from '../../runtime/infra/share/ShareUrlHelper';
+import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
 import { ONLINE_PLAYER_START_2_TYPE } from '../modules/EditorObjectService';
 import { TileDefinitions } from '../../runtime/domain/definitions/TileDefinitions';
 import {
@@ -272,11 +273,16 @@ class EditorUIController extends EditorManagerModule {
         }
     }
 
-    startOnlineServer(): void {
-        const game = this.gameEngine.getGame();
-        if (!game.online?.enabled) return;
-        const guid = crypto.randomUUID();
-        const gameData = this.gameEngine.exportGameData() as Record<string, unknown>;
+      startOnlineServer(): void {
+          const game = this.gameEngine.getGame();
+          if (!game.online?.enabled) return;
+          const gameData = this.gameEngine.exportGameData() as Record<string, unknown>;
+          if (ShareUtils.needsFullProject(gameData)) {
+              if (this.dom.onlineServerUrl) this.dom.onlineServerUrl.value = '';
+              if (this.dom.onlineServerUrlRow) this.dom.onlineServerUrlRow.style.display = 'none';
+              return;
+          }
+          const guid = crypto.randomUUID();
         const shareUrl = new URL(ShareUrlHelper.buildShareUrl(gameData));
         shareUrl.searchParams.set('online-mode', guid);
         const finalUrl = shareUrl.toString();

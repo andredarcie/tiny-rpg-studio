@@ -5,6 +5,8 @@ import { TextResources } from '../runtime/adapters/TextResources';
 import { installGlobalErrorReporter } from '../runtime/adapters/GlobalErrorReporter';
 import { GameEngine } from '../runtime/services/GameEngine';
 import { soundEngine } from '../runtime/services/SoundEngine';
+import { GameplayPluginHost } from '../runtime/infra/GameplayPluginHost';
+import type { InstalledPlugin } from '../editor/manager/PluginManager';
 
 const text = (key: string, fallback: string): string =>
     String(TextResources.get(key, fallback) || fallback);
@@ -13,7 +15,7 @@ class ExportApplication {
     static boot(): void {
         // Installed before anything else so failures during boot are reported too.
         installGlobalErrorReporter();
-        const initialize = () => this.initialize();
+        const initialize = () => { void this.initialize(); };
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initialize, { once: true });
         } else {
@@ -21,7 +23,7 @@ class ExportApplication {
         }
     }
 
-    static initialize(): void {
+    static async initialize(): Promise<void> {
         const canvas = document.getElementById('game-canvas');
         if (!(canvas instanceof HTMLCanvasElement)) {
             console.error('[TinyRPG] Export canvas is missing.');
@@ -29,7 +31,12 @@ class ExportApplication {
         }
 
         const gameEngine = new GameEngine(canvas);
-        this.loadSharedGame(gameEngine);
+        try {
+            await this.loadSharedGame(gameEngine);
+        } catch (error) {
+            console.error('[TinyRPG] Unable to load bundled gameplay project.', error);
+            return;
+        }
         this.bindReset(gameEngine);
         this.bindFullscreen();
         this.bindVolume(gameEngine);
@@ -44,7 +51,15 @@ class ExportApplication {
         }
     }
 
-    static loadSharedGame(gameEngine: GameEngine): void {
+    static async loadSharedGame(gameEngine: GameEngine): Promise<void> {
+        const bundled = (globalThis as Record<string, unknown>).__TINY_RPG_BUNDLED_PROJECT as { game?: unknown; plugins?: InstalledPlugin[] } | undefined;
+        if (bundled) {
+            const packages = Array.isArray(bundled.plugins) ? bundled.plugins : [];
+            const host = new GameplayPluginHost(gameEngine, () => packages);
+            await host.load(bundled.game);
+            globalThis.addEventListener('pagehide', () => host.destroy(), { once: true });
+            return;
+        }
         const fromLocation = ShareUtils.extractGameDataFromLocation(globalThis.location);
         if (fromLocation) {
             gameEngine.importGameData(fromLocation);

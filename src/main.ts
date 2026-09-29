@@ -6,6 +6,9 @@ import { EditorExportService } from './editor/modules/EditorExportService';
 import { ExploreModal } from './editor/modules/ExploreModal';
 import { PluginRuntime } from './editor/manager/PluginRuntime';
 import { PluginManager } from './editor/manager/PluginManager';
+import { GameplayPluginHost } from './runtime/infra/GameplayPluginHost';
+import { StateWorldManager } from './runtime/domain/state/StateWorldManager';
+import type { GameDefinition } from './types/gameState';
 import { PluginsModal } from './editor/modules/PluginsModal';
 import { DevlogModal } from './editor/modules/DevlogModal';
 import { AboutModal } from './editor/modules/AboutModal';
@@ -76,7 +79,9 @@ class TinyRPGApplication {
     });
   }
 
-  static initializeApplication(): void {
+  static initializeApplication(): void { void this.initializeApplicationAsync(); }
+
+  private static async initializeApplicationAsync(): Promise<void> {
     applyFontConfig();
 
     // Load analytics off the boot critical path (idle) for every entry path —
@@ -111,10 +116,20 @@ class TinyRPGApplication {
       performanceProfiler.enable({ renderLoop: PerformanceProfiler.renderLoopRequested() });
     }
     const gameEngine = performanceProfiler.time('boot.engineCtor', () => new GameEngine(gameCanvas));
-    performanceProfiler.time('boot.loadShared', () => this.loadSharedGameIfAvailable(gameEngine));
-    this.setupPerformanceProfiler(gameEngine);
     const isExportMode = Boolean((globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE);
     const pluginManager = isExportMode ? null : new PluginManager();
+    const gameplayHost = pluginManager ? new GameplayPluginHost(gameEngine, () => pluginManager.installed) : null;
+    const savedProject = ProjectSaveManager.getMostRecentShareUrl();
+    if (savedProject?.startsWith('snapshot:') && !globalThis.location.hash && !(globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE && gameplayHost) {
+      const snapshot = ShareUtils.readStoredProject(savedProject);
+      if (snapshot) {
+        try { await gameplayHost.load(snapshot); }
+        catch (error) { console.error('[TinyRPG] Unable to restore gameplay project.', error); }
+      }
+    } else {
+      performanceProfiler.time('boot.loadShared', () => this.loadSharedGameIfAvailable(gameEngine));
+    }
+    this.setupPerformanceProfiler(gameEngine);
     const pluginRuntime = pluginManager ? new PluginRuntime(pluginManager) : null;
     let editorLoad: Promise<void> | null = null;
     // The editor bundle is code-split and loaded on first editor activation, so a
@@ -125,6 +140,11 @@ class TinyRPGApplication {
       editorLoad = import('./editor/EditorManager')
         .then(({ EditorManager }) => {
           editorManager = new EditorManager(gameEngine);
+          if (editorManager instanceof EditorManager) {
+            editorManager.pluginManager = pluginManager ?? undefined;
+            editorManager.shareService.attachPluginManager(pluginManager ?? undefined);
+            editorManager.gameplayHost = gameplayHost ?? undefined;
+          }
           const root = document.getElementById('tab-editor');
           const bridge = getTinyRpgApi();
           if (root && bridge) {
@@ -164,8 +184,33 @@ class TinyRPGApplication {
     const api: TinyRpgApi = {
       exportGameData: () => gameEngine.exportGameData(),
       importGameData: (data: unknown) => {
+        const required = (data as { gameplayPlugins?: { id: string; version: string }[] } | null)?.gameplayPlugins ?? [];
+        for (const dependency of required) {
+          if (!gameplayHost?.isActive(dependency.id, dependency.version)) throw Error(`Required gameplay plugin ${dependency.id}@${dependency.version} is not active`);
+        }
+        if (!required.length) gameplayHost?.destroy();
         if (editorManager) editorManager.projectGeneration++;
         gameEngine.importGameData(data);
+      },
+      loadProjectData: async (data: unknown, packages) => {
+        if (editorManager) await editorManager.loadProjectData(data as Record<string, unknown>, {}, packages);
+        else if (gameplayHost) await gameplayHost.load(data, packages);
+        else gameEngine.importGameData(data);
+      },
+      resizeWorld: async (rows, cols, pluginId) => {
+        const plugin = pluginManager?.installed.find(item => item.id === pluginId && item.capabilities?.includes('gameplay') && item.version && item.payload?.gameplayJavascript);
+        if (!plugin) throw Error(`Gameplay plugin ${pluginId} is unavailable`);
+        const game = JSON.parse(JSON.stringify(gameEngine.exportGameData())) as GameDefinition;
+        new StateWorldManager(game).resizeWorld(rows, cols);
+        game.gameplayPlugins = [...(game.gameplayPlugins ?? []).filter(item => item.id !== pluginId), { id: pluginId, version: plugin.version ?? '' }];
+        if (gameplayHost) await gameplayHost.load(game);
+        else gameEngine.importGameData(game);
+        if (editorManager) editorManager.projectGeneration++;
+        gameEngine.resetGame();
+        if (editorManager) editorManager.worldService.setActiveRoom(editorManager.state.activeRoomIndex);
+        editorManager?.renderAll();
+        editorManager?.history.pushCurrentState();
+        gameEngine.draw();
       },
       getState: () => gameEngine.getState(),
       draw: () => gameEngine.draw(),
@@ -185,7 +230,11 @@ class TinyRPGApplication {
     };
     setTinyRpgApi(api);
 
-    new EditorExportService();
+    const exportService = new EditorExportService();
+    if (exportService instanceof EditorExportService && typeof Reflect.get(exportService, 'setPluginManager') === 'function') {
+      exportService.setPluginManager(pluginManager ?? undefined);
+      exportService.setGameplayHost(gameplayHost ?? undefined);
+    }
     new ExploreModal();
     new DevlogModal();
     if (pluginManager) {
@@ -195,8 +244,42 @@ class TinyRPGApplication {
         globalThis.removeEventListener('pagehide', teardownPlugins);
         pluginsModal.destroy();
         void pluginRuntime?.destroy();
+        gameplayHost?.destroy();
       };
       globalThis.addEventListener('pagehide', teardownPlugins);
+      pluginManager.subscribe(() => {
+        const current = gameEngine.exportGameData() as GameDefinition;
+        const dependencies = current.gameplayPlugins ?? [];
+        const removed = dependencies.filter(item => !pluginManager.has(item.id));
+        if (!removed.length) {
+          for (const dependency of dependencies) {
+            if (!pluginManager.installed.some(item => item.id === dependency.id && item.version === dependency.version)) gameplayHost?.remove(dependency.id);
+          }
+          return;
+        }
+        const retained = dependencies.filter(item => pluginManager.has(item.id));
+        const resize = !retained.length && (current.world.rows !== 3 || current.world.cols !== 3);
+        if (resize && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
+          alert('Could not save a backup of the larger world. The project was not resized. Reinstall the plugin to recover it.');
+          return;
+        }
+        const game = JSON.parse(JSON.stringify(current)) as GameDefinition;
+        game.gameplayPlugins = retained;
+        const activeRoom = editorManager?.state.activeRoomIndex ?? 0;
+        const row = Math.floor(activeRoom / current.world.cols);
+        const col = activeRoom % current.world.cols;
+        if (resize) new StateWorldManager(game).resizeWorld(3, 3);
+        for (const dependency of removed) gameplayHost?.remove(dependency.id);
+        gameEngine.importGameData(game);
+        gameEngine.resetGame();
+        if (editorManager) {
+          editorManager.projectGeneration++;
+          editorManager.state.activeRoomIndex = resize && row < 3 && col < 3 ? row * 3 + col : resize ? 0 : activeRoom;
+          editorManager.restore(game as unknown as Record<string, unknown>, { alreadyImported: true });
+          try { editorManager.persistAuthoring(); }
+          catch (error) { console.warn('[TinyRPG] Could not save the project after removing a gameplay plugin.', error); }
+        } else gameEngine.draw();
+      });
     }
     new AboutModal();
     this.bindResetButton(gameEngine, async () => {
@@ -578,8 +661,8 @@ class TinyRPGApplication {
     let restoredFromSave = false;
     try {
       const savedUrl = ProjectSaveManager.getMostRecentShareUrl();
-      const restored = savedUrl ? ShareUtils.extractGameDataFromShareUrl(savedUrl) : null;
-      if (restored) {
+      const restored = ShareUtils.readStoredProject(savedUrl);
+      if (restored && !ShareUtils.needsFullProject(restored)) {
         gameEngine.importGameData(restored);
         restoredFromSave = true;
       }

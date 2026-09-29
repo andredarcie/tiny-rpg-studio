@@ -12,6 +12,7 @@ type ExportHtmlOptions = {
     editableInStudio: boolean;
     fontDataUrl: string;
     gameCode: string;
+    bundledProject?: unknown;
     gameMarkup: string;
     locale: string;
     openStudioLabel: string;
@@ -89,14 +90,15 @@ function assembleExportHtml(options: ExportHtmlOptions): ExportHtmlResult {
     const css = escapeInlineStyle(options.css.replaceAll('pixel-operator.woff', options.fontDataUrl));
     const runtimeJavaScript = escapeInlineScript(options.runtimeJavaScript);
     const gameCodeJson = jsonForInlineScript(options.gameCode);
+    const bundledJson = options.bundledProject === undefined ? '' : JSON.stringify(options.bundledProject).replaceAll('<', '\\u003C').replaceAll('\u2028', '\\u2028').replaceAll('\u2029', '\\u2029');
     const locale = escapeHtml(options.locale);
     const title = escapeHtml(options.title || 'Tiny RPG');
     const openStudioLabel = escapeHtml(options.openStudioLabel);
-    const openStudioHidden = options.editableInStudio ? '' : ' hidden';
-    const bootScript = escapeInlineScript(
-        `globalThis.__TINY_RPG_EXPORT_MODE=true;globalThis.__TINY_RPG_SHARED_CODE=${gameCodeJson};` +
-        'if(!location.hash)try{location.hash="#"+globalThis.__TINY_RPG_SHARED_CODE}catch{}',
-    );
+    const openStudioHidden = options.editableInStudio && !options.bundledProject ? '' : ' hidden';
+    const bootScript = options.bundledProject === undefined
+        ? escapeInlineScript(`globalThis.__TINY_RPG_EXPORT_MODE=true;globalThis.__TINY_RPG_SHARED_CODE=${gameCodeJson};` +
+            'if(!location.hash)try{location.hash="#"+globalThis.__TINY_RPG_SHARED_CODE}catch{}')
+        : 'globalThis.__TINY_RPG_EXPORT_MODE=true;globalThis.__TINY_RPG_BUNDLED_PROJECT=JSON.parse(document.getElementById("tiny-rpg-project").textContent);';
     const openStudioScript = escapeInlineScript(
         `document.getElementById("btn-open-studio")?.addEventListener("click",()=>window.open("${OPEN_STUDIO_URL}"+(globalThis.__TINY_RPG_SHARED_CODE||""),"_blank"));`,
     );
@@ -107,6 +109,7 @@ function assembleExportHtml(options: ExportHtmlOptions): ExportHtmlResult {
         `<!doctype html><html lang="${locale}"><head><meta charset="utf-8">` +
         '<meta name="viewport" content="width=device-width,initial-scale=1">' +
         `<title>${title}</title><style id="engine-font-config">${css}</style>` +
+        `${options.bundledProject === undefined ? '' : `<script id="tiny-rpg-project" type="application/json">${bundledJson}</script>`}` +
         `<script>${bootScript}</script></head><body class="game-mode">${markup}` +
         `<script>${openStudioScript}</script><script>${runtimeJavaScript}</script></body></html>`;
 
@@ -120,7 +123,7 @@ function assembleExportHtml(options: ExportHtmlOptions): ExportHtmlResult {
                 byteLength(gameCodeJson),
             css: byteLength(css) - byteLength(options.fontDataUrl),
             font: byteLength(options.fontDataUrl),
-            gameCode: byteLength(gameCodeJson),
+            gameCode: byteLength(gameCodeJson) + byteLength(bundledJson),
             markup: byteLength(markup),
             total: byteLength(html),
         },

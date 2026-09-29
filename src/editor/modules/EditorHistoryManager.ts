@@ -48,7 +48,13 @@ class EditorHistoryManager {
         if (!snapshot) return;
         try {
             const data: Record<string, unknown> = JSON.parse(snapshot) as Record<string, unknown>;
-            this.editorManager.restore(data, { skipHistory: true });
+            if (this.editorManager.gameplayHost) {
+                void this.editorManager.loadProjectData(data, { skipHistory: true }).catch(error => {
+                    console.error('Failed to restore snapshot at index', this.index, error);
+                });
+            } else {
+                this.editorManager.restore(data, { skipHistory: true });
+            }
         } catch (error) {
             console.error('Failed to restore snapshot at index', this.index, error);
             this.stack.splice(this.index, 1);

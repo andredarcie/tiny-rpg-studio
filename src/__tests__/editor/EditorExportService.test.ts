@@ -21,6 +21,7 @@ vi.mock('../../runtime/infra/TinyRpgApi', () => ({
 
 vi.mock('../../runtime/infra/share/ShareUtils', () => ({
   ShareUtils: {
+    needsFullProject: () => false,
     buildShareUrl: (...args: [unknown]) => mockState.shareBuildUrl(...args),
     decode: (...args: [string]) => mockState.shareDecode(...args),
     encode: (...args: [Record<string, unknown>]) => mockState.shareEncode(...args),

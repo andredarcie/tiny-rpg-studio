@@ -15,6 +15,49 @@ class StateWorldManager {
         this.game = game;
     }
 
+    resizeWorld(rows: number, cols: number): void {
+        if (!Number.isInteger(rows) || !Number.isInteger(cols) || rows < 1 || rows > 5 || cols < 1 || cols > 5) {
+            throw Error('World dimensions must be whole numbers from 1 to 5');
+        }
+        const game = this.game;
+        const previousCols = game.world.cols;
+        const previousRows = game.world.rows;
+        const remap = (index: number): number | null => {
+            if (!Number.isInteger(index) || index < 0 || index >= previousRows * previousCols) return null;
+            const row = Math.floor(index / previousCols);
+            const col = index % previousCols;
+            return row < rows && col < cols ? row * cols + col : null;
+        };
+        const oldRooms = game.rooms;
+        const oldMaps = game.tileset.maps;
+        game.rooms = StateWorldManager.createWorldRooms(rows, cols, game.roomSize);
+        game.tileset.maps = Array.from({ length: rows * cols }, () => StateWorldManager.createEmptyTileMap(game.roomSize));
+        for (let row = 0; row < Math.min(rows, previousRows); row++) {
+            for (let col = 0; col < Math.min(cols, previousCols); col++) {
+                const oldIndex = row * previousCols + col;
+                const newIndex = row * cols + col;
+                if (oldRooms[oldIndex]) game.rooms[newIndex] = { ...oldRooms[oldIndex], worldX: col, worldY: row };
+                if (oldMaps[oldIndex]) game.tileset.maps[newIndex] = oldMaps[oldIndex];
+            }
+        }
+        game.tileset.map = game.tileset.maps[0];
+        const moveEntities = <T extends { roomIndex: number }>(entities: T[]): T[] => entities.flatMap(entity => {
+            const target = remap(entity.roomIndex);
+            return target === null ? [] : [{ ...entity, roomIndex: target }];
+        });
+        game.sprites = moveEntities(game.sprites).map(sprite => ({ ...sprite, initialRoomIndex: remap(sprite.initialRoomIndex) ?? sprite.roomIndex }));
+        game.enemies = moveEntities(game.enemies);
+        game.items = moveEntities(game.items);
+        game.objects = moveEntities(game.objects);
+        game.exits = moveEntities(game.exits).flatMap(exit => {
+            const target = remap(exit.targetRoomIndex);
+            return target === null ? [] : [{ ...exit, targetRoomIndex: target }];
+        });
+        if (game.online?.spawnPoints) game.online.spawnPoints = moveEntities(game.online.spawnPoints);
+        game.start.roomIndex = remap(game.start.roomIndex) ?? 0;
+        game.world = { rows, cols };
+    }
+
     get roomSize() {
         return this.game.roomSize;
     }

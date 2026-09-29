@@ -6,14 +6,43 @@ import { TextResources } from '../../runtime/adapters/TextResources';
 import { EditorConfig } from '../../config/EditorConfig';
 import { track } from '../../analytics/track';
 import type { EditorManager } from '../EditorManager';
+import type { PluginManager } from '../manager/PluginManager';
 
 class EditorShareService {
     manager: EditorManager;
     shareTracker: FirebaseShareTracker | null;
 
-    constructor(editorManager: EditorManager) {
+    constructor(editorManager: EditorManager, pluginManager?: PluginManager) {
         this.manager = editorManager;
         this.shareTracker = this.createShareTracker();
+        this.attachPluginManager(pluginManager);
+    }
+
+    attachPluginManager(pluginManager?: PluginManager): void {
+        const update = () => {
+            const disabled = Boolean(pluginManager?.installed.some(plugin => plugin.capabilities?.includes('gameplay')));
+            const button = document.getElementById('btn-generate-url') as HTMLButtonElement | null;
+            const wrapper = document.getElementById('generate-url-wrapper');
+            const help = document.getElementById('generate-url-help');
+            if (button) button.disabled = disabled;
+            if (wrapper) {
+                const message = disabled ? this.t('project.shareUnavailableGameplay', 'Share URLs are unavailable while gameplay plugins are installed. Export HTML instead.') : '';
+                wrapper.title = message;
+                wrapper.dataset.disabled = String(disabled);
+                wrapper.setAttribute('aria-label', message || button?.textContent || 'Generate URL');
+                if (disabled) wrapper.setAttribute('aria-describedby', 'generate-url-help');
+                else wrapper.removeAttribute('aria-describedby');
+                if (help) help.textContent = message;
+            }
+            if (disabled) {
+                this.updateShareUrlField('');
+                try {
+                    if (globalThis.location.hash) globalThis.history.replaceState(null, '', globalThis.location.pathname + globalThis.location.search);
+                } catch { /* Embedded pages may restrict history. */ }
+            }
+        };
+        pluginManager?.subscribe(update);
+        update();
     }
 
     get text() {
@@ -29,14 +58,26 @@ class EditorShareService {
     }
 
     buildShareUrl() {
+        if (this.manager.pluginManager?.installed.some(plugin => plugin.capabilities?.includes('gameplay'))) {
+            this.clearShareLink();
+            return '';
+        }
         const gameData = this.manager.gameEngine.exportGameData();
         const url = ShareUtils.buildShareUrl(gameData as Record<string, unknown> | null | undefined);
+        if (!url) { this.clearShareLink(); return ''; }
         try {
             globalThis.history.replaceState(null, '', url);
         } catch {
             /* ignore */
         }
         return url;
+    }
+
+    private clearShareLink(): void {
+        this.updateShareUrlField('');
+        try {
+            if (globalThis.location.hash) globalThis.history.replaceState(null, '', globalThis.location.pathname + globalThis.location.search);
+        } catch { /* Embedded pages may restrict history. */ }
     }
 
     updateShareUrlField(url: string | null) {
@@ -150,14 +191,15 @@ class EditorShareService {
         const file = target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
             try {
                 const data: Record<string, unknown> = JSON.parse(reader.result as string) as Record<string, unknown>;
-                this.manager.restore(data, { skipHistory: true });
+                if (typeof Reflect.get(this.manager, 'loadProjectData') === 'function') await this.manager.loadProjectData(data, { skipHistory: true });
+                else this.manager.restore(data, { skipHistory: true });
                 this.manager.history.pushCurrentState();
                 track('game_loaded_json');
-            } catch {
-                alert(this.t('alerts.share.loadError'));
+            } catch (error) {
+                alert(error instanceof SyntaxError ? this.t('alerts.share.loadError') : error instanceof Error ? error.message : this.t('alerts.share.loadError'));
             }
         };
         reader.readAsText(file);

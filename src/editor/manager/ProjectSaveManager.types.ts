@@ -4,7 +4,7 @@
 
 export interface SavedProject {
   id: string;                    // UUID único
-  shareUrl: string;             // URL compartilhada do projeto
+  shareUrl: string;             // Share URL or local snapshot: JSON for gameplay projects
   title: string;                // Nome/título do projeto
   savedAt: number;              // Timestamp do salvamento
   thumbnail?: string;           // Data URI da miniatura (opcional)

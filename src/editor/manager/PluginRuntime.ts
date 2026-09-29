@@ -34,7 +34,7 @@ export class PluginRuntime {
   getState(id: string): PluginState {
     const error = this.manager.validationErrors[id];
     if (error) return { status: 'failed', error };
-    return this.entries.get(id)?.state ?? { status: this.manager.installed.find(p => p.id === id)?.payload ? 'pending' : 'inert' };
+    return this.entries.get(id)?.state ?? { status: this.manager.installed.find(p => p.id === id)?.payload?.javascript ? 'pending' : 'inert' };
   }
   async settled(): Promise<void> { let pending; do { pending = this.queue; await pending; } while (pending !== this.queue); }
   private schedule(): void { this.queue = this.queue.then(() => this.reconcile()); }
@@ -50,7 +50,7 @@ export class PluginRuntime {
       if (!packages.some(p => p.id === id && JSON.stringify(p) === entry.signature)) this.cleanup(id);
     }
     if (this.context && !this.destroyed) for (const plugin of packages) {
-      if (!plugin.payload || this.entries.has(plugin.id) || !this.current(plugin)) continue;
+      if (!plugin.payload?.javascript || this.entries.has(plugin.id) || !this.current(plugin)) continue;
       const entry = { signature: JSON.stringify(plugin), cleanups: [] as (() => void)[], state: { status: 'pending' } as PluginState };
       this.entries.set(plugin.id, entry);
       try {

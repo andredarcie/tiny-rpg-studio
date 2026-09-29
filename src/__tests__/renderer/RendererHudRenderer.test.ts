@@ -399,3 +399,12 @@ describe('RendererHudRenderer equipment durability markers', () => {
     });
   });
 });
+
+it('draws every cell of a rectangular world minimap', () => {
+  const { renderer, gameState } = makeFixture();
+  vi.mocked(gameState.getGame).mockReturnValue({ world: { rows: 3, cols: 5 } });
+  vi.mocked(gameState.getPlayer).mockReturnValue({ roomIndex: 14 });
+  const ctx = createCtx();
+  renderer.drawMiniMap(asCanvasCtx(ctx), 0, 0, 4, 20);
+  expect(ctx.fillRect).toHaveBeenCalledTimes(15);
+});

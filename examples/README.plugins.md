@@ -1,8 +1,10 @@
-# Editor plugins
+# Plugins
 
 Import only trusted files. Executable plugins run in the editor page with its full
 DOM, storage, network and JavaScript privileges. There is no sandbox. Parsing an
 HTML file is inert; activation happens after installation and editor readiness.
+Gameplay modules also run in standalone games and exported HTML, with the same
+page privileges. Install only code you trust.
 
 ## Package format
 
@@ -27,16 +29,40 @@ export function activate({ editorRoot, api, onCleanup }) {
 </script>
 ```
 
-The manifest marker is required exactly once. Version 1 requires exactly one
-marked inline module, with no `src`, and permits at most one marked style block.
+The manifest marker is required exactly once. Legacy packages default to the
+`editor` capability. A gameplay package declares a version and
+`"capabilities":["gameplay"]`; use `["editor","gameplay"]` for both entries.
+Each declared capability requires its own self-contained inline module with no
+`src`. Editor code uses `data-tiny-rpg-plugin`; gameplay code uses
+`data-tiny-rpg-gameplay-plugin`. At most one marked style block is permitted.
+
+```html
+<script id="tiny-rpg-plugin" type="application/json">
+{"id":"my-gameplay-plugin","title":"My gameplay plugin","shortDescription":"Example",
+ "fullDescription":"Example","version":"1.0.0","capabilities":["gameplay"],"apiVersion":1}
+</script>
+<script type="module" data-tiny-rpg-gameplay-plugin>
+export function activate({ apiVersion, getWorld, resizeWorld, onCleanup }) {
+  if (apiVersion !== 1) throw Error('Unsupported gameplay API');
+}
+</script>
+```
+
+The gameplay context exposes `apiVersion`, `getWorld()`, `resizeWorld(rows, cols)`
+and `onCleanup(callback)`. Dimensions must be whole numbers from 1 through 5.
+An editor entry can await `api.resizeWorld(rows, cols, pluginId)` to offer controls;
+the host records that plugin's ID and version as a project dependency. Gameplay
+modules should use this context instead of engine internals. The host validates
+required IDs and versions before loading a project and runs cleanup callbacks
+when effects are replaced or removed.
 Unrelated HTML and scripts are ignored. A manifest without `apiVersion` installs
 an inert metadata preview. Unsupported versions and malformed packages fail
 validation. `activate(context)` must be exported; it may return a promise.
 
 `editorRoot` is `#tab-editor`. `api` is the existing `TinyRpgApi` bridge, whose
 supported operations are declared in `src/runtime/infra/TinyRpgApi.ts` (for example
-`getState`, `getTiles`, `setMapTile`, `draw`, and `renderAll`). There are no additional
-game runtime hooks. Use the bridge rather than engine internals.
+`getState`, `getTiles`, `setMapTile`, `draw`, and `renderAll`). Use the bridge rather
+than engine internals.
 
 Scope CSS to the editor. Register `onCleanup(callback)` before each mutation to
 restore moved nodes, original classes, listeners, timers and plugin-owned UI.
@@ -64,10 +90,11 @@ a preview or replaces the executable package after cleaning up the previous one.
 Storage failures leave installed records and effects unchanged. Remove deletes
 the local record and cleans up effects.
 
-Plugins activate only after the editor is constructed, including after reload.
-Gameplay-only visits do not load plugins; online and exported boot paths do not
-activate them. Plugin records are separate from game data and are not embedded in
-shared links or exports.
+Editor entries activate only after the editor is constructed, including after
+reload. Gameplay entries activate for projects that declare them as dependencies,
+including in standalone HTML exports. Installed package records remain local to
+the browser; standalone exports bundle the required gameplay packages. Shared
+links do not carry gameplay plugins.
 
 ## Try the example
 
@@ -80,6 +107,22 @@ shared links or exports.
 5. Reload and reopen Editor: the same effects activate once again.
 6. Open **Plugins ? Manage**, find **Example plugin**, and select **Remove**.
    The original panel positions and World section visibility return.
+
+## Maps+
+
+Search for **Maps+** in Plugins and install it, or import `examples/maps-plus.html`
+through **Editor → Plugins → Import**. Its World
+panel and **Project → Development** controls stay in sync. Select rows and columns
+independently, each from 1 to 5. Choose
+**Apply size** to resize the project. For example, 3 rows and 5 columns produce
+15 rooms; 4 rows and 3 columns produce 12. Existing rooms retain their row and
+column when the width changes. Save locally or export HTML to preserve the full
+world and the Maps+ gameplay dependency. Shared URLs cannot carry these projects.
+Removing Maps+ returns the project to 3×3 and saves a local snapshot of the larger
+world first, including content in rooms that no longer fit. Reinstall Maps+ to load
+that snapshot from project history.
+If you installed Maps+ 1.0.0, choose **Update** in Plugins to get the Development
+controls.
 
 
 ## Publishing to the built-in catalog
@@ -106,7 +149,7 @@ To publish, review the HTML and all JavaScript/CSS as trusted editor-page code. 
 
 Opening Search loads only metadata and shows up to 10 available plugins alphabetically. An empty query restores this list. Queries of at least three characters search locally after 800 ms without typing. The catalog is HTTP-revalidated once per page session; reload to discover catalog changes. Failed searches can retry by editing the query. Packages download only after clicking Install. Download/validation failures can retry with Install. Closing the modal, changing query or mode, or importing locally cancels a pending installation. Catalog and package files are excluded from service-worker precaching.
 
-Installed packages retain their saved bytes in local storage and work without the catalog server. There are no automatic updates: remove and reinstall to get a newer published version, or replace it through local HTML import. Plugins affect only the editor and are excluded from shared/exported game data.
+Installed packages retain their saved bytes in local storage and work without the catalog server. There are no automatic updates: remove and reinstall to get a newer published version, or replace it through local HTML import. Gameplay dependencies are stored in project data and bundled in standalone HTML exports. Share URLs are unavailable while gameplay plugins are installed because the URL codec supports only the legacy nine-room format.
 
 Validate browser behavior with `npx playwright test tests/e2e/plugins.spec.ts`. After `npm run build`, run `npx playwright test -c playwright.plugins.config.ts` to exercise the real production files under `/studio/`.
 

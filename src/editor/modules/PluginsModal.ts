@@ -298,6 +298,9 @@ export class PluginsModal {
     card.dataset.pluginId = plugin.id;
     const title = document.createElement('h3');
     title.textContent = plugin.title;
+    const capabilities = document.createElement('span');
+    capabilities.className = 'plugin-capabilities';
+    capabilities.textContent = (plugin.capabilities ?? ['editor']).join(' + ');
     const summary = document.createElement('p');
     summary.textContent = plugin.shortDescription;
     const more = document.createElement('button');
@@ -314,7 +317,7 @@ export class PluginsModal {
     const lifecycle = document.createElement('p');
     lifecycle.className = 'plugin-lifecycle';
     lifecycle.textContent = this.lifecycleText(plugin.id);
-    card.append(title, summary, lifecycle, more, description, ...this.actions(plugin.id));
+    card.append(title, capabilities, summary, lifecycle, more, description, ...this.actions(plugin.id));
     return card;
   }
 

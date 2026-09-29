@@ -121,7 +121,7 @@ for (const base of ['/', '/studio/']) {
     await page.click('button[data-tab="editor"]');
     await expect(page.locator('.tile-card').first()).toBeVisible();
     await page.click('#btn-plugins');
-    await expect(page.locator('.plugin-card h3')).toHaveText(['Example plugin', 'Minimalist UI']);
+    await expect(page.locator('.plugin-card h3')).toHaveText(['Custom Themes', 'Example plugin', 'Maps+', 'Minimalist UI']);
     expect(catalogRequests).toHaveLength(1);
     expect(packageRequests).toHaveLength(0);
     await page.fill('#plugins-query', 'example');
@@ -157,6 +157,103 @@ for (const base of ['/', '/studio/']) {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tiny-rpg-plugins-v1') ?? '[]'))).toEqual([]);
   });
 }
+
+test('Maps+ is discoverable and installable from the catalog', async ({ page }) => {
+  await page.goto('/');
+  await page.click('button[data-tab="editor"]');
+  await page.click('#btn-plugins');
+  await page.fill('#plugins-query', 'Maps+');
+  const card = page.locator('.plugin-card[data-plugin-id="maps-plus"]');
+  await expect(card).toBeVisible();
+  await card.locator('[data-action="install"]').click();
+  await expect(card.locator('[data-action="installed"]')).toBeDisabled();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await expect(page.locator('.world-panel .maps-plus-controls select[aria-label="Rows"]')).toBeVisible();
+  await expect(page.locator('.project-group--development .maps-plus-controls select[aria-label="Columns"]')).toBeVisible();
+});
+
+test('Maps+ controls stay synchronized with Minimalist UI hiding World', async ({ page }) => {
+  await page.goto('/');
+  await page.click('button[data-tab="editor"]');
+  await page.click('#btn-plugins');
+  await page.setInputFiles('#plugins-file', path.resolve('examples/minimalist-ui.html'));
+  await expect(page.locator('.plugin-card[data-plugin-id="minimalist-ui"]')).toBeVisible();
+  await page.setInputFiles('#plugins-file', path.resolve('public/plugins/maps-plus/1.0.0/plugin.html'));
+  await expect(page.locator('.plugin-card[data-plugin-id="maps-plus"]')).toBeVisible();
+  await page.click('#plugins-search');
+  await page.fill('#plugins-query', 'Maps+');
+  const card = page.locator('.plugin-card[data-plugin-id="maps-plus"]');
+  await expect(card.locator('[data-action="update"]')).toBeEnabled();
+  await card.locator('[data-action="update"]').click();
+  await expect(card.locator('[data-action="installed"]')).toBeDisabled();
+  await page.click('#plugins-modal .tiny-modal__close');
+
+  const world = page.locator('.world-panel .maps-plus-controls');
+  const development = page.locator('.project-group--development .maps-plus-controls');
+  await expect(page.locator('.editor-section--world')).toBeHidden();
+  await page.locator('.editor-section--project > details > summary').click();
+  await page.click('[data-project-tab-button="development"]');
+  await expect(development).toBeVisible();
+  await development.locator('select[aria-label="Rows"]').selectOption('4');
+  await development.locator('select[aria-label="Columns"]').selectOption('3');
+  await expect(world.locator('select[aria-label="Rows"]')).toHaveValue('4');
+  await expect(world.locator('select[aria-label="Columns"]')).toHaveValue('3');
+  await development.locator('button').click();
+  await expect(page.locator('.world-cell')).toHaveCount(12);
+
+  await page.click('#btn-plugins');
+  await page.click('#plugins-manage');
+  await page.locator('[data-plugin-id="minimalist-ui"] [data-action="remove"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await expect(world).toBeVisible();
+  await world.locator('select[aria-label="Columns"]').selectOption('5');
+  await expect(development.locator('select[aria-label="Columns"]')).toHaveValue('5');
+  await world.locator('button').click();
+  await expect(page.locator('.world-cell')).toHaveCount(20);
+});
+
+test('removing Maps+ restores shareable 3×3 world and backs up trimmed rooms', async ({ page }) => {
+  await page.goto('/');
+  await page.click('button[data-tab="editor"]');
+  await page.click('#btn-plugins');
+  await page.fill('#plugins-query', 'Maps+');
+  await page.locator('[data-plugin-id="maps-plus"] [data-action="install"]').click();
+  await expect(page.locator('[data-plugin-id="maps-plus"] [data-action="installed"]')).toBeDisabled();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await page.locator('.world-panel .maps-plus-controls select[aria-label="Rows"]').selectOption('3');
+  await page.locator('.world-panel .maps-plus-controls select[aria-label="Columns"]').selectOption('5');
+  await page.locator('.world-panel .maps-plus-controls button').click();
+  await expect(page.locator('.world-cell')).toHaveCount(15);
+  await page.locator('.world-cell[data-room-index="14"]').click();
+  await page.locator('.tile-card-select').first().click();
+  await page.locator('#editor-canvas').click({ position: { x: 100, y: 100 } });
+
+  await page.click('#btn-plugins');
+  await page.click('#plugins-manage');
+  await page.locator('[data-plugin-id="maps-plus"] [data-action="remove"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await expect(page.locator('.world-cell')).toHaveCount(9);
+  await expect(page.locator('.maps-plus-controls')).toHaveCount(0);
+  await page.click('button[data-project-tab-button="export"]');
+  await expect(page.locator('#btn-generate-url')).toBeEnabled();
+  await page.locator('#btn-generate-url').click();
+  await expect(page.locator('#project-share-url')).not.toHaveValue('');
+
+  const backup = await page.evaluate(() => {
+    const projects = (JSON.parse(localStorage.getItem('tiny-rpg-projects-history') ?? '{}') as { projects?: { shareUrl: string }[] }).projects ?? [];
+    const saved = projects.find(project => project.shareUrl.startsWith('snapshot:'));
+    return saved ? JSON.parse(saved.shareUrl.slice(9)) as { world: { rows: number; cols: number }; tileset: { maps: { ground: (string | number | null)[][] }[] }; gameplayPlugins: { id: string }[] } : null;
+  });
+  expect(backup?.world).toEqual({ rows: 3, cols: 5 });
+  expect(backup?.gameplayPlugins).toEqual([{ id: 'maps-plus', version: '1.0.1' }]);
+  expect(backup?.tileset.maps[14].ground.flat().some(tile => tile !== null)).toBe(true);
+
+  await page.reload();
+  await page.click('button[data-tab="editor"]');
+  await expect(page.locator('.world-cell')).toHaveCount(9);
+  await page.click('button[data-project-tab-button="export"]');
+  await expect(page.locator('#btn-generate-url')).toBeEnabled();
+});
 
 test('failed and cancelled catalog downloads never install, and retry works', async ({ page }) => {
   await page.goto('/');

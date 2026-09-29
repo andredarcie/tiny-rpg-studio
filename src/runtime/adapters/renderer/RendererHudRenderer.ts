@@ -76,8 +76,10 @@ class RendererHudRenderer {
         const label = this.getLevelLabel();
         const fontSize = area.fontSize ?? FONT_SIZE;
 
-        const mapCellSize = Math.max(4, Math.floor((height - padding * 2) / 3));
-        const miniMapSize = mapCellSize * 3;
+        const world = this.gameState.getGame().world;
+        const mapDimension = Math.max(world?.rows || 3, world?.cols || 3);
+        const mapCellSize = Math.max(4, Math.floor((height - padding * 2) / mapDimension));
+        const miniMapSize = mapCellSize * mapDimension;
         const miniMapX = width - padding - miniMapSize;
         const miniMapY = Math.round(height / 2 - miniMapSize / 2);
 
@@ -291,8 +293,9 @@ class RendererHudRenderer {
     }
 
     drawMiniMap(ctx: CanvasRenderingContext2D, x: number, y: number, cellSize: number, mapSize: number) {
-        const rows = 3;
-        const cols = 3;
+        const game = this.gameState.getGame();
+        const rows = Math.max(1, game.world?.rows || 3);
+        const cols = Math.max(1, game.world?.cols || 3);
         const bgColor = 'rgba(255,255,255,0.08)';
         const borderColor = 'rgba(255,255,255,0.25)';
         const activeColor = this.paletteManager.getColor(12);
@@ -303,16 +306,12 @@ class RendererHudRenderer {
         ctx.strokeStyle = 'rgba(255,255,255,0.12)';
         ctx.strokeRect(-2, -2, mapSize + 4, mapSize + 4);
 
-        const game = this.gameState.getGame();
-        const worldRows = Math.max(1, game.world?.rows || 1);
         const worldCols = Math.max(1, game.world?.cols || 1);
         const playerRoom = this.gameState.getPlayer().roomIndex ?? 0;
         const playerRow = Math.floor(playerRoom / worldCols);
         const playerCol = playerRoom % worldCols;
-        const rowChunk = Math.max(1, Math.ceil(worldRows / rows));
-        const colChunk = Math.max(1, Math.ceil(worldCols / cols));
-        const activeRow = Math.min(rows - 1, Math.floor(playerRow / rowChunk));
-        const activeCol = Math.min(cols - 1, Math.floor(playerCol / colChunk));
+        const activeRow = playerRow;
+        const activeCol = playerCol;
 
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {

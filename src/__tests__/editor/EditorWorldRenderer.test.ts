@@ -205,12 +205,20 @@ describe('EditorWorldRenderer', () => {
     expect(() => renderer.renderGameMinimap(1, 1)).not.toThrow();
   });
 
-  it('creates 9 minimap cells (3x3)', () => {
+  it('creates one minimap cell per room', () => {
     const svc = makeService();
     const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
     renderer.renderGameMinimap(2, 1);
     const cells = svc.dom.mapPosition.querySelectorAll('.game-minimap-cell');
-    expect(cells.length).toBe(9);
+    expect(cells.length).toBe(4);
+  });
+
+  it('renders a 3 by 5 minimap', () => {
+    const svc = makeService({}, { world: { rows: 3, cols: 5 }, rooms: Array(15).fill({}) });
+    const renderer = new EditorWorldRenderer(asWorldRendererService(svc));
+    renderer.renderGameMinimap(5, 3);
+    expect(svc.dom.mapPosition.querySelectorAll('.game-minimap-cell')).toHaveLength(15);
+    expect(svc.dom.mapPosition.querySelector('.game-minimap-cell-active')?.getAttribute('data-mm-col')).toBe('5');
   });
 
   it('marks active cell with game-minimap-cell-active class', () => {

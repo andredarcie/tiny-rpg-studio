@@ -9,7 +9,27 @@ import { ShareUrlHelper } from './ShareUrlHelper';
 
 class ShareUtils {
     static buildShareUrl(gameData: Record<string, unknown> | null | undefined) {
+        if (ShareUtils.needsFullProject(gameData)) return '';
         return ShareUrlHelper.buildShareUrl(gameData);
+    }
+
+    static needsFullProject(gameData: Record<string, unknown> | null | undefined): boolean {
+        const world = gameData?.world as { rows?: number; cols?: number } | undefined;
+        return Boolean((gameData?.gameplayPlugins as unknown[] | undefined)?.length || (world && (world.rows !== undefined || world.cols !== undefined) && (world.rows !== 3 || world.cols !== 3)));
+    }
+
+    static buildStoredProject(gameData: Record<string, unknown> | null | undefined): string {
+        if (!gameData) return '';
+        return ShareUtils.needsFullProject(gameData) ? `snapshot:${JSON.stringify(gameData)}` : ShareUtils.buildShareUrl(gameData);
+    }
+
+    static readStoredProject(value: string | null | undefined): Record<string, unknown> | null {
+        if (!value) return null;
+        if (value.startsWith('snapshot:')) {
+            try { return JSON.parse(value.slice(9)) as Record<string, unknown>; }
+            catch { return null; }
+        }
+        return ShareUtils.extractGameDataFromShareUrl(value);
     }
 
     static extractGameDataFromLocation(location: { hash?: string } | null | undefined) {
@@ -29,6 +49,7 @@ class ShareUtils {
     }
 
     static encode(gameData: Record<string, unknown> | null | undefined) {
+        if (ShareUtils.needsFullProject(gameData)) return '';
         return ShareEncoder.buildShareCode(gameData);
     }
 
