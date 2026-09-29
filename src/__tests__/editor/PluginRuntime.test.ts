@@ -145,13 +145,13 @@ it('cleans effects registered during asynchronous activation after removal', asy
 it('applies Minimalist UI to current and new cards and restores the localized interface', async () => {
   const { default: html } = await import('../../../index.html?raw');
   const { default: source } = await import('../../../examples/minimalist-ui.html?raw');
-  const { default: published } = await import('../../../public/plugins/minimalist-ui/1.0.2/plugin.html?raw');
+  const { default: published } = await import('../../../public/plugins/minimalist-ui/1.0.3/plugin.html?raw');
   const { default: catalog } = await import('../../../public/plugins/catalog.json');
   const { parsePluginHtml } = await import('../../editor/manager/PluginManager');
   expect(published).toBe(source);
   const plugin = parsePluginHtml(source);
   const entry = catalog.plugins.find(entry => entry.id === plugin.id);
-  expect(entry).toMatchObject({ id: plugin.id, title: plugin.title, shortDescription: plugin.shortDescription, fullDescription: plugin.fullDescription, version: '1.0.2', file: 'minimalist-ui/1.0.2/plugin.html' });
+  expect(entry).toMatchObject({ id: plugin.id, title: plugin.title, shortDescription: plugin.shortDescription, fullDescription: plugin.fullDescription, version: '1.0.3', file: 'minimalist-ui/1.0.3/plugin.html' });
   document.body.innerHTML = html;
   const root = document.getElementById('tab-editor') as HTMLElement;
   root.insertAdjacentHTML('beforeend', '<div class="enemy-xp-block">XP</div><div class="npc-card"><canvas></canvas><div class="meta">NPC name</div><button class="sprite-edit-btn">Edit</button></div><div class="enemy-card"><canvas></canvas><div class="enemy-meta">Enemy name</div></div><div class="object-type-card"><canvas></canvas><div class="object-type-meta">Object description</div></div>');
@@ -175,9 +175,23 @@ it('applies Minimalist UI to current and new cards and restores the localized in
     if (!found) throw Error('Missing ' + selector);
     return found;
   };
-  const selectors = ['.enemy-xp-block', '.npc-card .meta', '.enemy-meta', '.object-type-meta', '.editor-section--world', '#pixel-art-editor-modal .tiny-modal__header', '.pae-sprite-meta', '.pae-tile-effect-label', '.pae-tools'];
+  const selectors = ['#btn-explore', '.enemy-xp-block', '.npc-card .meta', '.enemy-meta', '.object-type-meta', '.editor-section--world', '#pixel-art-editor-modal .tiny-modal__header', '.pae-sprite-meta', '.pae-tile-effect-label', '.pae-tools'];
   for (const selector of selectors) expect(getComputedStyle(element(selector)).display).toBe('none');
   const project = element('[data-text-key="sections.project"]').closest('details');
+  const filters = {
+    'data-npc-variant-filter': { human: '1', elf: '2', dwarf: '3', fixed: '+' },
+    'data-object-category-filter': { markers: '1', equipment: '2', consumables: '3', obstacles: '4', triggers: '5', logic: '6' }
+  };
+  for (const [attribute, labels] of Object.entries(filters)) {
+    for (const [value, text] of Object.entries(labels)) {
+      const button = element(`[${attribute}="${value}"]`);
+      expect(button.lastChild?.textContent).toBe(text);
+      const localized = button.querySelector<HTMLElement>('[data-text-key]');
+      expect(localized?.hidden).toBe(true);
+      if (localized) localized.textContent = `Localized ${value}`;
+    }
+  }
+  expect(element('[data-object-category-filter="all"]').dataset.textKey).toBe('objects.category.all');
   expect(project?.open).toBe(false);
   project?.setAttribute('open', '');
   expect(project?.open).toBe(true);
@@ -196,6 +210,14 @@ it('applies Minimalist UI to current and new cards and restores the localized in
   await runtime.settled();
   for (const selector of selectors) expect(getComputedStyle(element(selector)).display).not.toBe('none');
   expect(label.nextElementSibling).toBeNull();
+  for (const [attribute, labels] of Object.entries(filters)) {
+    for (const value of Object.keys(labels)) {
+      const button = element(`[${attribute}="${value}"]`);
+      expect(button.textContent).toBe(`Localized ${value}`);
+      expect(button.hasAttribute('data-text-key')).toBe(true);
+      expect(button.children).toHaveLength(0);
+    }
+  }
   expect(label.textContent).toBe('Updated localized label');
   expect(project?.open).toBe(true);
   expect(tab.textContent).toBe(originalTitle);
