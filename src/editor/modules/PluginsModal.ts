@@ -3,11 +3,13 @@ import { Modal } from '../../ui/Modal';
 import type { PluginManager, PluginMetadata } from '../manager/PluginManager';
 import { parsePluginHtml } from '../manager/PluginManager';
 import { searchPlugins, downloadPlugin, listPlugins, hasPluginUpdate, type CatalogEntry } from '../manager/pluginCatalog';
+import { CustomSources, type CustomEntry } from '../manager/customSources';
 
 import type { PluginRuntime } from '../manager/PluginRuntime';
 
 type Search = (query: string) => Promise<CatalogEntry[]>;
-type Mode = 'search' | 'manage';
+type Mode = 'search' | 'manage' | 'sources';
+type Entry = CatalogEntry | CustomEntry;
 const text = (key: string) => TextResources.get(`plugins.${key}`);
 
 export class PluginsModal {
@@ -25,8 +27,18 @@ export class PluginsModal {
   private storageStatus = document.createElement('p');
   private grid = document.createElement('div');
   private fileInput = document.createElement('input');
+  private sources = new CustomSources();
+  private unsubscribeSources?: () => void;
+  private sourcesSection = document.createElement('section');
+  private sourceInput = document.createElement('input');
+  private sourceStatus = document.createElement('p');
+  private sourceList = document.createElement('div');
+  private addingSource = false;
+  private sourceController: AbortController | null = null;
+  private installEntry: Entry | null = null;
   private reader: FileReader | null = null;
   private boundImport = () => this.importFile();
+  private boundSourceKey = (event: KeyboardEvent) => { if (event.key === 'Enter') { event.preventDefault(); void this.addSource(); } };
   private mode: Mode = 'search';
   private results: CatalogEntry[] = [];
   private catalog: CatalogEntry[] = [];
@@ -88,12 +100,28 @@ export class PluginsModal {
     content.id = 'plugins-content';
     content.append(this.searchField, this.status, this.storageStatus, this.grid);
     this.body.append(navigation, content);
+    this.sourcesSection.id = 'plugins-sources-content';
+    this.sourcesSection.hidden = true;
+    this.sourcesSection.className = 'plugins-sources';
+    const sourceLabel = document.createElement('label');
+    sourceLabel.htmlFor = 'plugins-source-url';
+    sourceLabel.textContent = text('sourceUrl');
+    this.sourceInput.id = 'plugins-source-url';
+    this.sourceInput.type = 'url';
+    this.sourceInput.required = true;
+    const add = document.createElement('button');
+    add.id = 'plugins-source-add'; add.type = 'button'; add.textContent = text('add');
+    this.sourceStatus.id = 'plugins-source-status'; this.sourceStatus.setAttribute('role', 'status');
+    this.sourceList.id = 'plugins-source-list';
+    this.sourcesSection.append(sourceLabel, this.sourceInput, add, this.sourceStatus, this.sourceList);
+    this.body.append(this.sourcesSection);
     this.fileInput.type = 'file';
     this.fileInput.accept = '.html,.htm,text/html';
     this.fileInput.id = 'plugins-file';
     this.fileInput.hidden = true;
     this.body.append(this.fileInput);
     this.fileInput.addEventListener('change', this.boundImport);
+    this.sourceInput.addEventListener('keydown', this.boundSourceKey);
     this.modal.setBody(this.body);
     this.button?.addEventListener('click', this.boundOpen);
     this.query.addEventListener('input', this.boundInput);
@@ -102,6 +130,13 @@ export class PluginsModal {
     if (this.editor) this.observer.observe(this.editor, { attributes: true, attributeFilter: ['class'] });
     this.boundVisibility();
     this.selectMode('search');
+    this.unsubscribeSources = this.sources.subscribe(() => {
+      if (this.destroyed) return;
+      if (this.installEntry && 'sourceUrl' in this.installEntry && !this.sources.urls.includes(this.installEntry.sourceUrl)) this.cancelInstall();
+      this.renderSources();
+      if (this.modal.isOpen && this.mode !== 'sources') this.render();
+    });
+    void this.sources.load();
     this.unsubscribeRuntime = runtime?.subscribe(() => {
       for (const card of this.grid.querySelectorAll<HTMLElement>('.plugin-card')) {
         const lifecycle = card.querySelector<HTMLElement>('.plugin-lifecycle');
@@ -117,12 +152,18 @@ export class PluginsModal {
     this.manageButton.textContent = text('manage');
     const label = this.searchField.querySelector('label');
     if (label) label.textContent = text('query');
+    const sourceLabel = this.sourcesSection.querySelector('label');
+    if (sourceLabel) sourceLabel.textContent = text('sourceUrl');
+    const sourceAdd = this.sourcesSection.querySelector<HTMLButtonElement>('#plugins-source-add');
+    if (sourceAdd) sourceAdd.textContent = text('add');
     this.modal.root.querySelector('.tiny-modal__close')?.setAttribute('aria-label', TextResources.get('buttons.close', 'Close'));
     this.modal.open();
     this.selectMode('search');
   }
 
   close(): void {
+    this.sourceController?.abort();
+    this.sourceController = null;
     this.query.value = '';
     this.cancelImport();
     this.cancelSearch();
@@ -134,6 +175,7 @@ export class PluginsModal {
   private cancelInstall(): void {
     this.installController?.abort();
     this.installController = null;
+    this.installEntry = null;
   }
 
   private cancelSearch(): void {
@@ -144,6 +186,7 @@ export class PluginsModal {
   }
 
   private selectMode(mode: Mode): void {
+    if (this.mode === 'sources' && mode !== 'sources') { this.sourceController?.abort(); this.sourceController = null; }
     this.cancelImport();
     this.cancelSearch();
     if (this.mode !== mode) {
@@ -153,18 +196,24 @@ export class PluginsModal {
     this.mode = mode;
     this.searchButton.setAttribute('aria-pressed', String(mode === 'search'));
     this.manageButton.setAttribute('aria-pressed', String(mode === 'manage'));
-    this.body.querySelector('section')?.setAttribute('aria-labelledby', `plugins-${mode}`);
+    const content = this.body.querySelector<HTMLElement>('#plugins-content');
+    if (!content) return;
+    content.hidden = mode === 'sources';
+    this.sourcesSection.hidden = mode !== 'sources';
+    content.setAttribute('aria-labelledby', `plugins-${mode}`);
     this.searchField.hidden = mode !== 'search';
     this.modal.setFooter(mode === 'search' ? [{
+      id: 'plugins-add-sources', label: text('addSources'), onClick: () => { this.selectMode('sources'); this.sourceInput.focus(); },
+    }, {
       id: 'plugins-import', label: text('import'), onClick: () => { this.cancelInstall(); this.render(); this.fileInput.click(); },
-    }] : []);
+    }] : mode === 'sources' ? [{ id: 'plugins-sources-back', label: text('back'), onClick: () => { this.selectMode('search'); this.query.focus(); } }] : []);
     if (mode === 'search') this.scheduleSearch();
-    else {
+    else if (mode === 'manage') {
       this.catalog = [];
       this.lookupError = false;
       this.render();
       void this.loadCatalog();
-    }
+    } else this.renderSources();
   }
 
   private async loadCatalog(): Promise<void> {
@@ -181,8 +230,16 @@ export class PluginsModal {
     }
   }
 
-  private catalogEntry(id: string): CatalogEntry | undefined {
-    return (this.mode === 'manage' ? this.catalog : this.results).find(entry => entry.id === id);
+  private entries(): Entry[] {
+    const primary = this.mode === 'manage' ? this.catalog : this.results;
+    const term = this.query.value.trim().toLowerCase();
+    const custom = this.sources.entries.filter(entry => this.mode === 'manage' || (!term || [entry.title, entry.shortDescription, entry.fullDescription].some(value => value.toLowerCase().includes(term))));
+    const ids = new Set(primary.map(entry => entry.id));
+    return [...primary, ...custom.filter(entry => { if (ids.has(entry.id)) return false; ids.add(entry.id); return true; })];
+  }
+
+  private catalogEntry(id: string): Entry | undefined {
+    return this.entries().find(entry => entry.id === id);
   }
 
   private actions(id: string): HTMLButtonElement[] {
@@ -239,10 +296,46 @@ export class PluginsModal {
   }
 
   private render(): void {
-    const records = this.mode === 'manage' ? this.manager.installed : this.results;
+    if (this.mode === 'sources') return;
+    const records = this.mode === 'manage' ? this.manager.installed : this.entries();
     this.grid.replaceChildren(...records.map(record => this.renderCard(record)));
     this.status.textContent = this.mode === 'manage' && this.lookupError ? text('lookupError') : records.length ? '' : text(this.mode === 'manage' ? 'empty' : 'noResults');
+    if (this.sources.loading && !records.length) this.status.textContent = text('sourceLoading');
     this.storageStatus.textContent = this.manager.storageError ? text('storageError') : '';
+    if (this.sources.discoveryError) this.status.textContent = text('sourceLoadError');
+    if (this.sources.storageError) this.storageStatus.textContent = text('storageError');
+  }
+
+  private renderSources(): void {
+    this.sourceList.replaceChildren(...this.sources.urls.map(url => {
+      const row = document.createElement('div'); row.className = 'plugins-source-row';
+      const label = document.createElement('span'); label.textContent = url;
+      const remove = document.createElement('button'); remove.type = 'button'; remove.dataset.sourceUrl = url; remove.textContent = text('remove');
+      row.append(label, remove); return row;
+    }));
+    if (this.sources.storageError) this.sourceStatus.textContent = text('storageError');
+  }
+
+  private async addSource(): Promise<void> {
+    if (this.addingSource || !this.sourceInput.value.trim()) return;
+    this.addingSource = true;
+    const controller = new AbortController();
+    this.sourceController = controller;
+    this.sourceStatus.textContent = text('sourceLoading');
+    const button = this.sourcesSection.querySelector<HTMLButtonElement>('#plugins-source-add');
+    if (!button) return;
+    button.disabled = true;
+    try {
+      await this.sources.add(this.sourceInput.value, controller.signal);
+      if (this.destroyed || controller.signal.aborted) return;
+      this.sourceInput.value = '';
+      this.sourceStatus.textContent = text('sourceAdded');
+    } catch {
+      if (!this.destroyed && !controller.signal.aborted) this.sourceStatus.textContent = this.sources.storageError ? text('storageError') : text('sourceError');
+    } finally {
+      if (this.sourceController === controller) this.sourceController = null;
+      this.addingSource = false; button.disabled = false;
+    }
   }
 
   private cancelImport(): void {
@@ -328,6 +421,12 @@ export class PluginsModal {
     if (!(event.target instanceof Element)) return;
     const button = event.target.closest<HTMLButtonElement>('button');
     if (!button) return;
+    if (button.id === 'plugins-source-add') { void this.addSource(); return; }
+    if (button.dataset.sourceUrl) {
+      try { this.sources.remove(button.dataset.sourceUrl); this.sourceStatus.textContent = ''; }
+      catch { this.sourceStatus.textContent = text('storageError'); }
+      return;
+    }
     if (button.dataset.mode) { this.selectMode(button.dataset.mode as Mode); return; }
     const card = button.closest<HTMLElement>('.plugin-card');
     if (!card) return;
@@ -354,11 +453,12 @@ export class PluginsModal {
     (focusTarget ?? this.manageButton).focus();
   }
 
-  private async install(plugin: CatalogEntry, button: HTMLButtonElement): Promise<void> {
+  private async install(plugin: Entry, button: HTMLButtonElement): Promise<void> {
     const installed = this.manager.installed.find(record => record.id === plugin.id);
     if (this.installController || (installed && !hasPluginUpdate(installed.version, plugin.version))) return;
     const controller = new AbortController();
     this.installController = controller;
+    this.installEntry = plugin;
     this.status.textContent = '';
     this.storageStatus.textContent = '';
     const focused = document.activeElement === button;
@@ -368,7 +468,7 @@ export class PluginsModal {
     const generation = this.generation;
     const current = () => this.installController === controller && generation === this.generation && !controller.signal.aborted;
     try {
-      const downloaded = await this.download(plugin, controller.signal);
+      const downloaded = 'sourceUrl' in plugin ? await this.sources.download(plugin, controller.signal) : await this.download(plugin, controller.signal);
       if (!current()) return;
       if (!this.manager.install(downloaded)) {
         if (this.manager.lastError === 'storage') this.storageStatus.textContent = text('storageError');
@@ -380,6 +480,7 @@ export class PluginsModal {
     } finally {
       if (current()) {
         this.installController = null;
+        this.installEntry = null;
         this.refreshActions();
         if (focused && document.activeElement === document.body) {
           (card?.querySelector<HTMLButtonElement>('.plugin-action:not(:disabled)') ?? card?.querySelector<HTMLButtonElement>('.plugin-read-more'))?.focus();
@@ -392,11 +493,13 @@ export class PluginsModal {
     if (this.destroyed) return;
     this.destroyed = true;
     this.unsubscribeRuntime?.();
+    this.unsubscribeSources?.();
     this.close();
     this.observer.disconnect();
     this.button?.removeEventListener('click', this.boundOpen);
     this.query.removeEventListener('input', this.boundInput);
     this.fileInput.removeEventListener('change', this.boundImport);
+    this.sourceInput.removeEventListener('keydown', this.boundSourceKey);
     this.body.removeEventListener('click', this.boundClick);
     this.modal.remove();
   }

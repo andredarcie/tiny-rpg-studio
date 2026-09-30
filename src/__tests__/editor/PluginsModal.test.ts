@@ -47,7 +47,7 @@ describe('PluginsModal', () => {
     await Promise.resolve();
     search.mockClear();
   });
-  afterEach(() => { modal.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); document.body.innerHTML = ''; });
+  afterEach(() => { modal.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = ''; });
   it.each([
     [undefined, '1.0.0', true], ['preview', '1.0.0', true],
     ['1.0.0', '1.0.0', false], ['1.0.10', '1.0.2', false],
@@ -337,6 +337,43 @@ describe('PluginsModal', () => {
     const picker = vi.spyOn(element<HTMLInputElement>('#plugins-file'), 'click');
     click('#plugins-import'); expect(picker).toHaveBeenCalledOnce();
     click('#plugins-manage'); expect(document.getElementById('plugins-import')).toBeNull();
+  });
+  it('opens Sources from the Search footer and returns with Search visible', () => {
+    const add = element('#plugins-add-sources');
+    expect(add.nextElementSibling?.id).toBe('plugins-import');
+    click('#plugins-add-sources');
+    expect(element('#plugins-sources-content').hidden).toBe(false);
+    expect(element('#plugins-content').hidden).toBe(true);
+    expect(document.activeElement?.id).toBe('plugins-source-url');
+    click('#plugins-sources-back');
+    expect(element('#plugins-content').hidden).toBe(false);
+    expect(element('#plugins-sources-content').hidden).toBe(true);
+  });
+  it('discovers and installs a custom HTML plugin without calling the bundled downloader', async () => {
+    const url = 'https://example.com/extra.html?raw=1';
+    const source = `<script id="tiny-rpg-plugin" type="application/json">${JSON.stringify({ id: 'extra', title: 'Extra plugin', shortDescription: 'Extra', fullDescription: 'Extra details', apiVersion: 1 })}</script><script type="module" data-tiny-rpg-plugin>export function activate() {}</script>`;
+    const fetcher = vi.fn(() => Promise.resolve({ ok: true, url, text: () => Promise.resolve(source) }));
+    vi.stubGlobal('fetch', fetcher);
+    click('#plugins-add-sources');
+    const field = element<HTMLInputElement>('#plugins-source-url');
+    field.value = url;
+    click('#plugins-source-add');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(element('#plugins-source-list').textContent).toContain(url);
+    click('#plugins-sources-back');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(Array.from(document.querySelectorAll('.plugin-card h3')).map(card => card.textContent)).toContain('Extra plugin');
+    const card = element<HTMLElement>('[data-plugin-id="extra"]');
+    const action = card.querySelector<HTMLButtonElement>('.plugin-action');
+    expect(action).not.toBeNull();
+    action?.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(manager.has('extra')).toBe(true);
+    expect(download).not.toHaveBeenCalled();
+    click('#plugins-add-sources');
+    click('[data-source-url]');
+    click('#plugins-sources-back');
+    expect(document.querySelector('[data-plugin-id="extra"]')).toBeNull();
   });
   it('imports HTML metadata, opens Manage, and persists the listing', async () => {
     vi.useRealTimers();

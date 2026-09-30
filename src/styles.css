@@ -5680,6 +5680,13 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
 .plugins-search-field { display: grid; gap: 8px; }
 .plugins-search-field[hidden] { display: none; }
 .plugins-search-field input { width: 100%; min-width: 0; box-sizing: border-box; }
+.plugins-sources { display: grid; gap: 12px; }
+.plugins-sources[hidden], #plugins-content[hidden] { display: none; }
+.plugins-sources input { width: 100%; min-width: 0; box-sizing: border-box; }
+.plugins-sources > button { justify-self: start; }
+.plugins-source-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border: 1px solid var(--border); }
+.plugins-source-row span { overflow-wrap: anywhere; min-width: 0; }
+.plugins-source-row button { flex: none; }
 .plugins-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
