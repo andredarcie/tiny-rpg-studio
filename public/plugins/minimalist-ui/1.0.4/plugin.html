@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Minimalist UI</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+{
+    "id": "minimalist-ui",
+    "title": "Minimalist UI",
+    "shortDescription": "A quieter editor with pixel-art catalogs and fewer labels.",
+    "fullDescription": "Shows NPC, object, and enemy catalog artwork without names, descriptions, or stats. Hides World and enemy XP, starts Project collapsed with Information selected, and simplifies the pixel-art editor by hiding its header, effect label, and Paint/Erase buttons. Sprite editing and object configuration remain available. Use Escape or Save to close the pixel-art editor. Removing this trusted editor-only plugin restores the interface.",
+    "apiVersion": 1,
+    "version": "1.0.4"
+}
+  </script>
+  <style data-tiny-rpg-plugin>
+    #btn-explore,
+    #tab-editor .npc-card .meta,
+    #tab-editor .enemy-card .enemy-meta,
+    #tab-editor .enemy-xp-block,
+    #tab-editor .object-type-card .object-type-meta,
+    #tab-editor .object-card .object-header,
+    #tab-editor .object-card .object-status,
+    #tab-editor .editor-section--world,
+    #tab-editor [data-mobile-target="world"],
+    #pixel-art-editor-modal .tiny-modal__header,
+    #pixel-art-editor-modal .pae-tile-effect-label,
+    #pixel-art-editor-modal .pae-tools {
+      display: none !important;
+    }
+
+    #tab-editor .npc-card,
+    #tab-editor .enemy-card,
+    #tab-editor .object-type-card {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ editorRoot, onCleanup }) {
+      const filters = {
+        'data-npc-variant-filter': { human: '1', elf: '2', dwarf: '3', fixed: '+' },
+        'data-object-category-filter': { markers: '1', equipment: '2', consumables: '3', obstacles: '4', triggers: '5', logic: '6' }
+      };
+      for (const [attribute, labels] of Object.entries(filters)) {
+        for (const [value, text] of Object.entries(labels)) {
+          const button = editorRoot.querySelector(`[${attribute}="${value}"]`);
+          if (!button) continue;
+          const originalLabel = editorRoot.ownerDocument.createElement('span');
+          originalLabel.hidden = true;
+          const textKey = button.getAttribute('data-text-key');
+          if (textKey) {
+            originalLabel.setAttribute('data-text-key', textKey);
+            button.removeAttribute('data-text-key');
+          }
+          originalLabel.append(...button.childNodes);
+          const shortLabel = editorRoot.ownerDocument.createTextNode(text);
+          button.append(originalLabel, shortLabel);
+          onCleanup(() => {
+            shortLabel.remove();
+            originalLabel.replaceWith(...originalLabel.childNodes);
+            if (textKey) button.setAttribute('data-text-key', textKey);
+          });
+        }
+      }
+
+      const project = editorRoot.querySelector('[data-text-key="sections.project"]')?.closest('details');
+      if (project) {
+        const wasOpen = project.open;
+        project.open = false;
+        onCleanup(() => { project.open = wasOpen; });
+      }
+
+      const previousTab = editorRoot.querySelector('[data-project-tab-button][aria-selected="true"]');
+      const infoTab = editorRoot.querySelector('[data-project-tab-button="info"]');
+      if (infoTab) {
+        infoTab.click();
+        onCleanup(() => previousTab?.click());
+      }
+
+    }
+  </script>
+</head>
+<body></body>
+</html>

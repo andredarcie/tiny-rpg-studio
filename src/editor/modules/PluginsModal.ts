@@ -14,7 +14,6 @@ export class PluginsModal {
   private runtime?: PluginRuntime;
   private modal: Modal;
   private unsubscribeRuntime?: () => void;
-  private trust = document.createElement('p');
   private button = document.getElementById('btn-plugins');
   private editor = document.getElementById('tab-editor');
   private body = document.createElement('div');
@@ -88,9 +87,7 @@ export class PluginsModal {
     const content = document.createElement('section');
     content.id = 'plugins-content';
     content.append(this.searchField, this.status, this.storageStatus, this.grid);
-    this.trust.id = 'plugins-trust';
-    this.trust.textContent = text('trust');
-    this.body.append(navigation, this.trust, content);
+    this.body.append(navigation, content);
     this.fileInput.type = 'file';
     this.fileInput.accept = '.html,.htm,text/html';
     this.fileInput.id = 'plugins-file';
@@ -121,7 +118,6 @@ export class PluginsModal {
     const label = this.searchField.querySelector('label');
     if (label) label.textContent = text('query');
     this.modal.root.querySelector('.tiny-modal__close')?.setAttribute('aria-label', TextResources.get('buttons.close', 'Close'));
-    this.trust.textContent = text('trust');
     this.modal.open();
     this.selectMode('search');
   }

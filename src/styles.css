@@ -4822,6 +4822,13 @@ body.game-mode .tab-button.active {
     display: none;
 }
 
+.pae-tile-options {
+    display: flex;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
 .pae-tile-effect-label {
     font-size: 0.85em;
     opacity: 0.9;

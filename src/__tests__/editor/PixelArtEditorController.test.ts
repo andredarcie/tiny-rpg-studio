@@ -104,7 +104,6 @@ const makeDom = () => {
         pixelArtEditorModal: modalHost,
         paeCanvas: canvas,
         paePalette: { innerHTML: '', appendChild: vi.fn(), addEventListener: vi.fn() },
-        paeSpriteMeta: { textContent: '' },
         paeVariantBar: { hidden: true, innerHTML: '' },
         paeFrameBar: document.createElement('div'),
         paeSave: { addEventListener: vi.fn() },

@@ -36,7 +36,7 @@ for (const base of ['/', '/studio/']) {
       await expect(page.locator('#tab-editor')).not.toHaveAttribute('data-old-plugin');
       await expect(page.locator('style[data-plugin-id="minimalist-ui"]')).toHaveCount(1);
       expect(await page.locator('style[data-plugin-id="minimalist-ui"]').textContent()).not.toContain('--old-plugin-version');
-      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tiny-rpg-plugins-v1')!).map((plugin: { id: string; version: string }) => [plugin.id, plugin.version]))).toEqual([['minimalist-ui', '1.0.3']]);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tiny-rpg-plugins-v1')!).map((plugin: { id: string; version: string }) => [plugin.id, plugin.version]))).toEqual([['minimalist-ui', '1.0.4']]);
       await page.click('#plugins-search');
       await expect(card.locator('[data-action="installed"]')).toBeDisabled();
       await page.click('#plugins-manage');
@@ -68,7 +68,7 @@ for (const width of [1280, 800]) {
       Reflect.set(window, 'originalTiles', panel);
     });
     await page.click('#btn-plugins');
-    await expect(page.locator('#plugins-trust')).toBeVisible();
+    await expect(page.locator('#plugins-trust')).toHaveCount(0);
     await page.setInputFiles('#plugins-file', path.resolve('examples/plugin-preview.html'));
     await expect(page.locator('.plugin-card[data-plugin-id="example-plugin"]')).toBeVisible();
     await page.click('#plugins-modal .tiny-modal__close');
@@ -310,13 +310,14 @@ test('Minimalist UI simplifies catalogs and pixel editing, then restores on remo
   await expect(page.locator('[data-project-tab-button="development"]')).toHaveAccessibleName('Development');
   await expect(page.locator('[data-project-tab-button="info"]')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('[data-project-tab-panel="info"]')).toBeVisible();
+  await page.locator('#language-select').selectOption('pt-BR');
   await page.click('[data-project-tab-button="development"]');
   await expect(page.locator('[data-project-tab-panel="development"]')).toBeVisible();
   for (const selector of ['.npc-preview', '.enemy-preview', '.object-type-preview']) await expect(page.locator(selector).first()).toBeVisible();
   await page.locator('.tile-card .sprite-edit-btn').first().click({ force: true });
-  for (const selector of ['#pixel-art-editor-modal .tiny-modal__header', '#pae-sprite-meta', '.pae-tile-effect-label', '#pae-tool-paint', '#pae-tool-erase']) await expect(page.locator(selector)).toBeHidden();
+  for (const selector of ['#pixel-art-editor-modal .tiny-modal__header', '.pae-tile-effect-label', '#pae-tool-paint', '#pae-tool-erase']) await expect(page.locator(selector)).toBeHidden();
   await expect(page.locator('#pae-canvas')).toBeVisible();
-  await expect(page.locator('label[for="pae-tile-merge-edges"]')).toHaveText(/merge/i);
+  await expect(page.locator('label[for="pae-tile-merge-edges"]')).toHaveText('Mesclar');
   await page.locator('#pae-tile-merge-edges').check();
   await expect(page.locator('#pae-tile-merge-edges')).toBeChecked();
   await page.keyboard.press('Escape');
@@ -331,4 +332,5 @@ test('Minimalist UI simplifies catalogs and pixel editing, then restores on remo
   await expect(page.locator('#pae-tool-paint')).toBeVisible();
   await expect(page.locator('#pae-tool-erase')).toBeVisible();
   await expect(page.locator('[data-text-key="pixelArtEditor.mergeEdges"]')).toBeVisible();
+  await expect(page.locator('label[for="pae-tile-merge-edges"]')).toHaveText('Mesclar');
 });

@@ -42,7 +42,6 @@ type DomDeps = {
     pixelArtEditorModal: HTMLElement | null;
     paeCanvas: HTMLCanvasElement | null;
     paePalette: HTMLElement | null;
-    paeSpriteMeta: HTMLElement | null;
     paeVariantBar: HTMLElement | null;
     paeFrameBar: HTMLElement | null;
     paeSave: HTMLButtonElement | null;
@@ -111,7 +110,6 @@ export class PixelArtEditorController {
         }
 
         this.ensureModal()?.open();
-        this.renderMeta();
         this.renderPalette();
         this.renderFrameBar();
         this.syncTileEffectSelect();
@@ -335,13 +333,6 @@ export class PixelArtEditorController {
         nullSwatch.title = this.t('pixelArtEditor.paletteTransparent', 'Transparente');
         nullSwatch.dataset.paletteIndex = 'null';
         container.appendChild(nullSwatch);
-    }
-
-    private renderMeta(): void {
-        const meta = this.dom?.paeSpriteMeta;
-        if (!meta) return;
-        const variantLabel = this.variant !== 'base' ? ` (${this.variant})` : '';
-        meta.textContent = `${this.group} / ${this.key}${variantLabel}`;
     }
 
     private renderFrameBar(): void {
@@ -652,9 +643,6 @@ export class PixelArtEditorController {
         if (this.languageEventsReady || typeof document === 'undefined') return;
         this.languageEventsReady = true;
         document.addEventListener('language-changed', () => {
-            if (this.group) {
-                this.renderMeta();
-            }
             if (this.frames.length > 0) {
                 this.renderPalette();
                 this.renderFrameBar();

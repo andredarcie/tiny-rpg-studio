@@ -172,8 +172,8 @@ describe('PluginsModal', () => {
     resolve([{ ...plugin, title: 'Stale default' }]); await Promise.resolve();
     expect(element('.plugin-card h3').textContent).toBe(plugin.title);
   });
-  it('explains trust, labels previews and shows activation errors separately', async () => {
-    expect(element('#plugins-trust').textContent).toContain('without a sandbox');
+  it('omits the trust paragraph, labels previews and shows activation errors separately', async () => {
+    expect(document.querySelector('#plugins-trust')).toBeNull();
     manager.install(plugin);
     click('#plugins-manage');
     expect(element('.plugin-lifecycle').textContent).toBe('Inert preview');

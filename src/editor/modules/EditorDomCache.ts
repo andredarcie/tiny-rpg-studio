@@ -93,7 +93,6 @@ class EditorDomCache {
     pixelArtEditorModal: HTMLElement | null = null;
     paeCanvas: HTMLCanvasElement | null = null;
     paePalette: HTMLElement | null = null;
-    paeSpriteMeta: HTMLElement | null = null;
     paeVariantBar: HTMLElement | null = null;
     paeFrameBar: HTMLElement | null = null;
     paeSave: HTMLButtonElement | null = null;
@@ -216,7 +215,6 @@ class EditorDomCache {
             this.pixelArtEditorModal = null;
             this.paeCanvas = null;
             this.paePalette = null;
-            this.paeSpriteMeta = null;
             this.paeVariantBar = null;
             this.paeFrameBar = null;
             this.paeSave = null;
@@ -328,7 +326,6 @@ class EditorDomCache {
         this.pixelArtEditorModal = root.querySelector('#pixel-art-editor-modal') as HTMLElement | null;
         this.paeCanvas = root.querySelector('#pae-canvas') as HTMLCanvasElement | null;
         this.paePalette = root.querySelector('#pae-palette') as HTMLElement | null;
-        this.paeSpriteMeta = root.querySelector('#pae-sprite-meta') as HTMLElement | null;
         this.paeVariantBar = root.querySelector('#pae-variant-bar') as HTMLElement | null;
         this.paeFrameBar = root.querySelector('#pae-frame-bar') as HTMLElement | null;
         this.paeSave = root.querySelector('#pae-save') as HTMLButtonElement | null;

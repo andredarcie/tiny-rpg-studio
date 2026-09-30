@@ -895,13 +895,16 @@
                 <button type="button" class="tiny-modal__close" id="pae-close" data-modal-close data-aria-label-key="pixelArtEditor.closeAria">✕</button>
             </div>
             <div class="tiny-modal__body tiny-modal__body--stack pixel-art-editor">
-                <div class="pae-sprite-meta" id="pae-sprite-meta"></div>
                 <div class="pae-variant-bar" id="pae-variant-bar" hidden></div>
                 <div class="pae-frame-bar" id="pae-frame-bar" hidden></div>
                 <div class="pae-editor-area">
                     <canvas id="pae-canvas" width="256" height="256"></canvas>
                 </div>
                 <div class="pae-palette" id="pae-palette"></div>
+                <div class="pae-tools">
+                    <button type="button" class="pae-tool active" data-tool="paint" id="pae-tool-paint" data-text-key="pixelArtEditor.paint">Pintar</button>
+                    <button type="button" class="pae-tool" data-tool="erase" id="pae-tool-erase" data-text-key="pixelArtEditor.erase">Apagar</button>
+                </div>
                 <div class="pae-tile-effect-row" id="pae-tile-effect-row" hidden>
                     <label class="pae-tile-effect-label" for="pae-tile-effect" data-text-key="pixelArtEditor.visualEffect">Efeito visual</label>
                     <select id="pae-tile-effect" class="pae-tile-effect-select" data-aria-label-key="pixelArtEditor.visualEffect">
@@ -909,18 +912,16 @@
                         <option value="water" data-text-key="pixelArtEditor.visualEffect.water">Água</option>
                         <option value="lava" data-text-key="pixelArtEditor.visualEffect.lava">Lava</option>
                     </select>
-                    <label class="pae-tile-merge-label" for="pae-tile-merge-edges">
-                        <input type="checkbox" id="pae-tile-merge-edges">
-                        <span data-text-key="pixelArtEditor.mergeEdges">Merge with adjacent tiles</span>
-                    </label>
-                    <label class="pae-tile-merge-label" for="pae-tile-solid">
-                        <input type="checkbox" id="pae-tile-solid">
-                        <span data-text-key="pixelArtEditor.solid">Solid</span>
-                    </label>
-                </div>
-                <div class="pae-tools">
-                    <button type="button" class="pae-tool active" data-tool="paint" id="pae-tool-paint" data-text-key="pixelArtEditor.paint">Pintar</button>
-                    <button type="button" class="pae-tool" data-tool="erase" id="pae-tool-erase" data-text-key="pixelArtEditor.erase">Apagar</button>
+                    <div class="pae-tile-options">
+                        <label class="pae-tile-merge-label" for="pae-tile-merge-edges">
+                            <input type="checkbox" id="pae-tile-merge-edges">
+                            <span data-text-key="pixelArtEditor.mergeEdges">Merge</span>
+                        </label>
+                        <label class="pae-tile-merge-label" for="pae-tile-solid">
+                            <input type="checkbox" id="pae-tile-solid">
+                            <span data-text-key="pixelArtEditor.solid">Solid</span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div class="tiny-modal__footer pae-actions">
