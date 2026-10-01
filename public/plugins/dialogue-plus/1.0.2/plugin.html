@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dialogue+</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "dialogue-plus",
+      "title": "Dialogue+",
+      "shortDescription": "Add multiple NPC alternatives and choices.",
+      "fullDescription": "Create ordered conditional dialogue and Yes/No choices for each NPC, with individual rewards and disappearance. Dialogue+ projects keep their conversations in local saves and standalone HTML exports.",
+      "version": "1.0.2",
+      "capabilities": ["editor", "gameplay"],
+      "apiVersion": 1
+    }
+  </script>
+  <style data-tiny-rpg-plugin>
+    .npc-edit-modal__body .dialogue-plus { display: grid; gap: 10px; margin-top: 12px; }
+    .npc-edit-modal__body .dialogue-plus[hidden] { display: none; }
+    .npc-edit-modal__body .dialogue-plus__add { justify-self: start; min-width: 36px; font-size: 20px; }
+    .npc-edit-modal__body .dialogue-plus__popup { display: flex; gap: 8px; flex-wrap: wrap; }
+    .npc-edit-modal__body .dialogue-plus__popup[hidden] { display: none; }
+    .npc-edit-modal__body .dialogue-plus__block { display: grid; gap: 7px; padding: 10px; border: 1px solid currentColor; border-radius: 6px; }
+    .npc-edit-modal__body .dialogue-plus__heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .npc-edit-modal__body .dialogue-plus__field { display: grid; gap: 3px; }
+    .npc-edit-modal__body .dialogue-plus__field textarea,
+    .npc-edit-modal__body .dialogue-plus__field select { width: 100%; box-sizing: border-box; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ api, registerNpcModal }) {
+      if (typeof registerNpcModal !== 'function' || typeof api.setNpcDialogueBlocks !== 'function') {
+        throw Error('Dialogue+ needs the NPC modal and dialogue block APIs');
+      }
+      const pluginId = 'dialogue-plus';
+      const migrating = new Set();
+      const newId = () => globalThis.crypto?.randomUUID?.() ?? `block-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const legacyBlocks = npc => {
+        const blocks = [];
+        if (npc.conditionText || npc.conditionVariableId || npc.conditionalRewardVariableId) {
+          blocks.push({ id: newId(), kind: 'alternative', conditionVariableId: npc.conditionVariableId || null,
+            text: npc.conditionText || '', rewardVariableId: npc.conditionalRewardVariableId || null, disappearAfterDialog: false });
+        }
+        if (npc.choiceEnabled === true) {
+          blocks.push({ id: newId(), kind: 'choice', prompt: npc.choicePrompt || '', yesText: npc.choiceYesText || '',
+            noText: npc.choiceNoText || '', yesVariableId: npc.choiceYesVariableId || null,
+            noVariableId: npc.choiceNoVariableId || null, disappearAfterDialog: false });
+        }
+        return blocks;
+      };
+      const makeField = (labelText, value, onChange, multiline = false) => {
+        const label = document.createElement('label');
+        label.className = 'dialogue-plus__field';
+        label.append(document.createTextNode(labelText));
+        const input = document.createElement(multiline ? 'textarea' : 'input');
+        input.value = value || '';
+        if (multiline) input.rows = 2;
+        input.addEventListener('input', () => onChange(input.value));
+        label.append(input);
+        return label;
+      };
+      const makeSelect = (labelText, selected, onChange, condition = false) => {
+        const label = document.createElement('label');
+        label.className = 'dialogue-plus__field';
+        label.append(document.createTextNode(labelText));
+        const select = document.createElement('select');
+        select.style.color = '#fff';
+        const options = [{ id: '', name: 'None' }, ...(condition ? [{ id: 'skill:bard', name: 'Bard skill' }] : [{ id: 'END_GAME', name: 'End game' }]),
+          ...((api.getVariables() || []).map(variable => {
+            const name = variable.name || variable.id;
+            const slot = variable.id.match(/^var-(1[7-9]|2\d|3[0-2])$/)?.[1];
+            return { id: variable.id, name: slot && !new RegExp(`^${slot}(?:\\s|[.)-])`).test(name)
+              ? `${slot}. ${name}` : name, color: variable.color };
+          }))];
+        for (const option of options) {
+          const element = document.createElement('option');
+          element.value = option.id;
+          element.textContent = option.name;
+          element.style.color = typeof option.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(option.color)
+            ? option.color : '#fff';
+          select.append(element);
+        }
+        select.value = selected || '';
+        select.addEventListener('change', () => onChange(select.value || null));
+        label.append(select);
+        return label;
+      };
+      registerNpcModal((body, npc) => {
+        const legacyControls = [body.querySelector('.npc-conditional-section'), body.querySelector('.npc-choice-section'),
+          ...body.querySelectorAll('.npc-edit-modal__toggle')];
+        for (const control of legacyControls) if (control) control.hidden = true;
+        let blocks = Array.isArray(npc.dialoguePlus) ? structuredClone(npc.dialoguePlus) : legacyBlocks(npc);
+        let pending = Promise.resolve();
+        const persist = () => {
+          const snapshot = structuredClone(blocks);
+          pending = pending.catch(() => {}).then(() => api.setNpcDialogueBlocks(npc.id, snapshot, pluginId));
+          return pending.then(() => true, error => {
+            status.textContent = error instanceof Error ? error.message : String(error);
+            return false;
+          });
+        };
+        const wrapper = document.createElement('section');
+        wrapper.className = 'dialogue-plus';
+        wrapper.setAttribute('aria-label', 'Custom dialogue');
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'btn-secondary dialogue-plus__add';
+        add.textContent = '+';
+        add.setAttribute('aria-label', 'Add custom dialogue');
+        add.setAttribute('aria-expanded', 'false');
+        const popup = document.createElement('div');
+        popup.className = 'dialogue-plus__popup';
+        popup.hidden = true;
+        popup.setAttribute('role', 'group');
+        popup.setAttribute('aria-label', 'Dialogue type');
+        const list = document.createElement('div');
+        const status = document.createElement('p');
+        status.setAttribute('role', 'status');
+        const render = () => {
+          list.replaceChildren();
+          for (const block of blocks) {
+            const card = document.createElement('div');
+            card.className = 'dialogue-plus__block';
+            card.dataset.blockId = block.id;
+            const heading = document.createElement('div');
+            heading.className = 'dialogue-plus__heading';
+            const title = document.createElement('strong');
+            title.textContent = block.kind === 'alternative' ? 'Alternative dialogue' : 'Yes/No choice';
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.textContent = 'Remove';
+            remove.setAttribute('aria-label', `Remove ${title.textContent}`);
+            remove.addEventListener('click', () => { blocks = blocks.filter(entry => entry.id !== block.id); render(); void persist(); });
+            heading.append(title, remove);
+            card.append(heading);
+            const update = (field, value) => { block[field] = value; void persist(); };
+            if (block.kind === 'alternative') {
+              card.append(makeSelect('Condition', block.conditionVariableId, value => update('conditionVariableId', value), true));
+              card.append(makeField('Dialogue', block.text, value => update('text', value), true));
+              card.append(makeSelect('Reward', block.rewardVariableId, value => update('rewardVariableId', value)));
+            } else {
+              card.append(makeField('Question', block.prompt, value => update('prompt', value), true));
+              card.append(makeField('Yes response', block.yesText, value => update('yesText', value), true));
+              card.append(makeSelect('Yes reward', block.yesVariableId, value => update('yesVariableId', value)));
+              card.append(makeField('No response', block.noText, value => update('noText', value), true));
+              card.append(makeSelect('No reward', block.noVariableId, value => update('noVariableId', value)));
+            }
+            const disappear = document.createElement('label');
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = block.disappearAfterDialog === true;
+            checkbox.addEventListener('change', () => update('disappearAfterDialog', checkbox.checked));
+            disappear.append(checkbox, ' Disappear');
+            card.append(disappear);
+            list.append(card);
+          }
+        };
+        add.addEventListener('click', () => {
+          popup.hidden = !popup.hidden;
+          add.setAttribute('aria-expanded', String(!popup.hidden));
+          if (!popup.hidden) popup.querySelector('button')?.focus();
+        });
+        for (const [kind, label] of [['alternative', 'Alternative dialogue'], ['choice', 'Yes/No choice']]) {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'btn-secondary';
+          button.textContent = label;
+          button.addEventListener('click', () => {
+            blocks.push(kind === 'alternative'
+              ? { id: newId(), kind, conditionVariableId: null, text: '', rewardVariableId: null, disappearAfterDialog: false }
+              : { id: newId(), kind, prompt: '', yesText: '', noText: '', yesVariableId: null, noVariableId: null, disappearAfterDialog: false });
+            popup.hidden = true;
+            add.setAttribute('aria-expanded', 'false');
+            render();
+            void persist();
+          });
+          popup.append(button);
+        }
+        const defaultDisappear = body.querySelector('#npc-disappear-after-dialog');
+        const syncVisibility = () => {
+          wrapper.hidden = defaultDisappear?.checked === true;
+          for (const control of legacyControls) if (control) control.hidden = true;
+        };
+        defaultDisappear?.addEventListener('change', syncVisibility);
+        syncVisibility();
+        wrapper.append(add, popup, list, status);
+        const firstLegacy = body.querySelector('.npc-edit-modal__toggle');
+        if (firstLegacy) body.insertBefore(wrapper, firstLegacy); else body.append(wrapper);
+        render();
+        if (!Array.isArray(npc.dialoguePlus) && blocks.length && !migrating.has(npc.id)) {
+          migrating.add(npc.id);
+          void persist().then(saved => {
+            migrating.delete(npc.id);
+            if (saved) document.dispatchEvent(new Event('npc-modal-plugins-changed'));
+          });
+        }
+      });
+    }
+  </script>
+  <script type="module" data-tiny-rpg-gameplay-plugin>
+    export function activate({ registerNpcDialogueSequence, onCleanup }) {
+      registerNpcDialogueSequence(npc => npc.dialoguePlus);
+      onCleanup(() => {});
+    }
+  </script>
+</head>
+<body></body>
+</html>

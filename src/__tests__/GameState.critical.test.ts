@@ -16,6 +16,29 @@ describe('GameState - Critical Path Tests', () => {
   });
 
   describe('Variable and magic door system', () => {
+    it('imports registered variable references before normalizing objects and drops them after cleanup', () => {
+      const state = new GameState();
+      const cleanup = state.variableManager.registerPresets(Array.from({ length: 16 }, (_, index) => ({
+        id: `var-${index + 17}`, order: index + 17, nameKey: '', fallbackName: `Color ${index}`, color: '#123456',
+      })));
+      const snapshot = {
+        ...(state.exportGameData() as Record<string, unknown>),
+        gameplayPlugins: [{ id: 'variables-plus', version: '1.0.0' }],
+        variables: [{ id: 'var-17', value: true }, { id: 'var-32', name: 'Final', value: true }],
+        objects: [
+          { type: 'switch', roomIndex: 0, x: 2, y: 2, variableId: 'var-17' },
+          { type: 'chest', roomIndex: 0, x: 3, y: 2, variableId: 'var-32' },
+        ],
+      };
+      state.importGameData(snapshot);
+      expect(state.game.variables).toHaveLength(32);
+      expect(state.game.variables[31]).toMatchObject({ name: 'Final', value: true });
+      expect(state.game.objects.map(object => object.variableId).filter(id => id !== undefined)).toEqual(['var-17', 'var-32']);
+      cleanup();
+      state.importGameData({ ...snapshot, gameplayPlugins: [], objects: snapshot.objects });
+      expect(state.game.variables).toHaveLength(16);
+      expect(state.game.objects.map(object => object.variableId).filter(id => id !== undefined)).toEqual(['var-1', null]);
+    });
     it('detects when magic door opens via variable change', () => {
       const state = new GameState();
       const onMagicDoorOpened = vi.fn();

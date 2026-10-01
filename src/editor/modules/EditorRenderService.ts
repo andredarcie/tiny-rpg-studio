@@ -110,6 +110,7 @@ class EditorRenderService {
         const target = normalize(raw);
         const idx = palette.findIndex((color: string) => normalize(color) === target);
         if (idx !== -1) return palette[idx];
+        if (/^#[0-9a-fA-F]{6}$/.test(raw)) return raw;
         return palette[0];
     }
 
@@ -219,7 +220,10 @@ class EditorRenderService {
 
             const name = document.createElement('span');
             name.className = 'project-variable-name';
-            name.textContent = variable.name || variable.id;
+            const label = variable.name || variable.id;
+            const slot = variable.id.match(/^var-(1[7-9]|2\d|3[0-2])$/)?.[1];
+            name.textContent = slot && !new RegExp(`^${slot}(?:\\s|[.)-])`).test(label)
+                ? `${slot}. ${label}` : label;
 
             const badge = document.createElement('span');
             const inUse = usedSet.has(variable.id);

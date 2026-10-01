@@ -41,6 +41,17 @@ const url = game.buildURL();
 The playable URL always has the form `<base>#<code>`, where `<base>` defaults to
 `https://andredarcie.github.io/tiny-rpg-studio/` and `<code>` is the encoded share string.
 
+## Variables+
+
+Call `game.enableVariablesPlus()` to allow 32 boolean slots. The SDK accepts
+numeric references 1 through 32 in room objects and NPC/enemy rewards when this
+option is enabled. Use `game.toProjectData()` to get a full project snapshot with
+the exact `variables-plus@1.0.0` gameplay dependency. Import it into a Studio
+installation that has Variables+ 1.0.0 installed, or bundle that plugin in a
+standalone HTML export. `toSharePayload()`, `toShareCode()`, and `buildURL()`
+reject Variables+ projects because share codes only support the original 16
+slots. Variables+ and `enableOnline()` cannot be combined.
+
 ---
 
 ## API
@@ -61,7 +72,9 @@ All methods return `this` for chaining, except `variable()`, `room()`, `toShareP
 | `setBackgroundMusic` | `(videoIdOrUrl: string, volume?: number): this` | Sets looping background music from a YouTube video id or URL. `volume` is an integer in `[0, 100]` (default 100). Throws on an invalid id/URL or out-of-range volume. |
 | `setSkillOrder` | `(ids: string[]): this` | Sets the order skills are offered in on level-up. Validates each id against the known skill list — throws on unknown ids. |
 | `enableOnline` | `(config?: { spawnPoints?: Array<{ x: number; y: number; roomIndex: number }> }): this` | Enables online multiplayer with optional spawn points. |
-| `variable` | `(name?: string, opts?: { initial?: boolean }): VariableRef` | Allocates the next boolean variable slot (`var-1`..`var-16`) and returns a handle. `name` is an authoring label only. Set `initial: true` to start it ON. Throws after `MAX_VARIABLES` (16) allocations. |
+| `enableVariablesPlus` | `(): this` | Opts in to 32 variable slots and the Variables+ gameplay dependency. |
+| `toProjectData` | `(): SdkSharePayload & { world; gameplayPlugins? }` | Returns full project data for import or standalone export. |
+| `variable` | `(name?: string, opts?: { initial?: boolean }): VariableRef` | Allocates the next boolean variable slot and returns a handle. The limit is 16, or 32 after `enableVariablesPlus()`. Set `initial: true` to start it ON. |
 | `defineSprite` | `(opts: { group; key; variant?; frames }): this` | Defines custom pixel art that overrides a built-in sprite or adds a new one. See [Custom sprites](#custom-sprites). |
 | `room` | `(index: number): RoomBuilder` | Returns the `RoomBuilder` for room `index`. `index` must be an integer in `[0, 8]`. Throws otherwise. Rooms are created lazily and cached. |
 | `toSharePayload` | `(): SdkSharePayload` | Returns the raw data object passed to the encoder. |

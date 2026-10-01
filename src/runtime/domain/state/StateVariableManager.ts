@@ -11,7 +11,7 @@ const getVariableText = (key: string, fallback = ''): string => {
     return value || fallback || key || '';
 };
 
-type VariablePreset = {
+export type VariablePreset = {
     id: string;
     order: number;
     nameKey: string;
@@ -59,7 +59,7 @@ const STATE_VARIABLE_PRESETS: ReadonlyArray<VariablePreset> = Object.freeze([
 class StateVariableManager {
     private game: GameDefinition | null;
     private state: RuntimeState | null;
-    private readonly presets: ReadonlyArray<VariablePreset>;
+    private presets: ReadonlyArray<VariablePreset>;
 
     constructor(
         game: GameDefinition | null = null,
@@ -77,6 +77,23 @@ class StateVariableManager {
 
     setState(state: RuntimeState | null): void {
         this.state = state;
+    }
+
+    registerPresets(extra: ReadonlyArray<VariablePreset>): () => void {
+        if (!extra.length) throw Error('Variable presets must be a nonempty array');
+        const seen = new Set(this.presets.map(preset => preset.id));
+        for (const preset of extra) {
+            if (!Number.isInteger(preset.order) || preset.order < 17 || preset.order > 32 ||
+                preset.id !== `var-${preset.order}` || seen.has(preset.id) ||
+                typeof preset.fallbackName !== 'string' || !preset.fallbackName.trim() ||
+                typeof preset.nameKey !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(preset.color)) {
+                throw Error('Invalid or duplicate variable preset');
+            }
+            seen.add(preset.id);
+        }
+        const previous = this.presets;
+        this.presets = [...previous, ...extra.map(preset => Object.freeze({ ...preset }))].sort((a, b) => a.order - b.order);
+        return () => { this.presets = previous; };
     }
 
     ensureDefaultVariables(): StateVariableEntry[] {

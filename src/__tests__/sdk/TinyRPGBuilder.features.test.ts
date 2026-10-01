@@ -34,6 +34,21 @@ function objectsOf(decoded: Record<string, unknown>): Array<Record<string, unkno
 }
 
 describe('SDK variables', () => {
+    it('opts in to 32 variables for full project output and rejects share and online output', () => {
+        const game = new TinyRPG().enableVariablesPlus();
+        for (let index = 1; index <= 32; index++) game.variable(`Slot ${index}`);
+        game.room(0).addSwitch({ x: 2, y: 2, variable: 32 });
+        const project = game.toProjectData();
+        expect(project.gameplayPlugins).toEqual([{ id: 'variables-plus', version: '1.0.0' }]);
+        expect(project.variables).toHaveLength(32);
+        expect(project.objects?.[0]).toMatchObject({ variableId: 'var-32' });
+        expect(() => game.toSharePayload()).toThrow(/full project data/);
+        expect(() => game.toShareCode()).toThrow(/full project data/);
+        expect(() => game.buildURL()).toThrow(/full project data/);
+        expect(() => game.enableOnline()).toThrow(/online mode/);
+        expect(() => new TinyRPG().enableOnline().enableVariablesPlus()).toThrow(/online mode/);
+        expect(() => game.room(1).addSwitch({ x: 1, y: 1, variable: 33 })).toThrow();
+    });
     it('allocates sequential var ids', () => {
         const g = new TinyRPG();
         expect(g.variable().id).toBe('var-1');

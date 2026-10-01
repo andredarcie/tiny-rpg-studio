@@ -237,7 +237,10 @@ class EditorNpcService {
         variables.forEach((variable: VariableDefinition & { name?: string; color?: string | null }) => {
             const option = document.createElement('option');
             option.value = variable.id;
-            option.textContent = variable.name || variable.id;
+            const label = variable.name || variable.id;
+            const slot = variable.id.match(/^var-(1[7-9]|2\d|3[0-2])$/)?.[1];
+            option.textContent = slot && !new RegExp(`^${slot}(?:\\s|[.)-])`).test(label)
+                ? `${slot}. ${label}` : label;
             // Tint the option text with the variable's color (simple, perfectly aligned)
             const color = typeof variable.color === 'string' && variable.color.trim() ? variable.color.trim() : null;
             if (color) {

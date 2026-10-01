@@ -362,7 +362,7 @@ describe('EditorRenderService', () => {
     expect(service.resolvePicoColor({} as unknown as string | number | null)).toBe('#000000');
     expect(service.resolvePicoColor(' abcdef ')).toBe('#ABCDEF');
     expect(service.resolvePicoColor('')).toBe('#000000');
-    expect(service.resolvePicoColor('#ff00ff')).toBe('#000000');
+    expect(service.resolvePicoColor('#ff00ff')).toBe('#ff00ff');
   });
 
   it('delegates render/update methods to renderer modules and exposes manager getters', () => {
@@ -461,6 +461,19 @@ describe('EditorRenderService', () => {
     expect(fixture.domCache.projectVariableList.querySelectorAll('.project-variable-badge.unused')).toHaveLength(1);
     expect(fixture.domCache.projectVariableList.textContent).toContain('Alpha');
     expect(fixture.domCache.projectVariableList.textContent).toContain('var-2');
+  });
+
+  it('numbers Variables+ slots in the project variable list', () => {
+    const fixture = createManagerFixture();
+    fixture.gameEngine.getVariableDefinitions.mockReturnValue([
+      { id: 'var-16', name: 'Peach' },
+      { id: 'var-17', name: 'Crimson', color: '#DC143C' },
+      { id: 'var-32', name: 'Custom', color: '#36454F' },
+    ]);
+    const { service } = createService(fixture);
+    service.renderVariableUsage();
+    const labels = [...fixture.domCache.projectVariableList.querySelectorAll('.project-variable-name')].map(element => element.textContent);
+    expect(labels).toEqual(['Peach', '17. Crimson', '32. Custom']);
   });
 
   it('collects variable usage only for valid trimmed string ids', () => {

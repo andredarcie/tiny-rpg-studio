@@ -5,6 +5,7 @@ import { InteractionManager } from './engine/InteractionManager';
 import { MovementManager } from './engine/MovementManager';
 import { CombatStunManager } from './engine/CombatStunManager';
 import { GameState } from '../domain/GameState';
+import type { VariablePreset } from '../domain/state/StateVariableManager';
 import { OnlineCoordinator } from './OnlineCoordinator';
 import { InputManager } from '../adapters/InputManager';
 import { NPCManager } from './NPCManager';
@@ -480,6 +481,10 @@ export class GameEngine {
     this.dialogManager.reset();
     this.renderer.draw();
     this.showIntroScreen();
+  }
+
+  registerVariablePresets(presets: ReadonlyArray<VariablePreset>): () => void {
+    return this.gameState.registerVariablePresets(presets);
   }
 
   getTestSettings(): { startLevel: number; skills: unknown[]; godMode: boolean } {

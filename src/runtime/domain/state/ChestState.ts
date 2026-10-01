@@ -5,18 +5,14 @@ type ChestStateLike = {
 type VariableIdNormalizer = (variableId: string | null) => string | null;
 type VariableStateLookup = (variableId: string) => boolean;
 
-const CHEST_VARIABLE_IDS = new Set(
-    Array.from({ length: 16 }, (_, index) => `var-${index + 1}`)
-);
-
 const normalizeChestVariableId = (
     variableId: string | null | undefined,
     normalizeVariableId?: VariableIdNormalizer | null
 ): string | null => {
-    if (typeof variableId !== 'string' || !CHEST_VARIABLE_IDS.has(variableId)) {
+    if (typeof variableId !== 'string' || !/^var-(?:[1-9]|[12][0-9]|3[0-2])$/.test(variableId)) {
         return null;
     }
-    if (!normalizeVariableId) return variableId;
+    if (!normalizeVariableId) return /^var-(?:[1-9]|1[0-6])$/.test(variableId) ? variableId : null;
     return normalizeVariableId(variableId) === variableId ? variableId : null;
 };
 

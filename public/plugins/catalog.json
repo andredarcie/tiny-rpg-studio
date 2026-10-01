@@ -7,8 +7,8 @@
       "shortDescription": "Add multiple NPC alternatives and choices.",
       "fullDescription": "Create ordered conditional dialogue and Yes/No choices for each NPC, with individual rewards and disappearance. Dialogue+ projects keep their conversations in local saves and standalone HTML exports.",
       "capabilities": ["editor", "gameplay"],
-      "version": "1.0.0",
-      "file": "dialogue-plus/1.0.0/plugin.html"
+      "version": "1.0.2",
+      "file": "dialogue-plus/1.0.2/plugin.html"
     },
     {
       "id": "custom-themes",
@@ -42,6 +42,15 @@
       "fullDescription": "Shows NPC, object, and enemy catalog artwork without names, descriptions, or stats. Hides World and enemy XP, starts Project collapsed with Information selected, and simplifies the pixel-art editor by hiding its header, effect label, and Paint/Erase buttons. Sprite editing and object configuration remain available. Use Escape or Save to close the pixel-art editor. Removing this trusted editor-only plugin restores the interface.",
       "version": "1.0.4",
       "file": "minimalist-ui/1.0.4/plugin.html"
+    },
+    {
+      "id": "variables-plus",
+      "title": "Variables+",
+      "shortDescription": "Add 16 color-named boolean variables to a project.",
+      "fullDescription": "Adds 16 boolean variables (var-17 through var-32) as soon as the plugin is installed. The extra slots are saved with the project and included in standalone HTML exports. Variables+ projects cannot use share URLs or online mode.",
+      "capabilities": ["editor", "gameplay"],
+      "version": "1.0.0",
+      "file": "variables-plus/1.0.0/plugin.html"
     }
   ]
 }

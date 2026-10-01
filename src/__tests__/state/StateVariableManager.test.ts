@@ -21,6 +21,20 @@ const makeGame = (): GameDefinition => ({
 });
 
 describe('StateVariableManager', () => {
+  it('registers extra slots while preserving authored values and restores the base range on cleanup', () => {
+    const game = makeGame();
+    const manager = new StateVariableManager(game, null);
+    const cleanup = manager.registerPresets(Array.from({ length: 16 }, (_, index) => ({
+      id: `var-${index + 17}`, order: index + 17, nameKey: '', fallbackName: `Color ${index + 17}`, color: '#123456',
+    })));
+    game.variables = manager.normalizeVariables([{ id: 'var-32', name: 'Custom', value: true }]);
+    expect(game.variables).toHaveLength(32);
+    expect(manager.normalizeVariableId('var-32')).toBe('var-32');
+    expect(game.variables[31]).toMatchObject({ name: 'Custom', value: true });
+    cleanup();
+    expect(manager.normalizeVariables(game.variables)).toHaveLength(16);
+    expect(() => manager.registerPresets([{ id: 'var-17', order: 17, nameKey: '', fallbackName: 'X', color: 'red' }])).toThrow();
+  });
   it('normalizes variables from presets', () => {
     const game = makeGame();
     const manager = new StateVariableManager(game, null);

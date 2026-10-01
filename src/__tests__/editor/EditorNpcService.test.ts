@@ -166,6 +166,19 @@ describe('populateVariableSelect', () => {
     expect(opt?.textContent).toBe('Green');
     expect(opt?.style.color).not.toBe('');
   });
+  it('numbers Variables+ slots in selectors, including previously saved color names', () => {
+    const { service, manager } = makeService();
+    manager.gameEngine.getVariableDefinitions.mockReturnValue([
+      { id: 'var-16', name: 'Peach' },
+      { id: 'var-17', name: 'Crimson' },
+      { id: 'var-32', name: '32. Custom' },
+    ]);
+    const select = document.createElement('select');
+    service.populateVariableSelect(select);
+    expect(select.querySelector<HTMLOptionElement>('[value="var-16"]')?.textContent).toBe('Peach');
+    expect(select.querySelector<HTMLOptionElement>('[value="var-17"]')?.textContent).toBe('17. Crimson');
+    expect(select.querySelector<HTMLOptionElement>('[value="var-32"]')?.textContent).toBe('32. Custom');
+  });
 });
 
 describe('updateNpcText', () => {

@@ -6,6 +6,7 @@ import { EditorExportService } from './editor/modules/EditorExportService';
 import { ExploreModal } from './editor/modules/ExploreModal';
 import { PluginRuntime } from './editor/manager/PluginRuntime';
 import { PluginManager } from './editor/manager/PluginManager';
+import { upgradeDialoguePlusDependency } from './editor/manager/upgradeDialoguePlusDependency';
 import { GameplayPluginHost } from './runtime/infra/GameplayPluginHost';
 import { StateWorldManager } from './runtime/domain/state/StateWorldManager';
 import type { GameDefinition } from './types/gameState';
@@ -123,7 +124,7 @@ class TinyRPGApplication {
     if (savedProject?.startsWith('snapshot:') && !globalThis.location.hash && !(globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE && gameplayHost) {
       const snapshot = ShareUtils.readStoredProject(savedProject);
       if (snapshot) {
-        try { await gameplayHost.load(snapshot); }
+        try { await gameplayHost.load(upgradeDialoguePlusDependency(snapshot, pluginManager?.installed ?? [])); }
         catch (error) { console.error('[TinyRPG] Unable to restore gameplay project.', error); }
       }
     } else {
@@ -212,6 +213,22 @@ class TinyRPGApplication {
         editorManager?.history.pushCurrentState();
         gameEngine.draw();
       },
+      enableVariablesPlus: async () => {
+        const plugin = pluginManager?.installed.find(item => item.id === 'variables-plus' && item.version === '1.0.0' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+        if (!plugin) throw Error('Variables+ 1.0.0 is unavailable');
+        const game = JSON.parse(JSON.stringify(gameEngine.exportGameData())) as GameDefinition;
+        if (game.online?.enabled) throw Error('Disable online mode before enabling Variables+.');
+        if (game.gameplayPlugins?.some(item => item.id === 'variables-plus')) return;
+        game.gameplayPlugins = [...(game.gameplayPlugins ?? []), { id: plugin.id, version: plugin.version ?? '1.0.0' }];
+        if (!gameplayHost) throw Error('Gameplay plugin host is unavailable');
+        await gameplayHost.load(game);
+        if (editorManager) editorManager.projectGeneration++;
+        gameEngine.resetGame();
+        editorManager?.renderAll();
+        editorManager?.history.pushCurrentState();
+        editorManager?.persistAuthoring();
+        gameEngine.draw();
+      },
       setNpcDialogueBlocks: async (npcId, blocks, pluginId) => {
         const plugin = pluginManager?.installed.find(item => item.id === pluginId && item.capabilities?.includes('gameplay') && item.version && item.payload?.gameplayJavascript);
         if (!plugin || !editorManager) throw Error(`Gameplay plugin ${pluginId} is unavailable`);
@@ -260,6 +277,17 @@ class TinyRPGApplication {
         const current = gameEngine.exportGameData() as GameDefinition;
         const dependencies = current.gameplayPlugins ?? [];
         const removed = dependencies.filter(item => !pluginManager.has(item.id));
+        const upgraded = upgradeDialoguePlusDependency(current, pluginManager.installed);
+        if (!removed.length && upgraded !== current && gameplayHost) {
+          void gameplayHost.load(upgraded).then(() => {
+            if (editorManager) {
+              editorManager.projectGeneration++;
+              editorManager.restore(upgraded as unknown as Record<string, unknown>, { alreadyImported: true });
+              editorManager.persistAuthoring();
+            } else gameEngine.draw();
+          }).catch(error => console.error('[TinyRPG] Unable to update the Dialogue+ project dependency.', error));
+          return;
+        }
         if (!removed.length) {
           for (const dependency of dependencies) {
             if (!pluginManager.installed.some(item => item.id === dependency.id && item.version === dependency.version)) gameplayHost?.remove(dependency.id);
@@ -268,8 +296,8 @@ class TinyRPGApplication {
         }
         const retained = dependencies.filter(item => pluginManager.has(item.id));
         const resize = !retained.length && (current.world.rows !== 3 || current.world.cols !== 3);
-        if (resize && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
-          alert('Could not save a backup of the larger world. The project was not resized. Reinstall the plugin to recover it.');
+        if ((resize || removed.some(item => item.id === 'variables-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
+          alert('Could not save a backup of the project. Reinstall the plugin to recover it.');
           return;
         }
         const game = JSON.parse(JSON.stringify(current)) as GameDefinition;
@@ -278,6 +306,18 @@ class TinyRPGApplication {
         const row = Math.floor(activeRoom / current.world.cols);
         const col = activeRoom % current.world.cols;
         if (resize) new StateWorldManager(game).resizeWorld(3, 3);
+        if (removed.some(item => item.id === 'variables-plus')) {
+          game.variables = game.variables.filter(variable => /^var-(?:[1-9]|1[0-6])$/.test(variable.id));
+          const clearExtra = (target: Record<string, unknown>) => {
+            for (const key of ['conditionVariableId', 'conditionalVariableId', 'rewardVariableId', 'conditionalRewardVariableId', 'activateVariableId', 'onCompleteVariableId', 'defeatVariableId', 'yesVariableId', 'noVariableId', 'choiceYesVariableId', 'choiceNoVariableId']) {
+              if (typeof target[key] === 'string' && /^var-(?:1[7-9]|2[0-9]|3[0-2])$/.test(target[key] as string)) target[key] = null;
+            }
+            if (Array.isArray(target.dialoguePlus)) for (const block of target.dialoguePlus) if (block && typeof block === 'object') clearExtra(block as Record<string, unknown>);
+            if (target.choice && typeof target.choice === 'object') clearExtra(target.choice as Record<string, unknown>);
+          };
+          for (const sprite of game.sprites) clearExtra(sprite as unknown as Record<string, unknown>);
+          for (const enemy of game.enemies) clearExtra(enemy as unknown as Record<string, unknown>);
+        }
         for (const dependency of removed) gameplayHost?.remove(dependency.id);
         gameEngine.importGameData(game);
         gameEngine.resetGame();

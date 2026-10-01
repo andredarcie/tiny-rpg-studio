@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-01-maps-dialogue-variables-plus',
+    date: '2026-10-01',
+    title: 'Build richer adventures with Maps+, Dialogue+, and Variables+',
+    description: 'Maps+ expands worlds to 5 by 5 rooms, Dialogue+ gives NPCs conditional conversations and Yes/No choices, and Variables+ adds 16 color-named switches for puzzles, quests, and rewards. Together they make bigger, more responsive adventures possible.',
+  },
+  {
     id: '2026-10-01-plugin-project-settings',
     date: '2026-10-01',
     title: 'Plugin settings in Project',

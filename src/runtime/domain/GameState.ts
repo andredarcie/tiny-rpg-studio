@@ -13,7 +13,7 @@ import { StateItemManager } from './state/StateItemManager';
 import { StateObjectManager } from './state/StateObjectManager';
 import { StatePlayerManager } from './state/StatePlayerManager';
 import { StateSkillManager } from './state/StateSkillManager';
-import { StateVariableManager } from './state/StateVariableManager';
+import { StateVariableManager, type VariablePreset } from './state/StateVariableManager';
 import { StateWorldManager } from './state/StateWorldManager';
 import { GameConfig } from '../../config/GameConfig';
 import { DEFAULT_BACKGROUND_MUSIC_VOLUME } from '../infra/share/BackgroundMusicVideoId';
@@ -481,6 +481,10 @@ class GameState {
 
     importGameData(data: unknown): void {
         this.dataFacade.importGameData(data);
+    }
+
+    registerVariablePresets(presets: ReadonlyArray<VariablePreset>): () => void {
+        return this.variableManager.registerPresets(presets);
     }
 
     normalizeRooms(rooms: unknown, totalRooms: number, cols: number): unknown {

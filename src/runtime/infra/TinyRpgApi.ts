@@ -8,6 +8,7 @@ type TinyRpgApi = {
   importGameData: (data: unknown) => void;
   loadProjectData?: (data: unknown, packages?: InstalledPlugin[]) => Promise<void>;
   resizeWorld?: (rows: number, cols: number, pluginId: string) => Promise<void>;
+  enableVariablesPlus?: () => Promise<void>;
   setNpcDialogueBlocks?: (npcId: string, blocks: unknown, pluginId: string) => Promise<DialoguePlusBlock[]>;
   getState: () => unknown;
   draw: () => void;

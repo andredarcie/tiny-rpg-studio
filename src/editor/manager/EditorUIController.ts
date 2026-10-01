@@ -26,7 +26,7 @@ type SpriteInstance = {
     textKey?: string | null;
 };
 
-import type { OnlineConfig } from '../../types/gameState';
+import type { GameDefinition, OnlineConfig } from '../../types/gameState';
 
 type ProjectGameSettings = {
     title?: string;
@@ -220,6 +220,11 @@ class EditorUIController extends EditorManagerModule {
 
     setOnlineEnabled(enabled: boolean): void {
         const game = this.gameEngine.getGame();
+        if (enabled && (game as GameDefinition).gameplayPlugins?.some(plugin => plugin.id === 'variables-plus')) {
+            if (this.dom.projectOnlineEnabled) this.dom.projectOnlineEnabled.checked = false;
+            alert('Online mode is unavailable for Variables+ projects.');
+            return;
+        }
         if (!game.online) game.online = { enabled: false };
         game.online.enabled = enabled;
         if (enabled) {

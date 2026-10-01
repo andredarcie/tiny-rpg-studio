@@ -35,6 +35,7 @@ import { createAuthoring } from './authoring/EditorAuthoring';
 import { Modal } from '../ui/Modal';
 import type { PluginManager } from './manager/PluginManager';
 import type { InstalledPlugin } from './manager/PluginManager';
+import { upgradeDialoguePlusDependency } from './manager/upgradeDialoguePlusDependency';
 import type { GameplayPluginHost } from '../runtime/infra/GameplayPluginHost';
 
 class EditorManager {
@@ -46,6 +47,7 @@ class EditorManager {
         return ShareUtils.buildStoredProject(data);
     }
     async loadProjectData(data: Record<string, unknown>, options: { skipHistory?: boolean } = {}, packages?: InstalledPlugin[]): Promise<void> {
+        data = upgradeDialoguePlusDependency(data, packages ?? this.pluginManager?.installed ?? []);
         if (this.gameplayHost) await this.gameplayHost.load(data, packages);
         this.restore(data, { ...options, alreadyImported: Boolean(this.gameplayHost) });
     }
@@ -651,6 +653,7 @@ class EditorManager {
 
     // Restore & import logic
     restore(data: Record<string, unknown>, options: { skipHistory?: boolean; authoring?: boolean; alreadyImported?: boolean } = {}) {
+        if (!options.alreadyImported) data = upgradeDialoguePlusDependency(data, this.pluginManager?.installed ?? []);
         if (!options.authoring) {
             const required = (data as { gameplayPlugins?: { id: string; version: string }[] }).gameplayPlugins ?? [];
             for (const dependency of required) {

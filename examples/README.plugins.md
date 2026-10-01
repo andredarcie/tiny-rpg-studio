@@ -50,6 +50,14 @@ export function activate({ apiVersion, getWorld, resizeWorld, onCleanup }) {
 
 The gameplay context exposes `apiVersion`, `getWorld()`, `resizeWorld(rows, cols)`
 and `onCleanup(callback)`. Dimensions must be whole numbers from 1 through 5.
+It also exposes `registerVariablePresets(presets)`. Each preset has a canonical
+`var-N` ID, matching numeric `order` from 17 through 32, a `fallbackName`, an
+optional translation `nameKey` (use an empty string without translations), and a
+`#RRGGBB` color. Registration must happen during `activate`, before the project
+is imported. The host restores the original 16 presets during cleanup.
+Variables+ uses this API to register `var-17` through `var-32` when installed.
+Its projects use full snapshots and
+standalone exports; share URLs and online mode are unavailable.
 An editor entry can await `api.resizeWorld(rows, cols, pluginId)` to offer controls;
 the host records that plugin's ID and version as a project dependency. Gameplay
 modules should use this context instead of engine internals. The host validates

@@ -171,6 +171,9 @@ class StateDataManager {
         }))) {
             throw Error('Invalid gameplay plugin dependencies');
         }
+        if (data.online?.enabled && data.gameplayPlugins?.some(plugin => plugin.id === 'variables-plus')) {
+            throw Error('Variables+ projects cannot use online mode');
+        }
 
         const dimension = (value: unknown) => {
             if (value === undefined) return 3;
@@ -202,8 +205,9 @@ class StateDataManager {
             data.tileset?.maps ?? data.tileset?.map ?? null,
             totalRooms
         );
-        const normalizedObjects = this.objectManager.normalizeObjects(data.objects);
         const normalizedVariables = this.variableManager.normalizeVariables(data.variables);
+        this.game.variables = normalizedVariables;
+        const normalizedObjects = this.objectManager.normalizeObjects(data.objects);
 
         const customPalette =
             Array.isArray(data.customPalette) && data.customPalette.length === 16

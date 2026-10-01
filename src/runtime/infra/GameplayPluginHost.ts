@@ -2,6 +2,7 @@ import type { GameEngine } from '../services/GameEngine';
 import type { GameDefinition } from '../../types/gameState';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
 import type { NpcDialogueSequence } from '../domain/dialoguePlus';
+import type { VariablePreset } from '../domain/state/StateVariableManager';
 
 export type GameplayDependency = { id: string; version: string };
 export type GameplayContext = {
@@ -9,6 +10,7 @@ export type GameplayContext = {
   getWorld(): { rows: number; cols: number };
   resizeWorld(rows: number, cols: number): void;
   registerNpcDialogueSequence(sequence: NpcDialogueSequence): void;
+  registerVariablePresets(presets: VariablePreset[]): void;
   onCleanup(callback: () => void): void;
 };
 type GameplayModule = { activate(context: GameplayContext): void | Promise<void> };
@@ -43,6 +45,7 @@ export class GameplayPluginHost {
     if (!project || typeof project !== 'object') throw Error('Invalid project data');
     const dependencies = project.gameplayPlugins ?? [];
     if (!Array.isArray(dependencies)) throw Error('Invalid gameplay plugin dependencies');
+    if (project.online?.enabled && dependencies.some(item => item.id === 'variables-plus')) throw Error('Variables+ projects cannot use online mode');
     if (new Set(dependencies.map(item => item.id)).size !== dependencies.length) throw Error('Duplicate gameplay plugin dependencies');
     const required = dependencies.map(dependency => {
       const plugin = available.find(item => item.id === dependency.id && item.version === dependency.version && item.capabilities?.includes('gameplay'));
@@ -75,14 +78,17 @@ export class GameplayPluginHost {
             this.engine.setNpcDialogueSequence(sequence);
             cleanup.push(() => this.engine.setNpcDialogueSequence(null));
           },
+          registerVariablePresets: presets => {
+            cleanup.push(this.engine.registerVariablePresets(presets));
+          },
           onCleanup: callback => cleanup.push(callback),
         });
       }
       this.engine.importGameData(data);
     } catch (error) {
       this.clear();
-      this.engine.importGameData(previous);
       if (rollback && previousDependencies.length) await this.load(previous, previousPackages, false);
+      else this.engine.importGameData(previous);
       throw error;
     }
   }

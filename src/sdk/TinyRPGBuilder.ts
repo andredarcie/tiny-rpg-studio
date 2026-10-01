@@ -4,7 +4,7 @@ import { ShareEncoder } from '../runtime/infra/share/ShareEncoder';
 import { SkillDefinitions } from '../runtime/domain/definitions/SkillDefinitions';
 import { normalizeBackgroundMusicVideoId } from '../runtime/infra/share/BackgroundMusicVideoId';
 import { RoomBuilder } from './RoomBuilder';
-import { MAX_VARIABLES, variableId, type VariableRef } from './variables';
+import { MAX_VARIABLES, MAX_VARIABLES_PLUS, variableId, type VariableRef } from './variables';
 import type {
     CustomSpriteGroup,
     CustomSpriteVariant,
@@ -32,6 +32,7 @@ class TinyRPGBuilder {
     private _start?: { x: number; y: number; roomIndex: number };
     private _palette?: string[];
     private _variables: SdkVariable[] = [];
+    private _variablesPlus = false;
     private _customSprites: SdkCustomSprite[] = [];
 
     setTitle(title: string): this {
@@ -122,7 +123,14 @@ class TinyRPGBuilder {
 
     /** Enables online multiplayer with optional spawn points. */
     enableOnline(config: Omit<SdkOnlineConfig, 'enabled'> = {}): this {
+        if (this._variablesPlus) throw new Error('Variables+ cannot be combined with online mode');
         this._online = { enabled: true, ...config };
+        return this;
+    }
+
+    enableVariablesPlus(): this {
+        if (this._online?.enabled) throw new Error('Variables+ cannot be combined with online mode');
+        this._variablesPlus = true;
         return this;
     }
 
@@ -151,16 +159,17 @@ class TinyRPGBuilder {
     }
 
     /**
-     * Allocates the next boolean variable slot (`var-1`..`var-16`) and returns a
+     * Allocates the next boolean variable slot (up to `var-32` with Variables+) and returns a
      * handle to wire into switches, gates, doors, traps and plates.
      * `name` is an authoring label only. Set `initial: true` to start it ON.
      */
     variable(name?: string, opts: { initial?: boolean } = {}): VariableRef {
         const index = this._variables.length + 1;
-        if (index > MAX_VARIABLES) {
-            throw new Error(`Cannot allocate more than ${MAX_VARIABLES} variables`);
+        const max = this._variablesPlus ? MAX_VARIABLES_PLUS : MAX_VARIABLES;
+        if (index > max) {
+            throw new Error(`Cannot allocate more than ${max} variables`);
         }
-        const id = variableId(index);
+        const id = variableId(index, max);
         this._variables.push({ id, value: Boolean(opts.initial), name });
         return { id, index, name };
     }
@@ -223,13 +232,26 @@ class TinyRPGBuilder {
         }
         let room = this._rooms.get(index);
         if (!room) {
-            room = new RoomBuilder();
+            room = new RoomBuilder(() => this._variablesPlus ? MAX_VARIABLES_PLUS : MAX_VARIABLES);
             this._rooms.set(index, room);
         }
         return room;
     }
 
     toSharePayload(): SdkSharePayload {
+        if (this._variablesPlus) throw new Error('Variables+ projects require full project data and cannot use share codes');
+        return this.buildPayload();
+    }
+
+    toProjectData(): SdkSharePayload & { world: { rows: number; cols: number }; gameplayPlugins?: { id: string; version: string }[] } {
+        return {
+            ...this.buildPayload(),
+            world: { rows: 3, cols: 3 },
+            ...(this._variablesPlus ? { gameplayPlugins: [{ id: 'variables-plus', version: '1.0.0' }] } : {}),
+        };
+    }
+
+    private buildPayload(): SdkSharePayload {
         const count = ShareConstants.WORLD_ROOM_COUNT;
         const maps = Array.from({ length: count }, (_, i) => {
             const rb = this._rooms.get(i);

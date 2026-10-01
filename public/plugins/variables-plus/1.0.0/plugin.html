@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Variables+</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "variables-plus",
+      "title": "Variables+",
+      "shortDescription": "Add 16 color-named boolean variables to a project.",
+      "fullDescription": "Adds 16 boolean variables (var-17 through var-32) as soon as the plugin is installed. The extra slots are saved with the project and included in standalone HTML exports. Variables+ projects cannot use share URLs or online mode.",
+      "version": "1.0.0",
+      "capabilities": ["editor", "gameplay"],
+      "apiVersion": 1
+    }
+  </script>
+  <script type="module" data-tiny-rpg-plugin>
+    export async function activate({ editorRoot, api, onCleanup }) {
+      if (typeof api.enableVariablesPlus !== 'function') throw Error('Variables+ needs the project activation API');
+      let removed = false;
+      let pending = false;
+      const enable = async () => {
+        if (removed || pending || api.exportGameData()?.gameplayPlugins?.some(plugin => plugin.id === 'variables-plus' && plugin.version === '1.0.0')) return;
+        pending = true;
+        try { await api.enableVariablesPlus(); }
+        finally { pending = false; }
+      };
+      const variableList = editorRoot.querySelector('#project-variable-usage-list');
+      const observer = variableList ? new MutationObserver(() => {
+        queueMicrotask(() => {
+          void enable().catch(error => console.warn('[Variables+] Could not enable project variables.', error));
+        });
+      }) : null;
+      observer?.observe(variableList, { childList: true });
+      onCleanup(() => { removed = true; observer?.disconnect(); });
+      await enable();
+    }
+  </script>
+  <script type="module" data-tiny-rpg-gameplay-plugin>
+    export function activate({ apiVersion, registerVariablePresets }) {
+      if (apiVersion !== 1 || typeof registerVariablePresets !== 'function') throw Error('Variables+ needs gameplay API version 1');
+      const colors = [
+        ['Crimson', '#DC143C'], ['Coral', '#FF7F50'], ['Amber', '#FFBF00'], ['Lime', '#9ACD32'],
+        ['Mint', '#3EB489'], ['Teal', '#008080'], ['Cyan', '#00BCD4'], ['Azure', '#007FFF'],
+        ['Cobalt', '#0047AB'], ['Violet', '#8F00FF'], ['Lavender', '#B57EDC'], ['Magenta', '#D100D1'],
+        ['Rose', '#E75480'], ['Tan', '#D2B48C'], ['Slate', '#708090'], ['Charcoal', '#36454F']
+      ];
+      registerVariablePresets(colors.map(([fallbackName, color], index) => ({
+        id: `var-${index + 17}`, order: index + 17, nameKey: '', fallbackName, color
+      })));
+    }
+  </script>
+</head>
+<body></body>
+</html>

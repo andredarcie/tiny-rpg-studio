@@ -87,6 +87,9 @@ type EnemyOptions = {
 };
 
 class RoomBuilder {
+    private readonly maxVariables: () => number;
+    constructor(maxVariables: () => number = () => 16) { this.maxVariables = maxVariables; }
+    private resolveVariableId(ref: VariableRef | number): string { return resolveVariableId(ref, this.maxVariables()); }
     private _ground?: number[][];
     private _overlay?: (number | null)[][];
     private _enemies: SdkEnemy[] = [];
@@ -131,7 +134,7 @@ class RoomBuilder {
             if (normalizedExperience !== undefined) enemy.experience = normalizedExperience;
         }
         if (opts.defeatVariable !== undefined) {
-            enemy.defeatVariableId = resolveVariableId(opts.defeatVariable);
+            enemy.defeatVariableId = this.resolveVariableId(opts.defeatVariable);
         }
         this._enemies.push(enemy);
         return this;
@@ -148,16 +151,16 @@ class RoomBuilder {
             text: opts.text ?? '', placed: true,
         };
         if (opts.conditionVariable !== undefined) {
-            sprite.conditionVariableId = resolveVariableId(opts.conditionVariable);
+            sprite.conditionVariableId = this.resolveVariableId(opts.conditionVariable);
         }
         if (opts.conditionText !== undefined) {
             sprite.conditionText = opts.conditionText;
         }
         if (opts.rewardVariable !== undefined) {
-            sprite.rewardVariableId = resolveVariableId(opts.rewardVariable);
+            sprite.rewardVariableId = this.resolveVariableId(opts.rewardVariable);
         }
         if (opts.conditionalRewardVariable !== undefined) {
-            sprite.conditionalRewardVariableId = resolveVariableId(opts.conditionalRewardVariable);
+            sprite.conditionalRewardVariableId = this.resolveVariableId(opts.conditionalRewardVariable);
         }
         if (opts.choice !== undefined) {
             sprite.choiceEnabled = true;
@@ -165,10 +168,10 @@ class RoomBuilder {
             sprite.choiceYesText = opts.choice.yesText;
             sprite.choiceNoText = opts.choice.noText;
             if (opts.choice.yesVariable !== undefined) {
-                sprite.choiceYesVariableId = resolveVariableId(opts.choice.yesVariable);
+                sprite.choiceYesVariableId = this.resolveVariableId(opts.choice.yesVariable);
             }
             if (opts.choice.noVariable !== undefined) {
-                sprite.choiceNoVariableId = resolveVariableId(opts.choice.noVariable);
+                sprite.choiceNoVariableId = this.resolveVariableId(opts.choice.noVariable);
             }
         }
         this._sprites.push(sprite);
@@ -220,7 +223,7 @@ class RoomBuilder {
         this._reserveTile('switch', opts.x, opts.y);
         this._objects.push({
             type: 'switch', x: opts.x, y: opts.y, roomIndex: 0,
-            variableId: resolveVariableId(opts.variable), on: opts.on ?? false,
+            variableId: this.resolveVariableId(opts.variable), on: opts.on ?? false,
         });
         return this;
     }
@@ -234,7 +237,7 @@ class RoomBuilder {
         this._objectTypes.add('door-variable');
         this._objects.push({
             type: 'door-variable', x: opts.x, y: opts.y, roomIndex: 0,
-            variableId: resolveVariableId(opts.variable),
+            variableId: this.resolveVariableId(opts.variable),
         });
         return this;
     }
@@ -244,7 +247,7 @@ class RoomBuilder {
         this._reserveTile('logic-led', opts.x, opts.y);
         this._objects.push({
             type: 'logic-led', x: opts.x, y: opts.y, roomIndex: 0,
-            variableId: resolveVariableId(opts.variable),
+            variableId: this.resolveVariableId(opts.variable),
         });
         return this;
     }
@@ -257,7 +260,7 @@ class RoomBuilder {
         this._reserveTile('trap', opts.x, opts.y);
         this._objects.push({
             type: 'trap', x: opts.x, y: opts.y, roomIndex: 0,
-            ...(opts.variable !== undefined ? { variableId: resolveVariableId(opts.variable) } : {}),
+            ...(opts.variable !== undefined ? { variableId: this.resolveVariableId(opts.variable) } : {}),
             ...(opts.solid === true ? { solid: true } : {}),
         });
         return this;
@@ -268,7 +271,7 @@ class RoomBuilder {
         this._reserveTile('pressure-plate', opts.x, opts.y);
         this._objects.push({
             type: 'pressure-plate', x: opts.x, y: opts.y, roomIndex: 0,
-            variableId: resolveVariableId(opts.variable),
+            variableId: this.resolveVariableId(opts.variable),
         });
         return this;
     }
@@ -295,9 +298,9 @@ class RoomBuilder {
         this._objects.push({
             type: mapped as Extract<SdkObject, { type: `logic-gate-${string}` }>['type'],
             x: opts.x, y: opts.y, roomIndex: 0,
-            inputVariableId: opts.inputA !== undefined ? resolveVariableId(opts.inputA) : undefined,
-            inputVariableId2: opts.inputB !== undefined ? resolveVariableId(opts.inputB) : undefined,
-            outputVariableId: resolveVariableId(opts.output),
+            inputVariableId: opts.inputA !== undefined ? this.resolveVariableId(opts.inputA) : undefined,
+            inputVariableId2: opts.inputB !== undefined ? this.resolveVariableId(opts.inputB) : undefined,
+            outputVariableId: this.resolveVariableId(opts.output),
             hiddenInGame: opts.hidden ? true : undefined,
         });
         return this;
@@ -316,7 +319,7 @@ class RoomBuilder {
             type: 'chest', x: opts.x, y: opts.y, roomIndex: 0,
             containsItemType: opts.contains ?? null,
             randomItem: Boolean(opts.random),
-            ...(opts.variable !== undefined ? { variableId: resolveVariableId(opts.variable) } : {}),
+            ...(opts.variable !== undefined ? { variableId: this.resolveVariableId(opts.variable) } : {}),
         });
         return this;
     }
