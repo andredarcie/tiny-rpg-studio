@@ -3,6 +3,7 @@ import { GameplayPluginHost } from '../../runtime/infra/GameplayPluginHost';
 import type { GameEngine } from '../../runtime/services/GameEngine';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
 import { assembleExportHtml } from '../../editor/modules/export/ExportHtmlAssembler';
+import type { DialoguePlusNpc } from '../../runtime/domain/dialoguePlus';
 
 const plugin: InstalledPlugin = {
   id: 'maps', version: '1', title: 'Maps', shortDescription: 'Maps', fullDescription: 'Maps',
@@ -41,4 +42,21 @@ it('embeds complete plugin projects without a misleading URL or Studio action', 
   expect(result.html).toContain('\\u003C/script>');
   expect(result.html).toContain('id="btn-open-studio" type="button" hidden');
   expect(result.html).not.toContain('location.hash="#"');
+});
+
+it('registers and cleans an NPC dialogue sequence through the gameplay bridge', async () => {
+  const sequence = vi.fn((npc: DialoguePlusNpc) => npc.dialoguePlus);
+  const setNpcDialogueSequence = vi.fn();
+  const engine = {
+    exportGameData: () => ({ title: 'old' }),
+    importGameData: vi.fn(),
+    setNpcDialogueSequence,
+  } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine, () => [plugin], () => Promise.resolve({
+    activate: ({ registerNpcDialogueSequence }) => registerNpcDialogueSequence(sequence),
+  }));
+  await host.load({ gameplayPlugins: [{ id: 'maps', version: '1' }] });
+  expect(setNpcDialogueSequence).toHaveBeenCalledWith(sequence);
+  host.remove('maps');
+  expect(setNpcDialogueSequence).toHaveBeenLastCalledWith(null);
 });

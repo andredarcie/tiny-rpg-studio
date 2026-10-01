@@ -212,6 +212,15 @@ class TinyRPGApplication {
         editorManager?.history.pushCurrentState();
         gameEngine.draw();
       },
+      setNpcDialogueBlocks: async (npcId, blocks, pluginId) => {
+        const plugin = pluginManager?.installed.find(item => item.id === pluginId && item.capabilities?.includes('gameplay') && item.version && item.payload?.gameplayJavascript);
+        if (!plugin || !editorManager) throw Error(`Gameplay plugin ${pluginId} is unavailable`);
+        const normalized = editorManager.npcService.setDialoguePlusBlocks(npcId, blocks, pluginId, plugin.version ?? '');
+        if (gameplayHost && !gameplayHost.isActive(pluginId, plugin.version ?? '')) {
+          await gameplayHost.load(gameEngine.exportGameData());
+        }
+        return normalized;
+      },
       getState: () => gameEngine.getState(),
       draw: () => gameEngine.draw(),
       resetGame: () => gameEngine.resetGame(),

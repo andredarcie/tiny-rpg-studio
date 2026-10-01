@@ -8,6 +8,7 @@ type DialogMeta = {
   setVariableId?: string;
   rewardAllowed?: boolean;
   npcId?: string;
+  npcChoiceKey?: string;
   npcDialogVariantKey?: string;
   disappearNpcId?: string;
 };
@@ -111,7 +112,7 @@ class DialogManager {
 
     const meta: DialogMeta = this.pendingDialogAction ?? {};
     // Lock the choice for the rest of the playthrough (definitive choice).
-    this.gameState.markNpcChoiceAnswered?.(meta.npcId);
+    this.gameState.markNpcChoiceAnswered?.(meta.npcChoiceKey ?? meta.npcId);
     if (option.rewardVariableId) {
       meta.setVariableId = option.rewardVariableId;
       meta.rewardAllowed = true;
@@ -180,7 +181,7 @@ class DialogManager {
     // can queue its own.
     const next = this.pendingNext;
     this.pendingNext = null;
-    if (next) {
+    if (next && !pendingMeta?.disappearNpcId && !shouldEndGame) {
       next();
       this.renderer.draw();
     }

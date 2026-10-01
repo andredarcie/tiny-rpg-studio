@@ -67,6 +67,21 @@ function makeManager(ov: Record<string, unknown> = {}) {
 function makeService(ov: Record<string, unknown> = {}) { const m = makeManager(ov); return { service: new EditorNpcService(asNpcServiceManager(m)), manager: m }; }
 beforeEach(() => { vi.stubGlobal('alert', vi.fn()); });
 
+it('saves Dialogue+ blocks through the editor and records its gameplay dependency', () => {
+  const { service, manager } = makeService();
+  const npc = { id: 'npc-1', type: 'villager', roomIndex: 0, dialoguePlus: undefined as unknown };
+  manager.gameEngine.getSprites.mockReturnValue([npc]);
+  const game = { gameplayPlugins: [] as { id: string; version: string }[] };
+  Object.assign(manager.gameEngine, { gameState: { game, normalizeVariableId: (id: string | null) => id === 'var-1' ? id : null } });
+  const blocks = service.setDialoguePlusBlocks('npc-1', [
+    { id: 'block-1', kind: 'alternative', conditionVariableId: 'var-1', text: 'Hello', rewardVariableId: null },
+  ], 'dialogue-plus', '1.0.0');
+  expect(npc.dialoguePlus).toEqual(blocks);
+  expect(game.gameplayPlugins).toEqual([{ id: 'dialogue-plus', version: '1.0.0' }]);
+  expect(manager.updateJSON).toHaveBeenCalled();
+  expect(manager.history.pushCurrentState).toHaveBeenCalled();
+});
+
 describe('activatePlacement', () => {
   it('alerts when no selectedNpcId', () => { const {service} = makeService({selectedNpcId:null}); service.activatePlacement(); expect(alert).toHaveBeenCalledTimes(1); expect(service.state.placingNpc).toBe(false); });
   it('returns early when already placing', () => { const {service,manager} = makeService({selectedNpcId:'npc-1',placingNpc:true}); service.activatePlacement(); expect(manager.enemyService.deactivatePlacement).not.toHaveBeenCalled(); expect(service.state.placingNpc).toBe(true); });

@@ -1,12 +1,14 @@
 import type { GameEngine } from '../services/GameEngine';
 import type { GameDefinition } from '../../types/gameState';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
+import type { NpcDialogueSequence } from '../domain/dialoguePlus';
 
 export type GameplayDependency = { id: string; version: string };
 export type GameplayContext = {
   apiVersion: 1;
   getWorld(): { rows: number; cols: number };
   resizeWorld(rows: number, cols: number): void;
+  registerNpcDialogueSequence(sequence: NpcDialogueSequence): void;
   onCleanup(callback: () => void): void;
 };
 type GameplayModule = { activate(context: GameplayContext): void | Promise<void> };
@@ -67,6 +69,11 @@ export class GameplayPluginHost {
             this.engine.gameState.worldManager.resizeWorld(rows, cols);
             const game = this.engine.getGame() as unknown as GameDefinition;
             game.gameplayPlugins = [...(game.gameplayPlugins ?? []).filter(item => item.id !== plugin.id), { id: plugin.id, version }];
+          },
+          registerNpcDialogueSequence: sequence => {
+            if (typeof sequence !== 'function') throw Error('NPC dialogue sequence must be a function');
+            this.engine.setNpcDialogueSequence(sequence);
+            cleanup.push(() => this.engine.setNpcDialogueSequence(null));
           },
           onCleanup: callback => cleanup.push(callback),
         });

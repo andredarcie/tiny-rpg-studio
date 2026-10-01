@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { PluginManager } from '../../editor/manager/PluginManager';
 import type { PluginContext, PluginModule } from '../../editor/manager/PluginRuntime';
-import { PluginRuntime } from '../../editor/manager/PluginRuntime';
+import { PluginRuntime, renderNpcModalExtensions } from '../../editor/manager/PluginRuntime';
 import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 
 const pkg = { id: 'demo', title: 'Demo', shortDescription: 'Short', fullDescription: 'Full', payload: { apiVersion: 1 as const, javascript: 'demo', css: '.demo {}' } };
@@ -12,6 +12,27 @@ const settingsRoot = () => {
   document.body.append(root);
   return root;
 };
+it('rebuilds NPC modal extensions and removes them with the plugin', async () => {
+  const manager = new PluginManager();
+  const runtime = new PluginRuntime(manager, () => Promise.resolve({ activate: context => {
+    context.registerNpcModal(body => { body.textContent = 'Plugin controls'; });
+  } }));
+  manager.install(pkg);
+  runtime.start(document.body, {} as TinyRpgApi);
+  await runtime.settled();
+  const first = document.createElement('div');
+  const rebuilt = document.createElement('div');
+  renderNpcModalExtensions(first, { id: 'npc-1' });
+  renderNpcModalExtensions(rebuilt, { id: 'npc-1' });
+  expect(first.textContent).toBe('Plugin controls');
+  expect(rebuilt.textContent).toBe('Plugin controls');
+  manager.remove(pkg.id);
+  await runtime.settled();
+  const restored = document.createElement('div');
+  renderNpcModalExtensions(restored, { id: 'npc-1' });
+  expect(restored.textContent).toBe('');
+  await runtime.destroy();
+});
 it('groups settings by installed title and toggles the empty state', async () => {
   const root = settingsRoot();
   const manager = new PluginManager();

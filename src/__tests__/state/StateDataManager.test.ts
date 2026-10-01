@@ -109,6 +109,30 @@ describe('StateDataManager', () => {
     expect(objectManager.normalizeObjects).not.toHaveBeenCalled();
   });
 
+  it('round-trips Dialogue+ blocks and its gameplay dependency without runtime disappearance', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {
+        normalizeRooms: vi.fn(() => game.rooms), normalizeTileMaps: vi.fn(() => game.tileset.maps),
+        clampCoordinate: vi.fn((value: number) => value), clampRoomIndex: vi.fn((value: number) => value),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: { normalizeObjects: vi.fn(() => []), setGame: vi.fn() } as unknown as StateObjectManager,
+      variableManager: { normalizeVariables: vi.fn(() => []), setGame: vi.fn() } as unknown as StateVariableManager,
+    });
+    const block = { id: 'block-1', kind: 'choice' as const, prompt: 'Stay?', yesText: 'Yes', noText: 'No',
+      yesVariableId: null, noVariableId: null, disappearAfterDialog: false };
+    game.gameplayPlugins = [{ id: 'dialogue-plus', version: '1.0.0' }];
+    game.sprites = [{ id: 'npc-1', dialoguePlus: [block], disappeared: true } as GameDefinition['sprites'][number]];
+    const exported = manager.exportGameData() as unknown as GameDefinition;
+    expect(exported.sprites[0].dialoguePlus).toEqual([block]);
+    expect(exported.sprites[0].disappeared).toBeUndefined();
+    manager.importGameData(exported);
+    expect(game.gameplayPlugins).toEqual([{ id: 'dialogue-plus', version: '1.0.0' }]);
+    expect(game.sprites[0].dialoguePlus).toEqual([block]);
+  });
+
   it('preserves explicit false and defaults missing dialog marker settings to true', () => {
     const game = makeGame();
     const manager = new StateDataManager({

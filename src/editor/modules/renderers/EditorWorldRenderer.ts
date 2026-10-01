@@ -3,6 +3,7 @@ import { ITEM_TYPES, type ItemType } from '../../../runtime/domain/constants/ite
 import { NPC_END_GAME_REWARD_ID } from '../../../runtime/domain/constants/npcRewards';
 import { itemCatalog } from '../../../runtime/domain/services/ItemCatalog';
 import { ShareUrlHelper } from '../../../runtime/infra/share/ShareUrlHelper';
+import type { DialoguePlusBlock } from '../../../runtime/domain/dialoguePlus';
 
 type GameWithWorld = {
     world?: { rows?: number; cols?: number };
@@ -23,6 +24,8 @@ type NpcSprite = {
     choiceNoText?: string;
     choiceYesVariableId?: string | null;
     choiceNoVariableId?: string | null;
+    disappearAfterDialog?: boolean;
+    dialoguePlus?: DialoguePlusBlock[];
 };
 
 type EnemyEntry = {
@@ -52,6 +55,7 @@ type TileDef = {
 };
 
 type GameWithMetrics = {
+    gameplayPlugins?: { id: string; version: string }[];
     rooms?: RoomWithWalls[];
     sprites?: NpcSprite[];
     enemies?: EnemyEntry[];
@@ -267,21 +271,40 @@ class EditorWorldRenderer extends EditorRendererBase {
         let placedNpcs = 0;
         let dialogWords = 0;
         let conditionalDialogs = 0;
+        const dialoguePlusActive = game.gameplayPlugins?.some(plugin => plugin.id === 'dialogue-plus') === true;
         for (const sprite of sprites) {
+            const blocks = dialoguePlusActive && Array.isArray(sprite.dialoguePlus) && !sprite.disappearAfterDialog
+                ? sprite.dialoguePlus : null;
             if (sprite.placed) {
                 placedNpcs++;
-                if (sprite.conditionVariableId) conditionalDialogs++;
-                if (sprite.choiceEnabled === true) conditionalDialogs++;
+                if (blocks) conditionalDialogs += blocks.length;
+                else if (!sprite.disappearAfterDialog) {
+                    if (sprite.conditionVariableId) conditionalDialogs++;
+                    if (sprite.choiceEnabled === true) conditionalDialogs++;
+                }
             }
-            dialogWords += countWords(sprite.text)
-                + countWords(sprite.conditionText)
-                + countWords(sprite.choicePrompt)
-                + countWords(sprite.choiceYesText)
-                + countWords(sprite.choiceNoText);
-            if (sprite.conditionVariableId) usedVariableIds.add(sprite.conditionVariableId);
+            dialogWords += countWords(sprite.text);
             if (sprite.rewardVariableId && sprite.rewardVariableId !== NPC_END_GAME_REWARD_ID) {
                 usedVariableIds.add(sprite.rewardVariableId);
             }
+            if (blocks) {
+                for (const block of blocks) {
+                    if (block.kind === 'alternative') {
+                        dialogWords += countWords(block.text);
+                        if (block.conditionVariableId && block.conditionVariableId !== 'skill:bard') usedVariableIds.add(block.conditionVariableId);
+                        if (block.rewardVariableId && block.rewardVariableId !== NPC_END_GAME_REWARD_ID) usedVariableIds.add(block.rewardVariableId);
+                    } else {
+                        dialogWords += countWords(block.prompt) + countWords(block.yesText) + countWords(block.noText);
+                        if (block.yesVariableId && block.yesVariableId !== NPC_END_GAME_REWARD_ID) usedVariableIds.add(block.yesVariableId);
+                        if (block.noVariableId && block.noVariableId !== NPC_END_GAME_REWARD_ID) usedVariableIds.add(block.noVariableId);
+                    }
+                }
+                continue;
+            }
+            if (sprite.disappearAfterDialog) continue;
+            dialogWords += countWords(sprite.conditionText) + countWords(sprite.choicePrompt)
+                + countWords(sprite.choiceYesText) + countWords(sprite.choiceNoText);
+            if (sprite.conditionVariableId && sprite.conditionVariableId !== 'skill:bard') usedVariableIds.add(sprite.conditionVariableId);
             if (
                 sprite.conditionalRewardVariableId
                 && sprite.conditionalRewardVariableId !== NPC_END_GAME_REWARD_ID

@@ -189,6 +189,42 @@ test('Maps+ is discoverable and installable from the catalog', async ({ page }) 
   await expect(page.locator('[data-plugin-settings-group="maps-plus"] .maps-plus-controls select[aria-label="Columns"]')).toBeVisible();
 });
 
+test('Dialogue+ edits repeated NPC blocks and restores the native modal after removal', async ({ page }) => {
+  await page.goto('/');
+  await page.click('button[data-tab="editor"]');
+  await page.click('#btn-plugins');
+  await page.fill('#plugins-query', 'Dialogue+');
+  const plugin = page.locator('.plugin-card[data-plugin-id="dialogue-plus"]');
+  await expect(plugin).toBeVisible();
+  await plugin.locator('[data-action="install"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+
+  await page.locator('.npc-card').first().click();
+  await page.locator('#editor-canvas').click({ position: { x: 100, y: 100 } });
+  await page.locator('#editor-canvas').click({ position: { x: 100, y: 100 } });
+  await expect(page.locator('.dialogue-plus__add')).toBeVisible();
+  await expect(page.locator('.npc-edit-modal__toggle').first()).toBeHidden();
+  await page.locator('.dialogue-plus__add').click();
+  await page.locator('.dialogue-plus__popup button').first().click();
+  await page.locator('.dialogue-plus__add').click();
+  await page.locator('.dialogue-plus__popup button').last().click();
+  await expect(page.locator('.dialogue-plus__block')).toHaveCount(2);
+  await expect(page.locator('#btn-generate-url')).toBeDisabled();
+  await page.locator('#npc-disappear-after-dialog').check();
+  await expect(page.locator('.dialogue-plus')).toBeHidden();
+  await page.locator('#npc-disappear-after-dialog').uncheck();
+  await expect(page.locator('.dialogue-plus__block')).toHaveCount(2);
+
+  await page.keyboard.press('Escape');
+  await page.click('#btn-plugins');
+  await page.click('#plugins-manage');
+  await page.locator('[data-plugin-id="dialogue-plus"] [data-action="remove"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await page.locator('#editor-canvas').click({ position: { x: 100, y: 100 } });
+  await expect(page.locator('.dialogue-plus')).toHaveCount(0);
+  await expect(page.locator('.npc-edit-modal__toggle').first()).toBeVisible();
+});
+
 test('Maps+ controls stay synchronized with Minimalist UI hiding World', async ({ page }) => {
   await page.goto('/');
   await page.click('button[data-tab="editor"]');

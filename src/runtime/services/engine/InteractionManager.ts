@@ -5,8 +5,10 @@ import { isChestAccessible } from '../../domain/state/ChestState';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
 import { resolveChoiceDialog, resolveNpcDialog, type ResolvedNpcDialog } from './resolveNpcDialog';
+import { resolveDialoguePlus } from './resolveDialoguePlus';
 import { normalizeXpScrollExperienceOverride } from '../../domain/definitions/xpScrollExperience';
 import type { DialogChoiceOption } from '../../../types/gameState';
+import { dialoguePlusChoiceKey, type DialoguePlusBlock, type NpcDialogueSequence } from '../../domain/dialoguePlus';
 
 type DialogManagerApi = {
   showDialog: (text: string, meta?: Record<string, unknown>) => void;
@@ -67,6 +69,7 @@ type NpcState = {
   choiceNoText?: string;
   choiceYesVariableId?: string | null;
   choiceNoVariableId?: string | null;
+  dialoguePlus?: DialoguePlusBlock[];
 };
 
 type ExitState = {
@@ -117,6 +120,8 @@ type GameStateApi = {
   setPlayerPosition: (x: number, y: number, roomIndex: number | null) => void;
   getRoomIndex: (row: number, col: number) => number | null;
   resetPushBoxesForRoom?: (roomIndex: number) => void;
+  hasAnsweredChoice?: (key: string | undefined) => boolean;
+  hasUnreadNpcDialog?: (npcId: string, variantKey: string | null) => boolean;
 };
 
 type Options = {
@@ -127,6 +132,11 @@ type Options = {
 };
 
 class InteractionManager {
+  private npcDialogueSequence: NpcDialogueSequence | null = null;
+
+  setNpcDialogueSequence(sequence: NpcDialogueSequence | null): void {
+    this.npcDialogueSequence = sequence;
+  }
   gameState: GameStateApi;
   dialogManager: DialogManagerApi;
   options?: Options;
@@ -574,13 +584,16 @@ class InteractionManager {
   }
 
   /**
-   * Opens the NPC's dialog sequence: default, newly activated alternative, then
-   * the Yes/No choice question. Shared by the same-tile check and the movement
-   * "bump into NPC" path (MovementManager) so both entry points behave identically.
-   * Returns true when something was shown.
+   * Opens one Dialogue+ block per interaction. NPCs without an active Dialogue+
+   * sequence keep their legacy scalar-dialog flow. Both same-tile and bump
+   * interactions use this entry point.
    */
   openNpcDialog(npc: NpcState): boolean {
     if (npc.disappeared === true) return false;
+    const blocks = this.npcDialogueSequence?.(npc);
+    if (Array.isArray(blocks) && npc.disappearAfterDialog !== true) {
+      return this.openDialoguePlus(npc, blocks);
+    }
     const simple = resolveNpcDialog(npc, this.gameState);
     const initialChoice = resolveChoiceDialog(npc, this.gameState);
     const showChoice = initialChoice && initialChoice.choices && this.dialogManager.showChoiceDialog
@@ -619,6 +632,39 @@ class InteractionManager {
       return true;
     }
     return false;
+  }
+
+  private openDialoguePlus(npc: NpcState, blocks: DialoguePlusBlock[]): boolean {
+    const npcId = npc.id || '';
+    const selected = resolveDialoguePlus(npc, blocks, this.gameState);
+    if (!selected) return false;
+    if (selected.kind === 'default') {
+      this.dialogManager.showDialog(npc.text || '', {
+        npcId, npcDialogVariantKey: selected.variantKey,
+        ...(npc.rewardVariableId ? { setVariableId: npc.rewardVariableId, rewardAllowed: true } : {}),
+      });
+      return true;
+    }
+    if (selected.kind === 'alternative') {
+      const block = selected.block;
+      this.dialogManager.showDialog(block.text, {
+        npcId, npcDialogVariantKey: selected.variantKey,
+        ...(block.rewardVariableId ? { setVariableId: block.rewardVariableId, rewardAllowed: true } : {}),
+        ...(block.disappearAfterDialog ? { disappearNpcId: npcId } : {}),
+      });
+      return true;
+    }
+    if (!this.dialogManager.showChoiceDialog) return false;
+    const block = selected.block;
+    this.dialogManager.showChoiceDialog(block.prompt, [
+      { key: 'yes', label: this.getInteractionText('dialog.choice.yes', '✔'), text: block.yesText, rewardVariableId: block.yesVariableId },
+      { key: 'no', label: this.getInteractionText('dialog.choice.no', '✖'), text: block.noText, rewardVariableId: block.noVariableId },
+    ], {
+      npcId, npcChoiceKey: dialoguePlusChoiceKey(npcId, block.id),
+      npcDialogVariantKey: selected.variantKey,
+      ...(block.disappearAfterDialog ? { disappearNpcId: npcId } : {}),
+    });
+    return true;
   }
 
   private buildChoiceOptions(choice: ResolvedNpcDialog): DialogChoiceOption[] {

@@ -17,6 +17,7 @@ import { StateVariableManager } from './state/StateVariableManager';
 import { StateWorldManager } from './state/StateWorldManager';
 import { GameConfig } from '../../config/GameConfig';
 import { DEFAULT_BACKGROUND_MUSIC_VOLUME } from '../infra/share/BackgroundMusicVideoId';
+import type { NpcDialogueSequence } from './dialoguePlus';
 import type { TileMap, Tileset } from './definitions/tileTypes';
 import type {
     DialogChoicePhase,
@@ -64,6 +65,7 @@ class GameState {
     lastKillerEnemyId: string | null;
     onVariableChanged: ((variableId: string, value: unknown) => void) | null = null;
     onMagicDoorOpened: (() => void) | null = null;
+    npcDialogueSequence: NpcDialogueSequence | null = null;
     editorMode: boolean;
     levelUpOverlayPresentationSync: (() => void) | null;
 

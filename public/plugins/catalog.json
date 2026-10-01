@@ -2,6 +2,15 @@
   "schemaVersion": 1,
   "plugins": [
     {
+      "id": "dialogue-plus",
+      "title": "Dialogue+",
+      "shortDescription": "Add multiple NPC alternatives and choices.",
+      "fullDescription": "Create ordered conditional dialogue and Yes/No choices for each NPC, with individual rewards and disappearance. Dialogue+ projects keep their conversations in local saves and standalone HTML exports.",
+      "capabilities": ["editor", "gameplay"],
+      "version": "1.0.0",
+      "file": "dialogue-plus/1.0.0/plugin.html"
+    },
+    {
       "id": "custom-themes",
       "title": "Custom Themes",
       "shortDescription": "Seven editor palettes in a compact theme dropdown.",

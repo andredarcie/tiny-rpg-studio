@@ -1,8 +1,16 @@
 import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import type { InstalledPlugin, PluginManager } from './PluginManager';
 import type { Modal, ModalOptions } from '../../ui/Modal';
+import type { DialoguePlusBlock } from '../../runtime/domain/dialoguePlus';
+export type NpcModalView = { id: string; dialoguePlus?: DialoguePlusBlock[]; disappearAfterDialog?: boolean; conditionVariableId?: string | null; conditionText?: string | null; conditionalRewardVariableId?: string | null; choiceEnabled?: boolean; choicePrompt?: string | null; choiceYesText?: string | null; choiceNoText?: string | null; choiceYesVariableId?: string | null; choiceNoVariableId?: string | null };
+export type NpcModalRenderer = (body: HTMLElement, npc: NpcModalView) => void;
+const npcModalRenderers = new Set<NpcModalRenderer>();
+export const renderNpcModalExtensions = (body: HTMLElement, npc: NpcModalView): void => {
+  for (const render of npcModalRenderers) render(body, npc);
+};
+const notifyNpcModalChanged = () => document.dispatchEvent(new Event('npc-modal-plugins-changed'));
 export type PluginUi = { createModal(options?: ModalOptions): Modal; text(key: string, fallback: string): string };
-export interface PluginContext { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi; onCleanup(callback: () => void): void; registerSettings(render: (container: HTMLElement) => void): void }
+export interface PluginContext { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi; onCleanup(callback: () => void): void; registerSettings(render: (container: HTMLElement) => void): void; registerNpcModal(render: NpcModalRenderer): void }
 export type PluginModule = { activate(context: PluginContext): void | Promise<void> };
 export type PluginLoader = (source: string) => Promise<PluginModule>;
 export type PluginState = { status: 'inert' | 'pending' | 'active' | 'failed'; error?: string };
@@ -72,6 +80,13 @@ export class PluginRuntime {
           document.head.append(style);
         }
         let group: HTMLElement | undefined;
+        const registerNpcModal = (render: NpcModalRenderer): void => {
+          if (!entry.valid || this.entries.get(plugin.id) !== entry || !this.current(plugin)) throw Error('Plugin activation is no longer current');
+          if (typeof render !== 'function') throw Error('NPC modal renderer must be a function');
+          npcModalRenderers.add(render);
+          entry.cleanups.push(() => { npcModalRenderers.delete(render); notifyNpcModalChanged(); });
+          notifyNpcModalChanged();
+        };
         const registerSettings = (render: (container: HTMLElement) => void): void => {
           if (!entry.valid || this.entries.get(plugin.id) !== entry || !this.current(plugin)) throw Error('Plugin activation is no longer current');
           const panel = this.context?.editorRoot.querySelector<HTMLElement>('[data-project-tab-panel="plugins"]');
@@ -96,7 +111,7 @@ export class PluginRuntime {
           group.append(container);
           render(container);
         };
-        await module.activate({ ...this.context, onCleanup: callback => entry.cleanups.push(callback), registerSettings });
+        await module.activate({ ...this.context, onCleanup: callback => entry.cleanups.push(callback), registerSettings, registerNpcModal });
         if (this.entries.get(plugin.id)?.valid !== true || !this.current(plugin)) this.cleanup(plugin.id);
         else entry.state = { status: 'active' };
       } catch (error) {

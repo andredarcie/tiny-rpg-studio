@@ -18,6 +18,7 @@ import { GameConfig } from '../../config/GameConfig';
 import type { OnlineConfig, SkillCustomizationMap } from '../../types/gameState';
 import { BackgroundMusicEngine } from './BackgroundMusicEngine';
 import { performanceProfiler } from '../debug/PerformanceProfiler';
+import type { NpcDialogueSequence } from '../domain/dialoguePlus';
 import {
   createCustomTileEffect,
   isCustomTileEffectId,
@@ -68,6 +69,11 @@ type GameData = {
 };
 
 export class GameEngine {
+  setNpcDialogueSequence(sequence: NpcDialogueSequence | null): void {
+    this.gameState.npcDialogueSequence = sequence;
+    this.interactionManager.setNpcDialogueSequence(sequence);
+    this.draw();
+  }
   canvas: HTMLCanvasElement;
   gameState: GameState;
   tileManager: TileManager;

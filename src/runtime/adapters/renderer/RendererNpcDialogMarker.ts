@@ -1,5 +1,7 @@
 import { bitmapFont } from './BitmapFont';
 import { resolveNpcDialog } from '../../services/engine/resolveNpcDialog';
+import { resolveDialoguePlus } from '../../services/engine/resolveDialoguePlus';
+import type { DialoguePlusBlock, NpcDialogueSequence } from '../../domain/dialoguePlus';
 
 type NpcState = {
   id?: string;
@@ -14,6 +16,8 @@ type NpcState = {
   choiceNoText?: string;
   choiceYesVariableId?: string | null;
   choiceNoVariableId?: string | null;
+  disappearAfterDialog?: boolean;
+  dialoguePlus?: DialoguePlusBlock[];
 };
 
 type GameStateApi = {
@@ -21,6 +25,8 @@ type GameStateApi = {
   isVariableOn?: (id: string) => boolean;
   hasSkill?: (skillId: string) => boolean;
   hasUnreadNpcDialog?: (npcId: string, variantKey: string | null) => boolean;
+  hasAnsweredChoice?: (key: string | undefined) => boolean;
+  npcDialogueSequence?: NpcDialogueSequence | null;
 };
 
 type PaletteManagerApi = {
@@ -43,6 +49,12 @@ const LockMarkerMatrix: PixelMatrix = [
 const shouldDrawUnreadNpcDialogMarker = (gameState: GameStateApi, npc: NpcState): boolean => {
   if (!npc.id || !gameState.hasUnreadNpcDialog) {
     return false;
+  }
+  const npcId = npc.id;
+  const blocks = gameState.npcDialogueSequence?.(npc);
+  if (Array.isArray(blocks) && npc.disappearAfterDialog !== true) {
+    const selected = resolveDialoguePlus(npc, blocks, gameState);
+    return Boolean(selected && gameState.hasUnreadNpcDialog(npcId, selected.variantKey));
   }
   const resolved = resolveNpcDialog(npc, gameState);
   if (!resolved.hasDialog) {

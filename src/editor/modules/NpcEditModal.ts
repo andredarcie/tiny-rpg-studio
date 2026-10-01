@@ -4,6 +4,8 @@ import { EditorModal } from './EditorModal';
 import { track } from '../../analytics/track';
 import type { EditorModalButton } from './EditorModal';
 import type { EditorRenderService } from './EditorRenderService';
+import { renderNpcModalExtensions } from '../manager/PluginRuntime';
+import type { DialoguePlusBlock } from '../../runtime/domain/dialoguePlus';
 
 type NpcDefinitionView = {
     type: string;
@@ -31,6 +33,7 @@ type EditorNpc = {
     choiceNoText?: string | null;
     choiceYesVariableId?: string | null;
     choiceNoVariableId?: string | null;
+    dialoguePlus?: DialoguePlusBlock[];
 };
 
 class NpcEditModal extends EditorRendererBase {
@@ -48,6 +51,7 @@ class NpcEditModal extends EditorRendererBase {
         // (and labels) follow the new locale instead of keeping the old names.
         if (typeof document !== 'undefined') {
             document.addEventListener('language-changed', () => this.refresh());
+            document.addEventListener('npc-modal-plugins-changed', () => this.refresh());
         }
     }
 
@@ -320,6 +324,7 @@ class NpcEditModal extends EditorRendererBase {
         body.appendChild(choiceToggleBtn);
         body.appendChild(choiceSection);
 
+        renderNpcModalExtensions(body, npc);
         return body;
     }
 

@@ -4,6 +4,7 @@ import { TextResources } from '../adapters/TextResources';
 import type { Npc } from '../domain/entities/Npc';
 import type { GameState } from '../domain/GameState';
 import { normalizeNpcRewardId } from '../domain/constants/npcRewards';
+import { normalizeDialoguePlus, type DialoguePlusBlock } from '../domain/dialoguePlus';
 
 /**
  * NPCManager creates and mutates the fixed NPC roster.
@@ -43,6 +44,7 @@ type NPCInstance = {
     choiceNoText: string;
     choiceYesVariableId: string | null;
     choiceNoVariableId: string | null;
+    dialoguePlus?: DialoguePlusBlock[];
 };
 
 type NPCInput = {
@@ -76,6 +78,7 @@ type NPCInput = {
     choiceNoText?: string;
     choiceYesVariableId?: string | null;
     choiceNoVariableId?: string | null;
+    dialoguePlus?: unknown;
     [key: string]: unknown;
 };
 
@@ -267,6 +270,7 @@ class NPCManager {
         const choiceNoText = typeof npc.choiceNoText === 'string' ? npc.choiceNoText : '';
         const choiceYesVariableId = normalizeReward(npc.choiceYesVariableId ?? null);
         const choiceNoVariableId = normalizeReward(npc.choiceNoVariableId ?? null);
+        const dialoguePlus = normalizeDialoguePlus(npc.dialoguePlus, id => this.gameState.normalizeVariableId(id), normalizeReward);
 
         return {
             id,
@@ -292,7 +296,8 @@ class NPCManager {
             choiceYesText,
             choiceNoText,
             choiceYesVariableId,
-            choiceNoVariableId
+            choiceNoVariableId,
+            ...(dialoguePlus !== undefined ? { dialoguePlus } : {})
         };
     }
 
@@ -373,7 +378,8 @@ class NPCManager {
             x: data.x ?? 1,
             y: data.y ?? 1,
             roomIndex: data.roomIndex ?? 0,
-            placed: Boolean(data.placed)
+            placed: Boolean(data.placed),
+            dialoguePlus: data.dialoguePlus
         });
 
         this.sprites.push(npc);

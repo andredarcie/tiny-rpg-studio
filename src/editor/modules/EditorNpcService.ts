@@ -5,6 +5,8 @@ import type { EditorManager } from '../EditorManager';
 import type { NpcDefinitionData } from '../../runtime/domain/entities/Npc';
 import type { VariableDefinition } from '../../types/gameState';
 import { NPC_END_GAME_REWARD_ID } from '../../runtime/domain/constants/npcRewards';
+import { normalizeNpcRewardId } from '../../runtime/domain/constants/npcRewards';
+import { normalizeDialoguePlus, type DialoguePlusBlock } from '../../runtime/domain/dialoguePlus';
 
 type SpriteInstance = {
     id: string;
@@ -24,6 +26,7 @@ type SpriteInstance = {
     choiceNoText?: string | null;
     choiceYesVariableId?: string | null;
     choiceNoVariableId?: string | null;
+    dialoguePlus?: DialoguePlusBlock[];
 };
 
 class EditorNpcService {
@@ -322,6 +325,27 @@ class EditorNpcService {
         if (!this.state.selectedNpcId) return null;
         const sprites = this.gameEngine.getSprites() as SpriteInstance[];
         return sprites.find((entry: SpriteInstance) => entry.id === this.state.selectedNpcId) || null;
+    }
+
+    setDialoguePlusBlocks(npcId: string, blocks: unknown, pluginId: string, version: string): DialoguePlusBlock[] {
+        const npc = (this.gameEngine.getSprites() as SpriteInstance[]).find(entry => entry.id === npcId);
+        if (!npc) throw Error(`NPC ${npcId} was not found`);
+        const normalized = normalizeDialoguePlus(
+            blocks,
+            id => this.gameEngine.gameState.normalizeVariableId(id),
+            id => normalizeNpcRewardId(id, value => this.gameEngine.gameState.normalizeVariableId(value)),
+        );
+        if (!normalized) throw Error('Dialogue+ blocks must be an array');
+        npc.dialoguePlus = normalized;
+        const game = this.gameEngine.gameState.game;
+        game.gameplayPlugins = [...(game.gameplayPlugins ?? []).filter(item => item.id !== pluginId), { id: pluginId, version }];
+        this.manager.renderService.renderNpcs();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
+        this.gameEngine.draw();
+        return normalized;
     }
 
     updateNpcDisappearAfterDialog(enabled: boolean) {
