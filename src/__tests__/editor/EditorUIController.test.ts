@@ -72,10 +72,14 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
   projectTabDevelopment.dataset.projectTabButton = 'development';
   const projectTabTesting = document.createElement('button');
   projectTabTesting.dataset.projectTabButton = 'testing';
+  const projectTabPlugins = document.createElement('button');
+  projectTabPlugins.dataset.projectTabButton = 'plugins';
   const projectPanelDevelopment = document.createElement('div');
   projectPanelDevelopment.dataset.projectTabPanel = 'development';
   const projectPanelTesting = document.createElement('div');
   projectPanelTesting.dataset.projectTabPanel = 'testing';
+  const projectPanelPlugins = document.createElement('div');
+  projectPanelPlugins.dataset.projectTabPanel = 'plugins';
 
   const state: Record<string, unknown> = {
     variablePanelCollapsed: false, skillPanelCollapsed: false,
@@ -98,8 +102,8 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       projectBackgroundMusicVolume,
       projectBackgroundMusicVolumeValue,
       jsonArea,
-      projectTabButtons: [projectTabDevelopment, projectTabTesting],
-      projectTabPanels: [projectPanelDevelopment, projectPanelTesting],
+      projectTabButtons: [projectTabDevelopment, projectTabTesting, projectTabPlugins],
+      projectTabPanels: [projectPanelDevelopment, projectPanelTesting, projectPanelPlugins],
       mobileNavButtons: [] as HTMLButtonElement[],
       mobilePanels: [] as HTMLElement[],
     },
@@ -506,6 +510,17 @@ describe('EditorUIController', () => {
     expect(mgr.domCache.projectTabButtons[1].classList.contains('active')).toBe(true);
     expect(mgr.domCache.projectTabPanels[0].hidden).toBe(true);
     expect(mgr.domCache.projectTabPanels[1].hidden).toBe(false);
+    ctrl.setActiveProjectTab('plugins');
+    expect(mgr.state.activeProjectTab).toBe('plugins');
+    expect(mgr.domCache.projectTabButtons[2].getAttribute('aria-selected')).toBe('true');
+    expect(mgr.domCache.projectTabPanels[2].hidden).toBe(false);
+  });
+  it('includes the Plugins tab and settings panel in the editor markup', async () => {
+    const { default: html } = await import('../../../index.html?raw');
+    const page = document.createElement('div');
+    page.innerHTML = html;
+    expect(page.querySelector('.editor-section--project [data-project-tab-button="plugins"]')).not.toBeNull();
+    expect(page.querySelector('.editor-section--project [data-project-tab-panel="plugins"] [data-plugin-settings-empty]')).not.toBeNull();
   });
 
   // ─── updateMobilePanels ──────────────────────────────────────────────

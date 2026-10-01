@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-01-plugin-project-settings',
+    date: '2026-10-01',
+    title: 'Plugin settings in Project',
+    description: 'The Project panel now has a Plugins tab where installed plugins can provide their own settings. Each plugin gets a clearly named section, and the tab explains when there are no settings to show.',
+  },
+  {
     id: '2026-09-29-gameplay-plugins-and-world-size',
     date: '2026-09-29',
     title: 'Gameplay plugins and larger worlds',

@@ -2,7 +2,7 @@ import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import type { InstalledPlugin, PluginManager } from './PluginManager';
 import type { Modal, ModalOptions } from '../../ui/Modal';
 export type PluginUi = { createModal(options?: ModalOptions): Modal; text(key: string, fallback: string): string };
-export interface PluginContext { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi; onCleanup(callback: () => void): void }
+export interface PluginContext { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi; onCleanup(callback: () => void): void; registerSettings(render: (container: HTMLElement) => void): void }
 export type PluginModule = { activate(context: PluginContext): void | Promise<void> };
 export type PluginLoader = (source: string) => Promise<PluginModule>;
 export type PluginState = { status: 'inert' | 'pending' | 'active' | 'failed'; error?: string };
@@ -13,7 +13,7 @@ export const loadPluginModule: PluginLoader = async source => {
 };
 export class PluginRuntime {
   private context?: { editorRoot: HTMLElement; api: TinyRpgApi; ui?: PluginUi };
-  private entries = new Map<string, { signature: string; cleanups: (() => void)[]; state: PluginState }>();
+  private entries = new Map<string, { signature: string; cleanups: (() => void)[]; state: PluginState; valid: boolean }>();
   private queue = Promise.resolve();
   private destroyed = false;
   private listeners = new Set<() => void>();
@@ -23,7 +23,13 @@ export class PluginRuntime {
   constructor(manager: PluginManager, loader: PluginLoader = loadPluginModule) {
     this.manager = manager;
     this.loader = loader;
-    this.unsubscribe = manager.subscribe(() => this.schedule());
+    this.unsubscribe = manager.subscribe(() => {
+      const installed = manager.installed;
+      for (const [id, entry] of this.entries) {
+        if (!installed.some(plugin => plugin.id === id && JSON.stringify(plugin) === entry.signature)) entry.valid = false;
+      }
+      this.schedule();
+    });
   }
   start(editorRoot: HTMLElement, api: TinyRpgApi, ui?: PluginUi): void {
     if (this.destroyed || this.context) return;
@@ -42,6 +48,7 @@ export class PluginRuntime {
   private cleanup(id: string): void {
     const entry = this.entries.get(id);
     this.entries.delete(id);
+    if (entry) entry.valid = false;
     for (const callback of entry?.cleanups.reverse() ?? []) { try { callback(); } catch { /* Continue restoring remaining effects. */ } }
   }
   private async reconcile(): Promise<void> {
@@ -51,11 +58,11 @@ export class PluginRuntime {
     }
     if (this.context && !this.destroyed) for (const plugin of packages) {
       if (!plugin.payload?.javascript || this.entries.has(plugin.id) || !this.current(plugin)) continue;
-      const entry = { signature: JSON.stringify(plugin), cleanups: [] as (() => void)[], state: { status: 'pending' } as PluginState };
+      const entry = { signature: JSON.stringify(plugin), cleanups: [] as (() => void)[], state: { status: 'pending' } as PluginState, valid: true };
       this.entries.set(plugin.id, entry);
       try {
         const module = await this.loader(plugin.payload.javascript);
-        if (!this.current(plugin)) { this.cleanup(plugin.id); continue; }
+        if (!entry.valid || !this.current(plugin)) { this.cleanup(plugin.id); continue; }
         if (typeof module.activate !== 'function') throw Error('Plugin must export activate(context)');
         if (plugin.payload.css !== undefined) {
           const style = document.createElement('style');
@@ -64,12 +71,38 @@ export class PluginRuntime {
           entry.cleanups.push(() => style.remove());
           document.head.append(style);
         }
-        await module.activate({ ...this.context, onCleanup: callback => entry.cleanups.push(callback) });
-        if (!this.current(plugin)) this.cleanup(plugin.id);
+        let group: HTMLElement | undefined;
+        const registerSettings = (render: (container: HTMLElement) => void): void => {
+          if (!entry.valid || this.entries.get(plugin.id) !== entry || !this.current(plugin)) throw Error('Plugin activation is no longer current');
+          const panel = this.context?.editorRoot.querySelector<HTMLElement>('[data-project-tab-panel="plugins"]');
+          const groups = panel?.querySelector<HTMLElement>('[data-plugin-settings-groups]');
+          const empty = panel?.querySelector<HTMLElement>('[data-plugin-settings-empty]');
+          if (!groups || !empty) throw Error('Plugin settings panel is unavailable');
+          if (!group) {
+            group = document.createElement('section');
+            group.className = 'project-group plugin-settings-group';
+            group.dataset.pluginSettingsGroup = plugin.id;
+            const heading = document.createElement('h2');
+            heading.className = 'project-group__title';
+            heading.textContent = plugin.title;
+            group.append(heading);
+            groups.append(group);
+            empty.hidden = true;
+            const ownGroup = group;
+            entry.cleanups.push(() => { ownGroup.remove(); empty.hidden = Boolean(groups.querySelector('[data-plugin-settings-group]')); });
+          }
+          const container = document.createElement('div');
+          container.className = 'plugin-settings-content';
+          group.append(container);
+          render(container);
+        };
+        await module.activate({ ...this.context, onCleanup: callback => entry.cleanups.push(callback), registerSettings });
+        if (this.entries.get(plugin.id)?.valid !== true || !this.current(plugin)) this.cleanup(plugin.id);
         else entry.state = { status: 'active' };
       } catch (error) {
+        const failedCurrent = this.entries.get(plugin.id)?.valid === true && this.current(plugin);
         this.cleanup(plugin.id);
-        if (this.current(plugin)) this.entries.set(plugin.id, { ...entry, cleanups: [], state: { status: 'failed', error: error instanceof Error ? error.message : String(error) } });
+        if (failedCurrent) this.entries.set(plugin.id, { ...entry, cleanups: [], state: { status: 'failed', error: error instanceof Error ? error.message : String(error) }, valid: false });
       }
     }
     for (const listener of this.listeners) listener();

@@ -13,18 +13,18 @@
       "id": "example-plugin",
       "title": "Example plugin",
       "shortDescription": "Swap Tiles and NPCs to the top and hide World.",
-      "fullDescription": "Moves Tiles to the top of the right column and NPCs to the top of the left column. Hides the entire World section. Removal restores the layout. Runs trusted code in your editor only.",
-      "version": "1.0.0",
-      "file": "example-plugin/1.0.0/plugin.html"
+      "fullDescription": "Moves Tiles to the top of the right column and NPCs to the top of the left column. Use Project > Plugins > Flip to restore their original positions. Hides the entire World section. Removal restores the layout. Runs trusted code in your editor only.",
+      "version": "1.0.1",
+      "file": "example-plugin/1.0.1/plugin.html"
     },
     {
       "id": "maps-plus",
       "title": "Maps+",
       "shortDescription": "Choose a world size from 1×1 to 5×5.",
-      "fullDescription": "Adds synchronized row and column controls to the World panel and Project Development section. Keeps the selected world size in local saves and standalone HTML exports.",
+      "fullDescription": "Adds synchronized row and column controls to the World panel and Project Plugins tab. Keeps the selected world size in local saves and standalone HTML exports.",
       "capabilities": ["editor", "gameplay"],
-      "version": "1.0.1",
-      "file": "maps-plus/1.0.1/plugin.html"
+      "version": "1.0.2",
+      "file": "maps-plus/1.0.2/plugin.html"
     },
     {
       "id": "minimalist-ui",

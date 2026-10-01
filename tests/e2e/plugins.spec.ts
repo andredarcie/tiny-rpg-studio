@@ -76,7 +76,16 @@ for (const width of [1280, 800]) {
     await expect(page.locator('.editor-left > .editor-section--npcs:first-child')).toHaveCount(1);
     expect(await page.evaluate(() => Reflect.get(window, 'originalTiles') === document.querySelector('.editor-section--tiles'))).toBe(true);
     await expect(page.locator('.editor-section--world')).toBeHidden();
-    await expect(page.locator('#example-plugin-toggle')).toHaveCount(0);
+    if (width <= 920) await page.click('[data-mobile-target="project"]');
+    await page.click('[data-project-tab-button="plugins"]');
+    const flip = page.getByRole('checkbox', { name: 'Flip' });
+    await expect(flip).toBeChecked();
+    await flip.uncheck();
+    await expect(page.locator('.editor-left > .editor-section--tiles')).toHaveCount(1);
+    await expect(page.locator('.editor-right > .editor-section--npcs')).toHaveCount(1);
+    await flip.check();
+    await expect(page.locator('.editor-right > .editor-section--tiles:first-child')).toHaveCount(1);
+    if (width <= 920) await page.click('[data-mobile-target="tiles"]');
     if (width <= 920) {
       await page.click('[data-mobile-target="npcs"]');
       await expect(page.locator('.editor-section--npcs')).toBeVisible();
@@ -91,14 +100,14 @@ for (const width of [1280, 800]) {
     await page.click('#pae-close');
     await page.reload();
     await page.click('button[data-tab="editor"]');
-    await expect(page.locator('#example-plugin-toggle')).toHaveCount(0);
+    await expect(page.locator('#example-plugin-flip')).toBeChecked();
     await expect(page.locator('.editor-right > .editor-section--tiles:first-child')).toHaveCount(1);
     await expect(page.locator('.editor-section--world')).toBeHidden();
     await page.click('#btn-plugins');
     await page.click('#plugins-manage');
     await page.click('[data-plugin-id="example-plugin"] [data-action="remove"]');
     await page.click('#plugins-modal .tiny-modal__close');
-    await expect(page.locator('#example-plugin-toggle')).toHaveCount(0);
+    await expect(page.locator('#example-plugin-flip')).toHaveCount(0);
     await expect(page.locator('.editor-left > .editor-section--tiles')).toHaveCount(1);
     await expect(page.locator('.editor-right > .editor-section--npcs')).toHaveCount(1);
     if (width <= 920) await page.click('[data-mobile-target="world"]');
@@ -174,7 +183,10 @@ test('Maps+ is discoverable and installable from the catalog', async ({ page }) 
   await expect(page.locator('.plugin-card[data-plugin-id="maps-plus"] .plugin-capabilities')).toHaveText('editor + gameplay');
   await page.click('#plugins-modal .tiny-modal__close');
   await expect(page.locator('.world-panel .maps-plus-controls select[aria-label="Rows"]')).toBeVisible();
-  await expect(page.locator('.project-group--development .maps-plus-controls select[aria-label="Columns"]')).toBeVisible();
+  await expect(page.locator('.project-group--development .maps-plus-controls')).toHaveCount(0);
+  await page.click('[data-project-tab-button="plugins"]');
+  await expect(page.locator('[data-plugin-settings-group="maps-plus"] h2')).toHaveText('Maps+');
+  await expect(page.locator('[data-plugin-settings-group="maps-plus"] .maps-plus-controls select[aria-label="Columns"]')).toBeVisible();
 });
 
 test('Maps+ controls stay synchronized with Minimalist UI hiding World', async ({ page }) => {
@@ -194,16 +206,17 @@ test('Maps+ controls stay synchronized with Minimalist UI hiding World', async (
   await page.click('#plugins-modal .tiny-modal__close');
 
   const world = page.locator('.world-panel .maps-plus-controls');
-  const development = page.locator('.project-group--development .maps-plus-controls');
+  const project = page.locator('[data-plugin-settings-group="maps-plus"] .maps-plus-controls');
   await expect(page.locator('.editor-section--world')).toBeHidden();
   await page.locator('.editor-section--project > details > summary').click();
-  await page.click('[data-project-tab-button="development"]');
-  await expect(development).toBeVisible();
-  await development.locator('select[aria-label="Rows"]').selectOption('4');
-  await development.locator('select[aria-label="Columns"]').selectOption('3');
+  await page.click('[data-project-tab-button="plugins"]');
+  await expect(page.locator('.project-group--development .maps-plus-controls')).toHaveCount(0);
+  await expect(project).toBeVisible();
+  await project.locator('select[aria-label="Rows"]').selectOption('4');
+  await project.locator('select[aria-label="Columns"]').selectOption('3');
   await expect(world.locator('select[aria-label="Rows"]')).toHaveValue('4');
   await expect(world.locator('select[aria-label="Columns"]')).toHaveValue('3');
-  await development.locator('button').click();
+  await project.locator('button').click();
   await expect(page.locator('.world-cell')).toHaveCount(12);
 
   await page.click('#btn-plugins');
@@ -212,7 +225,7 @@ test('Maps+ controls stay synchronized with Minimalist UI hiding World', async (
   await page.click('#plugins-modal .tiny-modal__close');
   await expect(world).toBeVisible();
   await world.locator('select[aria-label="Columns"]').selectOption('5');
-  await expect(development.locator('select[aria-label="Columns"]')).toHaveValue('5');
+  await expect(project.locator('select[aria-label="Columns"]')).toHaveValue('5');
   await world.locator('button').click();
   await expect(page.locator('.world-cell')).toHaveCount(20);
 });
@@ -239,6 +252,7 @@ test('removing Maps+ restores shareable 3×3 world and backs up trimmed rooms', 
   await page.click('#plugins-modal .tiny-modal__close');
   await expect(page.locator('.world-cell')).toHaveCount(9);
   await expect(page.locator('.maps-plus-controls')).toHaveCount(0);
+  await expect(page.locator('[data-plugin-settings-group="maps-plus"]')).toHaveCount(0);
   await page.click('button[data-project-tab-button="export"]');
   await expect(page.locator('#btn-generate-url')).toBeEnabled();
   await page.locator('#btn-generate-url').click();
@@ -250,7 +264,7 @@ test('removing Maps+ restores shareable 3×3 world and backs up trimmed rooms', 
     return saved ? JSON.parse(saved.shareUrl.slice(9)) as { world: { rows: number; cols: number }; tileset: { maps: { ground: (string | number | null)[][] }[] }; gameplayPlugins: { id: string }[] } : null;
   });
   expect(backup?.world).toEqual({ rows: 3, cols: 5 });
-  expect(backup?.gameplayPlugins).toEqual([{ id: 'maps-plus', version: '1.0.1' }]);
+  expect(backup?.gameplayPlugins).toEqual([{ id: 'maps-plus', version: '1.0.2' }]);
   expect(backup?.tileset.maps[14].ground.flat().some(tile => tile !== null)).toBe(true);
 
   await page.reload();

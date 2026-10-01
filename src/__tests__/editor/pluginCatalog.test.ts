@@ -1,17 +1,17 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createPluginCatalog, hasPluginUpdate } from '../../editor/manager/pluginCatalog';
-import published from '../../../public/plugins/example-plugin/1.0.0/plugin.html?raw';
+import published from '../../../public/plugins/example-plugin/1.0.1/plugin.html?raw';
 import index from '../../../public/plugins/catalog.json';
 import example from '../../../examples/plugin-preview.html?raw';
 import mapsPlus from '../../../examples/maps-plus.html?raw';
-import publishedMapsPlus from '../../../public/plugins/maps-plus/1.0.1/plugin.html?raw';
+import publishedMapsPlus from '../../../public/plugins/maps-plus/1.0.2/plugin.html?raw';
 import { GameState } from '../../runtime/domain/GameState';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
 import { PluginManager } from '../../editor/manager/PluginManager';
 import { parsePluginHtml } from '../../editor/manager/PluginManager';
 
 const metadata = parsePluginHtml(example);
-const entry = { id: metadata.id, title: metadata.title, shortDescription: metadata.shortDescription, fullDescription: metadata.fullDescription, version: '1.0.0', file: 'example-plugin/1.0.0/plugin.html' };
+const entry = { id: metadata.id, title: metadata.title, shortDescription: metadata.shortDescription, fullDescription: metadata.fullDescription, version: '1.0.1', file: 'example-plugin/1.0.1/plugin.html' };
 const response = (body: unknown, url = 'https://studio.test/app/plugins/catalog.json', ok = true) => ({ ok, url, json: () => Promise.resolve(body), text: () => Promise.resolve(body) } as Response);
 const document = { schemaVersion: 1, plugins: [entry] };
 const setup = (body: unknown = document) => {
@@ -47,7 +47,7 @@ describe('static plugin catalog', () => {
       fullDescription: plugin.fullDescription,
       capabilities: plugin.capabilities,
       version: plugin.version,
-      file: 'maps-plus/1.0.1/plugin.html',
+      file: 'maps-plus/1.0.2/plugin.html',
     });
   });
   it('shows gameplay capabilities from the catalog and verifies the package', async () => {

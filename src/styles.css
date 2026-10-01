@@ -2272,6 +2272,27 @@ textarea {
     display: block;
 }
 
+.plugin-settings-groups {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.plugin-settings-group {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.plugin-settings-content {
+    min-width: 0;
+}
+
+.plugin-settings-empty {
+    color: var(--muted);
+    margin: 8px 0;
+}
+
 @media (max-width: 1280px) {
     .project-tabs {
         grid-template-columns: repeat(auto-fit, minmax(min(108px, 100%), 1fr));

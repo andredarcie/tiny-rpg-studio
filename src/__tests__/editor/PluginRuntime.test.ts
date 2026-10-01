@@ -6,6 +6,74 @@ import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 
 const pkg = { id: 'demo', title: 'Demo', shortDescription: 'Short', fullDescription: 'Full', payload: { apiVersion: 1 as const, javascript: 'demo', css: '.demo {}' } };
 beforeEach(() => { localStorage.clear(); document.body.replaceChildren(); });
+const settingsRoot = () => {
+  const root = document.createElement('div');
+  root.innerHTML = '<div data-project-tab-panel="plugins"><p data-plugin-settings-empty hidden></p><div data-plugin-settings-groups></div></div>';
+  document.body.append(root);
+  return root;
+};
+it('groups settings by installed title and toggles the empty state', async () => {
+  const root = settingsRoot();
+  const manager = new PluginManager();
+  const runtime = new PluginRuntime(manager, () => Promise.resolve({ activate: context => {
+    if (context.editorRoot.dataset.noSettings) return;
+    context.registerSettings(container => { container.append(document.createElement('input')); });
+    context.registerSettings(container => { container.append(document.createElement('button')); });
+  } }));
+  manager.install(pkg);
+  manager.install({ ...pkg, id: 'other', title: 'Other' });
+  runtime.start(root, {} as TinyRpgApi);
+  await runtime.settled();
+  expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(2);
+  expect([...root.querySelectorAll('[data-plugin-settings-group] h2')].map(node => node.textContent)).toEqual(['Demo', 'Other']);
+  expect(root.querySelectorAll('[data-plugin-settings-group] input')).toHaveLength(2);
+  expect(root.querySelectorAll('[data-plugin-settings-group] button')).toHaveLength(2);
+  expect((root.querySelector('[data-plugin-settings-empty]') as HTMLElement).hidden).toBe(true);
+  manager.remove('demo');
+  manager.remove('other');
+  await runtime.settled();
+  expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(0);
+  expect((root.querySelector('[data-plugin-settings-empty]') as HTMLElement).hidden).toBe(false);
+  root.dataset.noSettings = 'true';
+  manager.install(pkg);
+  await runtime.settled();
+  expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(0);
+  await runtime.destroy();
+});
+it('removes settings on failure, replacement, destruction and rejects stale async registrations', async () => {
+  const root = settingsRoot();
+  const manager = new PluginManager();
+  let stale!: PluginContext;
+  let finish!: () => void;
+  const pending = new Promise<void>(resolve => { finish = resolve; });
+  const runtime = new PluginRuntime(manager, source => Promise.resolve({ activate: async context => {
+    if (source === 'demo') {
+      stale = context;
+      context.registerSettings(container => { container.textContent = 'old'; });
+      await pending;
+      context.registerSettings(container => { container.textContent = 'late'; });
+    } else if (source === 'failure') {
+      context.registerSettings(container => { container.textContent = 'failure'; });
+      throw Error('failed');
+    } else context.registerSettings(container => { container.textContent = 'new'; });
+  } }));
+  manager.install(pkg);
+  runtime.start(root, {} as TinyRpgApi);
+  await vi.waitFor(() => expect(stale).toBeDefined());
+  manager.install({ ...pkg, payload: { ...pkg.payload, javascript: 'replacement' } });
+  expect(() => stale.registerSettings(() => {})).toThrow();
+  finish();
+  await runtime.settled();
+  expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(1);
+  expect(root.querySelector('[data-plugin-settings-group]')?.textContent).toContain('new');
+  manager.install({ ...pkg, payload: { ...pkg.payload, javascript: 'failure' } });
+  await runtime.settled();
+  expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(0);
+  manager.install({ ...pkg, payload: { ...pkg.payload, javascript: 'replacement' } });
+  await runtime.settled();
+  await runtime.destroy();
+  expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(0);
+});
 it('defers activation, activates once, and cleans up replacement/removal in reverse order', async () => {
   const manager = new PluginManager();
   const calls: number[] = [];
@@ -88,17 +156,31 @@ it('runs the actual example with preserved panel nodes, listeners and restoratio
   await runtime.settled();
   expect(root.querySelector('.editor-right')?.firstElementChild).toBe(tiles);
   expect(root.querySelector('.editor-left')?.firstElementChild).toBe(npcs);
+  const flip = root.querySelector<HTMLInputElement>('#example-plugin-flip');
+  if (!flip) throw Error('Example plugin Flip checkbox is missing');
+  expect(flip.checked).toBe(true);
+  expect(flip.closest('label')?.textContent).toBe('Flip');
+  flip.checked = false;
+  flip.dispatchEvent(new Event('change'));
+  expect(tiles.parentNode).toBe(parent);
+  expect(tiles.nextSibling).toBe(next);
+  expect(npcs.parentNode).toBe(npcParent);
+  expect(npcs.nextSibling).toBe(npcNext);
+  flip.checked = true;
+  flip.dispatchEvent(new Event('change'));
+  expect(root.querySelector('.editor-right')?.firstElementChild).toBe(tiles);
+  expect(root.querySelector('.editor-left')?.firstElementChild).toBe(npcs);
   tiles.click();
   expect(listener).toHaveBeenCalledOnce();
   expect(getComputedStyle(world).display).toBe('none');
-  expect(root.querySelector('#example-plugin-toggle')).toBeNull();
+  expect(root.querySelector('#example-plugin-flip')).toBe(flip);
   manager.remove('example-plugin');
   await runtime.settled();
   expect(tiles.parentNode).toBe(parent);
   expect(tiles.nextSibling).toBe(next);
   expect(npcs.parentNode).toBe(npcParent);
   expect(npcs.nextSibling).toBe(npcNext);
-  expect(root.querySelector('#example-plugin-toggle')).toBeNull();
+  expect(root.querySelector('#example-plugin-flip')).toBeNull();
   expect(getComputedStyle(world).display).not.toBe('none');
   await runtime.destroy();
 });

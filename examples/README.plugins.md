@@ -72,6 +72,32 @@ a throwing callback does not prevent the remaining cleanup or style removal.
 The host cannot roll back unregistered side effects. Finish registering effects
 before the activation promise resolves; cleanup callbacks are synchronous.
 
+## Project settings
+
+Editor plugins can call `registerSettings(render)` during activation. The host
+passes `render` a new container in **Project → Plugins** and groups all calls from
+one plugin under its installed manifest title. Plugins without registrations do
+not get a group. Calls from a removed or replaced activation are rejected.
+The tab provides placement only; it has no shared settings store. The plugin
+owns its values, persistence, and application. Register listeners and other
+effects with `onCleanup` so replacement, removal, failure, and shutdown restore
+the editor.
+
+```js
+export function activate({ registerSettings, onCleanup }) {
+  registerSettings(container => {
+    const label = document.createElement('label');
+    const toggle = document.createElement('input');
+    toggle.type = 'checkbox';
+    label.append(toggle, ' Show guides');
+    container.append(label);
+    const update = () => { /* Apply this plugin's setting. */ };
+    toggle.addEventListener('change', update);
+    onCleanup(() => toggle.removeEventListener('change', update));
+  });
+}
+```
+
 Modules are loaded using native Blob module imports. Blob URLs are revoked after
 loading, including failures. Use self-contained modules; relative imports cannot
 resolve relative to the imported HTML file. Lifecycle operations run serially in
@@ -101,18 +127,20 @@ links do not carry gameplay plugins.
 1. Open Tiny RPG Studio and select **Editor**, then **Plugins**.
 2. In **Search**, choose **Import** and select `examples/plugin-preview.html`.
 3. Close the modal. Tiles are at the top of the right column and NPCs at the top
-   of the left column. The entire World section and its mobile navigation button
-   are hidden. No metrics toggle is added.
+   of the left column. In **Project → Plugins**, **Flip** starts checked. Uncheck
+   it to return Tiles and NPCs to their original positions; check it to move
+   them again. The choice resets to checked on reload. The entire World section
+   and its mobile navigation button are hidden.
 4. On a narrow screen, use the existing Tiles and NPCs navigation buttons.
 5. Reload and reopen Editor: the same effects activate once again.
-6. Open **Plugins ? Manage**, find **Example plugin**, and select **Remove**.
+6. Open **Plugins → Manage**, find **Example plugin**, and select **Remove**.
    The original panel positions and World section visibility return.
 
 ## Maps+
 
 Search for **Maps+** in Plugins and install it, or import `examples/maps-plus.html`
 through **Editor → Plugins → Import**. Its World
-panel and **Project → Development** controls stay in sync. Select rows and columns
+panel and **Project → Plugins → Maps+** controls stay in sync. Select rows and columns
 independently, each from 1 to 5. Choose
 **Apply size** to resize the project. For example, 3 rows and 5 columns produce
 15 rooms; 4 rows and 3 columns produce 12. Existing rooms retain their row and
@@ -121,8 +149,8 @@ world and the Maps+ gameplay dependency. Shared URLs cannot carry these projects
 Removing Maps+ returns the project to 3×3 and saves a local snapshot of the larger
 world first, including content in rooms that no longer fit. Reinstall Maps+ to load
 that snapshot from project history.
-If you installed Maps+ 1.0.0, choose **Update** in Plugins to get the Development
-controls.
+If you installed Maps+ 1.0.0 or 1.0.1, choose **Update** in Plugins to get the
+Project Plugins controls.
 
 
 ## Publishing to the built-in catalog
