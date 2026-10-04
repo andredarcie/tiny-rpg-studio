@@ -523,7 +523,7 @@ class GameState {
         return this.objectManager.getObjectsAt(roomIndex, x, y);
     }
 
-    setObjectPosition(type: string, roomIndex: number, x: number, y: number): unknown {
+    setObjectPosition(type: string, roomIndex: number, x: number, y: number) {
         return this.objectManager.setObjectPosition(type as Parameters<typeof this.objectManager.setObjectPosition>[0], roomIndex, x, y);
     }
 

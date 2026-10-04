@@ -14,6 +14,12 @@ const LERP_SPEED = 0.22;
 const LERP_THRESHOLD = 0.02; // stop when within this fraction of a tile
 
 export class OnlineStateSync {
+    dispose(): void {
+        if (this.rafId !== null) cancelAnimationFrame(this.rafId);
+        this.rafId = null;
+        for (const timer of this.enemyRemovalTimers.values()) clearTimeout(timer);
+        this.enemyRemovalTimers.clear(); this.pendingDiffs = []; this.onDraw = null;
+    }
     private gameState: GameStateRef;
     private onDraw: (() => void) | null = null;
     private rafId: number | null = null;

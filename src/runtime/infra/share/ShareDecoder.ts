@@ -1,3 +1,4 @@
+import { applyAuthoringMetadata } from './ShareAuthoringMetadata';
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { NPC_END_GAME_REWARD_ID } from '../../domain/constants/npcRewards';
@@ -817,6 +818,12 @@ class ShareDecoder {
             }
         }
 
+        if (version >= ShareConstants.VERSION_47 && payload[':']) {
+            try {
+                const metadata: unknown = JSON.parse(ShareTextCodec.decodeText(payload[':']));
+                if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) applyAuthoringMetadata(result, metadata as Record<string, unknown>);
+            } catch { return null; }
+        }
         return result;
     }
 

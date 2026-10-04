@@ -49,6 +49,7 @@ tmp-screenshots/
 # Local scripts (not versioned)
 scripts/*
 !scripts/report-export-sizes.mjs
+!scripts/finalize-sdk-types.mjs
 
 # Editor / OS files
 .vscode/*

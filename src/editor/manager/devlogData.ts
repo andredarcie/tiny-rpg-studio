@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-03-sdk-base-runtime',
+    date: '2026-10-03',
+    title: 'Build and embed games with SDK 2',
+    description: 'The SDK can load and edit base projects, customize tiles and effects, create dialogue endings, and embed playable games with runtime controls and multiplayer connections. Standalone HTML exports preserve project data, and Studio keeps its existing plugin support.',
+  },
+  {
     id: '2026-10-01-maps-dialogue-variables-plus',
     date: '2026-10-01',
     title: 'Build richer adventures with Maps+, Dialogue+, and Variables+',

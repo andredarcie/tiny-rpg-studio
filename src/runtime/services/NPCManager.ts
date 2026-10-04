@@ -371,8 +371,9 @@ class NPCManager {
 
         // Don't check for existing by type - allow multiple instances
         const npc = this.normalizeNPC({
+            ...data,
             type: def.type,
-            name: resolveDefinitionName(def),
+            name: data.name ?? resolveDefinitionName(def),
             text: data.text ?? resolveDefinitionText(def),
             textKey: data.text ? null : (def.defaultTextKey || null),
             x: data.x ?? 1,

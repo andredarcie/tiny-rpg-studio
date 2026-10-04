@@ -46,8 +46,8 @@ const DARK_PALETTE = [
 
 // ─── Build the game ─────────────────────────────────────────────────────────
 const game = new TinyRPG()
-  .setTitle('A Dungeon of Many Secrets')
-  .setAuthor('SDK Advanced Example')
+  .setTitle('Dungeon Secrets')
+  .setAuthor('SDK Example')
   .setPalette(DARK_PALETTE)
   .setPlayerStart({ x: 3, y: 3, room: 0 });
 

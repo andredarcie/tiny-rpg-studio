@@ -482,6 +482,11 @@ class Renderer {
      * thumbnails) leave timers/animation frames running on a dead engine.
      */
     destroy() {
+        this.dialogRenderer.destroy(); this.levelUpOverlay.destroy();
+        this.transitionManager.transition.onComplete = undefined;
+        this.transitionManager.finish();
+        if (this.effectsManager.combatIndicatorTimeout) clearTimeout(this.effectsManager.combatIndicatorTimeout);
+        if (this.effectsManager.screenFlashTimeout) clearTimeout(this.effectsManager.screenFlashTimeout);
         if (this.tileAnimationTimer) {
             clearInterval(this.tileAnimationTimer);
             this.tileAnimationTimer = null;

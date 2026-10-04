@@ -1,4 +1,8 @@
 
+import type { TileDefinition, TileMapLayer, TileMap } from '../runtime/domain/definitions/tileTypes';
+import type { CustomTileEffectDefinition } from '../runtime/domain/definitions/customTileEffects';
+import type { RoomDefinition, ItemInstance, ExitState, SkillCustomizationMap } from '../types/gameState';
+
 export type EnemyType =
     | 'giant-rat'
     | 'bandit'
@@ -30,7 +34,7 @@ export type ChestItemType =
     | 'sword' | 'sword-bronze' | 'sword-wood'
     | 'armor' | 'boots';
 
-export type SdkObject =
+type SdkObjectFields =
     | { type: 'key' | 'door' | 'life-potion' | 'xp-scroll'
             | 'sword' | 'sword-bronze' | 'sword-wood'
             | 'armor' | 'boots' | 'push-box';
@@ -43,10 +47,15 @@ export type SdkObject =
     | { type: 'pressure-plate'; x: number; y: number; roomIndex: number; variableId?: string }
     | { type: 'logic-gate-not' | 'logic-gate-and' | 'logic-gate-or' | 'logic-gate-nand' | 'logic-gate-nor';
         x: number; y: number; roomIndex: number;
-        inputVariableId?: string; inputVariableId2?: string; outputVariableId?: string; hiddenInGame?: boolean }
+        inputVariableId: string; inputVariableId2?: string; outputVariableId: string; hiddenInGame?: boolean }
     | { type: 'chest'; x: number; y: number; roomIndex: number; containsItemType?: string | null; randomItem?: boolean; variableId?: string | null };
 
+export type SdkObject = SdkObjectFields & { id?: string; experience?: number };
+
 export type SdkSprite = {
+    id?: string;
+    name?: string;
+    disappearAfterDialog?: boolean;
     type: string;
     x: number;
     y: number;
@@ -66,6 +75,7 @@ export type SdkSprite = {
 };
 
 export type SdkEnemy = {
+    id?: string;
     type: string;
     x: number;
     y: number;
@@ -78,6 +88,8 @@ export type SdkVariable = {
     id: string;
     value: boolean;
     name?: string;
+    color?: string;
+    order?: number;
 };
 
 /** Sprite groups that can be overridden or extended with custom pixel art. */
@@ -98,10 +110,17 @@ export type SdkCustomSprite = {
 
 export type SdkOnlineConfig = {
     enabled: boolean;
-    spawnPoints?: Array<{ x: number; y: number; roomIndex: number }>;
+    spawnPoints?: Array<{ role: 'p1' | 'p2'; x: number; y: number; roomIndex: number }>;
 };
 
 export type SdkSharePayload = {
+    enableEffects?: boolean;
+    showNewDialogExclamation?: boolean;
+    customTileEffects?: CustomTileEffectDefinition[];
+    skillCustomizations?: SkillCustomizationMap;
+    rooms?: RoomDefinition[];
+    items?: Omit<ItemInstance, 'collected'>[];
+    exits?: ExitState[];
     title?: string;
     author?: string;
     hideHud?: boolean;
@@ -119,6 +138,17 @@ export type SdkSharePayload = {
     objects?: SdkObject[];
     variables?: SdkVariable[];
     customSprites?: SdkCustomSprite[];
-    tileset?: { maps: Array<{ ground?: number[][]; overlay?: (number | null)[][] }> };
+    tileset?: { tiles?: TileDefinition[]; maps: Array<{ ground?: TileMapLayer; overlay?: TileMapLayer }>; map?: { ground?: TileMapLayer; overlay?: TileMapLayer } };
     customPalette?: string[];
 };
+
+export type BaseProjectData = SdkSharePayload & {
+    roomSize: 8; world: { rows: 3; cols: 3 }; palette: string[]; title: string; author: string;
+    start: { x: number; y: number; roomIndex: number }; rooms: RoomDefinition[];
+    sprites: SdkSprite[]; enemies: SdkEnemy[]; objects: SdkObject[]; variables: SdkVariable[];
+    items: Omit<ItemInstance, 'collected'>[]; exits: ExitState[];
+    tileset: { tiles: TileDefinition[]; maps: TileMap[]; map: TileMap };
+};
+export type { TileId, TileDefinition, TileMapLayer, TileMap } from '../runtime/domain/definitions/tileTypes';
+export type { CustomTileEffectDefinition, CustomTileEffectId, BaseTileEffectId, TileVisualEffectKind } from '../runtime/domain/definitions/customTileEffects';
+export type { SkillCustomizationMap, TestSettings, ExitState, RoomDefinition } from '../types/gameState';

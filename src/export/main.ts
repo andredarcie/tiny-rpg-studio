@@ -1,3 +1,5 @@
+import { createBaseRuntimeApi, type BaseRuntimeApi } from '../runtime/infra/BaseRuntimeApi';
+import type { OnlineSessionOptions } from '../online/OnlineSession';
 import './styles.css';
 import { normalizeBackgroundMusicVolume } from '../runtime/infra/share/BackgroundMusicVideoId';
 import { ShareUtils } from '../runtime/infra/share/ShareUtils';
@@ -12,6 +14,8 @@ const text = (key: string, fallback: string): string =>
     String(TextResources.get(key, fallback) || fallback);
 
 class ExportApplication {
+    static runtime: BaseRuntimeApi | null = null;
+    private static pluginCleanup = new WeakMap<GameEngine, () => void>();
     static boot(): void {
         // Installed before anything else so failures during boot are reported too.
         installGlobalErrorReporter();
@@ -34,14 +38,34 @@ class ExportApplication {
         try {
             await this.loadSharedGame(gameEngine);
         } catch (error) {
+            gameEngine.destroy();
             console.error('[TinyRPG] Unable to load bundled gameplay project.', error);
             return;
         }
-        this.bindReset(gameEngine);
-        this.bindFullscreen();
-        this.bindVolume(gameEngine);
-        this.setupWelcomeAudio();
-        this.setupResponsiveCanvas();
+        const controller = new AbortController();
+        const signal = controller.signal;
+        const runtime = createBaseRuntimeApi(gameEngine, () => {
+            controller.abort();
+            this.pluginCleanup.get(gameEngine)?.();
+            if (this.runtime === runtime) this.runtime = null;
+            if ((globalThis as Record<string, unknown>).__TINY_RPG_API === runtime) delete (globalThis as Record<string, unknown>).__TINY_RPG_API;
+        });
+        this.runtime = runtime;
+        (globalThis as Record<string, unknown>).__TINY_RPG_API = runtime;
+        const onlineOptions = (globalThis as Record<string, unknown>).__TINY_RPG_ONLINE_OPTIONS as OnlineSessionOptions | undefined;
+        try {
+            if (onlineOptions && gameEngine.gameState.game.online?.enabled) runtime.connectOnline(onlineOptions);
+        } catch (error) { runtime.destroy(); throw error; }
+        globalThis.addEventListener('pagehide', () => {
+            runtime.destroy();
+            if (this.runtime === runtime) this.runtime = null;
+            if ((globalThis as Record<string, unknown>).__TINY_RPG_API === runtime) delete (globalThis as Record<string, unknown>).__TINY_RPG_API;
+        }, { once: true, signal });
+        this.bindReset(gameEngine, signal);
+        this.bindFullscreen(signal);
+        this.bindVolume(gameEngine, signal);
+        this.setupWelcomeAudio(signal);
+        this.setupResponsiveCanvas(signal);
 
         const finishBoot = () => document.dispatchEvent(new CustomEvent('boot-finished'));
         if ('fonts' in document) {
@@ -56,8 +80,15 @@ class ExportApplication {
         if (bundled) {
             const packages = Array.isArray(bundled.plugins) ? bundled.plugins : [];
             const host = new GameplayPluginHost(gameEngine, () => packages);
-            await host.load(bundled.game);
-            globalThis.addEventListener('pagehide', () => host.destroy(), { once: true });
+            try { await host.load(bundled.game); }
+            catch (error) { host.destroy(); throw error; }
+            const cleanup = () => {
+                globalThis.removeEventListener('pagehide', cleanup);
+                this.pluginCleanup.delete(gameEngine);
+                host.destroy();
+            };
+            this.pluginCleanup.set(gameEngine, cleanup);
+            globalThis.addEventListener('pagehide', cleanup, { once: true });
             return;
         }
         const fromLocation = ShareUtils.extractGameDataFromLocation(globalThis.location);
@@ -76,16 +107,16 @@ class ExportApplication {
         }
     }
 
-    static bindReset(gameEngine: GameEngine): void {
+    static bindReset(gameEngine: GameEngine, signal?: AbortSignal): void {
         const button = document.getElementById('btn-export-reset');
         if (!(button instanceof HTMLButtonElement)) return;
         button.addEventListener('click', () => {
             gameEngine.resetGame();
             button.blur();
-        });
+        }, { signal });
     }
 
-    static bindFullscreen(): void {
+    static bindFullscreen(signal?: AbortSignal): void {
         const gameContainer = document.getElementById('game-container');
         if (!(gameContainer instanceof HTMLElement)) return;
 
@@ -97,6 +128,7 @@ class ExportApplication {
         button.type = 'button';
         button.className = 'game-fullscreen-button';
         gameContainer.appendChild(button);
+        signal?.addEventListener('abort', () => button.remove(), { once: true });
 
         const isActive = () => document.fullscreenElement === gameContainer;
         const sync = () => {
@@ -118,14 +150,14 @@ class ExportApplication {
             } else {
                 void gameContainer.requestFullscreen();
             }
-        });
-        document.addEventListener('fullscreenchange', sync);
-        document.addEventListener('language-changed', sync);
-        desktopQuery?.addEventListener('change', sync);
+        }, { signal });
+        document.addEventListener('fullscreenchange', sync, { signal });
+        document.addEventListener('language-changed', sync, { signal });
+        desktopQuery?.addEventListener('change', sync, { signal });
         sync();
     }
 
-    static bindVolume(gameEngine: GameEngine): void {
+    static bindVolume(gameEngine: GameEngine, signal?: AbortSignal): void {
         const gameContainer = document.getElementById('game-container');
         if (!(gameContainer instanceof HTMLElement)) return;
 
@@ -147,6 +179,7 @@ class ExportApplication {
         label.append(slider, value);
         controls.append(label);
         gameContainer.append(controls);
+        signal?.addEventListener('abort', () => controls.remove(), { once: true });
 
         const syncValue = (volume: number) => {
             const normalized = normalizeBackgroundMusicVolume(volume);
@@ -162,11 +195,11 @@ class ExportApplication {
             const volume = normalizeBackgroundMusicVolume(Number(slider.value));
             gameEngine.backgroundMusicEngine.setVolume(volume);
             syncValue(volume);
-        });
+        }, { signal });
         updateVisibility();
     }
 
-    static setupWelcomeAudio(): void {
+    static setupWelcomeAudio(signal?: AbortSignal): void {
         let played = false;
         const events = ['pointerdown', 'keydown', 'touchstart'] as const;
         const play = () => {
@@ -176,10 +209,10 @@ class ExportApplication {
             soundEngine.play('gameStart');
             events.forEach((event) => globalThis.removeEventListener(event, play));
         };
-        events.forEach((event) => globalThis.addEventListener(event, play, { passive: true }));
+        events.forEach((event) => globalThis.addEventListener(event, play, { passive: true, signal }));
     }
 
-    static setupResponsiveCanvas(): void {
+    static setupResponsiveCanvas(signal?: AbortSignal): void {
         const canvas = document.getElementById('game-canvas');
         const container = document.getElementById('game-container');
         if (!(canvas instanceof HTMLCanvasElement) || !(container instanceof HTMLElement)) return;
@@ -218,12 +251,15 @@ class ExportApplication {
             canvas.style.width = `${width}px`;
             canvas.style.height = `${width * aspectRatio}px`;
         };
-        const schedule = () => requestAnimationFrame(resize);
-        globalThis.addEventListener('resize', schedule);
-        document.addEventListener('fullscreenchange', schedule);
-        document.addEventListener('boot-finished', schedule);
+        let frame: number | undefined;
+        const schedule = () => { if (signal?.aborted) return; if (frame !== undefined) cancelAnimationFrame(frame); frame = requestAnimationFrame(resize); };
+        let observer: ResizeObserver | undefined;
+        signal?.addEventListener('abort', () => { if (frame !== undefined) cancelAnimationFrame(frame); observer?.disconnect(); }, { once: true });
+        globalThis.addEventListener('resize', schedule, { signal });
+        document.addEventListener('fullscreenchange', schedule, { signal });
+        document.addEventListener('boot-finished', schedule, { signal });
         if ('fonts' in document) void document.fonts.ready.then(schedule, schedule);
-        if (typeof ResizeObserver === 'function') new ResizeObserver(schedule).observe(container);
+        if (typeof ResizeObserver === 'function') { observer = new ResizeObserver(schedule); observer.observe(container); }
         schedule();
     }
 }

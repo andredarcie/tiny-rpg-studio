@@ -1,8 +1,10 @@
+import type { BaseRuntimeApi } from './BaseRuntimeApi';
 import type { AuthoringApi } from './AuthoringApi';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
 import type { DialoguePlusBlock } from '../domain/dialoguePlus';
 
 type TinyRpgApi = {
+  runtime?: BaseRuntimeApi;
   authoring?: AuthoringApi;
   exportGameData: () => unknown;
   importGameData: (data: unknown) => void;
@@ -36,3 +38,6 @@ const getTinyRpgApi = (): TinyRpgApi | null => api;
 
 export { getTinyRpgApi, setTinyRpgApi };
 export type { TinyRpgApi };
+
+export { createBaseRuntimeApi } from './BaseRuntimeApi';
+export type { BaseRuntimeApi } from './BaseRuntimeApi';

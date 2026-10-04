@@ -137,6 +137,8 @@ class RendererDialogRenderer {
         this.fill(dialog);
     }
 
+    destroy(): void { this.stopRevealLoop(); this.overlay?.remove(); this.measurerEl?.remove(); this.overlay = null; this.onChoose = null; this.requestRedraw = null; }
+
     private ensureOverlay(parent: HTMLElement): void {
         if (this.overlay && this.overlay.parentElement === parent) return;
 

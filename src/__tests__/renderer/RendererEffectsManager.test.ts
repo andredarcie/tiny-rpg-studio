@@ -39,7 +39,7 @@ describe('RendererEffectsManager', () => {
     } as unknown as Document;
 
     const renderer = {
-      canvas: {} as HTMLCanvasElement,
+      canvas: { closest: () => null } as unknown as HTMLCanvasElement,
       ctx: null,
       gameState: {
         getPlayer: () => ({ x: 1, y: 1 }),
@@ -72,7 +72,7 @@ describe('RendererEffectsManager', () => {
     } as unknown as Document;
 
     const renderer = {
-      canvas: {} as HTMLCanvasElement,
+      canvas: { closest: () => null } as unknown as HTMLCanvasElement,
       ctx: null,
       gameState: {
         getPlayer: () => ({ x: 4, y: 5 }),

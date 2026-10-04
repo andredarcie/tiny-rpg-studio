@@ -98,7 +98,7 @@ function assembleExportHtml(options: ExportHtmlOptions): ExportHtmlResult {
     const bootScript = options.bundledProject === undefined
         ? escapeInlineScript(`globalThis.__TINY_RPG_EXPORT_MODE=true;globalThis.__TINY_RPG_SHARED_CODE=${gameCodeJson};` +
             'if(!location.hash)try{location.hash="#"+globalThis.__TINY_RPG_SHARED_CODE}catch{}')
-        : 'globalThis.__TINY_RPG_EXPORT_MODE=true;globalThis.__TINY_RPG_BUNDLED_PROJECT=JSON.parse(document.getElementById("tiny-rpg-project").textContent);';
+        : `globalThis.__TINY_RPG_EXPORT_MODE=true;globalThis.__TINY_RPG_SHARED_CODE=${gameCodeJson};globalThis.__TINY_RPG_BUNDLED_PROJECT=JSON.parse(document.getElementById("tiny-rpg-project").textContent);`;
     const openStudioScript = escapeInlineScript(
         `document.getElementById("btn-open-studio")?.addEventListener("click",()=>window.open("${OPEN_STUDIO_URL}"+(globalThis.__TINY_RPG_SHARED_CODE||""),"_blank"));`,
     );

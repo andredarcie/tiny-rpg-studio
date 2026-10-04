@@ -56,10 +56,12 @@ it('registers all 16 distinct color presets through the gameplay module', () => 
 
 it('bundles the dependency and all 32 slots into a standalone project that reloads', () => {
   const plugin = parsePluginHtml(source);
-  const builder = new TinyRPG().enableVariablesPlus();
-  for (let index = 1; index <= 32; index++) builder.variable(`Slot ${index}`, { initial: index === 32 });
-  builder.room(0).addSwitch({ x: 2, y: 2, variable: 32 });
-  const game = builder.toProjectData();
+  const game = {
+    ...new TinyRPG().toProjectData(),
+    gameplayPlugins: [{ id: 'variables-plus', version: '1.0.0' }],
+    variables: Array.from({ length: 32 }, (_, index) => ({ id: `var-${index + 1}`, value: index === 31 })),
+    objects: [{ type: 'switch', x: 2, y: 2, roomIndex: 0, variableId: 'var-32' }],
+  };
   const { html } = assembleExportHtml({
     css: '', editableInStudio: false, fontDataUrl: '', gameCode: '', gameMarkup: '',
     locale: 'en-US', openStudioLabel: 'Open Studio', runtimeJavaScript: '', title: 'Variables+ game',

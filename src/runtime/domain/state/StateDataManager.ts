@@ -105,7 +105,7 @@ class StateDataManager {
     }
 
     exportGameData(): ImportData {
-        return {
+        const result: ImportData = {
             ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
             title: this.game.title,
             author: this.game.author,
@@ -133,14 +133,22 @@ class StateDataManager {
                 delete copy.disappeared;
                 return copy;
             }),
-            enemies: this.game.enemies,
-            // `collected` is run-time pickup state stored on the item; reset it in
-            // the exported definition so play progress never leaks into the saved
-            // or shared game.
+            enemies: this.game.enemies.map(enemy => ({ id: enemy.id, type: enemy.type, roomIndex: enemy.roomIndex, x: enemy.x, y: enemy.y, lastX: enemy.x, experience: enemy.experience, defeatVariableId: enemy.defeatVariableId })),
+            // Omit pickup progress from authored definitions.
             items: Array.isArray(this.game.items)
-                ? this.game.items.map((item) => ({ ...item, collected: false }))
+                ? this.game.items.map((item) => {
+                    const copy = { ...item };
+                    delete copy.collected;
+                    return copy;
+                })
                 : this.game.items,
-            objects: this.game.objects,
+            objects: this.game.objects.map(object => {
+                const copy = { ...object };
+                if (object.type === 'push-box') { copy.x = object.originalX ?? object.x; copy.y = object.originalY ?? object.y; }
+                if (object.type === 'switch') copy.on = Boolean(this.game.variables.find(variable => variable.id === object.variableId)?.value);
+                for (const key of ['collected', 'opened', 'activated', 'originalX', 'originalY', '_activatedBy']) Reflect.deleteProperty(copy, key);
+                return copy;
+            }),
             variables: this.game.variables,
             exits: this.game.exits,
             tileset: this.game.tileset,
@@ -158,6 +166,7 @@ class StateDataManager {
                 ? { online: this.game.online }
                 : {}),
         };
+        return structuredClone(result);
     }
 
     importGameData(data: ImportData | null): { x: number; y: number; roomIndex: number } | null {

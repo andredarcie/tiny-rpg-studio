@@ -159,24 +159,24 @@ describe('TinyRPGBuilder', () => {
             expect(() => room.addKey({ x: 2, y: 2 })).toThrow(/already has a 'key'/);
         });
 
-        it('addEnemy called 10 times throws Error on the 10th call', () => {
+        it('addEnemy respects the engine limit of six per room', () => {
             const room = new TinyRPG().room(0);
-            for (let i = 0; i < 9; i++) {
+            for (let i = 0; i < 6; i++) {
                 room.addEnemy({ type: 'giant-rat', x: i % ShareConstants.MATRIX_SIZE, y: 0 });
             }
-            expect(() => room.addEnemy({ type: 'giant-rat', x: 0, y: 1 })).toThrow(/already has 9 enemies/);
+            expect(() => room.addEnemy({ type: 'giant-rat', x: 0, y: 1 })).toThrow(/already has 6 enemies/);
         });
 
         it('ground matrix with wrong size throws Error', () => {
             expect(() => new TinyRPG().room(0).ground([[1, 2], [3, 4]])).toThrow(/Ground matrix must be/);
         });
 
-        it('setTitle over 80 chars throws Error', () => {
-            expect(() => new TinyRPG().setTitle('a'.repeat(81))).toThrow(/80 characters/);
+        it('setTitle over 18 chars throws Error', () => {
+            expect(() => new TinyRPG().setTitle('a'.repeat(19))).toThrow(/18 characters/);
         });
 
-        it('setAuthor over 60 chars throws Error', () => {
-            expect(() => new TinyRPG().setAuthor('a'.repeat(61))).toThrow(/60 characters/);
+        it('setAuthor over 18 chars throws Error', () => {
+            expect(() => new TinyRPG().setAuthor('a'.repeat(19))).toThrow(/18 characters/);
         });
 
         it('setPalette with wrong count throws Error', () => {

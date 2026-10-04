@@ -7,7 +7,7 @@ import { ShareTextCodec } from '../../runtime/infra/share/ShareTextCodec';
 describe('VERSION_36/37 tile visual effects', () => {
   it('registers VERSION_36 and TILE_VISUAL_EFFECT_VERSION', () => {
     expect(ShareConstants.VERSION_36).toBe(36);
-    expect(ShareConstants.VERSION).toBe(46);
+    expect(ShareConstants.VERSION).toBe(47);
     expect(ShareConstants.TILE_VISUAL_EFFECT_VERSION).toBe(ShareConstants.VERSION_36);
     expect(ShareConstants.SUPPORTED_VERSIONS.has(ShareConstants.VERSION_36)).toBe(true);
   });

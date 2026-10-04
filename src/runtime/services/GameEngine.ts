@@ -12,11 +12,11 @@ import { NPCManager } from './NPCManager';
 import { Renderer } from '../adapters/Renderer';
 import { TextResources } from '../adapters/TextResources';
 import { TileManager } from './TileManager';
-import type { TileDefinition } from '../domain/definitions/tileTypes';
+import type { TileId, TileDefinition } from '../domain/definitions/tileTypes';
 import { TileDefinitions } from '../domain/definitions/TileDefinitions';
 import { SkillDefinitions } from '../domain/definitions/SkillDefinitions';
 import { GameConfig } from '../../config/GameConfig';
-import type { OnlineConfig, SkillCustomizationMap } from '../../types/gameState';
+import type { OnlineConfig, SkillCustomizationMap, ItemInstance, ExitState, CustomSpriteEntry, RoomDefinition } from '../../types/gameState';
 import { BackgroundMusicEngine } from './BackgroundMusicEngine';
 import { performanceProfiler } from '../debug/PerformanceProfiler';
 import type { NpcDialogueSequence } from '../domain/dialoguePlus';
@@ -97,7 +97,10 @@ export class GameEngine {
   canDismissIntroScreen: boolean;
   timeToResetAfterIntro: number;
 
-  constructor(canvas: HTMLCanvasElement) {
+  private readonly inputRoot?: HTMLElement;
+
+  constructor(canvas: HTMLCanvasElement, options: { inputRoot?: HTMLElement } = {}) {
+    this.inputRoot = options.inputRoot;
     this.canvas = canvas;
 
     // Boot core subsystems
@@ -160,7 +163,7 @@ export class GameEngine {
       },
     });
     this.online = new OnlineCoordinator(this);
-    this.inputManager = new InputManager(this);
+    this.inputManager = new InputManager(this, options.inputRoot);
     this.backgroundMusicEngine = new BackgroundMusicEngine();
     this.isDestroyed = false;
     this.awaitingRestart = false;
@@ -402,6 +405,41 @@ export class GameEngine {
     this.showIntroScreen();
   }
 
+  setMapCell(roomIndex: number, layer: 'ground' | 'overlay', x: number, y: number, tileId: TileId | null): void {
+    const map = this.gameState.game.tileset.maps[roomIndex];
+    if (roomIndex < 0 || roomIndex >= this.gameState.game.tileset.maps.length || !Number.isInteger(roomIndex) || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x > 7 || y < 0 || y > 7) throw Error('Invalid map coordinate');
+    if (tileId !== null && !this.tileManager.getTile(tileId)) throw Error('Unknown tile');
+    map[layer][y][x] = tileId; this.draw();
+  }
+
+  setBackgroundMusic(videoId: string | null, volume = 100): void {
+    const game = this.gameState.getGame();
+    this.backgroundMusicEngine.setVideoId(videoId); this.backgroundMusicEngine.setVolume(volume);
+    game.backgroundMusicVideoId = videoId ?? undefined; game.backgroundMusicVolume = this.backgroundMusicEngine.getVolume();
+    this.backgroundMusicEngine.syncFromGame(game);
+  }
+
+  setOnlineConfig(config: OnlineConfig | undefined): void { this.gameState.game.online = config ? structuredClone(config) : undefined; this.draw(); }
+  setRuntimeVariable(id: string, value: boolean): void { this.gameState.setVariableValue(id, value); this.online.notifyStateChanged(); this.draw(); }
+  updateNPC(id: string, data: Parameters<NPCManager['updateNPC']>[1]): void { this.npcManager.updateNPC(id, data); this.draw(); }
+  removeNPC(id: string): boolean { const removed = this.npcManager.removeNPC(id); this.draw(); return removed; }
+  resetNPCs(): void { this.npcManager.resetNPCs(); this.draw(); }
+  setCustomSprites(sprites: CustomSpriteEntry[]): void {
+    this.gameState.game.customSprites = structuredClone(sprites); this.tileManager.ensureDefaultTiles(); this.draw();
+  }
+  defineTile(tile: TileDefinition & { id: TileId }): void {
+    const tiles = this.gameState.game.tileset.tiles;
+    const index = tiles.findIndex(entry => entry.id === tile.id);
+    if (index < 0) tiles.push(structuredClone(tile)); else tiles[index] = structuredClone(tile);
+    this.tileManager.ensureDefaultTiles(); this.draw();
+  }
+  setRoomLayout(roomIndex: number, room: RoomDefinition): void {
+    if (roomIndex < 0 || roomIndex >= this.gameState.game.rooms.length || room.size !== 8) throw Error('Invalid room');
+    this.gameState.game.rooms[roomIndex] = structuredClone(room); this.draw();
+  }
+  setItems(items: Omit<ItemInstance, 'collected'>[]): void { this.gameState.game.items = structuredClone(items); this.draw(); }
+  setExits(exits: ExitState[]): void { this.gameState.game.exits = structuredClone(exits); this.draw(); }
+
   // Data helpers
   exportGameData(): unknown {
     return this.gameState.exportGameData();
@@ -640,6 +678,7 @@ export class GameEngine {
   }
 
   syncDocumentTitle(): void {
+    if (this.inputRoot) return;
     const game = this.gameState.getGame();
     document.title = game.title || 'Tiny RPG Studio';
   }
@@ -715,11 +754,11 @@ export class GameEngine {
     return this.tileManager.getPresetTileNames();
   }
 
-  getVariableDefinitions(): unknown {
+  getVariableDefinitions() {
     return this.gameState.getVariableDefinitions();
   }
 
-  getRuntimeVariables(): unknown {
+  getRuntimeVariables() {
     return this.gameState.getVariables();
   }
 
@@ -745,13 +784,13 @@ export class GameEngine {
     return this.gameState.getObjectsForRoom(targetRoom);
   }
 
-  setObjectPosition(type: string, roomIndex: number, x: number, y: number): unknown {
+  setObjectPosition(type: string, roomIndex: number, x: number, y: number) {
     const entry = this.gameState.setObjectPosition(type, roomIndex, x, y);
     this.renderer.draw();
     return entry;
   }
 
-  setObjectVariable(type: string, roomIndex: number, variableId: string | number): unknown {
+  setObjectVariable(type: string, roomIndex: number, variableId: string | number) {
     const normalizedVariableId = typeof variableId === 'string' ? variableId : null;
     const updated = this.gameState.setObjectVariable(type, roomIndex, normalizedVariableId);
     this.renderer.draw();
@@ -849,15 +888,17 @@ export class GameEngine {
 
   updateTile(tileId: string | number, data: Partial<TileDefinition>): void {
     this.tileManager.updateTile(tileId, data);
+    this.draw();
   }
 
-  setMapTile(x: number, y: number, tileId: string | number, roomIndex: number | null = null): void {
+  setMapTile(x: number, y: number, tileId: string | number | null, roomIndex: number | null = null): void {
     const playerRoom = this.gameState.getPlayer()?.roomIndex ?? 0;
     const targetRoom = roomIndex ?? playerRoom;
     this.tileManager.setMapTile(x, y, tileId, targetRoom);
+    this.draw();
   }
 
-  addSprite(npc: unknown): unknown {
+  addSprite(npc: unknown) {
     return this.npcManager.addNPC(npc as NpcInput);
   }
 
@@ -870,7 +911,7 @@ export class GameEngine {
     return this.enemyManager.getActiveEnemies();
   }
 
-  addEnemy(enemy: unknown): unknown {
+  addEnemy(enemy: unknown) {
     return this.enemyManager.addEnemy(enemy as EnemyInput);
   }
 
@@ -927,9 +968,11 @@ export class GameEngine {
   }
 
   destroy(): void {
+    if (this.isDestroyed) return;
     this.isDestroyed = true;
     this.inputManager.destroy();
     this.enemyManager.stop();
+    this.gameState.hideLevelUpCelebration({ skipResume: true });
     this.backgroundMusicEngine.destroy();
     // Releases the tile-animation interval AND every overlay rAF loop (intro
     // pulse, pickup, level-up). Critical for the Explore preview thumbnails,

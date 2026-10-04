@@ -1,3 +1,4 @@
+import { collectAuthoringMetadata } from './ShareAuthoringMetadata';
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { TileDefinitions } from '../../domain/definitions/TileDefinitions';
@@ -782,6 +783,8 @@ class ShareEncoder {
             }
         }
 
+        const metadata = collectAuthoringMetadata((gameData ?? {}) as Record<string, unknown>);
+        if (Object.keys(metadata).length) parts.push(':' + ShareTextCodec.encodeText(JSON.stringify(metadata)));
         return parts;
     }
 

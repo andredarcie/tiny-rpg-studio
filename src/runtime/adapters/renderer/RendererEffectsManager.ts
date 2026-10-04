@@ -26,11 +26,11 @@ class RendererEffectsManager extends RendererModuleBase {
             tileY: null
         };
         this.combatIndicatorElement = typeof document !== 'undefined'
-            ? document.getElementById('combat-indicator')
+            ? this.canvas.closest('.game-container')?.querySelector<HTMLElement>('#combat-indicator') ?? document.getElementById('combat-indicator')
             : null;
         this.combatIndicatorTimeout = null;
         this.screenFlashElement = typeof document !== 'undefined'
-            ? document.getElementById('screen-flash')
+            ? this.canvas.parentElement?.querySelector<HTMLElement>('#screen-flash') ?? document.getElementById('screen-flash')
             : null;
         this.screenFlashTimeout = null;
         if (this.combatIndicatorElement) {

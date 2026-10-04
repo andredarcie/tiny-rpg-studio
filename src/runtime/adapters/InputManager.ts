@@ -142,7 +142,10 @@ class InputManager {
 
   private readonly editorActivatedListener = () => this.cancelHeldMovement();
 
-  constructor(gameEngine: GameEngineApi) {
+  private readonly inputRoot: Document | HTMLElement;
+
+  constructor(gameEngine: GameEngineApi, inputRoot?: HTMLElement) {
+    this.inputRoot = inputRoot ?? document;
     this.gameEngine = gameEngine;
     this.setupEventListeners();
     this.setupDPadListeners();
@@ -152,25 +155,25 @@ class InputManager {
     if (typeof document === 'undefined') {
       return false;
     }
-    return document.body.classList.contains('game-mode');
+    return this.inputRoot !== document || document.body.classList.contains('game-mode');
   }
 
   setupEventListeners(): void {
-    document.addEventListener('keydown', this.keyDownListener);
-    document.addEventListener('keyup', this.keyUpListener);
-    document.addEventListener('touchstart', this.touchStartListener, { passive: false });
-    document.addEventListener('touchmove', this.touchMoveListener, { passive: false });
-    document.addEventListener('touchend', this.touchEndListener, { passive: false });
-    document.addEventListener('touchcancel', this.touchCancelListener, { passive: false });
-    document.addEventListener('click', this.clickListener);
+    this.inputRoot.addEventListener('keydown', this.keyDownListener as EventListener);
+    this.inputRoot.addEventListener('keyup', this.keyUpListener as EventListener);
+    this.inputRoot.addEventListener('touchstart', this.touchStartListener as EventListener, { passive: false });
+    this.inputRoot.addEventListener('touchmove', this.touchMoveListener as EventListener, { passive: false });
+    this.inputRoot.addEventListener('touchend', this.touchEndListener as EventListener, { passive: false });
+    this.inputRoot.addEventListener('touchcancel', this.touchCancelListener as EventListener, { passive: false });
+    this.inputRoot.addEventListener('click', this.clickListener as EventListener);
     document.addEventListener('visibilitychange', this.visibilityListener);
-    document.addEventListener('focusin', this.focusInListener);
+    this.inputRoot.addEventListener('focusin', this.focusInListener as EventListener);
     document.addEventListener('editor-tab-activated', this.editorActivatedListener);
     globalThis.addEventListener('blur', this.blurListener);
   }
 
   private setupDPadListeners(): void {
-    const buttons = document.querySelectorAll<HTMLButtonElement>(
+    const buttons = this.inputRoot.querySelectorAll<HTMLButtonElement>(
       '.game-touch-pad .pad-button[data-direction]',
     );
 
@@ -641,15 +644,15 @@ class InputManager {
     if (this.destroyed) return;
     this.cancelHeldMovement();
     this.destroyed = true;
-    document.removeEventListener('keydown', this.keyDownListener);
-    document.removeEventListener('keyup', this.keyUpListener);
-    document.removeEventListener('touchstart', this.touchStartListener);
-    document.removeEventListener('touchmove', this.touchMoveListener);
-    document.removeEventListener('touchend', this.touchEndListener);
-    document.removeEventListener('touchcancel', this.touchCancelListener);
-    document.removeEventListener('click', this.clickListener);
+    this.inputRoot.removeEventListener('keydown', this.keyDownListener as EventListener);
+    this.inputRoot.removeEventListener('keyup', this.keyUpListener as EventListener);
+    this.inputRoot.removeEventListener('touchstart', this.touchStartListener as EventListener);
+    this.inputRoot.removeEventListener('touchmove', this.touchMoveListener as EventListener);
+    this.inputRoot.removeEventListener('touchend', this.touchEndListener as EventListener);
+    this.inputRoot.removeEventListener('touchcancel', this.touchCancelListener as EventListener);
+    this.inputRoot.removeEventListener('click', this.clickListener as EventListener);
     document.removeEventListener('visibilitychange', this.visibilityListener);
-    document.removeEventListener('focusin', this.focusInListener);
+    this.inputRoot.removeEventListener('focusin', this.focusInListener as EventListener);
     document.removeEventListener('editor-tab-activated', this.editorActivatedListener);
     globalThis.removeEventListener('blur', this.blurListener);
     this.dPadBindings.forEach(({ button, pointerDown, pointerEnd }) => {

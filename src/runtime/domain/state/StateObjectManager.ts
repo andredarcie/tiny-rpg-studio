@@ -182,13 +182,8 @@ class StateObjectManager {
                 const x = this.worldManager.clampCoordinate(raw.x ?? 0);
                 const y = this.worldManager.clampCoordinate(raw.y ?? 0);
                 const rawId = raw.id;
-                // Multi-instance types always use a positional id (collision-free per tile).
-                // Single-instance types preserve the raw id when present.
-                const id = itemCatalog.allowsMultiplePerRoom(type)
-                    ? this.generateObjectId(type, roomIndex, x, y)
-                    : (typeof rawId === 'string' && rawId.trim()
-                        ? rawId.trim()
-                        : this.generateObjectId(type, roomIndex));
+                const id = typeof rawId === 'string' && rawId.trim()
+                    ? rawId.trim() : this.generateObjectId(type, roomIndex, x, y);
                 const fallbackVariableId = this.variableManager?.getFirstVariableId?.() ?? null;
                 const needsVariable = itemCatalog.requiresVariable(type);
                 const normalizedVariable = needsVariable

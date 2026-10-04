@@ -28,6 +28,14 @@ const makeGameState = (sprites: GameDefinition['sprites'] = []) => {
 };
 
 describe('NPCManager', () => {
+  it('preserves authoring settings when creating an NPC', () => {
+    const manager = new NPCManager(makeGameState() as unknown as ConstructorParameters<typeof NPCManager>[0]);
+    const id = manager.addNPC({ type: 'old-mage', name: 'Merlin', placed: true, disappearAfterDialog: true,
+      rewardVariableId: 'END_GAME', choiceEnabled: true, choicePrompt: 'Leave?', choiceYesVariableId: 'END_GAME' });
+    if (!id) throw Error('Expected NPC creation to return an ID');
+    expect(manager.getNPC(id)).toMatchObject({ name: 'Merlin', disappearAfterDialog: true,
+      rewardVariableId: 'END_GAME', choiceEnabled: true, choicePrompt: 'Leave?', choiceYesVariableId: 'END_GAME' });
+  });
   it('keeps placed NPCs and allows duplicates per scene', () => {
     const sprites = [
       { id: 'npc-999', type: 'invalid', name: 'Bad', text: '', textKey: null, roomIndex: 0, x: 1, y: 1, initialX: 1, initialY: 1, initialRoomIndex: 0, placed: true, conditionVariableId: null, conditionText: '', rewardVariableId: null, conditionalRewardVariableId: null, choiceEnabled: false, choicePrompt: '', choiceYesText: '', choiceNoText: '', choiceYesVariableId: null, choiceNoVariableId: null },

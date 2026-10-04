@@ -74,6 +74,8 @@ class RendererLevelUpOverlay {
         this.fill();
     }
 
+    destroy(): void { this.overlay?.remove(); this.overlay = null; this.onChoose = null; }
+
     private ensureOverlay(parent: HTMLElement): void {
         if (this.overlay && this.overlay.parentElement === parent) return;
 

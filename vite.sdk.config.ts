@@ -4,9 +4,9 @@ export default defineConfig({
     publicDir: false,
     build: {
         lib: {
-            entry: 'src/sdk/index.ts',
+            entry: { index: 'src/sdk/index.ts', browser: 'src/sdk/browser.ts', html: 'src/sdk/html.ts' },
             formats: ['es', 'cjs'],
-            fileName: 'index'
+            fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`
         },
         outDir: 'dist/sdk',
         emptyOutDir: true

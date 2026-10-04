@@ -55,8 +55,10 @@ class ShareConstants {
     static get VERSION_45() { return 45; }
     static get VERSION_46() { return 46; }
 
+    static get VERSION_47() { return 47; }
+
     static get VERSION() {
-        return ShareConstants.VERSION_46;
+        return ShareConstants.VERSION_47;
     }
 
     static get LEGACY_VERSION() {
@@ -368,7 +370,8 @@ class ShareConstants {
                 ShareConstants.VERSION_43,
                 ShareConstants.VERSION_44,
                 ShareConstants.VERSION_45,
-                ShareConstants.VERSION_46
+                ShareConstants.VERSION_46,
+                ShareConstants.VERSION_47
             ]);
         }
         return this._supportedVersions;

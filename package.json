@@ -1,22 +1,52 @@
 {
   "name": "tiny-rpg-studio-sdk",
-  "version": "1.4.0",
+  "version": "2.0.0",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/andredarcie/tiny-rpg-studio"
   },
   "files": [
-    "dist/sdk/index.js",
-    "dist/sdk/index.cjs",
-    "dist/sdk/sdk"
+    "dist/sdk",
+    "public/export.bundle.js",
+    "public/tiny-rpg-studio-sdk.css",
+    "public/pixel-operator.woff",
+    "SDK_README.md"
   ],
   "exports": {
     ".": {
-      "types": "./dist/sdk/sdk/index.d.ts",
-      "import": "./dist/sdk/index.js",
-      "require": "./dist/sdk/index.cjs"
-    }
+      "import": {
+        "types": "./dist/sdk/sdk/index.d.ts",
+        "default": "./dist/sdk/index.js"
+      },
+      "require": {
+        "types": "./dist/sdk/sdk/index.d.cts",
+        "default": "./dist/sdk/index.cjs"
+      }
+    },
+    "./browser": {
+      "import": {
+        "types": "./dist/sdk/sdk/browser.d.ts",
+        "default": "./dist/sdk/browser.js"
+      },
+      "require": {
+        "types": "./dist/sdk/sdk/browser.d.cts",
+        "default": "./dist/sdk/browser.cjs"
+      }
+    },
+    "./html": {
+      "import": {
+        "types": "./dist/sdk/sdk/html.d.ts",
+        "default": "./dist/sdk/html.js"
+      },
+      "require": {
+        "types": "./dist/sdk/sdk/html.d.cts",
+        "default": "./dist/sdk/html.cjs"
+      }
+    },
+    "./runtime.js": "./public/export.bundle.js",
+    "./styles.css": "./public/tiny-rpg-studio-sdk.css",
+    "./font.woff": "./public/pixel-operator.woff"
   },
   "scripts": {
     "dev": "vite",
@@ -26,7 +56,7 @@
     "build:check": "tsc --noEmit && npm run build",
     "build:export": "vite build -c vite.export.config.ts",
     "measure:export": "npm run build:export && node scripts/report-export-sizes.mjs",
-    "build:sdk": "vite build -c vite.sdk.config.ts && tsc -p tsconfig.sdk.json",
+    "build:sdk": "vite build -c vite.sdk.config.ts && tsc -p tsconfig.sdk.json && node scripts/finalize-sdk-types.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
     "test": "vitest",
@@ -51,5 +81,6 @@
     "vite": "^7.2.4",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.0.18"
-  }
+  },
+  "types": "./dist/sdk/sdk/index.d.ts"
 }

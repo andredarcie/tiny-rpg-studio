@@ -35,7 +35,7 @@ function contract(data: Data): AuthoringCapabilities {
   const tiles = list(record(data.tileset).tiles);
   const variables = list(data.variables).map(entry => entry.id);
   const tileId = enumeration([null, ...tiles.map(entry => entry.id)]);
-  const variable = enumeration([null, ...variables]);
+  const variable = enumeration([null, ...variables, 'skill:bard']);
   const reward = enumeration([null, ...variables, NPC_END_GAME_REWARD_ID]);
   const npcs = NPCDefinitions.definitions.map(entry => entry.type);
   const enemies = EnemyDefinitions.definitions.map(entry => entry.type);
@@ -43,12 +43,12 @@ function contract(data: Data): AuthoringCapabilities {
   const skills = SkillDefinitions.getAll().map(entry => entry.id);
   const color: JsonSchema = { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' };
   const point = { x: position.x, y: position.y };
-  const npc = object({ ...point, type: enumeration(npcs), text: string(), name: string(80), placed: boolean,
+  const npc = object({ id: string(100), ...point, type: enumeration(npcs), text: string(), name: string(80), placed: boolean,
     conditionVariableId: variable, conditionText: string(), rewardVariableId: reward, conditionalRewardVariableId: reward,
     disappearAfterDialog: boolean, choiceEnabled: boolean, choicePrompt: string(), choiceYesText: string(), choiceNoText: string(), choiceYesVariableId: reward, choiceNoVariableId: reward,
   }, ['x', 'y', 'type', 'text']);
-  const enemy = object({ ...point, type: enumeration(enemies), defeatVariableId: variable, experience: integer(0, MAX_ENEMY_EXPERIENCE) }, ['x', 'y', 'type']);
-  const obj = object({ ...point, type: enumeration(objects.filter(type => type !== 'player-start')), variableId: variable, solid: boolean,
+  const enemy = object({ id: string(100), ...point, type: enumeration(enemies), defeatVariableId: variable, experience: integer(0, MAX_ENEMY_EXPERIENCE) }, ['x', 'y', 'type']);
+  const obj = object({ id: string(100), ...point, type: enumeration(objects.filter(type => type !== 'player-start')), variableId: variable, solid: boolean,
     on: boolean, endingText: string(StateObjectManager.PLAYER_END_TEXT_LIMIT), inputVariableId: variable, inputVariableId2: variable,
     outputVariableId: variable, hiddenInGame: boolean, containsItemType: enumeration([null, ...itemCatalog.getCollectibleTypes()]), randomItem: boolean, experience: integer(0, 65535),
   }, ['x', 'y', 'type']);
@@ -70,6 +70,9 @@ function contract(data: Data): AuthoringCapabilities {
       backgroundMusicVideoId: { type: 'string', pattern: '^([A-Za-z0-9_-]{11})?$' }, backgroundMusicVolume: integer(0, 100),
       customPalette: array(color, 16, 16),
     }, [])),
+    tool('set_online', 'Enable or disable built-in multiplayer and replace spawn points.', object({ enabled: boolean, spawnPoints: array(object({ ...position, role: enumeration(['p1', 'p2']) }), 2) }, ['enabled'])),
+    tool('clear_settings', 'Reset optional settings to engine defaults.', object({ settings: array(enumeration(['customPalette', 'skillCustomizations', 'skillOrder', 'online', 'backgroundMusic', 'customSprites', 'customTileEffects']), 7) })),
+    tool('set_room', 'Replace saved room metadata independently of tile-map layers.', object({ roomIndex: position.roomIndex, bg: integer(0, 15), tiles: array(array(integer(0, 15), roomSize, roomSize), roomSize, roomSize), walls: array(array(boolean, roomSize, roomSize), roomSize, roomSize) }, ['roomIndex'])),
     tool('set_start', 'Move the player start.', object(position)),
     tool('set_map_cell', 'Set a ground or overlay cell. null erases. Use existing tile IDs.', object({ ...position, layer: enumeration(['ground', 'overlay']), tileId })),
     tool('set_map_layer', 'Replace an entire 8x8 ground or overlay layer.', object({ roomIndex: position.roomIndex, layer: enumeration(['ground', 'overlay']), cells: array(array(tileId, roomSize, roomSize), roomSize, roomSize) })),
@@ -122,7 +125,20 @@ function checkReferences(data: Data): void {
 
 function apply(data: Data, name: string, a: Data): void {
   const tileset = record(data.tileset);
-  if (name === 'set_project') Object.assign(data, a);
+  if (name === 'set_online') {
+    const points = list(a.spawnPoints ?? []);
+    if (new Set(points.map(point => point.role)).size !== points.length) throw Error('Duplicate online spawn roles');
+    if (a.enabled && list(data.gameplayPlugins ?? []).some(entry => entry.id === 'variables-plus')) throw Error('Variables+ cannot use online mode');
+    data.online = a;
+  } else if (name === 'clear_settings') {
+    for (const setting of a.settings as string[]) {
+      if (setting === 'backgroundMusic') { delete data.backgroundMusicVideoId; delete data.backgroundMusicVolume; }
+      else delete data[setting];
+      if (setting === 'customTileEffects') for (const tile of list(tileset.tiles)) if (String(tile.visualEffect).startsWith('custom:')) tile.visualEffect = 'none';
+    }
+  } else if (name === 'set_room') {
+    const { roomIndex, ...fields } = a; Object.assign(list(data.rooms)[Number(roomIndex)], fields);
+  } else if (name === 'set_project') Object.assign(data, a);
   else if (name === 'set_start') {
     data.start = a;
     data.objects = list(data.objects).map(entry => entry.type === 'player-start' ? { ...entry, ...a } : entry);
@@ -136,7 +152,7 @@ function apply(data: Data, name: string, a: Data): void {
     const kind = name.slice(4); const roomIndex = a.roomIndex;
     if (kind === 'objects') for (const entry of list(a.entities)) {
       const type = entry.type as Parameters<typeof itemCatalog.requiresVariable>[0];
-      const allowed = new Set(['type', 'x', 'y']);
+      const allowed = new Set(['id', 'type', 'x', 'y']);
       if (itemCatalog.requiresVariable(type) || type === 'chest') allowed.add('variableId');
       if (type === 'trap') allowed.add('solid');
       if (type === 'switch') allowed.add('on');
@@ -150,7 +166,7 @@ function apply(data: Data, name: string, a: Data): void {
       if (Object.keys(entry).some(key => !allowed.has(key))) throw Error('Unsupported property for this object type');
     }
     const incoming = list(a.entities).map((entry, i) => ({ ...entry, roomIndex,
-      ...(['sprites', 'enemies', 'objects'].includes(kind) ? { id: `authoring-${kind}-${roomIndex}-${i}` } : {}),
+      ...(['sprites', 'enemies', 'objects'].includes(kind) ? { id: entry.id ?? list(data[kind]).find(previous => previous.roomIndex === roomIndex && previous.type === entry.type && previous.x === entry.x && previous.y === entry.y)?.id ?? `authoring-${kind}-${roomIndex}-${i}` } : {}),
       ...(kind === 'sprites' ? { placed: entry.placed !== false, initialX: entry.x, initialY: entry.y, initialRoomIndex: roomIndex, textKey: null } : {}),
       ...(kind === 'enemies' ? { lastX: entry.x } : {}),
     }));

@@ -1,3 +1,4 @@
+import { createBaseRuntimeApi } from './runtime/infra/BaseRuntimeApi';
 import './styles.css';
 import { BootLoadingScreen } from './BootLoadingScreen';
 import { applyFontConfig } from './config/FontConfig';
@@ -182,7 +183,10 @@ class TinyRPGApplication {
       void ensureEditor().then(() => getTinyRpgApi()?.renderAll());
     });
 
+    const runtime = createBaseRuntimeApi(gameEngine);
     const api: TinyRpgApi = {
+      ...runtime,
+      runtime,
       exportGameData: () => gameEngine.exportGameData(),
       importGameData: (data: unknown) => {
         const required = (data as { gameplayPlugins?: { id: string; version: string }[] } | null)?.gameplayPlugins ?? [];

@@ -60,6 +60,17 @@ const createEngine = (overrides: Partial<GameEngineStub> = {}): GameEngineStub =
   };
 };
 
+it('isolates embedded keyboard input to its root', () => {
+  const first = createEngine(); const second = createEngine();
+  const a = document.createElement('div'); const b = document.createElement('div'); document.body.append(a, b);
+  const one = new InputManager(first, a); const two = new InputManager(second, b);
+  try {
+    a.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(first.tryMove).toHaveBeenCalledOnce();
+    expect(second.tryMove).not.toHaveBeenCalled();
+  } finally { one.destroy(); two.destroy(); a.remove(); b.remove(); }
+});
+
 const createKeyEvent = (
   key: string,
   target?: HTMLElement,
