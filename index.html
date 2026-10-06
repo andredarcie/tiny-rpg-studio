@@ -405,37 +405,42 @@
                                 <summary data-text-key="sections.project"></summary>
                                 <div class="project-actions">
                                     <div class="project-tabs" role="tablist" aria-label="Project sections" data-aria-label-key="project.tabsAria">
-                                        <button class="project-tab-button active" type="button" role="tab" aria-selected="true" data-project-tab-button="development" data-text-key="project.group.development">Desenvolvimento</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="testing" data-text-key="project.group.testing">Testes</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="appearance" data-text-key="project.group.appearance">Aparência</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="online" data-text-key="project.group.online">Online</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="info" data-text-key="project.group.info">Informações</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="audio" data-text-key="project.group.audio">Audio</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="export" data-text-key="project.group.export">Exportação</button>
-                                        <button class="project-tab-button" type="button" role="tab" aria-selected="false" data-project-tab-button="plugins" data-text-key="project.group.plugins">Plugins</button>
+                                        <button id="project-tab-development" class="project-tab-button active" type="button" role="tab" aria-selected="true" aria-controls="project-panel-development" data-project-tab-button="development" data-text-key="project.group.development">Desenvolvimento</button>
+                                        <button id="project-tab-testing" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-testing" data-project-tab-button="testing" data-text-key="project.group.testing">Testes</button>
+                                        <button id="project-tab-appearance" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-appearance" data-project-tab-button="appearance" data-text-key="project.group.appearance">Aparência</button>
+                                        <button id="project-tab-online" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-online" data-project-tab-button="online" data-text-key="project.group.online">Online</button>
+                                        <button id="project-tab-info" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-info" data-project-tab-button="info" data-text-key="project.group.info">Informações</button>
+                                        <button id="project-tab-audio" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-audio" data-project-tab-button="audio" data-text-key="project.group.audio">Audio</button>
+                                        <button id="project-tab-export" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-export" data-project-tab-button="export" data-text-key="project.group.export">Exportação</button>
+                                        <button id="project-tab-plugins" class="project-tab-button" type="button" role="tab" aria-selected="false" aria-controls="project-panel-plugins" data-project-tab-button="plugins" data-text-key="project.group.plugins">Plugins</button>
                                     </div>
 
-                                    <div class="project-tab-panel active" role="tabpanel" data-project-tab-panel="development">
+                                    <div id="project-panel-development" class="project-tab-panel active" role="tabpanel" aria-labelledby="project-tab-development" data-project-tab-panel="development">
                                     <div class="project-group project-group--development">
-                                        <h2 class="project-group__title" data-text-key="project.group.development">Desenvolvimento</h2>
-                                        <div id="project-variables-container" class="project-variables">
+                                        <details class="project-card" data-project-section="variables" open>
+                                            <summary data-text-key="project.section.variables">Variables</summary>
+                                            <div id="project-variables-container" class="project-variables">
                                             <button id="project-variables-toggle" class="project-variables__toggle" type="button" aria-expanded="false" aria-controls="project-variable-usage-list"></button>
                                             <div id="project-variable-usage-list" class="project-variables__list"></div>
-                                        </div>
-                                        <div id="project-skills-container" class="project-variables project-variables--skills">
+                                            </div>
+                                            <label class="project-test__field project-test__checkbox project-appearance__checkbox">
+                                                <input type="checkbox" id="project-show-variable-links" checked>
+                                                <span data-text-key="project.showVariableLinks"></span>
+                                            </label>
+                                        </details>
+                                        <details class="project-card" data-project-section="skills" open>
+                                            <summary data-text-key="project.section.skills">Skills</summary>
+                                            <div id="project-skills-container" class="project-variables project-variables--skills">
                                             <button id="project-skills-toggle" class="project-variables__toggle" type="button" aria-expanded="false" aria-controls="project-skills-list"></button>
                                             <ol id="project-skills-list" class="project-variables__list project-skills__list"></ol>
                                             <button id="project-skills-reset-order" class="project-skills-reset-btn" type="button" data-text-key="project.skills.resetOrder" hidden></button>
+                                            </div>
                                             <label class="project-variables__field project-variables__checkbox">
                                                 <input type="checkbox" id="project-disable-skills">
                                                 <span data-text-key="project.disableSkills"></span>
                                             </label>
-                                        </div>
-                                        <label class="project-test__field project-test__checkbox project-appearance__checkbox">
-                                            <input type="checkbox" id="project-show-variable-links" checked>
-                                            <span data-text-key="project.showVariableLinks"></span>
-                                        </label>
-                                        <details class="project-enemies-settings">
+                                        </details>
+                                        <details class="project-card project-enemies-settings" data-project-section="enemies">
                                             <summary data-text-key="project.enemies.title">Enemies</summary>
                                             <label class="project-test__field project-test__checkbox">
                                                 <input type="checkbox" id="project-respawnable-enemies">
@@ -450,9 +455,10 @@
                                     </div>
 
                                     <!-- Grupo: Testes -->
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="testing" hidden>
+                                    <div id="project-panel-testing" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-testing" data-project-tab-panel="testing" hidden>
                                     <div class="project-group project-group--testing">
-                                        <h2 class="project-group__title" data-text-key="project.group.testing">Testes</h2>
+                                        <details class="project-card" data-project-section="testing" open>
+                                            <summary data-text-key="project.section.testSetup">Test setup</summary>
                                         <div id="project-test-container" class="project-variables project-test">
                                             <div id="project-test-panel" class="project-test__panel">
                                                 <p class="project-test__hint" data-text-key="project.test.hint"></p>
@@ -474,28 +480,20 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        </details>
                                     </div>
                                     </div>
 
                                     <!-- Grupo: Aparência -->
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="appearance" hidden>
+                                    <div id="project-panel-appearance" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-appearance" data-project-tab-panel="appearance" hidden>
                                     <div class="project-group project-group--appearance">
-                                        <h2 class="project-group__title" data-text-key="project.group.appearance">Aparência</h2>
-                                        <div class="project-appearance__outline-row">
-                                            <label class="project-test__field project-test__checkbox project-appearance__checkbox">
-                                                <input type="checkbox" id="project-sprite-outline">
-                                                <span data-text-key="project.spriteOutline"></span>
-                                            </label>
-                                            <label class="project-appearance__outline-color">
-                                                <span class="project-appearance__outline-color-label" data-text-key="project.spriteOutlineColor">Color</span>
-                                                <select id="project-sprite-outline-color" class="project-outline-color-select" aria-label="Outline color"></select>
-                                            </label>
-                                        </div>
+                                        <details class="project-card" data-project-section="palette" open>
+                                            <summary data-text-key="project.section.palette">Palette</summary>
                                         <div id="project-palette-container" class="project-variables project-palette">
                                             <div id="project-palette-panel" class="project-palette__panel">
                                                 <div class="palette-header">
                                                     <p class="palette-description" data-text-key="project.paletteDescription"></p>
-                                                    <div style="display:flex;gap:8px;margin-bottom:8px;">
+                                                    <div class="project-action-row">
                                                         <button id="palette-import-button" class="palette-action-btn" type="button" data-text-key="project.paletteImport">import</button>
                                                         <button id="palette-export-button" class="palette-action-btn" type="button" data-text-key="project.paletteExport">export</button>
                                                     </div>
@@ -522,14 +520,16 @@
                                                 <div id="palette-grid" class="palette-grid"></div>
                                             </div>
                                         </div>
+                                        </details>
+                                        <details class="project-card" data-project-section="sprites" open>
+                                            <summary data-text-key="project.sprites.title">Custom sprites pack</summary>
                                         <div id="project-sprites-container" class="project-variables project-palette project-sprites">
                                             <div class="project-palette__panel">
                                                 <div class="palette-header">
-                                                    <h3 class="project-sprites__title" data-text-key="project.sprites.title">Custom sprites pack</h3>
                                                     <p class="palette-description" data-text-key="project.sprites.description">
                                                         Export or import all custom pixel-art overrides as one file.
                                                     </p>
-                                                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+                                                    <div class="project-action-row">
                                                         <button id="sprites-import-button" class="palette-action-btn" type="button" data-text-key="project.sprites.import">Import sprites</button>
                                                         <button id="sprites-export-button" class="palette-action-btn" type="button" data-text-key="project.sprites.export">Export sprites</button>
                                                         <button id="sprites-clear-button" class="palette-action-btn" type="button" data-text-key="project.sprites.clear">Clear all custom sprites</button>
@@ -537,19 +537,35 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        </details>
+                                        <details class="project-card" data-project-section="effects">
+                                            <summary data-text-key="project.section.effects">Effects</summary>
                                         <label class="project-test__field project-test__checkbox project-appearance__checkbox">
                                             <input type="checkbox" id="project-enable-effects" checked>
                                             <span data-text-key="project.enableEffects"></span>
-                                        </label>
-                                        <label class="project-test__field project-test__checkbox project-appearance__checkbox">
-                                            <input type="checkbox" id="project-show-new-dialog-exclamation" checked>
-                                            <span data-text-key="project.showNewDialogExclamation"></span>
                                         </label>
                                         <button id="custom-effect-open" class="palette-action-btn" type="button" data-text-key="customEffects.open">Create effect</button>
                                         <div class="custom-effects-actions">
                                             <button id="custom-effects-import-button" class="palette-action-btn" type="button" data-text-key="customEffects.io.import">Import effects</button>
                                             <button id="custom-effects-export-button" class="palette-action-btn" type="button" data-text-key="customEffects.io.export">Export effects</button>
                                         </div>
+                                        </details>
+                                        <details class="project-card" data-project-section="display" open>
+                                            <summary data-text-key="project.section.display">Display</summary>
+                                            <div class="project-appearance__outline-row">
+                                                <label class="project-test__field project-test__checkbox project-appearance__checkbox">
+                                                    <input type="checkbox" id="project-sprite-outline">
+                                                    <span data-text-key="project.spriteOutline"></span>
+                                                </label>
+                                                <label class="project-appearance__outline-color">
+                                                    <span class="project-appearance__outline-color-label" data-text-key="project.spriteOutlineColor">Color</span>
+                                                    <select id="project-sprite-outline-color" class="project-outline-color-select" aria-label="Outline color"></select>
+                                                </label>
+                                            </div>
+                                        <label class="project-test__field project-test__checkbox project-appearance__checkbox">
+                                            <input type="checkbox" id="project-show-new-dialog-exclamation" checked>
+                                            <span data-text-key="project.showNewDialogExclamation"></span>
+                                        </label>
                                         <label class="project-test__field project-test__checkbox project-appearance__checkbox">
                                             <input type="checkbox" id="project-hide-hud">
                                             <span data-text-key="project.hideHud"></span>
@@ -558,12 +574,14 @@
                                             <input type="checkbox" id="project-disable-pixel-font">
                                             <span data-text-key="project.disablePixelFont"></span>
                                         </label>
+                                        </details>
                                     </div>
                                     </div>
 
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="online" hidden>
+                                    <div id="project-panel-online" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-online" data-project-tab-panel="online" hidden>
                                     <div class="project-group project-group--online">
-                                        <h2 class="project-group__title" data-text-key="project.group.online">Online</h2>
+                                        <details class="project-card" data-project-section="online" open>
+                                            <summary data-text-key="project.section.onlineSetup">Online setup</summary>
                                         <div class="project-online-warning" role="alert" data-text-key="project.online.warning">
                                             O modo online ainda está em desenvolvimento. Ele não está completo e pode conter bugs.
                                         </div>
@@ -585,6 +603,7 @@
                                                 </div>
                                             </div>
                                         </div>
+                                        </details>
                                     </div>
                                     </div>
 
@@ -677,9 +696,10 @@
                                     </div>
 
                                     <!-- Grupo: Informações -->
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="info" hidden>
+                                    <div id="project-panel-info" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-info" data-project-tab-panel="info" hidden>
                                     <div class="project-group project-group--info">
-                                        <h2 class="project-group__title" data-text-key="project.group.info">Informações</h2>
+                                        <details class="project-card" data-project-section="information" open>
+                                            <summary data-text-key="project.section.gameDetails">Game details</summary>
                                         <label class="project-field">
                                             <span data-text-key="project.titleLabel"></span>
                                             <input type="text" id="game-title" data-placeholder-key="project.titlePlaceholder" maxlength="18">
@@ -699,15 +719,14 @@
                                             </select>
                                         </label>
                                         <button id="btn-about" class="project-about-button" type="button" data-text-key="buttons.about" data-aria-label-key="about.openAria" aria-haspopup="dialog">About</button>
+                                        </details>
                                     </div>
                                     </div>
 
                                     <!-- Grupo: Exportação -->
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="audio" hidden>
+                                    <div id="project-panel-audio" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-audio" data-project-tab-panel="audio" hidden>
                                     <div class="project-group project-group--audio">
-                                        <h2 class="project-group__title" data-text-key="project.group.audio">Audio</h2>
-                                        <div class="project-variables project-variables--music">
-                                            <details open>
+                                            <details class="project-card" data-project-section="music" open>
                                                 <summary data-text-key="project.audio.backgroundMusic">Background Music</summary>
                                                 <label class="project-field">
                                                     <span data-text-key="project.audio.youtubeUrl">YouTube URL</span>
@@ -734,30 +753,39 @@
                                                     </div>
                                                 </label>
                                             </details>
-                                        </div>
                                     </div>
                                     </div>
 
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="export" hidden>
+                                    <div id="project-panel-export" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-export" data-project-tab-panel="export" hidden>
                                     <div class="project-group project-group--export">
-                                        <h2 class="project-group__title" data-text-key="project.group.export">Exportação</h2>
+                                        <details class="project-card" data-project-section="share-url" open>
+                                            <summary data-text-key="project.section.shareUrl">Share URL</summary>
                                         <p class="project-share-hint" data-text-key="project.shareHint"></p>
                                         <span id="generate-url-wrapper" tabindex="0"><button id="btn-generate-url" data-text-key="project.generateUrl"></button><span id="generate-url-help" class="share-url-help" role="tooltip"></span></span>
                                         <label class="project-field project-field--share-url">
                                             <span data-text-key="project.shareUrlLabel"></span>
                                             <input id="project-share-url" type="text" readonly spellcheck="false" autocomplete="off" inputmode="url">
                                         </label>
-                                        <button id="btn-import-html" data-text-key="project.importHTML"></button>
-                                        <button id="btn-generate-html" data-text-key="project.generateHTML"></button>
-                                        <label class="project-test__field project-test__checkbox project-appearance__checkbox">
-                                            <input type="checkbox" id="export-editable-in-studio" checked>
-                                            <span data-text-key="project.export.editableInStudio"></span>
-                                        </label>
+                                        </details>
+                                        <details class="project-card" data-project-section="project-file" open>
+                                            <summary data-text-key="project.section.projectFile">Project file</summary>
+                                            <button id="btn-import-html" data-text-key="project.importHTML"></button>
+                                            <div class="project-export-option">
+                                                <button id="btn-generate-html" data-text-key="project.generateHTML"></button>
+                                                <label class="project-test__field project-test__checkbox project-appearance__checkbox">
+                                                    <input type="checkbox" id="export-editable-in-studio" checked>
+                                                    <span data-text-key="project.export.editableInStudio"></span>
+                                                </label>
+                                            </div>
+                                        </details>
                                     </div>
                                     </div>
-                                    <div class="project-tab-panel" role="tabpanel" data-project-tab-panel="plugins" hidden>
-                                        <p class="plugin-settings-empty" data-plugin-settings-empty data-text-key="project.plugins.empty">Nenhum plugin ativo oferece configurações.</p>
-                                        <div class="plugin-settings-groups" data-plugin-settings-groups></div>
+                                    <div id="project-panel-plugins" class="project-tab-panel" role="tabpanel" aria-labelledby="project-tab-plugins" data-project-tab-panel="plugins" hidden>
+                                        <details class="project-card" data-project-section="plugins" open>
+                                            <summary data-text-key="project.section.pluginSettings">Plugin settings</summary>
+                                            <p class="plugin-settings-empty" data-plugin-settings-empty data-text-key="project.plugins.empty">Nenhum plugin ativo oferece configurações.</p>
+                                            <div class="plugin-settings-groups" data-plugin-settings-groups></div>
+                                        </details>
                                     </div>
                                 </div>
                             </details>

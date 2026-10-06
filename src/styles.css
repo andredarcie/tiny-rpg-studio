@@ -2252,10 +2252,10 @@ textarea {
 
 .project-tabs {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(120px, 100%), 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
     padding: 0;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     background: transparent;
 }
 
@@ -2264,7 +2264,7 @@ textarea {
 
 .project-tab-panel {
     display: none;
-    padding: 4px 0 0;
+    padding: 0;
     background: var(--panel);
 }
 
@@ -2291,12 +2291,6 @@ textarea {
 .plugin-settings-empty {
     color: var(--muted);
     margin: 8px 0;
-}
-
-@media (max-width: 1280px) {
-    .project-tabs {
-        grid-template-columns: repeat(auto-fit, minmax(min(108px, 100%), 1fr));
-    }
 }
 
 .project-field {
@@ -2339,22 +2333,13 @@ textarea {
     flex: 1 1 100%;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
 .project-group .project-field {
     flex: 0 0 auto;
     min-width: 0;
     width: 100%;
-}
-
-.project-group__title {
-    margin: 0;
-    padding: 8px 12px;
-    color: var(--accent);
-    letter-spacing: var(--ls-px-lg);
-    border-left: 3px solid var(--accent);
-    background: rgba(91, 250, 142, 0.05);
 }
 
 .project-online-warning {
@@ -3057,20 +3042,18 @@ body.game-mode .tab-button.active {
 }
 
 .project-appearance__checkbox {
-    margin-top: 10px;
+    margin-top: 0;
 }
 
-/* Match .project-variables card chrome so the outline controls sit with palette/sprites. */
 .project-appearance__outline-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 12px 16px;
-    margin-bottom: 16px;
-    padding: 12px;
-    background: linear-gradient(135deg, rgba(33, 38, 53, 0.8), rgba(24, 28, 40, 0.9));
-    border: 1px solid var(--border);
-    border-radius: 12px;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: 0;
 }
 
 /* Nested checkbox already lives inside the card — drop the second panel shell. */
@@ -3963,26 +3946,18 @@ body.game-mode .tab-button.active {
 
 /* Custom Palette Styles */
 .project-palette {
-    margin-bottom: 16px;
+    margin-bottom: 0;
 }
 
 .project-sprites {
-    margin-top: 4px;
-}
-
-.project-sprites__title {
-    margin: 0;
-    font-size: 0.85em;
-    font-weight: normal;
-    color: var(--text);
-    letter-spacing: 0.02em;
+    margin-top: 0;
 }
 
 .project-palette__panel {
-    padding: 12px;
-    background: var(--panel);
-    border-radius: 4px;
-    margin-top: 8px;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    margin-top: 0;
 }
 
 .palette-header {
@@ -5812,6 +5787,119 @@ body.editor-mode .plugins-modal button.plugin-action[data-action="update"]:hover
 #generate-url-wrapper[data-disabled="true"]:focus-visible .share-url-help {
     display: block;
 }
-.project-enemies-settings { margin: 12px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 6px; }
-.project-enemies-settings summary { cursor: pointer; font-weight: bold; }
-.project-enemies-settings label { margin-top: 8px; }
+.editor-section--project .project-card {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(33, 38, 53, 0.8), rgba(24, 28, 40, 0.9));
+}
+
+.editor-section--project details.project-card {
+    display: block;
+}
+
+.editor-section--project .project-group > details + details {
+    margin-top: 0;
+}
+
+.editor-section--project .project-card > summary {
+    margin: 0;
+    color: var(--text);
+    font-size: 1em;
+    font-weight: var(--fw-bold);
+    line-height: var(--lh-text);
+}
+
+.editor-section--project .project-card > summary {
+    cursor: pointer;
+}
+
+.editor-section--project details.project-card[open] > summary {
+    margin-bottom: 0;
+}
+
+.editor-section--project .project-card > summary:hover,
+.editor-section--project .project-card > summary:focus-visible {
+    color: var(--accent);
+}
+
+.editor-section--project .project-card > summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+.editor-section--project details.project-card[open] > :not(summary) {
+    margin-top: 10px;
+}
+
+.editor-section--project .project-card .project-variables,
+.editor-section--project .project-card .project-test__field,
+.editor-section--project .project-card .project-variables__field {
+    min-width: 0;
+}
+
+.editor-section--project .project-card .project-variables {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.editor-section--project .project-card .project-test__field,
+.editor-section--project .project-card .project-variables__field {
+    padding: 8px 0;
+    border: 0;
+    background: transparent;
+}
+
+.editor-section--project .project-action-row,
+.editor-section--project .custom-effects-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-section--project .project-action-row > button,
+.editor-section--project .custom-effects-actions > button {
+    flex: 1 1 120px;
+    min-width: 0;
+}
+
+.editor-section--project .project-export-option {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.editor-section--project .project-export-option > button {
+    width: 100%;
+}
+
+.editor-section--project .project-card .project-field,
+.editor-section--project .project-card .palette-preset-field,
+.editor-section--project .project-card .project-volume-control {
+    min-width: 0;
+    width: 100%;
+}
+
+.editor-section--project .project-card .palette-header {
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.editor-section--project .project-card .palette-grid {
+    max-width: 100%;
+}
+
+.editor-section--project .project-tab-button {
+    min-height: 38px;
+    padding: 7px 8px;
+}
+
+@media (max-width: 340px) {
+    .editor-section--project .project-tab-button {
+        font-size: 0.9em;
+    }
+}
