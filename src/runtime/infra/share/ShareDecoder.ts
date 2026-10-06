@@ -745,6 +745,8 @@ class ShareDecoder {
             spriteOutlineColor,
             disableSkills,
             disablePixelFont,
+            respawnableEnemies: false,
+            respawnableBosses: false,
             start: startPosition,
             sprites,
             enemies,

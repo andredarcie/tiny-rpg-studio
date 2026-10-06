@@ -6,7 +6,8 @@ type GameStateRef = {
     getEnemies(): EnemyDefinition[];
     setVariableValue(id: string | number, value: unknown): [boolean, boolean] | boolean;
     getObjects?(): unknown;
-    getGame?(): { items?: Array<{ roomIndex: number; x: number; y: number; collected?: boolean }> };
+    getGame?(): { items?: Array<{ roomIndex: number; x: number; y: number; collected?: boolean }>; enemies?: EnemyDefinition[] };
+    cloneEnemies?(enemies: EnemyDefinition[]): EnemyDefinition[];
 };
 
 // Lerp speed per animation frame (fraction of remaining distance)
@@ -55,12 +56,13 @@ export class OnlineStateSync {
         const enemies = this.gameState.getEnemies();
         const snapshotEnemyIds = new Set(Object.keys(snapshot.enemies));
         for (const [id, netState] of Object.entries(snapshot.enemies)) {
-            const enemy = enemies.find((e) => e.id === id);
             if (netState.alive === false) {
                 this.applyEnemyDeath(id, netState);
                 continue;
             }
+            const enemy = this.findOrRestoreEnemy(id);
             if (enemy) {
+                this.clearEnemyDeath(id, enemy);
                 enemy.x = netState.x;
                 enemy.y = netState.y;
                 enemy._vx = netState.x;
@@ -131,7 +133,7 @@ export class OnlineStateSync {
         if (!this.enemyRemovalTimers.has(enemyId)) {
             const timer = setTimeout(() => {
                 this.enemyRemovalTimers.delete(enemyId);
-                const idx = this.gameState.getEnemies().findIndex((entry) => entry.id === enemyId);
+                const idx = this.gameState.getEnemies().findIndex((entry) => entry === enemy);
                 if (idx >= 0) {
                     this.gameState.getEnemies().splice(idx, 1);
                     this.onDraw?.();
@@ -146,14 +148,14 @@ export class OnlineStateSync {
     private applyEnemyDiff(enemies: WorldStateDiff['enemies']): void {
         if (!enemies) return;
         let anyMoved = false;
-        const localEnemies = this.gameState.getEnemies();
         for (const [id, netState] of Object.entries(enemies)) {
             if (netState.alive === false) {
                 this.applyEnemyDeath(id, netState);
                 continue;
             }
-            const enemy = localEnemies.find((e) => e.id === id);
+            const enemy = this.findOrRestoreEnemy(id);
             if (!enemy) continue;
+            this.clearEnemyDeath(id, enemy);
 
             const moved = enemy.x !== netState.x || enemy.y !== netState.y;
             if (moved) {
@@ -172,6 +174,24 @@ export class OnlineStateSync {
         }
 
         if (anyMoved) this.scheduleInterpolation();
+    }
+
+    private findOrRestoreEnemy(id: string): EnemyDefinition | undefined {
+        const enemies = this.gameState.getEnemies();
+        const existing = enemies.find(enemy => enemy.id === id);
+        if (existing) return existing;
+        const authored = this.gameState.getGame?.().enemies?.find(enemy => enemy.id === id);
+        if (!authored || !this.gameState.cloneEnemies) return undefined;
+        const restored = this.gameState.cloneEnemies([authored])[0];
+        enemies.push(restored);
+        return restored;
+    }
+
+    private clearEnemyDeath(id: string, enemy: EnemyDefinition): void {
+        const timer = this.enemyRemovalTimers.get(id);
+        if (timer) clearTimeout(timer);
+        this.enemyRemovalTimers.delete(id);
+        delete enemy.deathStartTime;
     }
 
     private scheduleInterpolation(): void {

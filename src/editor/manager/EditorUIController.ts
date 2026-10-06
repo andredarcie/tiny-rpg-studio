@@ -38,6 +38,8 @@ type ProjectGameSettings = {
     spriteOutlineColor?: number;
     disableSkills?: boolean;
     disablePixelFont?: boolean;
+    respawnableEnemies?: boolean;
+    respawnableBosses?: boolean;
     backgroundMusicVideoId?: string;
     online?: OnlineConfig;
     start?: { x: number; y: number; roomIndex: number };
@@ -316,6 +318,16 @@ class EditorUIController extends EditorManagerModule {
         this.updateJSON();
     }
 
+    setRespawnableEnemies(active: boolean) {
+        this.gameEngine.setRespawnableEnemies(active);
+        this.updateJSON();
+    }
+
+    setRespawnableBosses(active: boolean) {
+        this.gameEngine.setRespawnableBosses(active);
+        this.updateJSON();
+    }
+
     syncUI() {
         const game = this.gameEngine.getGame() as ProjectGameSettings;
         if (this.dom.titleInput) {
@@ -347,6 +359,8 @@ class EditorUIController extends EditorManagerModule {
         if (this.dom.projectDisablePixelFont) {
             this.dom.projectDisablePixelFont.checked = Boolean(game.disablePixelFont);
         }
+        if (this.dom.projectRespawnableEnemies) this.dom.projectRespawnableEnemies.checked = game.respawnableEnemies === true;
+        if (this.dom.projectRespawnableBosses) this.dom.projectRespawnableBosses.checked = game.respawnableBosses === true;
         bitmapFont.setDisabled(Boolean(game.disablePixelFont));
         setEditorFontDisabled(Boolean(game.disablePixelFont));
         if (this.dom.projectOnlineEnabled) {

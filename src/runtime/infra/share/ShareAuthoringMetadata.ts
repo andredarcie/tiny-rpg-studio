@@ -9,6 +9,8 @@ const fields = (entry: Data, keys: string[]): Data => Object.fromEntries(keys.fi
 
 export function collectAuthoringMetadata(data: Data): Data {
     const metadata: Data = {};
+    if (data.respawnableEnemies === true) metadata.respawnableEnemies = true;
+    if (data.respawnableBosses === true) metadata.respawnableBosses = true;
     if (Array.isArray(data.palette) && JSON.stringify(data.palette) !== JSON.stringify(['#000000', '#1D2B53', '#FFF1E8'])) metadata.palette = data.palette;
     const sprites = list(data.sprites).filter(entry => entry.placed !== false).map(entry => fields(entry, ['type', 'id', 'name']));
     if (sprites.some(entry => entry.id !== undefined || entry.name !== undefined)) metadata.sprites = sprites;
@@ -35,6 +37,8 @@ export function collectAuthoringMetadata(data: Data): Data {
 function dataRoom(entry: Data): Data { const { index: _index, ...room } = entry; return room; }
 
 export function applyAuthoringMetadata(result: Data, metadata: Data): void {
+    result.respawnableEnemies = metadata.respawnableEnemies === true;
+    result.respawnableBosses = metadata.respawnableBosses === true;
     if (Array.isArray(metadata.palette)) result.palette = metadata.palette;
     for (const npc of list(result.sprites)) {
         const source = list(metadata.sprites).find(entry => entry.type === npc.type);

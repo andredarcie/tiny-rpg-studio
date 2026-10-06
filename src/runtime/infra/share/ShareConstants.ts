@@ -54,7 +54,6 @@ class ShareConstants {
     static get VERSION_44() { return 44; }
     static get VERSION_45() { return 45; }
     static get VERSION_46() { return 46; }
-
     static get VERSION_47() { return 47; }
 
     static get VERSION() {

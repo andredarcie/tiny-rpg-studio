@@ -176,6 +176,22 @@ class StateEnemyManager {
         return changed;
     }
 
+    respawnInRoom(roomIndex: number): number {
+        if (!this.game || !this.state) return 0;
+        let restored = 0;
+        for (const authored of this.game.enemies) {
+            if (authored.roomIndex !== roomIndex) continue;
+            const enabled = this.isBossType(authored.type)
+                ? this.game.respawnableBosses === true : this.game.respawnableEnemies === true;
+            if (!enabled || this.state.enemies.some(enemy => enemy.id === authored.id)) continue;
+            const enemy = this.cloneEnemies([authored])[0];
+            enemy.lives = EnemyDefinitions.getEnemyDefinition(enemy.type)?.lives ?? 1;
+            this.state.enemies.push(enemy);
+            restored++;
+        }
+        return restored;
+    }
+
     setEnemyExperience(enemyId: string | number, experience: unknown = null): boolean {
         if (!this.game || !this.state) return false;
         let changed = false;

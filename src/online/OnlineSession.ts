@@ -70,7 +70,10 @@ export function connectOnlineSession(engine: GameEngine, options: OnlineSessionO
         remote.set(message.playerId, { id: message.playerId, name: '', roomIndex: message.roomIndex, x: message.x, y: message.y, alive: message.hp > 0, playerIndex: manager.isHost ? 1 : 0, facing: message.facing });
         renderPlayers();
         if (manager.isHost) {
-            if (previous && previous.roomIndex !== message.roomIndex) engine.online.resetPushBoxesForRoom(previous.roomIndex);
+            if (previous && previous.roomIndex !== message.roomIndex) {
+                engine.online.resetPushBoxesForRoom(previous.roomIndex);
+                if (engine.gameState.respawnEnemiesInRoom(message.roomIndex)) broadcaster.triggerNow();
+            }
             if (!previous || previous.x !== message.x || previous.y !== message.y || previous.roomIndex !== message.roomIndex) {
                 engine.online.checkPressurePlatesForGuest(message.x, message.y, message.roomIndex);
             }

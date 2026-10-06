@@ -120,6 +120,7 @@ type GameStateApi = {
   setPlayerPosition: (x: number, y: number, roomIndex: number | null) => void;
   getRoomIndex: (row: number, col: number) => number | null;
   resetPushBoxesForRoom?: (roomIndex: number) => void;
+  respawnEnemiesInRoom?: (roomIndex: number) => number;
   hasAnsweredChoice?: (key: string | undefined) => boolean;
   hasUnreadNpcDialog?: (npcId: string, variantKey: string | null) => boolean;
 };
@@ -732,12 +733,18 @@ class InteractionManager {
       if (!sameTile) continue;
 
       if (rooms[exit.targetRoomIndex]) {
-        this.gameState.resetPushBoxesForRoom?.(player.roomIndex);
+        const previousRoom = player.roomIndex;
+        if (!this.guestMode && exit.targetRoomIndex !== previousRoom) {
+          this.gameState.resetPushBoxesForRoom?.(previousRoom);
+        }
         this.gameState.setPlayerPosition(
           this.clamp(exit.targetX, 0, 7),
           this.clamp(exit.targetY, 0, 7),
           exit.targetRoomIndex,
         );
+        if (!this.guestMode && exit.targetRoomIndex !== previousRoom) {
+          this.gameState.respawnEnemiesInRoom?.(exit.targetRoomIndex);
+        }
       }
       break;
     }

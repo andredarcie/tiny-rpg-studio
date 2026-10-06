@@ -7,6 +7,8 @@ type ShareTestData = {
   start?: { x?: number; y?: number; roomIndex?: number };
   sprites?: unknown[];
   enemies?: unknown[];
+  respawnableEnemies?: boolean;
+  respawnableBosses?: boolean;
   objects?: unknown[];
   variables?: unknown[];
   rooms?: unknown[];
@@ -122,6 +124,18 @@ describe('Share Encoder/Decoder - Critical Round-Trip Tests', () => {
       expect(decoded).toBeTruthy();
       expect(decoded?.sprites).toEqual([]);
       expect(decoded?.enemies).toEqual([]);
+    });
+
+    it('preserves independently enabled respawn settings', () => {
+      const size = ShareConstants.MATRIX_SIZE;
+      const ground = Array.from({ length: size }, () => Array.from({ length: size }, () => 0));
+      const overlay = Array.from({ length: size }, () => Array.from({ length: size }, () => null));
+      for (const [respawnableEnemies, respawnableBosses] of [[false, false], [true, false], [false, true], [true, true]]) {
+        const code = ShareEncoder.buildShareCode({ tileset: { map: { ground, overlay }, maps: [] }, respawnableEnemies, respawnableBosses });
+        const decoded = decodeShare(code);
+        expect(decoded?.respawnableEnemies).toBe(respawnableEnemies);
+        expect(decoded?.respawnableBosses).toBe(respawnableBosses);
+      }
     });
   });
 

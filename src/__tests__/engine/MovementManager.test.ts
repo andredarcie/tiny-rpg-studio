@@ -122,6 +122,7 @@ describe('MovementManager', () => {
       getRoomCoords: () => ({ row: 0, col: 0 }),
       getRoomIndex: (_row: number, col: number) => (col === -1 ? 1 : null),
       getGame: () => ({ sprites: [], rooms: [{}, {}] }),
+      respawnEnemiesInRoom: vi.fn(() => 1),
       setPlayerPosition: (x: number, y: number, roomIndex: number | null) => {
         player.x = x;
         player.y = y;
@@ -143,6 +144,8 @@ describe('MovementManager', () => {
 
     expect(player.roomIndex).toBe(1);
     expect(player.lastRoomChangeTime).toBe(1000);
+    expect(gameState.respawnEnemiesInRoom).toHaveBeenCalledWith(1);
+    expect(gameState.respawnEnemiesInRoom.mock.invocationCallOrder[0]).toBeLessThan(interactionManager.handlePlayerInteractions.mock.invocationCallOrder[0]);
 
     vi.useRealTimers();
   });

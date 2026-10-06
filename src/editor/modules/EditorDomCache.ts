@@ -81,6 +81,8 @@ class EditorDomCache {
     projectBackgroundMusicVolume: HTMLInputElement | null;
     projectBackgroundMusicVolumeValue: HTMLElement | null;
     projectDisablePixelFont: HTMLInputElement | null;
+    projectRespawnableEnemies: HTMLInputElement | null;
+    projectRespawnableBosses: HTMLInputElement | null;
     projectShowVariableLinks: HTMLInputElement | null;
     colorPickerModal: HTMLElement | null;
     colorPickerInput: HTMLInputElement | null;
@@ -199,6 +201,8 @@ class EditorDomCache {
             this.projectBackgroundMusicVolume = null;
             this.projectBackgroundMusicVolumeValue = null;
             this.projectDisablePixelFont = null;
+            this.projectRespawnableEnemies = null;
+            this.projectRespawnableBosses = null;
             this.projectShowVariableLinks = null;
             this.colorPickerModal = null;
             this.colorPickerInput = null;
@@ -310,6 +314,8 @@ class EditorDomCache {
         this.projectBackgroundMusicVolume = root.querySelector('#project-background-music-volume') as HTMLInputElement | null;
         this.projectBackgroundMusicVolumeValue = root.querySelector('#project-background-music-volume-value') as HTMLElement | null;
         this.projectDisablePixelFont = root.querySelector('#project-disable-pixel-font') as HTMLInputElement | null;
+        this.projectRespawnableEnemies = root.querySelector('#project-respawnable-enemies') as HTMLInputElement | null;
+        this.projectRespawnableBosses = root.querySelector('#project-respawnable-bosses') as HTMLInputElement | null;
         this.projectShowVariableLinks = root.querySelector('#project-show-variable-links') as HTMLInputElement | null;
         this.colorPickerModal = root.querySelector('#color-picker-modal') as HTMLElement | null;
         this.colorPickerInput = root.querySelector('#color-picker-input') as HTMLInputElement | null;

@@ -20,7 +20,7 @@ describe('embedded multiplayer lifecycle', () => {
     beforeEach(() => { vi.clearAllMocks(); mocks.handlers.clear(); mocks.isHost = true; });
     it('applies host snapshots and diffs to the guest and removes subscriptions on disconnect', () => {
         mocks.isHost = false;
-        const engine = { gameState: { game: { online: { enabled: true, spawnPoints: [{ role: 'p2', x: 2, y: 3, roomIndex: 1 }] } }, setPlayerPosition: vi.fn(), getPlayer: () => ({ roomIndex: 0 }) }, dialogManager: { onNpcReward: null }, online: { setMode: vi.fn(), setRemotePlayersForEnemyAI: vi.fn(), setActiveRooms: vi.fn(), checkPressurePlatesForGuest: vi.fn(), resetPushBoxesForRoom: vi.fn() }, enemyManager: {}, renderer: { entityRenderer: { setRemotePlayers: vi.fn() } }, handleGameCompletion: vi.fn(), draw: vi.fn() };
+        const engine = { gameState: { game: { online: { enabled: true, spawnPoints: [{ role: 'p2', x: 2, y: 3, roomIndex: 1 }] } }, setPlayerPosition: vi.fn(), getPlayer: () => ({ roomIndex: 0 }), respawnEnemiesInRoom: vi.fn(() => 0) }, dialogManager: { onNpcReward: null }, online: { setMode: vi.fn(), setRemotePlayersForEnemyAI: vi.fn(), setActiveRooms: vi.fn(), checkPressurePlatesForGuest: vi.fn(), resetPushBoxesForRoom: vi.fn() }, enemyManager: {}, renderer: { entityRenderer: { setRemotePlayers: vi.fn() } }, handleGameCompletion: vi.fn(), draw: vi.fn() };
         const session = connectOnlineSession(engine as unknown as GameEngine, { partyHost: 'test', roomId: 'room', playerName: 'Guest' });
         mocks.handlers.get('game-start')?.(undefined as never);
         expect(engine.online.setMode).toHaveBeenCalledWith('online-guest');
@@ -43,7 +43,7 @@ describe('embedded multiplayer lifecycle', () => {
         expect(mocks.dispose).toHaveBeenCalledOnce();
     });
     it('uses the existing engine, switches host mode, and disconnects exactly once', () => {
-        const engine = { gameState: { game: { online: { enabled: true } }, setPlayerPosition: vi.fn(), getPlayer: () => ({ roomIndex: 0 }) }, dialogManager: { onNpcReward: null }, online: { setMode: vi.fn(), setRemotePlayersForEnemyAI: vi.fn(), setActiveRooms: vi.fn(), checkPressurePlatesForGuest: vi.fn(), resetPushBoxesForRoom: vi.fn() }, enemyManager: {}, renderer: { entityRenderer: { setRemotePlayers: vi.fn() } }, handleGameCompletion: vi.fn(), draw: vi.fn() };
+        const engine = { gameState: { game: { online: { enabled: true } }, setPlayerPosition: vi.fn(), getPlayer: () => ({ roomIndex: 0 }), respawnEnemiesInRoom: vi.fn(() => 0) }, dialogManager: { onNpcReward: null }, online: { setMode: vi.fn(), setRemotePlayersForEnemyAI: vi.fn(), setActiveRooms: vi.fn(), checkPressurePlatesForGuest: vi.fn(), resetPushBoxesForRoom: vi.fn() }, enemyManager: {}, renderer: { entityRenderer: { setRemotePlayers: vi.fn() } }, handleGameCompletion: vi.fn(), draw: vi.fn() };
         const session = connectOnlineSession(engine as unknown as GameEngine, { partyHost: 'test', roomId: 'room', playerName: 'Player' });
         expect(mocks.connect).toHaveBeenCalledOnce();
         mocks.handlers.get('game-start')?.(undefined as never);
@@ -53,6 +53,7 @@ describe('embedded multiplayer lifecycle', () => {
         expect(engine.online.setActiveRooms).toHaveBeenLastCalledWith(new Set([0, 1]));
         mocks.handlers.get('player-position')?.({ playerId: 'guest', roomIndex: 2, x: 1, y: 1, hp: 5, facing: 'right' } as never);
         expect(engine.online.resetPushBoxesForRoom).toHaveBeenCalledWith(1);
+        expect(engine.gameState.respawnEnemiesInRoom).toHaveBeenCalledWith(2);
         mocks.handlers.get('player-leave')?.({ playerId: 'guest' } as never);
         expect(engine.online.resetPushBoxesForRoom).toHaveBeenCalledWith(2);
         expect(engine.online.checkPressurePlatesForGuest).toHaveBeenLastCalledWith(-1, -1, -1);

@@ -42,6 +42,8 @@ type ImportData = {
     backgroundMusicVideoId?: string;
     backgroundMusicVolume?: unknown;
     hideHud?: boolean;
+    respawnableEnemies?: unknown;
+    respawnableBosses?: unknown;
     enableEffects?: boolean;
     showNewDialogExclamation?: boolean;
     spriteOutline?: boolean;
@@ -114,6 +116,8 @@ class StateDataManager {
             backgroundMusicVideoId: this.game.backgroundMusicVideoId,
             backgroundMusicVolume: normalizeBackgroundMusicVolume(this.game.backgroundMusicVolume),
             hideHud: Boolean(this.game.hideHud),
+            respawnableEnemies: this.game.respawnableEnemies === true,
+            respawnableBosses: this.game.respawnableBosses === true,
             // Default on; only persist explicit false so exports stay compact.
             enableEffects: this.game.enableEffects === false ? false : true,
             showNewDialogExclamation: this.game.showNewDialogExclamation !== false,
@@ -232,6 +236,8 @@ class StateDataManager {
             backgroundMusicVideoId: normalizeBackgroundMusicVideoId(data.backgroundMusicVideoId),
             backgroundMusicVolume: normalizeBackgroundMusicVolume(data.backgroundMusicVolume),
             hideHud: Boolean(data.hideHud),
+            respawnableEnemies: data.respawnableEnemies === true,
+            respawnableBosses: data.respawnableBosses === true,
             // Missing means enabled (default true for pre-v36 and new games).
             enableEffects: data.enableEffects === false ? false : true,
             showNewDialogExclamation: data.showNewDialogExclamation !== false,

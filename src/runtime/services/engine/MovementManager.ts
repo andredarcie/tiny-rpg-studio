@@ -34,6 +34,7 @@ type GameStateApi = {
   hasSkill?: (skillId: string) => boolean;
   isInCombat?: () => boolean;
   resetPushBoxesForRoom?: (roomIndex: number) => void;
+  respawnEnemiesInRoom?: (roomIndex: number) => number;
 };
 
 type TileManagerApi = {
@@ -417,6 +418,7 @@ class MovementManager {
     }
 
     this.gameState.setPlayerPosition(targetX, targetY, targetRoomIndex !== roomIndex ? targetRoomIndex : null);
+    if (enteringNewRoom && !this.guestMode) this.gameState.respawnEnemiesInRoom?.(targetRoomIndex);
     if (enteringNewRoom) {
       soundEngine.play('roomTransition');
       const updatedPlayer = this.gameState.getPlayer();

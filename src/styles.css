@@ -5812,3 +5812,6 @@ body.editor-mode .plugins-modal button.plugin-action[data-action="update"]:hover
 #generate-url-wrapper[data-disabled="true"]:focus-visible .share-url-help {
     display: block;
 }
+.project-enemies-settings { margin: 12px 0; padding: 8px 12px; border: 1px solid currentColor; border-radius: 6px; }
+.project-enemies-settings summary { cursor: pointer; font-weight: bold; }
+.project-enemies-settings label { margin-top: 8px; }

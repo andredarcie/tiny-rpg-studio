@@ -326,7 +326,7 @@ class EnemyManager {
     const enemies = this.gameState.getEnemies();
 
     // Find enemy index by ID (safe against race conditions during async operations)
-    const enemyIndex = enemies.findIndex(e => e.id === enemyId);
+    const enemyIndex = enemies.findIndex(e => e === enemy);
 
     // If enemy not found, it may have been removed already
     if (enemyIndex === -1) {

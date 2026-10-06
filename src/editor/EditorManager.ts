@@ -495,6 +495,16 @@ class EditorManager {
         this.uiController.setDisablePixelFont(active);
     }
 
+    setRespawnableEnemies(active: boolean) {
+        this.uiController.setRespawnableEnemies(active);
+        this.history.pushCurrentState();
+    }
+
+    setRespawnableBosses(active: boolean) {
+        this.uiController.setRespawnableBosses(active);
+        this.history.pushCurrentState();
+    }
+
     setOnlineEnabled(enabled: boolean) {
         this.uiController.setOnlineEnabled(enabled);
     }

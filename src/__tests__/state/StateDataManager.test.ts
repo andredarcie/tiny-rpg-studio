@@ -61,6 +61,8 @@ describe('StateDataManager', () => {
       backgroundMusicVideoId: undefined,
       backgroundMusicVolume: 100,
       hideHud: false,
+      respawnableEnemies: false,
+      respawnableBosses: false,
       enableEffects: true,
       showNewDialogExclamation: true,
       spriteOutline: false,

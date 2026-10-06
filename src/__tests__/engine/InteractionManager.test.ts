@@ -7,6 +7,34 @@ import { GameState } from '../../runtime/domain/GameState';
 import { createInteractionGameState } from '../helpers/createInteractionGameState';
 
 describe('InteractionManager', () => {
+  it('respawns only after a valid exit changes rooms on the host', () => {
+    const player = { roomIndex: 0, x: 1, y: 1 };
+    const state = {
+      ...createInteractionGameState(),
+      resetPushBoxesForRoom: vi.fn(),
+      respawnEnemiesInRoom: vi.fn(() => 1),
+      setPlayerPosition: vi.fn((x: number, y: number, room: number | null) => {
+        player.x = x;
+        player.y = y;
+        if (room !== null) player.roomIndex = room;
+      }),
+    };
+    const manager = new InteractionManager(state, { showDialog: vi.fn() });
+    const exit = { roomIndex: 0, x: 1, y: 1, targetRoomIndex: 1, targetX: 2, targetY: 3 };
+    manager.checkRoomExits([{ ...exit, targetRoomIndex: 9 }], [{}, {}], player);
+    expect(state.respawnEnemiesInRoom).not.toHaveBeenCalled();
+    manager.checkRoomExits([{ ...exit, targetRoomIndex: 0 }], [{}, {}], player);
+    expect(state.respawnEnemiesInRoom).not.toHaveBeenCalled();
+    player.x = 1; player.y = 1;
+    manager.checkRoomExits([exit], [{}, {}], player);
+    expect(state.respawnEnemiesInRoom).toHaveBeenCalledWith(1);
+    expect(state.resetPushBoxesForRoom).toHaveBeenCalledWith(0);
+    state.respawnEnemiesInRoom.mockClear();
+    player.roomIndex = 0; player.x = 1; player.y = 1;
+    manager.guestMode = true;
+    manager.checkRoomExits([exit], [{}, {}], player);
+    expect(state.respawnEnemiesInRoom).not.toHaveBeenCalled();
+  });
   const getDefinitionSpy = vi.spyOn(itemCatalog, 'getItemDefinition');
   const getDurabilitySpy = vi.spyOn(itemCatalog, 'getSwordDurability');
   const getSpy = vi.spyOn(TextResources, 'get');

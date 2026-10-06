@@ -237,6 +237,7 @@ export class OnlineModeApplication {
                 // reset in MovementManager so leaving always restores the puzzle.
                 if (leftRoom !== null) {
                     gameEngine.online.resetPushBoxesForRoom(leftRoom);
+                    if (gameEngine.gameState.respawnEnemiesInRoom(msg.roomIndex)) broadcaster?.triggerNow();
                 }
             }
             if (!existing || existing.roomIndex !== msg.roomIndex || existing.x !== msg.x || existing.y !== msg.y) {

@@ -67,6 +67,7 @@ function contract(data: Data): AuthoringCapabilities {
     tool('set_project', 'Update only supplied metadata/options. Music uses an 11-character YouTube video ID, or empty string to clear.', object({
       title: string(18), author: string(18), hideHud: boolean, enableEffects: boolean, showNewDialogExclamation: boolean,
       spriteOutline: boolean, spriteOutlineColor: integer(0, 15), disableSkills: boolean, disablePixelFont: boolean,
+      respawnableEnemies: boolean, respawnableBosses: boolean,
       backgroundMusicVideoId: { type: 'string', pattern: '^([A-Za-z0-9_-]{11})?$' }, backgroundMusicVolume: integer(0, 100),
       customPalette: array(color, 16, 16),
     }, [])),

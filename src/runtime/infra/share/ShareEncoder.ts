@@ -44,6 +44,8 @@ type ShareGameData = {
     spriteOutlineColor?: unknown;
     disableSkills?: unknown;
     disablePixelFont?: unknown;
+    respawnableEnemies?: unknown;
+    respawnableBosses?: unknown;
     start?: unknown;
     sprites?: unknown[];
     enemies?: unknown[];

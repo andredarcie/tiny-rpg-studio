@@ -50,6 +50,8 @@ class EditorEventBinder extends EditorManagerModule {
             projectBackgroundMusicUrl,
             projectBackgroundMusicVolume,
             projectDisablePixelFont,
+            projectRespawnableEnemies,
+            projectRespawnableBosses,
             projectShowVariableLinks,
             projectOnlineEnabled,
             btnStartOnlineServer,
@@ -136,6 +138,12 @@ class EditorEventBinder extends EditorManagerModule {
         projectDisablePixelFont?.addEventListener('change', (ev: Event) => {
             const target = ev.target as HTMLInputElement;
             manager.setDisablePixelFont(target.checked);
+        });
+        projectRespawnableEnemies?.addEventListener('change', (ev: Event) => {
+            manager.setRespawnableEnemies((ev.target as HTMLInputElement).checked);
+        });
+        projectRespawnableBosses?.addEventListener('change', (ev: Event) => {
+            manager.setRespawnableBosses((ev.target as HTMLInputElement).checked);
         });
         if (projectShowVariableLinks) {
             try {

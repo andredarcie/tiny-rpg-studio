@@ -13,6 +13,7 @@ const mockState = vi.hoisted(() => ({
   trGet: vi.fn<(key: string, fallback?: string) => string>(),
   trLocale: 'en-US',
   version: '1' as string | number,
+  fullProject: false,
 }));
 
 vi.mock('../../runtime/infra/TinyRpgApi', () => ({
@@ -21,7 +22,7 @@ vi.mock('../../runtime/infra/TinyRpgApi', () => ({
 
 vi.mock('../../runtime/infra/share/ShareUtils', () => ({
   ShareUtils: {
-    needsFullProject: () => false,
+    needsFullProject: () => mockState.fullProject,
     buildShareUrl: (...args: [unknown]) => mockState.shareBuildUrl(...args),
     decode: (...args: [string]) => mockState.shareDecode(...args),
     encode: (...args: [Record<string, unknown>]) => mockState.shareEncode(...args),
@@ -128,6 +129,7 @@ describe('EditorExportService', () => {
     mockState.trGet.mockReset().mockImplementation((_key, fallback = '') => fallback);
     mockState.trLocale = 'en-US';
     mockState.version = '9';
+    mockState.fullProject = false;
 
     anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     vi.spyOn(URL, 'createObjectURL').mockImplementation((object: Blob | MediaSource) => {
@@ -268,11 +270,13 @@ describe('EditorExportService', () => {
     expect(await readExportHtml()).toContain('TILE20_FRAME2');
   });
 
-  it('embeds a disabled dialog marker setting that HTML import restores', async () => {
-    mockState.version = 45;
+  it('restores respawn and dialog settings from compact HTML exports', async () => {
+    mockState.version = 47;
     const data = {
       start: { x: 1, y: 1, roomIndex: 0 }, rooms: [], sprites: [], enemies: [], objects: [], variables: [],
       showNewDialogExclamation: false,
+      respawnableEnemies: true,
+      respawnableBosses: true,
     };
     mockState.api = makeApi({ exportGameData: vi.fn(() => data) });
     mockState.shareEncode.mockImplementation((value) => ShareEncoder.buildShareCode(value));
@@ -284,7 +288,24 @@ describe('EditorExportService', () => {
     const importApi = makeApi();
     mockState.api = importApi;
     await new EditorExportService().importFromHtml(fileLike(html));
-    expect(importApi.importGameData).toHaveBeenCalledWith(expect.objectContaining({ showNewDialogExclamation: false }));
+    expect(importApi.importGameData).toHaveBeenCalledWith(expect.objectContaining({
+      showNewDialogExclamation: false, respawnableEnemies: true, respawnableBosses: true,
+    }));
+  });
+
+  it('restores respawn settings from bundled-project HTML exports', async () => {
+    mockState.fullProject = true;
+    const data = { title: 'One room', world: { rows: 1, cols: 1 }, respawnableEnemies: true, respawnableBosses: false };
+    mockState.api = makeApi({ exportGameData: vi.fn(() => data) });
+    await new EditorExportService().exportProjectAsHtml();
+    const html = await readExportHtml();
+    expect(html).toContain('tiny-rpg-project');
+    const importApi = makeApi();
+    mockState.api = importApi;
+    await new EditorExportService().importFromHtml(fileLike(html));
+    expect(importApi.importGameData).toHaveBeenCalledWith(expect.objectContaining({
+      respawnableEnemies: true, respawnableBosses: false,
+    }));
   });
 
   it('does not depend on the live game container', async () => {

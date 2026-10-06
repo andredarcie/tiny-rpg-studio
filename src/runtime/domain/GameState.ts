@@ -90,6 +90,8 @@ class GameState {
             palette: ['#000000', '#1D2B53', '#FFF1E8'],
             backgroundMusicVolume: DEFAULT_BACKGROUND_MUSIC_VOLUME,
             hideHud: false,
+            respawnableEnemies: false,
+            respawnableBosses: false,
             enableEffects: true,
             showNewDialogExclamation: true,
             spriteOutline: false,
@@ -499,7 +501,7 @@ class GameState {
         return this.objectManager.normalizeObjects(objects as unknown[] | null | undefined);
     }
 
-    cloneEnemies(enemies: unknown): unknown {
+    cloneEnemies(enemies: unknown): EnemyDefinition[] {
         return this.enemyManager.cloneEnemies(enemies as EnemyDefinition[] | null | undefined);
     }
 
@@ -798,6 +800,10 @@ class GameState {
 
     getEnemies(): EnemyDefinition[] {
         return this.enemyManager.getEnemies();
+    }
+
+    respawnEnemiesInRoom(roomIndex: number): number {
+        return this.enemyManager.respawnInRoom(roomIndex);
     }
 
     getEnemyDefinitions(): EnemyDefinition[] {

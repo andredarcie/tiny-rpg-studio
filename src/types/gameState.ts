@@ -227,6 +227,8 @@ export type GameDefinition = {
     spriteOutlineColor?: number;
     disableSkills?: boolean;
     disablePixelFont?: boolean;
+    respawnableEnemies?: boolean;
+    respawnableBosses?: boolean;
     roomSize: number;
     world: { rows: number; cols: number };
     rooms: RoomDefinition[];

@@ -575,6 +575,14 @@ export class GameEngine {
     this.draw();
   }
 
+  setRespawnableEnemies(active = false): void {
+    this.gameState.getGame().respawnableEnemies = active === true;
+  }
+
+  setRespawnableBosses(active = false): void {
+    this.gameState.getGame().respawnableBosses = active === true;
+  }
+
   setSpriteOutline(active = true): void {
     const game = this.gameState.getGame();
     game.spriteOutline = Boolean(active);

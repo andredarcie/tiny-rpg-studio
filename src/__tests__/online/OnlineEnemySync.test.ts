@@ -3,6 +3,7 @@ import { OnlineStateBroadcaster } from '../../online/client/OnlineStateBroadcast
 import { OnlineStateSync } from '../../online/client/OnlineStateSync';
 import type { OnlineMessage } from '../../online/shared/protocol';
 import type { EnemyDefinition } from '../../types/gameState';
+import { GameState } from '../../runtime/domain/GameState';
 
 describe('online enemy synchronization', () => {
     beforeEach(() => {
@@ -98,5 +99,25 @@ describe('online enemy synchronization', () => {
         vi.advanceTimersByTime(1000);
 
         expect(enemies.map((enemy) => enemy.id)).toEqual(['alive']);
+    });
+
+    it('restores only authored enemies and cancels a pending death removal', () => {
+        const state = new GameState();
+        state.game.enemies = [{ id: 'e1', type: 'giant-rat', roomIndex: 1, x: 2, y: 3, lastX: 2 }];
+        state.state.enemies = [];
+        const sync = new OnlineStateSync(state);
+        sync.applySnapshot({ enemies: {}, variables: {}, objects: {}, items: {}, players: [] });
+        sync.applyDiff({ tick: 1, enemies: {
+            e1: { x: 4, y: 5, hp: 1, roomIndex: 1, alive: true },
+            unknown: { x: 1, y: 1, hp: 1, roomIndex: 1, alive: true },
+        } });
+        expect(state.getEnemies().map(enemy => enemy.id)).toEqual(['e1']);
+        sync.applyEnemyDeath('e1');
+        expect(state.getEnemies()[0].deathStartTime).toEqual(expect.any(Number));
+        sync.applyDiff({ tick: 2, enemies: { e1: { x: 2, y: 3, hp: 1, roomIndex: 1, alive: true } } });
+        expect(state.getEnemies()[0].deathStartTime).toBeUndefined();
+        vi.advanceTimersByTime(1000);
+        expect(state.getEnemies()).toHaveLength(1);
+        sync.dispose();
     });
 });

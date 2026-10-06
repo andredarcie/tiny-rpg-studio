@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-05-respawnable-enemies',
+    date: '2026-10-05',
+    title: 'Enemy respawn settings',
+    description: 'New project settings let regular enemies and bosses return when players re-enter a room. Each option starts off, and restored enemies return at full health.',
+  },
+  {
     id: '2026-10-03-sdk-base-runtime',
     date: '2026-10-03',
     title: 'Build and embed games with SDK 2',
