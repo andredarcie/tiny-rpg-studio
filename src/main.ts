@@ -21,6 +21,7 @@ import { getTinyRpgApi, setTinyRpgApi, type TinyRpgApi } from './runtime/infra/T
 import { TextResources } from './runtime/adapters/TextResources';
 import { installGlobalErrorReporter, reportRecoverableError } from './runtime/adapters/GlobalErrorReporter';
 import { soundEngine } from './runtime/services/SoundEngine';
+import { normalizeSoundsPlus, SOUND_NAMES, type SoundName, type SoundOverride } from './runtime/services/SoundsPlus';
 import { normalizeBackgroundMusicVolume } from './runtime/infra/share/BackgroundMusicVideoId';
 import { PerformanceProfiler, performanceProfiler } from './runtime/debug/PerformanceProfiler';
 import { loadAnalyticsWhenIdle } from './analytics/loadAnalytics';
@@ -51,34 +52,18 @@ class TinyRPGApplication {
     });
   }
 
-  /**
-   * Plays a short welcome jingle when the title screen appears and warms up the
-   * Web Audio system. Browsers keep audio suspended until the first user
-   * gesture, so we (a) play it on `boot-finished` if audio is already unlocked,
-   * and (b) otherwise unlock + play on the very first interaction. Either way the
-   * audio context is running before the first dialog, so its sounds never glitch.
-   */
+  /** Unlock audio on the first gesture so game sounds can play when needed. */
   static setupWelcomeAudio(): void {
-    let welcomed = false;
+    let unlocked = false;
     const events = ['pointerdown', 'keydown', 'touchstart'] as const;
     const removeListeners = () => events.forEach((e) => globalThis.removeEventListener(e, onGesture));
-    const playWelcome = () => {
-      if (welcomed) return;
-      welcomed = true;
+    const onGesture = () => {
+      if (unlocked) return;
+      unlocked = true;
       soundEngine.unlock();
-      soundEngine.play('gameStart');
       removeListeners();
     };
-    const onGesture = () => playWelcome();
     events.forEach((e) => globalThis.addEventListener(e, onGesture, { passive: true }));
-    document.addEventListener('boot-finished', () => {
-      // Do not unlock here: creating/resuming the AudioContext before the first
-      // user gesture triggers Chrome's "AudioContext was not allowed to start"
-      // warning (and can't actually start audio anyway). The first-gesture
-      // handler above unlocks audio properly. If the user already interacted
-      // (context running), play the welcome jingle now.
-      if (soundEngine.isRunning()) playWelcome();
-    });
   }
 
   static initializeApplication(): void { void this.initializeApplicationAsync(); }
@@ -233,6 +218,35 @@ class TinyRPGApplication {
         editorManager?.persistAuthoring();
         gameEngine.draw();
       },
+      setSoundOverride: async (name: SoundName, asset: SoundOverride | null) => {
+        if (!editorManager || !gameplayHost || !SOUND_NAMES.includes(name)) throw Error('Sounds+ editor is unavailable');
+        const plugin = pluginManager?.installed.find(item => item.id === 'sounds-plus' && item.version === '1.0.0' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+        if (!plugin) throw Error('Sounds+ 1.0.0 is unavailable');
+        const previous = gameEngine.exportGameData() as GameDefinition;
+        const projectGeneration = editorManager.projectGeneration;
+        const game = structuredClone(previous);
+        const next = { ...game.soundsPlus };
+        if (asset) next[name] = asset;
+        else delete next[name];
+        const hasSounds = Object.keys(next).length > 0;
+        game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== 'sounds-plus');
+        if (hasSounds) game.gameplayPlugins.push({ id: 'sounds-plus', version: '1.0.0' });
+        game.soundsPlus = normalizeSoundsPlus(next, game.gameplayPlugins);
+        if (JSON.stringify(previous.soundsPlus ?? {}) === JSON.stringify(game.soundsPlus ?? {})) return;
+        const prepared = asset ? await soundEngine.prepare(asset) : undefined;
+        if (editorManager.projectGeneration !== projectGeneration || !pluginManager?.has('sounds-plus')) throw Error('The project changed before the sound was saved');
+        try {
+          await gameplayHost.load(game);
+          soundEngine.sync(gameEngine, game.soundsPlus, asset && prepared ? { name, asset, sound: prepared } : undefined);
+          editorManager.restore(game as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+          editorManager.persistAuthoring();
+          editorManager.history.pushCurrentState();
+        } catch (error) {
+          await gameplayHost.load(previous);
+          editorManager.restore(previous as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+          throw error;
+        }
+      },
       setNpcDialogueBlocks: async (npcId, blocks, pluginId) => {
         const plugin = pluginManager?.installed.find(item => item.id === pluginId && item.capabilities?.includes('gameplay') && item.version && item.payload?.gameplayJavascript);
         if (!plugin || !editorManager) throw Error(`Gameplay plugin ${pluginId} is unavailable`);
@@ -300,12 +314,13 @@ class TinyRPGApplication {
         }
         const retained = dependencies.filter(item => pluginManager.has(item.id));
         const resize = !retained.length && (current.world.rows !== 3 || current.world.cols !== 3);
-        if ((resize || removed.some(item => item.id === 'variables-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
+        if ((resize || removed.some(item => item.id === 'variables-plus' || item.id === 'sounds-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
           alert('Could not save a backup of the project. Reinstall the plugin to recover it.');
           return;
         }
         const game = JSON.parse(JSON.stringify(current)) as GameDefinition;
         game.gameplayPlugins = retained;
+        if (removed.some(item => item.id === 'sounds-plus')) delete game.soundsPlus;
         const activeRoom = editorManager?.state.activeRoomIndex ?? 0;
         const row = Math.floor(activeRoom / current.world.cols);
         const col = activeRoom % current.world.cols;

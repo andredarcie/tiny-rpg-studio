@@ -33,7 +33,7 @@ function renderGamePreview(gameData: Record<string, unknown>): string {
   const src = document.createElement('canvas');
   src.width = PREVIEW_CANVAS_WIDTH;
 
-  const engine = new GameEngine(src);
+  const engine = new GameEngine(src, { soundOwner: false });
   engine.importGameData(gameData);
 
   const offsetY = gameData.hideHud ? 0 : GAMEPLAY_OFFSET_Y;

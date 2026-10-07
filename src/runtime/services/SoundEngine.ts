@@ -1,30 +1,92 @@
-type SoundName =
-  | 'playerAttack'
-  | 'playerHit'
-  | 'playerDeath'
-  | 'enemyHit'
-  | 'enemyDeath'
-  | 'itemPickup'
-  | 'levelUp'
-  | 'miss'
-  | 'backstab'
-  | 'roomTransition'
-  | 'dialog'
-  | 'switchToggle'
-  | 'doorUnlock'
-  | 'magicGateOpen'
-  | 'victory'
-  | 'gameStart'
-  | 'skillPick'
-  | 'typewriter';
+import { decodeSoundBytes, parseMidi, type MidiNote, type SoundName, type SoundOverride, type SoundsPlusMap } from './SoundsPlus';
 
-class SoundEngine {
+type PreparedSound = AudioBuffer | MidiNote[];
+
+export class SoundEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
   enabled = true;
+  private owner: object | null = null;
+  private overrides: SoundsPlusMap = {};
+  private prepared = new Map<SoundName, PreparedSound>();
+  private pending = new Set<SoundName>();
+  private queuedGameStart: number | null = null;
+  private generation = 0;
+  private activeSources = new Set<AudioScheduledSourceNode>();
+  private activeMidiVoices = 0;
 
-  private getCtx(): AudioContext | null {
-    if (!this.enabled) return null;
+  private stopCustomSounds(): void {
+    for (const source of this.activeSources) {
+      try { source.stop(); } catch { /* A completed source needs no cleanup. */ }
+    }
+    this.activeSources.clear();
+    this.activeMidiVoices = 0;
+  }
+
+  claim(owner: object): void { this.owner = owner; this.sync(owner, {}); }
+
+  release(owner: object): void {
+    if (this.owner !== owner) return;
+    this.stopCustomSounds();
+    this.owner = null;
+    this.overrides = {};
+    this.prepared.clear();
+    this.pending.clear();
+    this.queuedGameStart = null;
+    this.generation++;
+  }
+
+  cancelQueuedGameStart(owner: object): void {
+    if (this.owner === owner) this.queuedGameStart = null;
+  }
+
+  async prepare(asset: SoundOverride): Promise<PreparedSound> {
+    const bytes = decodeSoundBytes(asset.data);
+    if (asset.format === 'midi') return parseMidi(bytes);
+    const ctx = this.getCtx(false);
+    if (!ctx) throw Error('Web Audio is unavailable in this browser');
+    try { return await ctx.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer); }
+    catch { throw Error(`Cannot play this ${asset.format.toUpperCase()} file`); }
+  }
+
+  sync(owner: object, overrides: SoundsPlusMap | undefined, ready?: { name: SoundName; asset: SoundOverride; sound: PreparedSound }): void {
+    if (this.owner !== owner) return;
+    this.stopCustomSounds();
+    const previous = this.overrides;
+    const generation = ++this.generation;
+    this.overrides = overrides ?? {};
+    this.pending.clear();
+    this.queuedGameStart = null;
+    for (const [name, asset] of Object.entries(this.overrides) as [SoundName, SoundOverride][]) {
+      if (ready?.name === name && ready.asset.data === asset.data) { this.prepared.set(name, ready.sound); continue; }
+      const old = Object.prototype.hasOwnProperty.call(previous, name) ? previous[name] : undefined;
+      if (old && old.data === asset.data && old.format === asset.format && this.prepared.has(name)) continue;
+      this.prepared.delete(name);
+      this.pending.add(name);
+      void this.prepare(asset).then(sound => {
+        const current: SoundOverride | undefined = Object.prototype.hasOwnProperty.call(this.overrides, name) ? this.overrides[name] : undefined;
+        if (this.owner !== owner || this.generation !== generation || !current || current.data !== asset.data) return;
+        this.prepared.set(name, sound);
+        this.pending.delete(name);
+        if (name === 'gameStart' && this.queuedGameStart === generation) {
+          this.queuedGameStart = null;
+          this.play(name);
+        }
+      }).catch(() => {
+        const current: SoundOverride | undefined = Object.prototype.hasOwnProperty.call(this.overrides, name) ? this.overrides[name] : undefined;
+        if (this.owner !== owner || this.generation !== generation || !current || current.data !== asset.data) return;
+        this.pending.delete(name);
+        if (name === 'gameStart' && this.queuedGameStart === generation) {
+          this.queuedGameStart = null;
+          this.play(name);
+        }
+      });
+    }
+    for (const name of [...this.prepared.keys()]) if (!this.overrides[name]) this.prepared.delete(name);
+  }
+
+  private getCtx(requireEnabled = true): AudioContext | null {
+    if (requireEnabled && !this.enabled) return null;
     if (typeof window === 'undefined') return null;
     const Win = window as Window & {
       AudioContext?: typeof AudioContext;
@@ -93,6 +155,39 @@ class SoundEngine {
     const ctx = this.getCtx();
     if (!ctx) return;
     const t = ctx.currentTime;
+    const prepared = this.prepared.get(sound);
+    if (sound === 'gameStart' && this.pending.has(sound)) {
+      this.queuedGameStart = this.generation;
+      return;
+    }
+    if (prepared && this.masterGain) {
+      if (Array.isArray(prepared)) {
+        for (const note of prepared) {
+          if (this.activeMidiVoices >= 48) break;
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = 440 * 2 ** ((note.pitch - 69) / 12);
+          gain.gain.setValueAtTime(Math.max(0.0001, note.velocity / 127 * 0.22), t + note.start);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + note.start + note.duration);
+          osc.connect(gain);
+          gain.connect(this.masterGain);
+          this.activeSources.add(osc);
+          this.activeMidiVoices++;
+          osc.onended = () => { if (this.activeSources.delete(osc)) this.activeMidiVoices = Math.max(0, this.activeMidiVoices - 1); };
+          osc.start(t + note.start);
+          osc.stop(t + note.start + note.duration + 0.01);
+        }
+      } else {
+        const source = ctx.createBufferSource();
+        source.buffer = prepared;
+        source.connect(this.masterGain);
+        this.activeSources.add(source);
+        source.onended = () => this.activeSources.delete(source);
+        source.start(t);
+      }
+      return;
+    }
 
     switch (sound) {
       case 'playerAttack':   this.sfxPlayerAttack(t);   break;
@@ -258,5 +353,5 @@ class SoundEngine {
   }
 }
 
-export type { SoundName };
+export type { SoundName } from './SoundsPlus';
 export const soundEngine = new SoundEngine();

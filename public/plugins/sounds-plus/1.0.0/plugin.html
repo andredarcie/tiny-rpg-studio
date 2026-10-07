@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sounds+</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "sounds-plus",
+      "title": "Sounds+",
+      "shortDescription": "Replace built-in sound effects with MP3, WAV, or MIDI files.",
+      "fullDescription": "Upload a sound for any built-in effect. The files stay in your project, local saves, and standalone HTML exports. Remove an upload to restore its original sound.",
+      "version": "1.0.0",
+      "capabilities": ["editor", "gameplay"],
+      "apiVersion": 1
+    }
+  </script>
+  <style data-tiny-rpg-plugin>
+    .sounds-plus-row {
+      --sounds-plus-file-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z'/%3E%3Cpath d='M13 2v7h7M12 18v-6m-3 3 3-3 3 3'/%3E%3C/svg%3E");
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 4px 8px;
+      min-width: 0;
+      margin-bottom: 8px;
+    }
+    .sounds-plus-name { min-width: 0; overflow-wrap: anywhere; }
+    .sounds-plus-upload,
+    .sounds-plus-remove {
+      grid-column: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 30px;
+      padding: 0;
+      border: 2px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .sounds-plus-remove {
+      color: #e06060;
+      border-color: rgba(224, 96, 96, 0.35);
+      background: rgba(15, 18, 29, 0.9);
+    }
+    .sounds-plus-remove:hover {
+      border-color: rgba(224, 96, 96, 0.6);
+      background: rgba(224, 96, 96, 0.1);
+    }
+    .sounds-plus-upload { font-size: 0; }
+    .sounds-plus-upload::before {
+      content: '';
+      display: block;
+      width: 18px;
+      height: 18px;
+      background: currentColor;
+      -webkit-mask: var(--sounds-plus-file-icon) center / contain no-repeat;
+      mask: var(--sounds-plus-file-icon) center / contain no-repeat;
+    }
+    .sounds-plus-upload:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .sounds-plus-upload[hidden],
+    .sounds-plus-remove[hidden] { display: none; }
+    .sounds-plus-file {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+    .sounds-plus-error { grid-column: 1 / -1; overflow-wrap: anywhere; }
+    .sounds-plus-error:empty { display: none; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    const sounds = [
+      ['playerAttack', 'Player attack'], ['playerHit', 'Player hit'], ['playerDeath', 'Player death'],
+      ['enemyHit', 'Enemy hit'], ['enemyDeath', 'Enemy death'], ['itemPickup', 'Item pickup'],
+      ['levelUp', 'Level up'], ['miss', 'Miss'], ['backstab', 'Backstab'],
+      ['roomTransition', 'Room transition'], ['dialog', 'Dialog'], ['switchToggle', 'Switch toggle'],
+      ['doorUnlock', 'Door unlock'], ['magicGateOpen', 'Magic gate open'], ['victory', 'Victory'],
+      ['gameStart', 'Game start'], ['skillPick', 'Skill pick'], ['typewriter', 'Typewriter']
+    ];
+    export function activate({ api, onCleanup, registerSettings }) {
+      if (typeof api.setSoundOverride !== 'function') throw Error('Sounds+ needs the sound override API');
+      let removed = false;
+      let generation = 0;
+      const controls = new Map();
+      const refresh = () => {
+        if (removed) return;
+        const overrides = api.exportGameData()?.soundsPlus ?? {};
+        for (const [name, control] of controls) {
+          const active = Boolean(overrides[name]);
+          control.input.hidden = active;
+          control.upload.hidden = active;
+          control.remove.hidden = !active;
+        }
+      };
+      registerSettings(container => {
+        for (const [name, label] of sounds) {
+          const row = document.createElement('div');
+          row.className = 'sounds-plus-row';
+          row.dataset.soundName = name;
+          const text = document.createElement('span');
+          text.className = 'sounds-plus-name';
+          text.textContent = label;
+          const upload = document.createElement('label');
+          upload.className = 'sounds-plus-upload';
+          upload.textContent = 'Upload';
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.className = 'sounds-plus-file';
+          input.setAttribute('aria-label', `Upload ${label} sound`);
+          input.accept = '.mid,.midi,.mp3,.wav,audio/midi,audio/mpeg,audio/wav';
+          upload.append(input);
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'sounds-plus-remove btn-secondary tiny-modal__btn--danger';
+          remove.textContent = 'x';
+          remove.setAttribute('aria-label', `Remove ${label} sound`);
+          const error = document.createElement('span');
+          error.className = 'sounds-plus-error';
+          error.setAttribute('role', 'alert');
+          const save = async asset => {
+            error.textContent = '';
+            input.disabled = true;
+            remove.disabled = true;
+            try { await api.setSoundOverride(name, asset); refresh(); }
+            catch (cause) { error.textContent = cause instanceof Error ? cause.message : String(cause); }
+            finally { input.disabled = false; remove.disabled = false; input.value = ''; }
+          };
+          input.addEventListener('change', async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            const ticket = generation;
+            try {
+              const format = file.name.toLowerCase().split('.').pop() === 'wav' ? 'wav'
+                : file.name.toLowerCase().endsWith('.mp3') ? 'mp3'
+                : /\.midi?$/i.test(file.name) ? 'midi' : null;
+              if (!format) throw Error('Choose a .mid, .midi, .mp3, or .wav file');
+              if (!file.size || file.size > 256 * 1024) throw Error('Sound file must be at most 256 KB');
+              const bytes = new Uint8Array(await file.arrayBuffer());
+              if (removed || ticket !== generation) return;
+              let binary = '';
+              for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+              await save({ format, data: btoa(binary) });
+            } catch (cause) { error.textContent = cause instanceof Error ? cause.message : String(cause); input.value = ''; }
+          });
+          remove.addEventListener('click', () => { void save(null); });
+          row.append(text, upload, remove, error);
+          container.append(row);
+          controls.set(name, { input, upload, remove });
+        }
+        refresh();
+      });
+      const restored = () => { generation++; refresh(); };
+      document.addEventListener('tiny-rpg-project-restored', restored);
+      onCleanup(() => { removed = true; generation++; document.removeEventListener('tiny-rpg-project-restored', restored); });
+    }
+  </script>
+  <script type="module" data-tiny-rpg-gameplay-plugin>
+    export function activate({ apiVersion }) {
+      if (apiVersion !== 1) throw Error('Sounds+ needs gameplay API version 1');
+    }
+  </script>
+</head>
+<body></body>
+</html>

@@ -15,7 +15,7 @@ class ShareUtils {
 
     static needsFullProject(gameData: Record<string, unknown> | null | undefined): boolean {
         const world = gameData?.world as { rows?: number; cols?: number } | undefined;
-        return Boolean((gameData?.gameplayPlugins as unknown[] | undefined)?.length || (world && (world.rows !== undefined || world.cols !== undefined) && (world.rows !== 3 || world.cols !== 3)));
+        return Boolean((gameData?.gameplayPlugins as unknown[] | undefined)?.length || (gameData?.soundsPlus && Object.keys(gameData.soundsPlus).length) || (world && (world.rows !== undefined || world.cols !== undefined) && (world.rows !== 3 || world.cols !== 3)));
     }
 
     static buildStoredProject(gameData: Record<string, unknown> | null | undefined): string {

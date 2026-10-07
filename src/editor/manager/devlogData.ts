@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-06-sounds-plus',
+    date: '2026-10-06',
+    title: 'Custom sound effects with Sounds+',
+    description: 'Upload MP3, WAV, or MIDI files for individual game sounds. Custom sounds stay with saved projects and standalone HTML exports, and removing one restores its original effect.',
+  },
+  {
     id: '2026-10-05-respawnable-enemies',
     date: '2026-10-05',
     title: 'Enemy respawn settings',

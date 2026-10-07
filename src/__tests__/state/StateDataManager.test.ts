@@ -41,7 +41,32 @@ const makeGame = (): GameDefinition => ({
   },
 });
 
+const midiSound = { format: 'midi' as const, data: btoa(String.fromCharCode(...[
+  77, 84, 104, 100, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96,
+  77, 84, 114, 107, 0, 0, 0, 12,
+  0, 0x90, 60, 100, 96, 0x80, 60, 0, 0, 0xff, 0x2f, 0,
+])) };
+
 describe('StateDataManager', () => {
+  it('round-trips Sounds+ bytes and clears them when another project is imported', () => {
+    const game = makeGame();
+    const manager = new StateDataManager({
+      game,
+      worldManager: {
+        normalizeRooms: vi.fn(() => game.rooms), normalizeTileMaps: vi.fn(() => game.tileset.maps),
+        clampCoordinate: vi.fn((value: number) => value), clampRoomIndex: vi.fn((value: number) => value),
+        setGame: vi.fn(),
+      } as unknown as StateWorldManager,
+      objectManager: { normalizeObjects: vi.fn(() => []), setGame: vi.fn() } as unknown as StateObjectManager,
+      variableManager: { normalizeVariables: vi.fn(() => []), setGame: vi.fn() } as unknown as StateVariableManager,
+    });
+    const project = { ...makeGame(), gameplayPlugins: [{ id: 'sounds-plus', version: '1.0.0' }], soundsPlus: { dialog: midiSound } };
+    manager.importGameData(project);
+    expect(manager.exportGameData().soundsPlus).toEqual({ dialog: midiSound });
+    manager.importGameData(makeGame());
+    expect(manager.exportGameData().soundsPlus).toBeUndefined();
+  });
+
   it('exports game data snapshot', () => {
     const game = makeGame();
     game.skillCustomizations = {

@@ -369,6 +369,24 @@ describe('GameEngine business rules (legacy)', () => {
     expect(engine.awaitingRestart).toBe(true)
   })
 
+  it('plays the game start sound when play actually begins', () => {
+    const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {})
+    const engine = createEngine()
+    play.mockClear()
+
+    expect(engine.dismissIntroScreen()).toBe(true)
+    expect(play).toHaveBeenCalledExactlyOnceWith('gameStart')
+    engine.dismissIntroScreen()
+    expect(play).toHaveBeenCalledTimes(1)
+
+    const editorEngine = createEngine()
+    editorEngine.gameState.setEditorMode(true)
+    expect(editorEngine.dismissIntroScreen()).toBe(false)
+    expect(play).toHaveBeenCalledTimes(1)
+
+    play.mockRestore()
+  })
+
   it('clears custom ending text and completes the game from a dialog ending', () => {
     const engine = createEngine()
     engine.gameState.activeEndingText = 'Old tile ending'

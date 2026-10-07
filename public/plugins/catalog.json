@@ -44,6 +44,15 @@
       "file": "minimalist-ui/1.0.4/plugin.html"
     },
     {
+      "id": "sounds-plus",
+      "title": "Sounds+",
+      "shortDescription": "Replace built-in sound effects with MP3, WAV, or MIDI files.",
+      "fullDescription": "Upload a sound for any built-in effect. The files stay in your project, local saves, and standalone HTML exports. Remove an upload to restore its original sound.",
+      "capabilities": ["editor", "gameplay"],
+      "version": "1.0.0",
+      "file": "sounds-plus/1.0.0/plugin.html"
+    },
+    {
       "id": "variables-plus",
       "title": "Variables+",
       "shortDescription": "Add 16 color-named boolean variables to a project.",

@@ -98,9 +98,11 @@ export class GameEngine {
   timeToResetAfterIntro: number;
 
   private readonly inputRoot?: HTMLElement;
+  private readonly soundOwner: boolean;
 
-  constructor(canvas: HTMLCanvasElement, options: { inputRoot?: HTMLElement } = {}) {
+  constructor(canvas: HTMLCanvasElement, options: { inputRoot?: HTMLElement; soundOwner?: boolean } = {}) {
     this.inputRoot = options.inputRoot;
+    this.soundOwner = options.soundOwner !== false;
     this.canvas = canvas;
 
     // Boot core subsystems
@@ -180,6 +182,7 @@ export class GameEngine {
     };
     this.setupIntroScreen();
     this.backgroundMusicEngine.syncFromGame(this.gameState.getGame());
+    if (this.soundOwner) soundEngine.claim(this);
 
     // Ensure there is at least a ground layer
     this.tileManager.ensureDefaultTiles();
@@ -392,6 +395,7 @@ export class GameEngine {
   }
 
   resetGame(): void {
+    if (this.soundOwner) soundEngine.cancelQueuedGameStart(this);
     this.inputManager.cancelHeldMovement();
     this.awaitingRestart = false;
     this.backgroundMusicEngine.stop();
@@ -486,6 +490,7 @@ export class GameEngine {
   importGameData(data: unknown): void {
     this.inputManager.cancelHeldMovement();
     this.gameState.importGameData(data);
+    if (this.soundOwner) soundEngine.sync(this, this.gameState.getGame().soundsPlus);
     this.npcManager.ensureDefaultNPCs();
     this.npcManager.resetNPCs();
     this.tileManager.ensureDefaultTiles();
@@ -713,6 +718,7 @@ export class GameEngine {
     if (this.isEditorModeActive()) return false;
     this.introVisible = false;
     this.gameState.resumeGame('intro-screen');
+    if (this.soundOwner) soundEngine.play('gameStart');
     this.resumeBackgroundMusic();
     this.renderer.draw();
     return true;
@@ -978,6 +984,7 @@ export class GameEngine {
   destroy(): void {
     if (this.isDestroyed) return;
     this.isDestroyed = true;
+    if (this.soundOwner) soundEngine.release(this);
     this.inputManager.destroy();
     this.enemyManager.stop();
     this.gameState.hideLevelUpCelebration({ skipResume: true });

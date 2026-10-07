@@ -4,6 +4,7 @@ import type { ObjectEntry } from '../runtime/domain/state/StateObjectManager';
 import type { DialogMeta } from '../runtime/services/engine/DialogManager';
 import type { ExitState } from '../runtime/services/engine/InteractionManager';
 import type { NPCInstance } from '../runtime/services/NPCManager';
+import type { SoundsPlusMap } from '../runtime/services/SoundsPlus';
 
 // Re-export domain types
 export type { ObjectEntry, DialogMeta, ExitState, NPCInstance };
@@ -207,6 +208,7 @@ export type OnlineConfig = {
 
 export type GameDefinition = {
     gameplayPlugins?: { id: string; version: string }[];
+    soundsPlus?: SoundsPlusMap;
     title: string;
     author: string;
     palette: string[];

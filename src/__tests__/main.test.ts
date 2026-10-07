@@ -388,7 +388,7 @@ describe('TinyRPGApplication.setupWelcomeAudio', () => {
     vi.restoreAllMocks();
   });
 
-  it('warms up audio and plays the welcome jingle once on the first gesture', () => {
+  it('unlocks audio once on the first gesture without playing before the game starts', () => {
     const unlock = vi.spyOn(soundEngine, 'unlock').mockImplementation(() => {});
     const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
     vi.spyOn(soundEngine, 'isRunning').mockReturnValue(false);
@@ -397,23 +397,24 @@ describe('TinyRPGApplication.setupWelcomeAudio', () => {
     globalThis.dispatchEvent(new Event('keydown'));
 
     expect(unlock).toHaveBeenCalled();
-    expect(play).toHaveBeenCalledWith('gameStart');
+    expect(play).not.toHaveBeenCalled();
 
-    // A second gesture must not replay the welcome.
-    play.mockClear();
+    unlock.mockClear();
     globalThis.dispatchEvent(new Event('pointerdown'));
+    expect(unlock).not.toHaveBeenCalled();
     expect(play).not.toHaveBeenCalled();
   });
 
-  it('plays the welcome on boot-finished when audio is already unlocked', () => {
-    vi.spyOn(soundEngine, 'unlock').mockImplementation(() => {});
+  it('does not play on boot-finished when audio is already unlocked', () => {
+    const unlock = vi.spyOn(soundEngine, 'unlock').mockImplementation(() => {});
     const play = vi.spyOn(soundEngine, 'play').mockImplementation(() => {});
     vi.spyOn(soundEngine, 'isRunning').mockReturnValue(true);
 
     TinyRPGApplication.setupWelcomeAudio();
     document.dispatchEvent(new CustomEvent('boot-finished'));
 
-    expect(play).toHaveBeenCalledWith('gameStart');
+    expect(play).not.toHaveBeenCalled();
+    expect(unlock).not.toHaveBeenCalled();
   });
 
   it('waits for a gesture when audio is still locked at boot-finished', () => {

@@ -200,16 +200,15 @@ class ExportApplication {
     }
 
     static setupWelcomeAudio(signal?: AbortSignal): void {
-        let played = false;
+        let unlocked = false;
         const events = ['pointerdown', 'keydown', 'touchstart'] as const;
-        const play = () => {
-            if (played) return;
-            played = true;
+        const unlock = () => {
+            if (unlocked) return;
+            unlocked = true;
             soundEngine.unlock();
-            soundEngine.play('gameStart');
-            events.forEach((event) => globalThis.removeEventListener(event, play));
+            events.forEach((event) => globalThis.removeEventListener(event, unlock));
         };
-        events.forEach((event) => globalThis.addEventListener(event, play, { passive: true, signal }));
+        events.forEach((event) => globalThis.addEventListener(event, unlock, { passive: true, signal }));
     }
 
     static setupResponsiveCanvas(signal?: AbortSignal): void {

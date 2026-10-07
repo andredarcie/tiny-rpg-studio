@@ -1,4 +1,5 @@
 import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry, SkillCustomizationMap, OnlineConfig } from '../../../types/gameState';
+import { normalizeSoundsPlus, type SoundsPlusMap } from '../../services/SoundsPlus';
 import type { StateWorldManager } from './StateWorldManager';
 import type { StateObjectManager, ObjectEntry } from './StateObjectManager';
 import type { StateVariableManager } from './StateVariableManager';
@@ -35,6 +36,7 @@ type StateDataManagerOptions = {
 
 type ImportData = {
     gameplayPlugins?: { id: string; version: string }[];
+    soundsPlus?: SoundsPlusMap;
     title?: string;
     author?: string;
     palette?: string[];
@@ -109,6 +111,7 @@ class StateDataManager {
     exportGameData(): ImportData {
         const result: ImportData = {
             ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
+            ...(this.game.soundsPlus && Object.keys(this.game.soundsPlus).length ? { soundsPlus: this.game.soundsPlus } : {}),
             title: this.game.title,
             author: this.game.author,
             palette: this.game.palette,
@@ -187,6 +190,7 @@ class StateDataManager {
         if (data.online?.enabled && data.gameplayPlugins?.some(plugin => plugin.id === 'variables-plus')) {
             throw Error('Variables+ projects cannot use online mode');
         }
+        const soundsPlus = normalizeSoundsPlus(data.soundsPlus, data.gameplayPlugins);
 
         const dimension = (value: unknown) => {
             if (value === undefined) return 3;
@@ -229,6 +233,7 @@ class StateDataManager {
 
         Object.assign(this.game, {
             gameplayPlugins: data.gameplayPlugins?.map(p => ({ id: p.id, version: p.version })),
+            soundsPlus,
             title: typeof data.title === 'string' ? data.title.slice(0, 18) : "My Tiny RPG Game",
             author: typeof data.author === 'string' ? data.author.slice(0, 18) : "",
             palette: Array.isArray(data.palette) && data.palette.length >= 3 ? data.palette.slice(0, 3) : ['#000000', '#1D2B53', '#FFF1E8'],

@@ -713,6 +713,7 @@ class EditorManager {
         if (!skipHistory) {
             this.history.pushCurrentState();
         }
+        document.dispatchEvent(new Event('tiny-rpg-project-restored'));
     }
 
     // Canvas & keyboard handling
