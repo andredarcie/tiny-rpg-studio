@@ -6,6 +6,7 @@ type MockEngine = {
   getState: ReturnType<typeof vi.fn>;
   draw: ReturnType<typeof vi.fn>;
   resetGame: ReturnType<typeof vi.fn>;
+  isIntroVisible: ReturnType<typeof vi.fn>;
   updateTile: ReturnType<typeof vi.fn>;
   setMapTile: ReturnType<typeof vi.fn>;
   getTiles: ReturnType<typeof vi.fn>;
@@ -26,6 +27,7 @@ const mocks = vi.hoisted(() => {
     getState: vi.fn(() => ({ hp: 10 })),
     draw: vi.fn(),
     resetGame: vi.fn(),
+    isIntroVisible: vi.fn(() => true),
     updateTile: vi.fn(),
     setMapTile: vi.fn(),
     getTiles: vi.fn(() => []),

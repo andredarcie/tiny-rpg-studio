@@ -35,7 +35,7 @@ describe('Project panel markup', () => {
     expect(keys.slice(1).every(key => panel(key).hidden)).toBe(true);
   });
 
-  it('uses the same disclosure structure for every submenu', () => {
+  it('uses disclosures for the fixed settings sections', () => {
     const groups = {
       development: [['variables', 'project.section.variables', true], ['skills', 'project.section.skills', true], ['enemies', 'project.enemies.title', false]],
       testing: [['testing', 'project.section.testSetup', true]],
@@ -44,7 +44,6 @@ describe('Project panel markup', () => {
       info: [['information', 'project.section.gameDetails', true]],
       audio: [['music', 'project.audio.backgroundMusic', true]],
       export: [['share-url', 'project.section.shareUrl', true], ['project-file', 'project.section.projectFile', true]],
-      plugins: [['plugins', 'project.section.pluginSettings', true]],
     } as const;
     for (const [tab, entries] of Object.entries(groups)) {
       expect(panel(tab).querySelectorAll('.project-card')).toHaveLength(entries.length);
@@ -53,7 +52,7 @@ describe('Project panel markup', () => {
         expect(card.tagName).toBe('DETAILS');
         expect(card.open).toBe(open);
         expect(card.firstElementChild?.matches(`summary[data-text-key="${key}"]`)).toBe(true);
-        expect(card.parentElement?.matches(tab === 'plugins' ? '.project-tab-panel' : '.project-group')).toBe(true);
+        expect(card.parentElement?.matches('.project-group')).toBe(true);
       }
     }
   });
@@ -117,12 +116,13 @@ describe('Project panel markup', () => {
     for (const id of ['btn-import-html', 'btn-generate-html', 'export-editable-in-studio']) {
       expect(section('export', 'project-file').querySelector(`#${id}`)).not.toBeNull();
     }
-    expect(section('plugins', 'plugins').querySelector('[data-plugin-settings-empty]')).not.toBeNull();
-    expect(section('plugins', 'plugins').querySelector('[data-plugin-settings-groups]')).not.toBeNull();
+    expect(panel('plugins').querySelector('[data-plugin-settings-empty]')).not.toBeNull();
+    expect(panel('plugins').querySelector('[data-plugin-settings-groups]')).not.toBeNull();
+    expect(panel('plugins').querySelector('.project-card')).toBeNull();
   });
 
   it('provides every new section title in all five locales', () => {
-    const keys = ['variables', 'skills', 'testSetup', 'palette', 'effects', 'display', 'onlineSetup', 'gameDetails', 'shareUrl', 'projectFile', 'pluginSettings'];
+    const keys = ['variables', 'skills', 'testSetup', 'palette', 'effects', 'display', 'onlineSetup', 'gameDetails', 'shareUrl', 'projectFile'];
     for (const key of keys) {
       expect(project.querySelector(`[data-text-key="project.section.${key}"]`)).not.toBeNull();
       expect(textResources.match(new RegExp(`'project\\.section\\.${key}':`, 'g'))).toHaveLength(5);

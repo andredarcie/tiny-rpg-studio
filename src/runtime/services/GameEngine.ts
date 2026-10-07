@@ -167,6 +167,7 @@ export class GameEngine {
     this.online = new OnlineCoordinator(this);
     this.inputManager = new InputManager(this, options.inputRoot);
     this.backgroundMusicEngine = new BackgroundMusicEngine();
+    this.gameState.onPlayerRoomChange = () => this.syncRoomMusic();
     this.isDestroyed = false;
     this.awaitingRestart = false;
     this.introVisible = false;
@@ -199,6 +200,7 @@ export class GameEngine {
   // Movement and interaction handling
   tryMove(dx: number, dy: number): void {
     this.movementManager.tryMove(dx, dy);
+    this.syncRoomMusic();
     this.online.notifyMove(dx, dy);
     // Signal any tile-based interaction (switch, etc.) to the host, carrying the
     // player's current position so the host doesn't depend on remotePositions timing.
@@ -211,6 +213,7 @@ export class GameEngine {
     // interactionManager.guestMode=true blocks only handleSwitch from mutating state;
     // the host applies switch changes authoritatively via processGuestInteract.
     this.interactionManager.handlePlayerInteractions();
+    this.syncRoomMusic();
     const p = this.gameState.getPlayer();
     if (p) this.online.notifyInteract(p.x, p.y, p.roomIndex);
     this.online.notifyStateChanged();
@@ -421,6 +424,7 @@ export class GameEngine {
     this.backgroundMusicEngine.setVideoId(videoId); this.backgroundMusicEngine.setVolume(volume);
     game.backgroundMusicVideoId = videoId ?? undefined; game.backgroundMusicVolume = this.backgroundMusicEngine.getVolume();
     this.backgroundMusicEngine.syncFromGame(game);
+    this.backgroundMusicEngine.setRoomIndex(this.gameState.getPlayer()?.roomIndex ?? 0);
   }
 
   setOnlineConfig(config: OnlineConfig | undefined): void { this.gameState.game.online = config ? structuredClone(config) : undefined; this.draw(); }
@@ -489,6 +493,7 @@ export class GameEngine {
 
   importGameData(data: unknown): void {
     this.inputManager.cancelHeldMovement();
+    this.backgroundMusicEngine.stop();
     this.gameState.importGameData(data);
     if (this.soundOwner) soundEngine.sync(this, this.gameState.getGame().soundsPlus);
     this.npcManager.ensureDefaultNPCs();
@@ -518,6 +523,7 @@ export class GameEngine {
       this.resetPaletteToDefault();
     }
     this.backgroundMusicEngine.syncFromGame(game);
+    this.backgroundMusicEngine.setRoomIndex(this.gameState.getPlayer()?.roomIndex ?? 0);
     this.syncDocumentTitle();
     this.gameState.recomputeLogicGates();
     this.startEnemyLoop();
@@ -727,8 +733,15 @@ export class GameEngine {
   resumeBackgroundMusic(): void {
     // Background music is strictly a play-mode concern; never start it while
     // the project is being edited regardless of how this path is reached.
-    if (this.isEditorModeActive()) return;
+    if (this.isEditorModeActive() || this.isIntroVisible()) return;
+    this.backgroundMusicEngine.setRoomIndex(this.gameState.getPlayer()?.roomIndex ?? 0);
     this.backgroundMusicEngine.play();
+  }
+
+  private syncRoomMusic(): void {
+    if (this.isDestroyed) return;
+    this.backgroundMusicEngine.setRoomIndex(this.gameState.getPlayer()?.roomIndex ?? 0);
+    if (!this.isEditorModeActive() && !this.isIntroVisible()) this.backgroundMusicEngine.play();
   }
 
   // Single source of truth for "is the project being edited rather than played".

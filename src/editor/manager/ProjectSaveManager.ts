@@ -264,18 +264,18 @@ export class ProjectSaveManager {
       localStorage.setItem(this.storageKey, JSON.stringify(data));
       return { ok: true, reason: undefined };
     } catch (error) {
-      // Handle quota exceeded or storage errors by bubbling a structured result
-      // We can't throw here because callers expect SaveResult; instead, log and swallow
-      // but provide a way to detect failure by returning a value from this method when needed
-      try {
-        const slimHistory = history.map((p) => ({ ...p, thumbnail: undefined }));
-        const slimData: ProjectHistory = { projects: slimHistory, lastAutoSaveTime: Date.now() };
-        localStorage.setItem(this.storageKey, JSON.stringify(slimData));
-        return { ok: true, reason: undefined };
-      } catch {
-        const msg = error instanceof Error ? error.message || error.name || String(error) : String(error);
-        return { ok: false, reason: `storage: ${msg}` };
+      const slimHistory = history.map((p) => ({ ...p, thumbnail: undefined }));
+      // A single uploaded track is repeated in every saved snapshot. Keep the
+      // newest edit and as much older history as the browser can store.
+      for (let count = slimHistory.length; count >= 1; count--) {
+        try {
+          const slimData: ProjectHistory = { projects: slimHistory.slice(0, count), lastAutoSaveTime: Date.now() };
+          localStorage.setItem(this.storageKey, JSON.stringify(slimData));
+          return { ok: true, reason: undefined };
+        } catch { /* Try with one fewer old save. */ }
       }
+      const msg = error instanceof Error ? error.message || error.name || String(error) : String(error);
+      return { ok: false, reason: `storage: ${msg}` };
     }
   }
 }

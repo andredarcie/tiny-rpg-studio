@@ -18,6 +18,7 @@ class StubBackgroundMusicEngine {
   destroy = vi.fn()
   syncFromGame = vi.fn()
   setVideoId = vi.fn()
+  setRoomIndex = vi.fn()
 }
 
 vi.mock('../runtime/domain/GameState', () => ({ GameState: StubGameState }))
@@ -367,6 +368,17 @@ describe('GameEngine business rules (legacy)', () => {
     expect(engine.enemyManager.stop.mock.calls.length).toBeGreaterThan(0)
     expect((engine.gameState as StubGameState).setGameOverCalls).toEqual([{ value: true, reason: 'victory' }])
     expect(engine.awaitingRestart).toBe(true)
+  })
+
+  it('selects the final room for music after walking and exit interactions', () => {
+    const engine = createEngine()
+    engine.movementManager.tryMove = vi.fn(() => { engine.gameState.playerRoomIndex = 4 })
+    engine.interactionManager.handlePlayerInteractions = vi.fn(() => { engine.gameState.playerRoomIndex = 7 })
+
+    engine.tryMove(1, 0)
+    expect(engine.backgroundMusicEngine?.setRoomIndex).toHaveBeenLastCalledWith(4)
+    engine.checkInteractions()
+    expect(engine.backgroundMusicEngine?.setRoomIndex).toHaveBeenLastCalledWith(7)
   })
 
   it('plays the game start sound when play actually begins', () => {

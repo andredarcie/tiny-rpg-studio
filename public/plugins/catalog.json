@@ -44,6 +44,15 @@
       "file": "minimalist-ui/1.0.4/plugin.html"
     },
     {
+      "id": "music-plus",
+      "title": "Music+",
+      "shortDescription": "Assign looping MP3, WAV, or MIDI music to each room.",
+        "fullDescription": "Upload a track for each room in Project > Plugins. Rooms without an upload use the project's YouTube track. Enable smooth transition and choose the fade duration in seconds. Music is saved with the project and included in standalone exports.",
+      "capabilities": ["editor", "gameplay"],
+        "version": "1.0.3",
+        "file": "music-plus/1.0.3/plugin.html"
+    },
+    {
       "id": "sounds-plus",
       "title": "Sounds+",
       "shortDescription": "Replace built-in sound effects with MP3, WAV, or MIDI files.",

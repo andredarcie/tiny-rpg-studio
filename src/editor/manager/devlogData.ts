@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-07-music-plus',
+    date: '2026-10-07',
+    title: 'Room music with Music+',
+    description: 'Give each room its own looping MP3, WAV, or MIDI track. Rooms without an upload play the project\'s YouTube music, and uploaded tracks stay with saved projects and standalone exports.',
+  },
+  {
     id: '2026-10-06-sounds-plus',
     date: '2026-10-06',
     title: 'Custom sound effects with Sounds+',

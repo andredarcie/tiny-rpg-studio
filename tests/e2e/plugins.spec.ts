@@ -185,8 +185,12 @@ test('Maps+ is discoverable and installable from the catalog', async ({ page }) 
   await expect(page.locator('.world-panel .maps-plus-controls select[aria-label="Rows"]')).toBeVisible();
   await expect(page.locator('.project-group--development .maps-plus-controls')).toHaveCount(0);
   await page.click('[data-project-tab-button="plugins"]');
-  await expect(page.locator('[data-plugin-settings-group="maps-plus"] h2')).toHaveText('Maps+');
+  await expect(page.locator('[data-plugin-settings-group="maps-plus"] > summary')).toHaveText('Maps+');
   await expect(page.locator('[data-plugin-settings-group="maps-plus"] .maps-plus-controls select[aria-label="Columns"]')).toBeVisible();
+  await page.locator('[data-plugin-settings-group="maps-plus"] > summary').click();
+  await expect(page.locator('[data-plugin-settings-group="maps-plus"] .maps-plus-controls')).toBeHidden();
+  await page.locator('[data-plugin-settings-group="maps-plus"] > summary').click();
+  await expect(page.locator('[data-plugin-settings-group="maps-plus"] .maps-plus-controls')).toBeVisible();
 });
 
 test('Dialogue+ edits repeated NPC blocks and restores the native modal after removal', async ({ page }) => {

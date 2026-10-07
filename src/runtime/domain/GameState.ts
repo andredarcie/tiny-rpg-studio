@@ -65,6 +65,7 @@ class GameState {
     lastKillerEnemyId: string | null;
     onVariableChanged: ((variableId: string, value: unknown) => void) | null = null;
     onMagicDoorOpened: (() => void) | null = null;
+    onPlayerRoomChange: (() => void) | null = null;
     npcDialogueSequence: NpcDialogueSequence | null = null;
     editorMode: boolean;
     levelUpOverlayPresentationSync: (() => void) | null;
@@ -350,7 +351,9 @@ class GameState {
     }
 
     setPlayerPosition(x: number, y: number, roomIndex: number | null = null) {
+        const previousRoom = this.getPlayer()?.roomIndex;
         this.playerManager.setPosition(x, y, roomIndex);
+        if (previousRoom !== this.getPlayer()?.roomIndex) queueMicrotask(() => this.onPlayerRoomChange?.());
     }
 
     setDialog(active: boolean, text: string = "", meta: DialogMeta | null = null): void {

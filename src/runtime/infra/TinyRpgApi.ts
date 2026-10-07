@@ -3,6 +3,7 @@ import type { AuthoringApi } from './AuthoringApi';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
 import type { DialoguePlusBlock } from '../domain/dialoguePlus';
 import type { SoundName, SoundOverride } from '../services/SoundsPlus';
+import type { MusicAsset } from '../services/MusicPlus';
 
 type TinyRpgApi = {
   runtime?: BaseRuntimeApi;
@@ -13,6 +14,9 @@ type TinyRpgApi = {
   resizeWorld?: (rows: number, cols: number, pluginId: string) => Promise<void>;
   enableVariablesPlus?: () => Promise<void>;
   setSoundOverride?: (name: SoundName, asset: SoundOverride | null) => Promise<void>;
+  setRoomMusic?: (roomIndex: number, asset: MusicAsset | null) => Promise<void>;
+  setMusicPlusSmoothTransition?: (enabled: boolean) => Promise<void>;
+  setMusicPlusFadeDurationSeconds?: (seconds: number) => Promise<void>;
   setNpcDialogueBlocks?: (npcId: string, blocks: unknown, pluginId: string) => Promise<DialoguePlusBlock[]>;
   getState: () => unknown;
   draw: () => void;

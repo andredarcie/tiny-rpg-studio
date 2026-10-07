@@ -53,6 +53,14 @@ class StateWorldManager {
             const target = remap(exit.targetRoomIndex);
             return target === null ? [] : [{ ...exit, targetRoomIndex: target }];
         });
+        if (game.musicPlus) {
+            const remapped: NonNullable<GameDefinition['musicPlus']> = {};
+            for (const [index, asset] of Object.entries(game.musicPlus)) {
+                const target = remap(Number(index));
+                if (target !== null) remapped[String(target)] = asset;
+            }
+            game.musicPlus = Object.keys(remapped).length ? remapped : undefined;
+        }
         if (game.online?.spawnPoints) game.online.spawnPoints = moveEntities(game.online.spawnPoints);
         game.start.roomIndex = remap(game.start.roomIndex) ?? 0;
         game.world = { rows, cols };

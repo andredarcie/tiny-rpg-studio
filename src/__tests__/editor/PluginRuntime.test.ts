@@ -46,9 +46,13 @@ it('groups settings by installed title and toggles the empty state', async () =>
   runtime.start(root, {} as TinyRpgApi);
   await runtime.settled();
   expect(root.querySelectorAll('[data-plugin-settings-group]')).toHaveLength(2);
-  expect([...root.querySelectorAll('[data-plugin-settings-group] h2')].map(node => node.textContent)).toEqual(['Demo', 'Other']);
+  const groups = [...root.querySelectorAll<HTMLDetailsElement>('[data-plugin-settings-group]')];
+  expect(groups.every(group => group.matches('details.project-card[open]'))).toBe(true);
+  expect(groups.map(group => group.querySelector('summary')?.textContent)).toEqual(['Demo', 'Other']);
   expect(root.querySelectorAll('[data-plugin-settings-group] input')).toHaveLength(2);
   expect(root.querySelectorAll('[data-plugin-settings-group] button')).toHaveLength(2);
+  groups[0].open = false;
+  expect(groups[1].open).toBe(true);
   expect((root.querySelector('[data-plugin-settings-empty]') as HTMLElement).hidden).toBe(true);
   manager.remove('demo');
   manager.remove('other');

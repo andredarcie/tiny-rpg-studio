@@ -2278,12 +2278,6 @@ textarea {
     gap: 16px;
 }
 
-.plugin-settings-group {
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-}
-
 .plugin-settings-content {
     min-width: 0;
 }

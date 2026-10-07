@@ -1,5 +1,6 @@
 import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry, SkillCustomizationMap, OnlineConfig } from '../../../types/gameState';
 import { normalizeSoundsPlus, type SoundsPlusMap } from '../../services/SoundsPlus';
+import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, normalizeMusicPlus, normalizeMusicPlusFadeDurationSeconds, type MusicPlusMap } from '../../services/MusicPlus';
 import type { StateWorldManager } from './StateWorldManager';
 import type { StateObjectManager, ObjectEntry } from './StateObjectManager';
 import type { StateVariableManager } from './StateVariableManager';
@@ -37,6 +38,9 @@ type StateDataManagerOptions = {
 type ImportData = {
     gameplayPlugins?: { id: string; version: string }[];
     soundsPlus?: SoundsPlusMap;
+    musicPlus?: MusicPlusMap;
+    musicPlusSmoothTransition?: boolean;
+    musicPlusFadeDurationSeconds?: number;
     title?: string;
     author?: string;
     palette?: string[];
@@ -112,6 +116,10 @@ class StateDataManager {
         const result: ImportData = {
             ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
             ...(this.game.soundsPlus && Object.keys(this.game.soundsPlus).length ? { soundsPlus: this.game.soundsPlus } : {}),
+            ...(this.game.musicPlus && Object.keys(this.game.musicPlus).length ? { musicPlus: this.game.musicPlus } : {}),
+            ...(this.game.musicPlusSmoothTransition ? { musicPlusSmoothTransition: true } : {}),
+            ...(this.game.musicPlusFadeDurationSeconds !== undefined && this.game.musicPlusFadeDurationSeconds !== DEFAULT_MUSIC_PLUS_FADE_SECONDS
+                ? { musicPlusFadeDurationSeconds: this.game.musicPlusFadeDurationSeconds } : {}),
             title: this.game.title,
             author: this.game.author,
             palette: this.game.palette,
@@ -200,6 +208,11 @@ class StateDataManager {
         const worldRows = dimension(data.world?.rows);
         const worldCols = dimension(data.world?.cols);
         const totalRooms = worldRows * worldCols;
+        const musicPlus = normalizeMusicPlus(data.musicPlus, data.gameplayPlugins, totalRooms);
+        const musicPlusFadeDurationSeconds = normalizeMusicPlusFadeDurationSeconds(data.musicPlusFadeDurationSeconds);
+        if (data.musicPlusSmoothTransition !== undefined && typeof data.musicPlusSmoothTransition !== 'boolean') throw Error('Invalid Music+ smooth transition setting');
+        if ((data.musicPlusSmoothTransition || musicPlusFadeDurationSeconds !== DEFAULT_MUSIC_PLUS_FADE_SECONDS) &&
+            !data.gameplayPlugins?.some(item => item.id === 'music-plus')) throw Error('Music+ gameplay dependency is required');
 
         const customTileEffects = normalizeCustomTileEffects(data.customTileEffects);
         const existingTiles = Array.isArray(this.game.tileset.tiles) ? this.game.tileset.tiles : [];
@@ -234,6 +247,9 @@ class StateDataManager {
         Object.assign(this.game, {
             gameplayPlugins: data.gameplayPlugins?.map(p => ({ id: p.id, version: p.version })),
             soundsPlus,
+            musicPlus,
+            musicPlusSmoothTransition: data.musicPlusSmoothTransition === true,
+            musicPlusFadeDurationSeconds,
             title: typeof data.title === 'string' ? data.title.slice(0, 18) : "My Tiny RPG Game",
             author: typeof data.author === 'string' ? data.author.slice(0, 18) : "",
             palette: Array.isArray(data.palette) && data.palette.length >= 3 ? data.palette.slice(0, 3) : ['#000000', '#1D2B53', '#FFF1E8'],

@@ -36,6 +36,7 @@ import { Modal } from '../ui/Modal';
 import type { PluginManager } from './manager/PluginManager';
 import type { InstalledPlugin } from './manager/PluginManager';
 import { upgradeDialoguePlusDependency } from './manager/upgradeDialoguePlusDependency';
+import { upgradeMusicPlusDependency } from './manager/upgradeMusicPlusDependency';
 import type { GameplayPluginHost } from '../runtime/infra/GameplayPluginHost';
 
 class EditorManager {
@@ -47,7 +48,7 @@ class EditorManager {
         return ShareUtils.buildStoredProject(data);
     }
     async loadProjectData(data: Record<string, unknown>, options: { skipHistory?: boolean } = {}, packages?: InstalledPlugin[]): Promise<void> {
-        data = upgradeDialoguePlusDependency(data, packages ?? this.pluginManager?.installed ?? []);
+        data = upgradeMusicPlusDependency(upgradeDialoguePlusDependency(data, packages ?? this.pluginManager?.installed ?? []), packages ?? this.pluginManager?.installed ?? []);
         if (this.gameplayHost) await this.gameplayHost.load(data, packages);
         this.restore(data, { ...options, alreadyImported: Boolean(this.gameplayHost) });
     }

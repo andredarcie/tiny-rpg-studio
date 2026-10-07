@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Music+</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "music-plus",
+      "title": "Music+",
+      "shortDescription": "Assign looping MP3, WAV, or MIDI music to each room.",
+      "fullDescription": "Upload a track for each room in Project > Plugins. Rooms without an upload use the project's YouTube track. Enable smooth transition and choose the fade duration in seconds. Music is saved with the project and included in standalone exports.",
+      "version": "1.0.3",
+      "capabilities": ["editor", "gameplay"],
+      "apiVersion": 1
+    }
+  </script>
+  <style data-tiny-rpg-plugin>
+    #tab-editor .music-plus-row {
+      --music-plus-file-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2-2V9z'/%3E%3Cpath d='M13 2v7h7M12 18v-6m-3 3 3-3 3 3'/%3E%3C/svg%3E");
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 4px 8px;
+      min-width: 0;
+      margin-bottom: 8px;
+    }
+    #tab-editor .music-plus-name { min-width: 0; }
+    #tab-editor .music-plus-upload,
+    #tab-editor .music-plus-remove {
+      grid-column: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 30px;
+      padding: 0;
+      border: 2px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+    #tab-editor .music-plus-upload { font-size: 0; }
+    #tab-editor .music-plus-upload::before {
+      content: '';
+      display: block;
+      width: 18px;
+      height: 18px;
+      background: currentColor;
+      -webkit-mask: var(--music-plus-file-icon) center / contain no-repeat;
+      mask: var(--music-plus-file-icon) center / contain no-repeat;
+    }
+    #tab-editor .music-plus-upload:focus-within,
+    #tab-editor .music-plus-remove:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    #tab-editor .music-plus-remove {
+      color: #e06060;
+      border-color: rgba(224, 96, 96, 0.35);
+      background: rgba(15, 18, 29, 0.9);
+    }
+    #tab-editor .music-plus-remove:hover { border-color: rgba(224, 96, 96, 0.6); background: rgba(224, 96, 96, 0.1); }
+    #tab-editor .music-plus-upload[hidden],
+    #tab-editor .music-plus-remove[hidden] { display: none; }
+    #tab-editor .music-plus-file {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+      border: 0;
+    }
+    #tab-editor .music-plus-error { grid-column: 1 / -1; color: #e06060; overflow-wrap: anywhere; }
+    #tab-editor .music-plus-error:empty { display: none; }
+    #tab-editor .music-plus-smooth { display: flex; align-items: center; gap: 6px; margin: 10px 0; cursor: pointer; }
+    #tab-editor .music-plus-smooth-error { color: #e06060; overflow-wrap: anywhere; }
+    #tab-editor .music-plus-smooth-error:empty { display: none; }
+    #tab-editor .music-plus-duration { display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
+    #tab-editor .music-plus-duration input { width: 68px; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ api, onCleanup, registerSettings }) {
+      if (typeof api.setRoomMusic !== 'function' || typeof api.setMusicPlusSmoothTransition !== 'function' || typeof api.setMusicPlusFadeDurationSeconds !== 'function' || typeof registerSettings !== 'function') throw Error('Music+ needs the room music and settings APIs');
+      const controller = new AbortController();
+      let removed = false;
+      let generation = 0;
+      let container = null;
+      const render = () => {
+        if (removed || !container) return;
+        generation++;
+        const ticket = generation;
+        container.replaceChildren();
+        const game = api.exportGameData();
+        const rows = Number(game?.world?.rows ?? 3);
+        const cols = Number(game?.world?.cols ?? 3);
+        const smoothLabel = document.createElement('label');
+        smoothLabel.className = 'music-plus-smooth';
+        const smoothInput = document.createElement('input');
+        smoothInput.type = 'checkbox';
+        smoothInput.checked = game?.musicPlusSmoothTransition === true;
+        smoothInput.setAttribute('aria-label', 'Smooth transition');
+        smoothLabel.append(smoothInput, document.createTextNode('Smooth transition'));
+        const smoothError = document.createElement('span');
+        smoothError.className = 'music-plus-smooth-error';
+        smoothError.setAttribute('role', 'alert');
+        smoothInput.addEventListener('change', async () => {
+          const enabled = smoothInput.checked;
+          smoothInput.disabled = true;
+          smoothError.textContent = '';
+          try { await api.setMusicPlusSmoothTransition(enabled); if (!removed && ticket === generation) render(); }
+          catch (cause) {
+            if (!removed && ticket === generation) {
+              smoothInput.checked = !enabled;
+              smoothError.textContent = cause instanceof Error ? cause.message : String(cause);
+            }
+          } finally { smoothInput.disabled = false; }
+        }, { signal: controller.signal });
+        const durationLabel = document.createElement('label');
+        durationLabel.className = 'music-plus-duration';
+        durationLabel.textContent = 'Fade duration per track (seconds)';
+        const durationInput = document.createElement('input');
+        durationInput.type = 'number';
+        durationInput.min = '0.1';
+        durationInput.max = '10';
+        durationInput.step = 'any';
+        durationInput.value = String(game?.musicPlusFadeDurationSeconds ?? 1);
+        durationInput.setAttribute('aria-label', 'Fade duration per track in seconds');
+        durationLabel.append(durationInput);
+        const durationError = document.createElement('span');
+        durationError.className = 'music-plus-smooth-error';
+        durationError.setAttribute('role', 'alert');
+        durationInput.addEventListener('change', async () => {
+          const previous = game?.musicPlusFadeDurationSeconds ?? 1;
+          const seconds = Number(durationInput.value);
+          durationError.textContent = '';
+          if (!durationInput.value || !Number.isFinite(seconds) || seconds < 0.1 || seconds > 10) {
+            durationInput.value = String(previous);
+            durationError.textContent = 'Enter a duration from 0.1 to 10 seconds';
+            return;
+          }
+          durationInput.disabled = true;
+          try { await api.setMusicPlusFadeDurationSeconds(seconds); if (!removed && ticket === generation) render(); }
+          catch (cause) {
+            if (!removed && ticket === generation) {
+              durationInput.value = String(previous);
+              durationError.textContent = cause instanceof Error ? cause.message : String(cause);
+            }
+          } finally { durationInput.disabled = false; }
+        }, { signal: controller.signal });
+        container.append(smoothLabel, smoothError, durationLabel, durationError);
+        for (let index = 0; index < rows * cols; index++) {
+          const labelText = `${index % cols + 1},${Math.floor(index / cols) + 1}`;
+          const row = document.createElement('div');
+          row.className = 'music-plus-row';
+          row.dataset.roomIndex = String(index);
+          const name = document.createElement('span');
+          name.className = 'music-plus-name';
+          name.textContent = labelText;
+          const upload = document.createElement('label');
+          upload.className = 'music-plus-upload';
+          upload.textContent = 'Upload';
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.className = 'music-plus-file';
+          input.accept = '.mid,.midi,.mp3,.wav,audio/midi,audio/mpeg,audio/wav';
+          input.setAttribute('aria-label', `Upload music for room ${labelText}`);
+          upload.append(input);
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'music-plus-remove btn-secondary tiny-modal__btn--danger';
+          remove.textContent = 'x';
+          remove.setAttribute('aria-label', `Remove music for room ${labelText}`);
+          const active = Boolean(game?.musicPlus?.[String(index)]);
+          upload.hidden = active;
+          remove.hidden = !active;
+          const error = document.createElement('span');
+          error.className = 'music-plus-error';
+          error.setAttribute('role', 'alert');
+          input.addEventListener('change', async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            error.textContent = '';
+            input.disabled = true; remove.disabled = true;
+            try {
+              const extension = file.name.toLowerCase().split('.').pop();
+              const format = extension === 'mid' || extension === 'midi' ? 'midi' : extension === 'mp3' || extension === 'wav' ? extension : null;
+              if (!format) throw Error('Choose a .mid, .midi, .mp3, or .wav file');
+              if (!file.size || file.size > 1536 * 1024) throw Error('Music file must be at most 1.5 MB');
+              const bytes = new Uint8Array(await file.arrayBuffer());
+              if (removed || ticket !== generation) return;
+              let binary = '';
+              for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+              await api.setRoomMusic(index, { format, data: btoa(binary) });
+              if (!removed && ticket === generation) render();
+            } catch (cause) {
+              if (!removed && ticket === generation) error.textContent = cause instanceof Error ? cause.message : String(cause);
+            } finally { input.disabled = false; remove.disabled = false; input.value = ''; }
+          }, { signal: controller.signal });
+          remove.addEventListener('click', async () => {
+            error.textContent = '';
+            remove.disabled = true;
+            try { await api.setRoomMusic(index, null); if (!removed && ticket === generation) render(); }
+            catch (cause) { if (!removed && ticket === generation) error.textContent = cause instanceof Error ? cause.message : String(cause); }
+            finally { remove.disabled = false; }
+          }, { signal: controller.signal });
+          row.append(name, upload, remove, error);
+          container.append(row);
+        }
+      };
+      registerSettings(target => { container = target; render(); });
+      document.addEventListener('tiny-rpg-project-restored', render, { signal: controller.signal });
+      onCleanup(() => { removed = true; generation++; controller.abort(); container?.replaceChildren(); container = null; });
+    }
+  </script>
+  <script type="module" data-tiny-rpg-gameplay-plugin>
+    export function activate({ apiVersion }) {
+      if (apiVersion !== 1) throw Error('Music+ needs gameplay API version 1');
+    }
+  </script>
+</head>
+<body></body>
+</html>

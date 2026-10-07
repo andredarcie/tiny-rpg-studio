@@ -79,7 +79,7 @@ export class PluginRuntime {
           entry.cleanups.push(() => style.remove());
           document.head.append(style);
         }
-        let group: HTMLElement | undefined;
+        let group: HTMLDetailsElement | undefined;
         const registerNpcModal = (render: NpcModalRenderer): void => {
           if (!entry.valid || this.entries.get(plugin.id) !== entry || !this.current(plugin)) throw Error('Plugin activation is no longer current');
           if (typeof render !== 'function') throw Error('NPC modal renderer must be a function');
@@ -94,13 +94,13 @@ export class PluginRuntime {
           const empty = panel?.querySelector<HTMLElement>('[data-plugin-settings-empty]');
           if (!groups || !empty) throw Error('Plugin settings panel is unavailable');
           if (!group) {
-            group = document.createElement('section');
-            group.className = 'project-group plugin-settings-group';
+            group = document.createElement('details');
+            group.className = 'project-card plugin-settings-group';
             group.dataset.pluginSettingsGroup = plugin.id;
-            const heading = document.createElement('h2');
-            heading.className = 'project-group__title';
-            heading.textContent = plugin.title;
-            group.append(heading);
+            group.open = true;
+            const summary = document.createElement('summary');
+            summary.textContent = plugin.title;
+            group.append(summary);
             groups.append(group);
             empty.hidden = true;
             const ownGroup = group;

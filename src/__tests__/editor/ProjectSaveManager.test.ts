@@ -540,6 +540,19 @@ describe('ProjectSaveManager', () => {
   // ─── autoSave ─────────────────────────────────────────────────────────────
 
   describe('autoSave', () => {
+    it('saves a new music and sound snapshot when older snapshots fill browser storage', () => {
+      const limit = 1800;
+      vi.mocked(localStorage.setItem).mockImplementation((key, value) => {
+        if (value.length > limit) throw new DOMException('Quota exceeded', 'QuotaExceededError');
+        localStorageSpy[key] = value;
+      });
+      const music = `snapshot:${'m'.repeat(1000)}`;
+      const withSound = `snapshot:${'s'.repeat(1100)}`;
+      expect(manager.autoSave(music, 'Game').ok).toBe(true);
+
+      expect(manager.autoSave(withSound, 'Game').ok).toBe(true);
+      expect(manager.getHistory()[0].shareUrl).toBe(withSound);
+    });
     beforeEach(() => {
       manager.initialize();
     });
