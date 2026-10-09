@@ -210,6 +210,10 @@ class ShareConstants {
         return ShareConstants.VERSION_39;
     }
 
+    static get CHEST_ACTIVATION_VERSION() {
+        return ShareConstants.VERSION_47;
+    }
+
     static get NPC_DISAPPEAR_VERSION() {
         return ShareConstants.VERSION_40;
     }

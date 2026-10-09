@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setupShareGlobals, ShareEncoder, ShareDecoder } from './shareTestUtils';
 
-type DecodedObject = { type: string; x: number; y: number; roomIndex: number; variableId?: string | null; solid?: boolean; collected?: boolean; opened?: boolean; containsItemType?: string | null; randomItem?: boolean };
+type DecodedObject = { type: string; x: number; y: number; roomIndex: number; variableId?: string | null; activatesVariableId?: string | null; solid?: boolean; collected?: boolean; opened?: boolean; containsItemType?: string | null; randomItem?: boolean };
 type DecodedData = { objects?: DecodedObject[] };
 
 const encode = (data: unknown) => ShareEncoder.buildShareCode(data as never);
@@ -261,6 +261,25 @@ describe('New objects — URL round-trip', () => {
             { roomIndex: 0, x: 4, containsItemType: 'key', variableId: null },
             { roomIndex: 1, x: 6, containsItemType: 'boots', variableId: 'var-16' },
         ]);
+    });
+
+    it('chest: independently preserves activation references and accepts old version 47 links', () => {
+        const code = encode({
+            ...baseGame,
+            objects: [
+                { type: 'chest', x: 5, y: 2, roomIndex: 1, randomItem: true, variableId: 'var-1', activatesVariableId: 'var-16' },
+                { type: 'chest', x: 2, y: 1, roomIndex: 0, activatesVariableId: 'var-2' },
+                { type: 'chest', x: 1, y: 1, roomIndex: 0, containsItemType: 'key', variableId: 'var-3' },
+            ],
+        });
+        expect(code.split('.').some((segment) => segment.startsWith('('))).toBe(true);
+        expect(findObjs(decode(code), 'chest').map((chest) => [chest.variableId, chest.activatesVariableId]))
+            .toEqual([['var-3', null], [null, 'var-2'], ['var-1', 'var-16']]);
+        const oldCode = code.split('.').filter((segment) => !segment.startsWith('(')).join('.');
+        expect(findObjs(decode(oldCode), 'chest').map((chest) => chest.activatesVariableId))
+            .toEqual([null, null, null]);
+        expect(findObjs(decode(`${oldCode}.(@@`), 'chest').map((chest) => chest.activatesVariableId))
+            .toEqual([null, null, null]);
     });
 
     it('chest: omits empty references and decodes pre-feature VERSION_39 links as null', () => {

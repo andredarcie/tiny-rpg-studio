@@ -19,6 +19,21 @@ const createVariableManager = () => ({
 });
 
 describe('StateObjectManager', () => {
+  it('keeps chest unlock and activation references independent through import and mutation', () => {
+    const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
+    const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());
+    const [imported] = manager.normalizeObjects([{ type: ITEM_TYPES.CHEST, roomIndex: 0, x: 3, y: 2,
+      variableId: 'var-1', activatesVariableId: 'var-2', randomItem: false }]);
+    expect(imported.variableId).toBe('var-1');
+    expect(imported.activatesVariableId).toBeNull();
+    const chest = manager.setObjectPosition(ITEM_TYPES.CHEST, 0, 2, 3);
+    if (!chest) throw new Error('chest missing');
+    expect(chest.activatesVariableId).toBeNull();
+    expect(manager.setChestActivatesVariableById(chest.id, 'var-1')).toBe('var-1');
+    expect(chest.variableId).toBeNull();
+    expect(manager.setChestActivatesVariableById(chest.id, '')).toBeNull();
+    expect(manager.setChestActivatesVariableById(chest.id, 'var-99')).toBeNull();
+  });
   it('normalizes XP scroll overrides and changes them only by scroll ID', () => {
     const game = { start: { x: 1, y: 1, roomIndex: 0 }, objects: [], variables: [] };
     const manager = new StateObjectManager(game, createWorldManager(), createVariableManager());

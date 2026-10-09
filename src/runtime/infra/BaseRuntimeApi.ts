@@ -15,7 +15,7 @@ const methods = [
     'setSpriteOutlineColor', 'setDisableSkills', 'setDisablePixelFont', 'setSkillCustomizations', 'setSkillOrder',
     'setShowNewDialogExclamation', 'getCustomPalette', 'resetPaletteToDefault', 'draw', 'dismissIntroScreen',
     'resumeBackgroundMusic', 'isIntroVisible', 'getIntroData', 'getTilePresetNames', 'setVariableDefault', 'isVariableOn',
-    'setObjectPosition', 'setObjectVariable', 'setGateInputVariable', 'setGateOutputVariable', 'setObjectVariableById',
+    'setObjectPosition', 'setObjectVariable', 'setGateInputVariable', 'setGateOutputVariable', 'setObjectVariableById', 'setChestActivatesVariableById',
     'setObjectContainsItemById', 'setObjectRandomItemById', 'setTrapSolidById', 'setGateInputVariableById',
     'setGateOutputVariableById', 'setObjectHiddenInGameById', 'setPlayerEndText', 'getPlayerEndText',
     'removeObject', 'removeObjectById', 'moveObjectById', 'getKeyCount', 'updateTile', 'setMapTile',

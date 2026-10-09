@@ -48,7 +48,7 @@ function contract(data: Data): AuthoringCapabilities {
     disappearAfterDialog: boolean, choiceEnabled: boolean, choicePrompt: string(), choiceYesText: string(), choiceNoText: string(), choiceYesVariableId: reward, choiceNoVariableId: reward,
   }, ['x', 'y', 'type', 'text']);
   const enemy = object({ id: string(100), ...point, type: enumeration(enemies), defeatVariableId: variable, experience: integer(0, MAX_ENEMY_EXPERIENCE) }, ['x', 'y', 'type']);
-  const obj = object({ id: string(100), ...point, type: enumeration(objects.filter(type => type !== 'player-start')), variableId: variable, solid: boolean,
+  const obj = object({ id: string(100), ...point, type: enumeration(objects.filter(type => type !== 'player-start')), variableId: variable, activatesVariableId: variable, solid: boolean,
     on: boolean, endingText: string(StateObjectManager.PLAYER_END_TEXT_LIMIT), inputVariableId: variable, inputVariableId2: variable,
     outputVariableId: variable, hiddenInGame: boolean, containsItemType: enumeration([null, ...itemCatalog.getCollectibleTypes()]), randomItem: boolean, experience: integer(0, 65535),
   }, ['x', 'y', 'type']);
@@ -159,7 +159,7 @@ function apply(data: Data, name: string, a: Data): void {
       if (type === 'switch') allowed.add('on');
       if (type === 'player-end') allowed.add('endingText');
       if (type === 'xp-scroll') allowed.add('experience');
-      if (type === 'chest') { allowed.add('containsItemType'); allowed.add('randomItem'); }
+      if (type === 'chest') { allowed.add('containsItemType'); allowed.add('randomItem'); allowed.add('activatesVariableId'); }
       if (itemCatalog.isLogicGate(type)) {
         allowed.add('inputVariableId'); allowed.add('outputVariableId'); allowed.add('hiddenInGame');
         if (!itemCatalog.isSingleInputGate(type)) allowed.add('inputVariableId2');

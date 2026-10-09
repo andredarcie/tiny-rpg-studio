@@ -12,6 +12,7 @@ type RawObjectInput = {
     y?: number;
     id?: string;
     variableId?: string | null;
+    activatesVariableId?: string | null;
     solid?: boolean;
     collected?: boolean;
     opened?: boolean;
@@ -35,6 +36,7 @@ type ObjectEntry = {
     collected?: boolean;
     opened?: boolean;
     variableId?: string | null;
+    activatesVariableId?: string | null;
     solid?: boolean;
     on?: boolean;
     endingText?: string;
@@ -215,6 +217,8 @@ class StateObjectManager {
                     base.solid = raw.solid === true;
                 }
                 if (type === OT.CHEST) {
+                    base.activatesVariableId = normalizeChestVariableId(raw.activatesVariableId, this.variableManager?.normalizeVariableId
+                        ? (candidate) => this.variableManager?.normalizeVariableId?.(candidate) ?? null : undefined);
                     const rawContains = raw.containsItemType;
                     base.containsItemType = typeof rawContains === 'string' && rawContains ? rawContains : null;
                     base.randomItem = Boolean(raw.randomItem);
@@ -460,6 +464,8 @@ class StateObjectManager {
         }
         if (normalizedType === ITEM_TYPES.CHEST) {
             entry.opened = false;
+            entry.activatesVariableId = normalizeChestVariableId(entry.activatesVariableId, this.variableManager?.normalizeVariableId
+                ? (candidate) => this.variableManager?.normalizeVariableId?.(candidate) ?? null : undefined);
             entry.variableId = normalizeChestVariableId(
                 entry.variableId,
                 this.variableManager?.normalizeVariableId
@@ -536,6 +542,14 @@ class StateObjectManager {
         const normalized = this.variableManager?.normalizeVariableId?.(variableId);
         entry.variableId = normalized ?? fallbackVariableId;
         return entry.variableId;
+    }
+
+    setChestActivatesVariableById(id: string, variableId: string | null): string | null {
+        const entry = this.getObjects().find((object) => object.id === id && object.type === ITEM_TYPES.CHEST);
+        if (!entry) return null;
+        entry.activatesVariableId = normalizeChestVariableId(variableId, this.variableManager?.normalizeVariableId
+            ? (candidate) => this.variableManager?.normalizeVariableId?.(candidate) ?? null : undefined);
+        return entry.activatesVariableId;
     }
 
     setObjectContainsItemById(id: string, containsItemType: string | null): void {

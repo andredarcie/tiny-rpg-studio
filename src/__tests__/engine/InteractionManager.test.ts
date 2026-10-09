@@ -485,6 +485,36 @@ describe('InteractionManager', () => {
   });
 
   // --- Chest ---
+  it('opens an activation-only chest once without a pickup overlay', () => {
+    const gameState = createInteractionGameState();
+    const setVariableValue = vi.fn();
+    const manager = new InteractionManager({ ...gameState, setVariableValue } as never, dialogManager);
+    const chest = { type: 'chest', opened: false, containsItemType: null, randomItem: false, activatesVariableId: 'var-2', roomIndex: 0, x: 0, y: 0 };
+
+    expect(manager.handleChest(chest as never)).toBe(true);
+    expect(chest.opened).toBe(true);
+    expect(setVariableValue).toHaveBeenCalledWith('var-2', true);
+    expect(gameState.showPickupOverlay).not.toHaveBeenCalled();
+    expect(manager.handleChest(chest as never)).toBe(false);
+    expect(setVariableValue).toHaveBeenCalledTimes(1);
+  });
+
+  it('activates a variable only after a locked chest successfully opens with a reward', () => {
+    const gameState = createInteractionGameState();
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    const manager = new InteractionManager(gameState, dialogManager);
+    const chest = { type: 'chest', opened: false, variableId: 'var-1', activatesVariableId: 'var-2',
+      containsItemType: 'key', roomIndex: 0, x: 0, y: 0 };
+    expect(manager.handleChest(chest as never)).toBe(false);
+    expect(gameState.setVariableValue).not.toHaveBeenCalled();
+    (gameState.isVariableOn as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    expect(manager.handleChest(chest as never)).toBe(true);
+    expect(gameState.setVariableValue).toHaveBeenCalledWith('var-2', true);
+    expect(gameState.showPickupOverlay).toHaveBeenCalledTimes(1);
+    expect(manager.handleChest(chest as never)).toBe(false);
+    expect(gameState.setVariableValue).toHaveBeenCalledTimes(1);
+  });
+
   it('chest opens and gives contained item via overlay effect', () => {
     const gameState = createInteractionGameState();
     const manager = new InteractionManager(gameState, dialogManager);

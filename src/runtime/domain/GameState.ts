@@ -552,6 +552,10 @@ class GameState {
         return this.objectManager.setObjectVariableById(id, variableId);
     }
 
+    setChestActivatesVariableById(id: string, variableId: string | null): string | null {
+        return this.objectManager.setChestActivatesVariableById(id, variableId);
+    }
+
     setXpScrollExperienceById(id: string, experience: number): boolean {
         return this.objectManager.setXpScrollExperienceById(id, experience);
     }

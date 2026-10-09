@@ -22,6 +22,8 @@ console.log(getBaseCapabilities());
 
 Builder methods chain except `room`, `variable`, `createTileEffect`, and output methods. Inputs and output snapshots are copied. Validation failures leave authoring data unchanged. Art overrides do not introduce enemy or NPC behaviors.
 
+Chests can unlock from one variable and activate another when opened. `addChest({ x: 2, y: 3, variable: unlock, activatesVariable: opened })` creates an activation-only chest; add `contains` or `random: true` for a reward. Opening sets `opened` ON once. A chest needs a reward or an activation variable.
+
 ## Load and edit
 
 ```js

@@ -29,6 +29,7 @@ type EditorObject = {
     x: number;
     y: number;
     variableId?: string | null;
+    activatesVariableId?: string | null;
     solid?: boolean;
     on?: boolean;
     opened?: boolean;
@@ -489,8 +490,20 @@ class EditorObjectRenderer extends EditorRendererBase {
                 this.gameEngine.setObjectVariableById(object.id ?? '', variableSelect.value || null);
                 refresh();
             });
-            variableLabel.append(`${this.t('objects.switch.variableLabel')} `, variableSelect);
+            variableLabel.append(`${this.t('objects.chest.unlockedBy')} `, variableSelect);
             config.appendChild(variableLabel);
+
+            const activationLabel = document.createElement('label');
+            activationLabel.className = 'object-config-label';
+            const activationSelect = document.createElement('select');
+            activationSelect.className = 'object-config-select';
+            this.manager.npcService.populateVariableSelect(activationSelect, object.activatesVariableId || '');
+            activationSelect.addEventListener('change', () => {
+                this.gameEngine.setChestActivatesVariableById(object.id ?? '', activationSelect.value || null);
+                refresh();
+            });
+            activationLabel.append(`${this.t('objects.chest.activatesWhenUnlocked')} `, activationSelect);
+            config.appendChild(activationLabel);
 
             wrapper.appendChild(config);
         }

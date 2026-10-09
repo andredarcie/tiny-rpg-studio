@@ -19,6 +19,15 @@ describe('TextResources', () => {
     expect(TextResources.get(null, 'Fallback')).toBe('Fallback');
   });
 
+  it('defines distinct chest variable labels in every locale', () => {
+    for (const locale of Object.keys(TextResources.bundles)) {
+      const strings = TextResources.getStrings(locale);
+      expect(strings['objects.chest.unlockedBy']).toBeTruthy();
+      expect(strings['objects.chest.activatesWhenUnlocked']).toBeTruthy();
+      expect(strings['objects.chest.unlockedBy']).not.toBe(strings['objects.switch.variableLabel']);
+    }
+  });
+
   it('formats strings with params', () => {
     const result = TextResources.format('enemies.xpBarValue', { current: 2, total: 5 });
 

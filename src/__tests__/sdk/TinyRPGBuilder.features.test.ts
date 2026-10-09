@@ -135,6 +135,18 @@ describe('SDK new object types round-trip', () => {
         expect(chests.find(c => c.randomItem === true)?.variableId).toBeNull();
     });
 
+    it('allows an activation-only chest and retains its independent variable', () => {
+        const g = new TinyRPG();
+        const unlock = g.variable();
+        const activation = g.variable();
+        g.room(0).addChest({ x: 2, y: 1, variable: unlock, activatesVariable: activation });
+        const chest = objectsOf(roundTrip(g)).find(o => o.type === 'chest');
+        expect(chest?.variableId).toBe('var-1');
+        expect(chest?.activatesVariableId).toBe('var-2');
+        expect(() => g.room(0).addChest({ x: 3, y: 1 })).toThrow(/requires/);
+        expect(() => g.room(0).addChest({ x: 3, y: 1, activatesVariable: 99 })).toThrow();
+    });
+
     it('allows multiple switches but one variable-door per room', () => {
         const g = new TinyRPG();
         const v = g.variable();

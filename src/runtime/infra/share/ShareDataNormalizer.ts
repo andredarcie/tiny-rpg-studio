@@ -57,6 +57,7 @@ type ShareObjectInput = {
     y?: number;
     roomIndex?: number;
     variableId?: string | null;
+    activatesVariableId?: string | null;
     solid?: boolean;
     on?: boolean;
     endingText?: string;
@@ -71,6 +72,7 @@ type ShareObjectInput = {
 
 type SharePositionOptions = {
     variableNibbles?: number[];
+    activationNibbles?: number[];
     endingTexts?: string[];
     stateBits?: number[];
     containsNibbles?: number[];
@@ -503,7 +505,7 @@ class ShareDataNormalizer {
     static normalizeChestObjects(list: unknown[] | null | undefined) {
         if (!Array.isArray(list)) return [];
         const seenTiles = new Set<string>();
-        const result: Array<PositionEntry & { containsNibble: number; randomNibble: number; variableNibble: number }> = [];
+        const result: Array<PositionEntry & { containsNibble: number; randomNibble: number; variableNibble: number; activationNibble: number }> = [];
         for (const raw of list) {
             const entry = raw as ShareObjectInput;
             if (entry.type !== ITEM_TYPES.CHEST) continue;
@@ -520,7 +522,8 @@ class ShareDataNormalizer {
             const variableNibble = ShareVariableCodec.variableIdToNibble(
                 normalizeChestVariableId(entry.variableId)
             );
-            result.push({ x, y, roomIndex, containsNibble, randomNibble, variableNibble });
+            const activationNibble = ShareVariableCodec.variableIdToNibble(normalizeChestVariableId(entry.activatesVariableId));
+            result.push({ x, y, roomIndex, containsNibble, randomNibble, variableNibble, activationNibble });
         }
         return result.sort((a, b) => (a.roomIndex - b.roomIndex) || (a.y - b.y) || (a.x - b.x));
     }
@@ -604,6 +607,7 @@ class ShareDataNormalizer {
                 entry.variableId = normalizeChestVariableId(
                     ShareVariableCodec.nibbleToVariableId(nibble)
                 );
+                entry.activatesVariableId = normalizeChestVariableId(ShareVariableCodec.nibbleToVariableId(options.activationNibbles?.[index] ?? 0));
                 const containsNibbles = Array.isArray(options.containsNibbles) ? options.containsNibbles : [];
                 const randomBits = Array.isArray(options.randomBits) ? options.randomBits : [];
                 const containsNibble = containsNibbles[index] ?? 0;

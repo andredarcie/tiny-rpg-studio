@@ -1,7 +1,7 @@
 import { ITEM_TYPES, type ItemType } from '../../domain/constants/itemTypes';
 import { itemCatalog } from '../../domain/services/ItemCatalog';
 import { isTrapActive } from '../../domain/state/TrapState';
-import { isChestAccessible } from '../../domain/state/ChestState';
+import { isChestAccessible, normalizeChestVariableId } from '../../domain/state/ChestState';
 import { TextResources } from '../../adapters/TextResources';
 import { soundEngine } from '../SoundEngine';
 import { resolveChoiceDialog, resolveNpcDialog, type ResolvedNpcDialog } from './resolveNpcDialog';
@@ -38,6 +38,7 @@ type GameObjectState = {
   collected?: boolean;
   opened?: boolean;
   variableId?: string | null;
+  activatesVariableId?: string | null;
   solid?: boolean;
   on?: boolean;
   activated?: boolean;
@@ -439,12 +440,20 @@ class InteractionManager {
       containsType = object.containsItemType as ItemType | undefined;
     }
 
-    if (!containsType) return false;
+    const activatesVariableId = object.activatesVariableId;
+    const validActivation = normalizeChestVariableId(activatesVariableId,
+      this.gameState.normalizeVariableId
+        ? (candidate) => this.gameState.normalizeVariableId?.(candidate) ?? null
+        : undefined) === activatesVariableId && Boolean(activatesVariableId);
+    if (!containsType && !validActivation) return false;
     object.opened = true;
-    soundEngine.play('itemPickup');
-    this.showPickupOverlay(containsType, () => {
-      this.applyItemEffect(containsType);
-    });
+    if (validActivation && activatesVariableId) this.gameState.setVariableValue?.(activatesVariableId, true);
+    if (containsType) {
+      soundEngine.play('itemPickup');
+      this.showPickupOverlay(containsType, () => {
+        this.applyItemEffect(containsType);
+      });
+    }
     const objId = (object as unknown as { id?: string }).id ?? `obj-${object.roomIndex}-${object.x}-${object.y}`;
     this.options?.onObjectTriggered?.(objId, object.roomIndex, true);
     return true;

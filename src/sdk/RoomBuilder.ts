@@ -415,20 +415,22 @@ class RoomBuilder {
     }
 
     /** Chest revealing a fixed item, or a random one when `random` is set. */
-    addChest(opts: { x: number; y: number; contains?: ChestItemType; random?: boolean; variable?: VariableRef | number }): this {
+    addChest(opts: { x: number; y: number; contains?: ChestItemType; random?: boolean; variable?: VariableRef | number; activatesVariable?: VariableRef | number }): this {
         if (opts.contains !== undefined && !VALID_CHEST_ITEMS.includes(opts.contains)) {
             throw new Error(`Unknown chest item '${opts.contains}'. Valid: ${VALID_CHEST_ITEMS.join(', ')}`);
         }
-        if (!opts.random && opts.contains === undefined) {
-            throw new Error(`addChest requires either 'contains' or 'random: true'`);
+        if (!opts.random && opts.contains === undefined && opts.activatesVariable === undefined) {
+            throw new Error(`addChest requires 'contains', 'random: true', or 'activatesVariable'`);
         }
         if (opts.variable !== undefined) this.resolveVariableId(opts.variable);
+        if (opts.activatesVariable !== undefined) this.resolveVariableId(opts.activatesVariable);
         this._reserveTile('chest', opts.x, opts.y);
         this.pushObject({
             type: 'chest', x: opts.x, y: opts.y, roomIndex: 0,
             containsItemType: opts.contains ?? null,
             randomItem: Boolean(opts.random),
             ...(opts.variable !== undefined ? { variableId: this.resolveVariableId(opts.variable) } : {}),
+            ...(opts.activatesVariable !== undefined ? { activatesVariableId: this.resolveVariableId(opts.activatesVariable) } : {}),
         });
         return this;
     }

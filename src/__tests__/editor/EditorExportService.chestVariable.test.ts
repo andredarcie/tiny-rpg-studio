@@ -54,6 +54,7 @@ describe('EditorExportService chest variable persistence', () => {
           y: 3,
           roomIndex: 0,
           variableId: 'var-16',
+          activatesVariableId: 'var-1',
           containsItemType: 'key',
           randomItem: false,
         }],
@@ -95,16 +96,18 @@ describe('EditorExportService chest variable persistence', () => {
     expect(match).not.toBeNull();
     const code = JSON.parse(match?.[1] ?? '""') as string;
     const decoded = ShareUtils.decode(code) as {
-      objects?: Array<{ type?: string; variableId?: string | null }>;
+      objects?: Array<{ type?: string; variableId?: string | null; activatesVariableId?: string | null }>;
     } | null;
 
     expect(decoded?.objects?.find((object) => object.type === 'chest')?.variableId).toBe('var-16');
+    expect(decoded?.objects?.find((object) => object.type === 'chest')?.activatesVariableId).toBe('var-1');
 
     await service.importFromHtml({ text: () => Promise.resolve(html) } as File);
 
     const imported = importGameData.mock.calls[0]?.[0] as {
-      objects?: Array<{ type?: string; variableId?: string | null }>;
+      objects?: Array<{ type?: string; variableId?: string | null; activatesVariableId?: string | null }>;
     };
     expect(imported.objects?.find((object) => object.type === 'chest')?.variableId).toBe('var-16');
+    expect(imported.objects?.find((object) => object.type === 'chest')?.activatesVariableId).toBe('var-1');
   });
 });

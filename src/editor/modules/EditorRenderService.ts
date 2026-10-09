@@ -31,6 +31,7 @@ type EnemyData = {
 
 type ObjectData = {
     variableId?: string | null;
+    activatesVariableId?: string | null;
 };
 
 type SkillData = SkillDefinitionData & {
@@ -680,7 +681,7 @@ class EditorRenderService {
         enemies.forEach((enemy: EnemyData) => addIfValid(enemy.defeatVariableId));
 
         const objects = Array.isArray(game.objects) ? game.objects : [];
-        objects.forEach((object: ObjectData) => addIfValid(object.variableId));
+        objects.forEach((object: ObjectData) => { addIfValid(object.variableId); addIfValid(object.activatesVariableId); });
 
         return used;
     }

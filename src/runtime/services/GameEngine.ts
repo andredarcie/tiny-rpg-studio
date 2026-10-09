@@ -844,6 +844,12 @@ export class GameEngine {
     return result;
   }
 
+  setChestActivatesVariableById(id: string, variableId: string | null): string | null {
+    const result = this.gameState.setChestActivatesVariableById(id, variableId);
+    this.renderer.draw();
+    return result;
+  }
+
   setObjectContainsItemById(id: string, containsItemType: string | null): void {
     this.gameState.setObjectContainsItemById(id, containsItemType);
     this.renderer.draw();

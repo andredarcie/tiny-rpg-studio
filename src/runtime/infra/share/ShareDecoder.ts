@@ -498,6 +498,11 @@ class ShareDecoder {
         const chestVariableNibbles = version >= ShareConstants.CHEST_VARIABLE_VERSION
             ? ShareVariableCodec.decodeVariableRefArray(payload['!'] || '', chestPositions.length)
             : [];
+        const chestActivationNibbles = version >= ShareConstants.CHEST_ACTIVATION_VERSION &&
+            typeof payload['('] === 'string' && /^[A-Za-z0-9_-]+$/.test(payload['(']) &&
+            payload['('].length === Math.ceil(chestPositions.length / 3) * 4 - (3 - chestPositions.length % 3) % 3
+            ? ShareVariableCodec.decodeVariableRefArray(payload['('], chestPositions.length)
+            : [];
         const title = (ShareTextCodec.decodeText(payload.n, ShareConstants.DEFAULT_TITLE) || ShareConstants.DEFAULT_TITLE).slice(0, 18);
         const author = (ShareTextCodec.decodeText(payload.y, '') || '').slice(0, 18);
         const backgroundMusicVideoId = version >= ShareConstants.BACKGROUND_MUSIC_VERSION
@@ -700,6 +705,7 @@ class ShareDecoder {
             ...ShareDataNormalizer.buildObjectEntries(pushBoxPositions, OT.PUSH_BOX),
             ...ShareDataNormalizer.buildObjectEntries(chestPositions, OT.CHEST, {
                 variableNibbles: chestVariableNibbles,
+                activationNibbles: chestActivationNibbles,
                 containsNibbles: chestContainsNibbles,
                 randomBits: chestRandomNibbles
             }),

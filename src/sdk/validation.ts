@@ -127,10 +127,11 @@ export function validateBaseProject(input: unknown): void {
         if (itemCatalog.requiresVariable(type) && type !== 'trap' && !object.variableId) throw Error('This object requires a variable');
         if (itemCatalog.isLogicGate(type) && (!object.inputVariableId || !object.outputVariableId || (!itemCatalog.isSingleInputGate(type) && !object.inputVariableId2))) throw Error('Logic gates require input and output variables');
         if (type === 'chest' && object.containsItemType != null && !itemCatalog.getCollectibleTypes().includes(object.containsItemType as ItemType)) throw Error('Invalid chest item');
+        if (type === 'chest' && !object.randomItem && !object.containsItemType && !object.activatesVariableId) throw Error('Chest requires a reward or activation variable');
         const key = `${object.roomIndex}:${type}`;
         const count = (counts.get(key) ?? 0) + 1; counts.set(key, count);
         if (count > (itemCatalog.allowsMultiplePerRoom(type) ? StateObjectManager.MULTI_INSTANCE_LIMIT : 1)) throw Error('Object limit exceeded');
-        for (const field of ['variableId', 'inputVariableId', 'inputVariableId2', 'outputVariableId']) variable(object[field]);
+        for (const field of ['variableId', 'activatesVariableId', 'inputVariableId', 'inputVariableId2', 'outputVariableId']) variable(object[field]);
         if (object.outputVariableId) {
             if (outputs.has(object.outputVariableId)) throw Error('Logic gate outputs must be unique');
             outputs.add(object.outputVariableId);
@@ -192,7 +193,7 @@ export function validateRuntimeMutation(method: string, args: unknown[], project
     }
     if (method === 'setMapTile') { coord(args[0]); coord(args[1]); if (args[2] !== null && !tileId(args[2])) throw Error('Invalid tile ID'); if (args[3] != null) room(args[3]); }
     if (['setObjectVariable', 'setGateInputVariable', 'setGateOutputVariable'].includes(method)) { room(args[1]); reference(args[2]); }
-    if (['setObjectVariableById', 'setGateInputVariableById', 'setGateOutputVariableById', 'setEnemyVariable'].includes(method)) reference(args[1]);
+    if (['setObjectVariableById', 'setChestActivatesVariableById', 'setGateInputVariableById', 'setGateOutputVariableById', 'setEnemyVariable'].includes(method)) reference(args[1]);
     if (method.startsWith('setGateInputVariable') && ![1, 2].includes(Number(args[method.endsWith('ById') ? 2 : 3]))) throw Error('Invalid gate slot');
     if (['setObjectRandomItemById', 'setTrapSolidById', 'setObjectHiddenInGameById'].includes(method)) bool(args[1]);
     if (method === 'setObjectContainsItemById' && args[1] != null && !itemCatalog.getCollectibleTypes().includes(args[1] as ItemType)) throw Error('Invalid chest item');

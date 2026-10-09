@@ -56,6 +56,7 @@ type EditorObjectMock = {
   x?: number;
   y?: number;
   variableId?: string | null;
+  activatesVariableId?: string | null;
   solid?: boolean;
   on?: boolean;
   opened?: boolean;
@@ -118,6 +119,7 @@ function createFixture() {
     getObjectsForRoom: vi.fn((): EditorObjectMock[] => []),
     setObjectVariable: vi.fn(),
     setObjectVariableById: vi.fn(),
+    setChestActivatesVariableById: vi.fn(),
     setObjectContainsItemById: vi.fn(),
     setObjectRandomItemById: vi.fn(),
     setTrapSolidById: vi.fn(),
@@ -467,11 +469,19 @@ describe('EditorObjectRenderer', () => {
       x: 2,
       y: 3,
       variableId: 'var-2',
+      activatesVariableId: 'var-1',
     });
     const selects = area.querySelectorAll('select.object-config-select');
     const variableSelect = selects[1] as HTMLSelectElement;
 
-    expect(selects).toHaveLength(2);
+    expect(selects).toHaveLength(3);
+    expect(area.textContent).toContain('t:objects.chest.unlockedBy');
+    expect(area.textContent).toContain('t:objects.chest.activatesWhenUnlocked');
+    const activationSelect = selects[2] as HTMLSelectElement;
+    expect(fixture.manager.npcService.populateVariableSelect).toHaveBeenCalledWith(activationSelect, 'var-1');
+    activationSelect.value = '';
+    activationSelect.dispatchEvent(new Event('change'));
+    expect(fixture.gameEngine.setChestActivatesVariableById).toHaveBeenCalledWith('chest-1', null);
     expect(fixture.manager.npcService.populateVariableSelect)
       .toHaveBeenCalledWith(variableSelect, 'var-2');
     expect(variableSelect.value).toBe('var-2');

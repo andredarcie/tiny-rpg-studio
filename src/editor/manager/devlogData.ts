@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-09-chest-activation',
+    date: '2026-10-09',
+    title: 'Chests can activate variables',
+    description: 'Set a chest to turn on a variable when opened, with or without an item inside. The chest can also have a separate variable that controls when it unlocks. These settings travel with share links, HTML exports, and SDK games.',
+  },
+  {
     id: '2026-10-07-music-plus',
     date: '2026-10-07',
     title: 'Room music with Music+',

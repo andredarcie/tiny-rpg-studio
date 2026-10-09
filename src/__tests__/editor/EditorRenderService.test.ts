@@ -448,17 +448,17 @@ describe('EditorRenderService', () => {
         { conditionalRewardVariableId: 'var-2', alternativeRewardVariableId: null }
       ],
       enemies: [{ defeatVariableId: 'var-2' }],
-      objects: [{ type: 'chest', variableId: 'var-3' }]
+      objects: [{ type: 'chest', variableId: 'var-3', activatesVariableId: 'var-4' }]
     });
     const { service } = createService(fixture);
 
     service.renderVariableUsage();
 
     expect(fixture.domCache.projectVariablesContainer.classList.contains('is-collapsed')).toBe(true);
-    expect(fixture.domCache.projectVariablesToggle.textContent).toContain('3/4');
+    expect(fixture.domCache.projectVariablesToggle.textContent).toContain('4/4');
     expect(fixture.domCache.projectVariableList.querySelectorAll('.project-variable-item')).toHaveLength(4);
-    expect(fixture.domCache.projectVariableList.querySelectorAll('.project-variable-badge.in-use')).toHaveLength(3);
-    expect(fixture.domCache.projectVariableList.querySelectorAll('.project-variable-badge.unused')).toHaveLength(1);
+    expect(fixture.domCache.projectVariableList.querySelectorAll('.project-variable-badge.in-use')).toHaveLength(4);
+    expect(fixture.domCache.projectVariableList.querySelectorAll('.project-variable-badge.unused')).toHaveLength(0);
     expect(fixture.domCache.projectVariableList.textContent).toContain('Alpha');
     expect(fixture.domCache.projectVariableList.textContent).toContain('var-2');
   });

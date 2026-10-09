@@ -649,6 +649,8 @@ class ShareEncoder {
                 if (randomCode) parts.push('7' + randomCode);
                 const variableCode = ShareVariableCodec.encodeVariableRefArray(chestEntries.map((e) => e.variableNibble));
                 if (variableCode) parts.push('!' + variableCode);
+                const activationCode = ShareVariableCodec.encodeVariableRefArray(chestEntries.map((e) => e.activationNibble));
+                if (activationCode) parts.push('(' + activationCode);
             }
         }
 

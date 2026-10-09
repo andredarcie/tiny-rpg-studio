@@ -43,6 +43,7 @@ type TileMapEntry = {
 type ObjectWithType = {
     type?: string;
     variableId?: string | null;
+    activatesVariableId?: string | null;
 };
 
 type RoomWithWalls = {
@@ -334,6 +335,7 @@ class EditorWorldRenderer extends EditorRendererBase {
                 placedObjects++;
             }
             if (obj.variableId) usedVariableIds.add(obj.variableId);
+            if (obj.activatesVariableId) usedVariableIds.add(obj.activatesVariableId);
         }
 
         for (const enemy of (game.enemies ?? [])) {

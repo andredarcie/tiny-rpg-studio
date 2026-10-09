@@ -48,7 +48,7 @@ type SdkObjectFields =
     | { type: 'logic-gate-not' | 'logic-gate-and' | 'logic-gate-or' | 'logic-gate-nand' | 'logic-gate-nor';
         x: number; y: number; roomIndex: number;
         inputVariableId: string; inputVariableId2?: string; outputVariableId: string; hiddenInGame?: boolean }
-    | { type: 'chest'; x: number; y: number; roomIndex: number; containsItemType?: string | null; randomItem?: boolean; variableId?: string | null };
+    | { type: 'chest'; x: number; y: number; roomIndex: number; containsItemType?: string | null; randomItem?: boolean; variableId?: string | null; activatesVariableId?: string | null };
 
 export type SdkObject = SdkObjectFields & { id?: string; experience?: number };
 
