@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-10-world-object-persistence',
+    date: '2026-10-10',
+    title: 'Objects stay in their rooms',
+    description: 'Keys and magical doors in larger worlds now stay in the right room when a saved project is reopened. Resizing a world also keeps magical doors independently editable, and older projects with conflicting door IDs are repaired when opened.',
+  },
+  {
     id: '2026-10-09-chest-activation',
     date: '2026-10-09',
     title: 'Chests can activate variables',

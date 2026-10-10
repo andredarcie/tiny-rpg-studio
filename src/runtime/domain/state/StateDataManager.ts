@@ -237,7 +237,7 @@ class StateDataManager {
         );
         const normalizedVariables = this.variableManager.normalizeVariables(data.variables);
         this.game.variables = normalizedVariables;
-        const normalizedObjects = this.objectManager.normalizeObjects(data.objects);
+        const normalizedObjects = this.objectManager.normalizeObjects(data.objects, totalRooms);
 
         const customPalette =
             Array.isArray(data.customPalette) && data.customPalette.length === 16

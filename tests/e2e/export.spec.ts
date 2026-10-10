@@ -69,6 +69,58 @@ type WindowWithExportMode = Window & {
   __TINY_RPG_EXPORT_MODE?: boolean;
 };
 
+test('distant objects survive snapshot reopen and resized doors keep separate variables', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('tiny-rpg-plugins-v1', JSON.stringify([{
+      id: 'test-world-objects', version: '1', title: 'World objects', shortDescription: 'Test', fullDescription: 'Test',
+      capabilities: ['editor', 'gameplay'],
+      payload: {
+        apiVersion: 1,
+        javascript: `export function activate({editorRoot,api,onCleanup}) {
+          const seed=document.createElement('button'); seed.id='test-seed-objects';
+          seed.onclick=async()=>{await api.resizeWorld(5,5,'test-world-objects'); const game=api.exportGameData();
+            game.objects.push({id:'key-24',type:'key',roomIndex:24,x:2,y:2},{id:'door-variable-24',type:'door-variable',roomIndex:24,x:3,y:2,variableId:'var-2'});
+            api.importGameData(game); api.renderAll();};
+          const read=document.createElement('button'); read.id='test-read-objects';
+          read.onclick=()=>{read.dataset.objects=JSON.stringify(api.exportGameData().objects);};
+          const doors=document.createElement('button'); doors.id='test-resize-doors';
+          doors.onclick=async()=>{await api.resizeWorld(3,3,'test-world-objects');
+            api.setObjectPosition('door-variable',3,2,2);
+            await api.resizeWorld(5,5,'test-world-objects');
+            const second=api.setObjectPosition('door-variable',3,3,3);
+            api.setObjectVariableById(second.id,'var-2');
+            doors.dataset.objects=JSON.stringify(api.exportGameData().objects.filter(object=>object.type==='door-variable'));
+          };
+          editorRoot.append(seed,read,doors); onCleanup(()=>{seed.remove();read.remove();doors.remove();});
+        }`,
+        gameplayJavascript: 'export function activate() {}',
+      },
+    }]));
+  });
+  await page.goto('/');
+  await page.click('button[data-tab="editor"]');
+  await page.locator('#test-seed-objects').click();
+  await expect(page.locator('.world-cell')).toHaveCount(25);
+  await page.locator('#btn-manual-save').click();
+  await page.reload();
+  await page.click('button[data-tab="editor"]');
+  await expect(page.locator('.world-cell')).toHaveCount(25);
+  await page.locator('#test-read-objects').click();
+  const objects = JSON.parse(await page.locator('#test-read-objects').getAttribute('data-objects') ?? '[]') as { type: string; roomIndex: number }[];
+  expect(objects).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'key', roomIndex: 24 }),
+    expect.objectContaining({ type: 'door-variable', roomIndex: 24 }),
+  ]));
+  await page.locator('#test-resize-doors').click();
+  await expect(page.locator('#test-resize-doors')).toHaveAttribute('data-objects', /door-variable/);
+  const doors = JSON.parse(await page.locator('#test-resize-doors').getAttribute('data-objects') ?? '[]') as { id: string; roomIndex: number; variableId: string }[];
+  const moved = doors.find(door => door.roomIndex === 5);
+  const placed = doors.find(door => door.roomIndex === 3);
+  expect(moved?.variableId).toBe('var-1');
+  expect(placed?.variableId).toBe('var-2');
+  expect(moved?.id).not.toBe(placed?.id);
+});
+
 test('rectangular gameplay plugin project saves, imports and boots from offline HTML', async ({ page, context, browser }) => {
   await page.addInitScript(() => {
     localStorage.setItem('tiny-rpg-plugins-v1', JSON.stringify([{

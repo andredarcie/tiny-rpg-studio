@@ -159,7 +159,7 @@ class StateObjectManager {
         this.variableManager = variableManager;
     }
 
-    normalizeObjects(objects: unknown[] | null | undefined): ObjectEntry[] {
+    normalizeObjects(objects: unknown[] | null | undefined, totalRooms?: number): ObjectEntry[] {
         if (!Array.isArray(objects)) return [];
         const OT = this.types;
         const allowedTypes = StateObjectManager.getPlaceableTypeSet();
@@ -172,7 +172,12 @@ class StateObjectManager {
                 if (!sourceType || !allowedTypes.has(sourceType as ItemType)) return null;
                 const type = sourceType as ItemType;
                 if (!this.worldManager) return null;
-                const roomIndex = this.worldManager.clampRoomIndex(raw.roomIndex ?? 0);
+                const numericRoomIndex = Number(raw.roomIndex ?? 0);
+                const roomIndex = totalRooms === undefined
+                    ? this.worldManager.clampRoomIndex(raw.roomIndex ?? 0)
+                    : Number.isFinite(numericRoomIndex)
+                        ? Math.max(0, Math.min(totalRooms - 1, Math.floor(numericRoomIndex)))
+                        : 0;
                 if (type === StateObjectManager.PLAYER_START_TYPE) {
                     if (playerStartIncluded) return null;
                     playerStartIncluded = true;
@@ -271,7 +276,31 @@ class StateObjectManager {
                 }
             }
         }
+        StateObjectManager.ensureUniqueIds(result);
         return result;
+    }
+
+    static ensureUniqueIds(objects: ObjectEntry[]): void {
+        const reserved = new Set(objects.map(object => object.id));
+        const canonicalId = (object: ObjectEntry) => itemCatalog.allowsMultiplePerRoom(object.type)
+            ? `${object.type}-${object.roomIndex}-${object.x}-${object.y}`
+            : `${object.type}-${object.roomIndex}`;
+        const keepers = new Map<string, ObjectEntry>();
+        for (const object of objects) {
+            const previous = keepers.get(object.id);
+            if (!previous || (object.id === canonicalId(object) && previous.id !== canonicalId(previous))) {
+                keepers.set(object.id, object);
+            }
+        }
+        for (const object of objects) {
+            if (keepers.get(object.id) === object) continue;
+            const base = canonicalId(object);
+            let id = base;
+            let suffix = 2;
+            while (reserved.has(id)) id = `${base}-${suffix++}`;
+            object.id = id;
+            reserved.add(id);
+        }
     }
 
     normalizePlayerEndText(value: unknown): string {
@@ -410,8 +439,12 @@ class StateObjectManager {
             ) || null;
         }
         if (!entry) {
+            const baseId = this.generateObjectId(normalizedType, targetRoom, cx, cy);
+            let id = baseId;
+            let suffix = 2;
+            while (objects.some(object => object.id === id)) id = `${baseId}-${suffix++}`;
             entry = {
-                id: this.generateObjectId(normalizedType, targetRoom, cx, cy),
+                id,
                 type: normalizedType,
                 roomIndex: targetRoom,
                 x: cx,

@@ -1,6 +1,7 @@
 
 import type { GameDefinition, RoomDefinition } from '../../../types/gameState';
 import type { TileMap } from '../definitions/tileTypes';
+import { StateObjectManager } from './StateObjectManager';
 
 class StateWorldManager {
     game: GameDefinition;
@@ -48,7 +49,17 @@ class StateWorldManager {
         game.sprites = moveEntities(game.sprites).map(sprite => ({ ...sprite, initialRoomIndex: remap(sprite.initialRoomIndex) ?? sprite.roomIndex }));
         game.enemies = moveEntities(game.enemies);
         game.items = moveEntities(game.items);
-        game.objects = moveEntities(game.objects);
+        game.objects = game.objects.flatMap(object => {
+            const target = remap(object.roomIndex);
+            if (target === null) return [];
+            const canonical = `${object.type}-${object.roomIndex}`;
+            const positional = `${canonical}-${object.x}-${object.y}`;
+            const id = object.id === canonical || object.id === positional
+                ? object.id.replace(canonical, `${object.type}-${target}`)
+                : object.id;
+            return [{ ...object, id, roomIndex: target }];
+        });
+        StateObjectManager.ensureUniqueIds(game.objects);
         game.exits = moveEntities(game.exits).flatMap(exit => {
             const target = remap(exit.targetRoomIndex);
             return target === null ? [] : [{ ...exit, targetRoomIndex: target }];
