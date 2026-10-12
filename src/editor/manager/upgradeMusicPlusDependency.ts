@@ -2,7 +2,7 @@ import type { InstalledPlugin } from './PluginManager';
 import type { GameDefinition } from '../../types/gameState';
 
 export function upgradeMusicPlusDependency<T extends object>(data: T, packages: InstalledPlugin[]): T {
-  const versions = ['1.0.0', '1.0.1', '1.0.2', '1.0.3'];
+  const versions = ['1.0.0', '1.0.1', '1.0.2', '1.0.3', '1.1.0'];
   const installed = versions.reduce<InstalledPlugin | undefined>((best, version) =>
     packages.find(item => item.id === 'music-plus' && item.version === version &&
       item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript) ?? best, undefined);
@@ -13,6 +13,6 @@ export function upgradeMusicPlusDependency<T extends object>(data: T, packages: 
   if (!dependencies?.some(shouldUpgrade)) return data;
   return {
     ...data,
-    gameplayPlugins: dependencies.map(item => shouldUpgrade(item) ? { id: item.id, version: installed.version ?? '1.0.3' } : item),
+    gameplayPlugins: dependencies.map(item => shouldUpgrade(item) ? { id: item.id, version: installed.version ?? '1.1.0' } : item),
   } as T;
 }

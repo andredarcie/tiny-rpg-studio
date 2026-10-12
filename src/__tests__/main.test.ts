@@ -625,6 +625,18 @@ describe('TinyRPGApplication.bindBackgroundMusicVolumeControl', () => {
     expect(group.hidden).toBe(true);
   });
 
+  it('shows music controls only after an uploaded song is assigned to a room', () => {
+    engine.game.backgroundMusicVideoId = '';
+    const library = { version: 1, tracks: [{ id: 'song', name: 'song.mid', asset: { format: 'midi', data: 'AAAA' } }], assignments: {} as Record<string, string> };
+    Object.assign(engine.game, { musicPlus: library });
+    TinyRPGApplication.bindBackgroundMusicVolumeControl(asVolumeControlGameEngine(engine));
+    const group = document.getElementById('game-audio-controls') as HTMLElement;
+    expect(group.hidden).toBe(true);
+    library.assignments['0'] = 'song';
+    document.dispatchEvent(new CustomEvent('game-tab-activated'));
+    expect(group.hidden).toBe(false);
+  });
+
   it('updates only the in-memory music engine volume when the game slider changes', () => {
     TinyRPGApplication.bindBackgroundMusicVolumeControl(asVolumeControlGameEngine(engine));
     const slider = document.getElementById('game-background-music-volume') as HTMLInputElement;

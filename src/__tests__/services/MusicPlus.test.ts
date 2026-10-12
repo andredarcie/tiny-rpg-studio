@@ -12,6 +12,33 @@ const asset = { format: 'midi' as const, data: btoa(String.fromCharCode(...midi)
 const dependency = [{ id: 'music-plus', version: '1.0.0' }];
 
 describe('Music+', () => {
+  it('keeps one named track for identical legacy room assets', () => {
+    const state = new GameState();
+    state.importGameData({ ...(state.exportGameData() as object), gameplayPlugins: dependency, musicPlus: { '0': asset, '1': asset } });
+    expect(state.game.musicPlus).toEqual({ version: 1, tracks: [{ id: 'legacy-0', name: 'Imported MIDI track 1.mid', asset }], assignments: { '0': 'legacy-0', '1': 'legacy-0' } });
+  });
+
+  it('accepts unassigned tracks and rejects invalid references', () => {
+    const library = { version: 1, tracks: [{ id: 'song-1', name: 'theme.mid', asset }], assignments: {} };
+    expect(normalizeMusicPlus(library, dependency, 9)).toEqual(library);
+    expect(() => normalizeMusicPlus({ ...library, assignments: { '0': 'missing' } }, dependency, 9)).toThrow();
+    expect(() => normalizeMusicPlus({ ...library, version: 2 }, dependency, 9)).toThrow(/schema/i);
+    expect(() => normalizeMusicPlus({ ...library, tracks: [library.tracks[0], library.tracks[0]] }, dependency, 9)).toThrow(/track ID/i);
+    expect(() => normalizeMusicPlus({ ...library, tracks: [{ ...library.tracks[0], id: '../bad' }] }, dependency, 9)).toThrow(/track ID/i);
+    expect(() => normalizeMusicPlus({ ...library, tracks: [{ ...library.tracks[0], name: '' }] }, dependency, 9)).toThrow(/name/i);
+    expect(() => normalizeMusicPlus({ ...library, tracks: [{ ...library.tracks[0], asset: { format: 'mp3', data: asset.data } }] }, dependency, 9)).toThrow(/MP3/i);
+    expect(() => normalizeMusicPlus({ ...library, assignments: { '9': 'song-1' } }, dependency, 9)).toThrow(/room/i);
+    expect(() => normalizeMusicPlus(library, [], 9)).toThrow(/dependency/i);
+  });
+
+  it('counts a shared file once and enforces file and project limits', () => {
+    const large = { format: 'mp3', data: btoa('\xff\xfb\x90\x00' + '\0'.repeat(1_100_000)) };
+    const shared = { version: 1, tracks: [{ id: 'a', name: 'a.mp3', asset: large }], assignments: { '0': 'a', '1': 'a' } };
+    expect(normalizeMusicPlus(shared, dependency, 9)?.tracks).toHaveLength(1);
+    expect(() => normalizeMusicPlus({ ...shared, tracks: [...shared.tracks, { id: 'b', name: 'b.mp3', asset: large }] }, dependency, 9)).toThrow(/2 MB/i);
+    const oversized = { format: 'mp3', data: btoa('\xff\xfb\x90\x00' + '\0'.repeat(1_536 * 1024)) };
+    expect(() => normalizeMusicPlus({ ...shared, tracks: [{ id: 'a', name: 'a.mp3', asset: oversized }] }, dependency, 9)).toThrow(/data|large/i);
+  });
   it('keeps MIDI end-of-track rests and supports notes beyond the effect duration', () => {
     const sequence = parseMusicMidi(midi);
     expect(sequence.notes).toHaveLength(1);
@@ -39,14 +66,14 @@ describe('Music+', () => {
     expect(() => state.importGameData({ ...before, musicPlus: { '9': asset }, gameplayPlugins: dependency })).toThrow();
     expect(state.exportGameData()).toEqual(before);
     expect(() => normalizeMusicPlus({ '0': asset }, [], 9)).toThrow(/dependency/i);
-    expect(normalizeMusicPlus({ '0': asset }, [{ id: 'music-plus', version: '1.0.1' }], 9)).toEqual({ '0': asset });
-    expect(normalizeMusicPlus({ '0': asset }, [{ id: 'music-plus', version: '1.0.2' }], 9)).toEqual({ '0': asset });
-    expect(normalizeMusicPlus({ '0': asset }, [{ id: 'music-plus', version: '1.0.3' }], 9)).toEqual({ '0': asset });
+    for (const version of ['1.0.1', '1.0.2', '1.0.3']) {
+      expect(normalizeMusicPlus({ '0': asset }, [{ id: 'music-plus', version }], 9)).toMatchObject({ assignments: { '0': 'legacy-0' } });
+    }
     expect(() => normalizeMusicPlus({ '0': { format: 'midi', data: '%%%=' } }, dependency, 9)).toThrow(/data/i);
     expect(() => normalizeMusicPlus({ '0': { format: 'mp3', data: asset.data } }, dependency, 9)).toThrow(/MP3/i);
     expect(normalizeMusicPlus({}, [], 9)).toBeUndefined();
     state.importGameData({ ...before, musicPlus: { '0': asset }, gameplayPlugins: dependency });
-    expect(state.exportGameData()).toMatchObject({ musicPlus: { '0': asset } });
+    expect(state.exportGameData()).toMatchObject({ musicPlus: { assignments: { '0': 'legacy-0' } } });
   });
 
   it('validates and persists the numeric fade duration with its Music+ dependency', () => {
@@ -77,16 +104,18 @@ describe('Music+', () => {
     const state = new GameState();
     state.importGameData({ ...(state.exportGameData() as Record<string, unknown>), musicPlus: { '4': asset, '8': asset }, gameplayPlugins: dependency });
     new StateWorldManager(state.game).resizeWorld(3, 2);
-    expect(state.game.musicPlus).toEqual({ '3': asset });
+    expect(state.game.musicPlus?.assignments).toEqual({ '3': 'legacy-4' });
+    expect(state.game.musicPlus?.tracks).toHaveLength(1);
   });
 
   it('keeps Music+ tracks that fit when a Maps+ world returns to 3 by 3', () => {
     const state = new GameState();
     new StateWorldManager(state.game).resizeWorld(5, 5);
-    state.game.musicPlus = { '12': asset, '14': asset };
+    state.game.musicPlus = { version: 1, tracks: [{ id: 'song', name: 'song.mid', asset }], assignments: { '12': 'song', '14': 'song' } };
     state.game.gameplayPlugins = [...dependency, { id: 'maps-plus', version: '1.0.2' }];
     new StateWorldManager(state.game).resizeWorld(3, 3);
-    expect(state.game.musicPlus).toEqual({ '8': asset });
+    expect(state.game.musicPlus.assignments).toEqual({ '8': 'song' });
+    expect(state.game.musicPlus.tracks).toHaveLength(1);
     expect(state.game.gameplayPlugins).toContainEqual(dependency[0]);
   });
 });

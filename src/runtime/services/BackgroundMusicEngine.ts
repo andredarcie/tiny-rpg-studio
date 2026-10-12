@@ -1,12 +1,12 @@
 import { buildBackgroundMusicEmbedUrl, DEFAULT_BACKGROUND_MUSIC_VOLUME, normalizeBackgroundMusicVolume, normalizeBackgroundMusicVideoId } from '../infra/share/BackgroundMusicVideoId';
-import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, decodeMusicBytes, normalizeMusicPlusFadeDurationSeconds, parseMusicMidi, type MusicAsset, type MusicPlusMap } from './MusicPlus';
+import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, decodeMusicBytes, normalizeMusicPlusFadeDurationSeconds, parseMusicMidi, type MusicAsset, type MusicPlusLibrary } from './MusicPlus';
 
 class BackgroundMusicEngine {
     private videoId: string | null = null;
     private iframe: HTMLIFrameElement | null = null;
     private youtubePaused = false;
     private volume = DEFAULT_BACKGROUND_MUSIC_VOLUME;
-    private musicPlus: MusicPlusMap | undefined;
+    private musicPlus: MusicPlusLibrary | undefined;
     private smoothTransition = false;
     private fadeDurationMs = DEFAULT_MUSIC_PLUS_FADE_SECONDS * 1000;
     private fadeFactor = 1;
@@ -14,6 +14,7 @@ class BackgroundMusicEngine {
     private pendingKey: string | null = null;
     private roomIndex = 0;
     private activeKey: string | null = null;
+    private wasPlayingSilentRoom = false;
     private audio: HTMLAudioElement | null = null;
     private context: AudioContext | null = null;
     private gain: GainNode | null = null;
@@ -33,24 +34,37 @@ class BackgroundMusicEngine {
     setRoomIndex(roomIndex: number): void {
         if (this.roomIndex === roomIndex) return;
         this.roomIndex = roomIndex;
-        if (this.activeKey && this.activeKey !== this.sourceKey()) this.play();
+        if (this.activeKey) this.play();
     }
 
     play(): void {
         const key = this.sourceKey();
         if (typeof document === 'undefined') { this.stop(); return; }
+        if (!key && !this.activeKey && !this.transitionTimer) { this.wasPlayingSilentRoom = true; return; }
         if (this.transitionTimer && key === this.pendingKey) return;
+        if (this.transitionTimer && key === this.activeKey) {
+            this.cancelTransition();
+            this.fadeFactor = 1;
+            this.applyVolume();
+            return;
+        }
         if (key === this.activeKey && !this.transitionTimer) return;
         if (this.smoothTransition && this.activeKey) { this.transitionTo(key); return; }
-        if (!key) { this.stop(); return; }
+        if (!key) { this.stop(); this.wasPlayingSilentRoom = true; return; }
         this.stopActiveSource();
-        this.startSource(key);
+        const fadeIn = this.smoothTransition && this.wasPlayingSilentRoom;
+        this.startSource(key, fadeIn ? 0 : 1);
+        if (fadeIn) {
+            this.pendingKey = key;
+            this.animateFade(0, 1, () => { this.pendingKey = null; });
+        }
     }
 
     private startSource(key: string, fadeFactor = 1): void {
+        this.wasPlayingSilentRoom = false;
         this.fadeFactor = fadeFactor;
         this.activeKey = key;
-        const asset = this.musicPlus?.[String(this.roomIndex)];
+        const asset = this.musicPlus?.tracks.find(track => `track:${track.id}:${track.asset.format}:${track.asset.data}` === key)?.asset;
         if (!asset) { this.mountIframe(); return; }
         if (asset.format === 'midi') this.playMidi(asset, this.playbackToken);
         else this.playAudio(asset, this.playbackToken);
@@ -69,6 +83,7 @@ class BackgroundMusicEngine {
 
     stop(): void {
         this.stopActiveSource();
+        this.wasPlayingSilentRoom = false;
         this.iframe?.remove(); this.iframe = null;
         this.youtubePaused = false;
     }
@@ -101,7 +116,7 @@ class BackgroundMusicEngine {
         const outgoingFactor = this.fadeFactor;
         this.animateFade(outgoingFactor, 0, () => {
             this.stopActiveSource();
-            if (!key) return;
+            if (!key) { this.wasPlayingSilentRoom = true; return; }
             this.pendingKey = key;
             this.startSource(key, 0);
             this.animateFade(0, 1, () => { this.pendingKey = null; });
@@ -120,8 +135,12 @@ class BackgroundMusicEngine {
         }, 25);
     }
 
-    syncFromGame(game: { backgroundMusicVideoId?: string; backgroundMusicVolume?: number; musicPlus?: MusicPlusMap; musicPlusSmoothTransition?: boolean; musicPlusFadeDurationSeconds?: number }): void {
-        this.musicPlus = game.musicPlus;
+    syncFromGame(game: { backgroundMusicVideoId?: string; backgroundMusicVolume?: number; musicPlus?: MusicPlusLibrary | Record<string, MusicAsset>; musicPlusSmoothTransition?: boolean; musicPlusFadeDurationSeconds?: number }): void {
+        this.musicPlus = game.musicPlus && 'version' in game.musicPlus ? game.musicPlus as MusicPlusLibrary : game.musicPlus ? {
+            version: 1,
+            tracks: Object.entries(game.musicPlus).map(([room, asset]) => ({ id: `legacy-${room}`, name: room, asset })),
+            assignments: Object.fromEntries(Object.keys(game.musicPlus).map(room => [room, `legacy-${room}`])),
+        } : undefined;
         this.smoothTransition = game.musicPlusSmoothTransition === true;
         this.fadeDurationMs = normalizeMusicPlusFadeDurationSeconds(game.musicPlusFadeDurationSeconds) * 1000;
         this.setVideoId(game.backgroundMusicVideoId);
@@ -136,8 +155,9 @@ class BackgroundMusicEngine {
     }
 
     private sourceKey(): string | null {
-        const asset = this.musicPlus?.[String(this.roomIndex)];
-        return asset ? `${asset.format}:${asset.data}` : this.videoId ? `youtube:${this.videoId}` : null;
+        const id = this.musicPlus?.assignments[String(this.roomIndex)];
+        const track = this.musicPlus?.tracks.find(item => item.id === id);
+        return track ? `track:${track.id}:${track.asset.format}:${track.asset.data}` : this.videoId ? `youtube:${this.videoId}` : null;
     }
 
     private playAudio(asset: MusicAsset, token: number): void {

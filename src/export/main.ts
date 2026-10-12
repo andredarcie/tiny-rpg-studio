@@ -187,8 +187,9 @@ class ExportApplication {
             value.textContent = `${normalized}%`;
         };
         const updateVisibility = () => {
-            const game = gameEngine.getGame() as { backgroundMusicVideoId?: string; musicPlus?: Record<string, unknown> };
-            controls.hidden = !game.backgroundMusicVideoId?.trim() && !Boolean(game.musicPlus && Object.keys(game.musicPlus).length);
+            const game = gameEngine.gameState.getGame();
+            const hasRoomMusic = Object.keys(game.musicPlus?.assignments ?? {}).length > 0;
+            controls.hidden = !game.backgroundMusicVideoId?.trim() && !hasRoomMusic;
             if (!controls.hidden) syncValue(gameEngine.backgroundMusicEngine.getVolume());
         };
         slider.addEventListener('input', () => {

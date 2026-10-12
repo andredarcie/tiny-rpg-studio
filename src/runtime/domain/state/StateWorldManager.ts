@@ -65,12 +65,12 @@ class StateWorldManager {
             return target === null ? [] : [{ ...exit, targetRoomIndex: target }];
         });
         if (game.musicPlus) {
-            const remapped: NonNullable<GameDefinition['musicPlus']> = {};
-            for (const [index, asset] of Object.entries(game.musicPlus)) {
+            const remapped: Record<string, string> = {};
+            for (const [index, id] of Object.entries(game.musicPlus.assignments)) {
                 const target = remap(Number(index));
-                if (target !== null) remapped[String(target)] = asset;
+                if (target !== null) remapped[String(target)] = id;
             }
-            game.musicPlus = Object.keys(remapped).length ? remapped : undefined;
+            game.musicPlus = { ...game.musicPlus, assignments: remapped };
         }
         if (game.online?.spawnPoints) game.online.spawnPoints = moveEntities(game.online.spawnPoints);
         game.start.roomIndex = remap(game.start.roomIndex) ?? 0;

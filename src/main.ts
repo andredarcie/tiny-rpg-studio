@@ -23,7 +23,7 @@ import { TextResources } from './runtime/adapters/TextResources';
 import { installGlobalErrorReporter, reportRecoverableError } from './runtime/adapters/GlobalErrorReporter';
 import { soundEngine } from './runtime/services/SoundEngine';
 import { normalizeSoundsPlus, SOUND_NAMES, type SoundName, type SoundOverride } from './runtime/services/SoundsPlus';
-import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, normalizeMusicPlus, normalizeMusicPlusFadeDurationSeconds, prepareMusicAsset, type MusicAsset } from './runtime/services/MusicPlus';
+import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, normalizeMusicPlus, normalizeMusicPlusFadeDurationSeconds, prepareMusicAsset, type MusicAsset, type MusicPlusLibrary } from './runtime/services/MusicPlus';
 import { normalizeBackgroundMusicVolume } from './runtime/infra/share/BackgroundMusicVideoId';
 import { PerformanceProfiler, performanceProfiler } from './runtime/debug/PerformanceProfiler';
 import { loadAnalyticsWhenIdle } from './analytics/loadAnalytics';
@@ -171,6 +171,34 @@ class TinyRPGApplication {
     });
 
     const runtime = createBaseRuntimeApi(gameEngine);
+    const changeMusicPlus = async (change: (library: MusicPlusLibrary) => void, asset?: MusicAsset) => {
+      if (!editorManager || !gameplayHost) throw Error('Music+ editor is unavailable');
+      const plugin = pluginManager?.installed.find(item => item.id === 'music-plus' && item.version === '1.1.0' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+      if (!plugin) throw Error('Music+ is unavailable');
+      const previous = gameEngine.exportGameData() as GameDefinition;
+      const projectGeneration = editorManager.projectGeneration;
+      const game = structuredClone(previous);
+      const library = game.musicPlus ?? { version: 1 as const, tracks: [], assignments: {} };
+      change(library);
+      game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== 'music-plus');
+      if (library.tracks.length || game.musicPlusSmoothTransition || normalizeMusicPlusFadeDurationSeconds(game.musicPlusFadeDurationSeconds) !== DEFAULT_MUSIC_PLUS_FADE_SECONDS) {
+        game.gameplayPlugins.push({ id: 'music-plus', version: plugin.version ?? '1.1.0' });
+      }
+      game.musicPlus = normalizeMusicPlus(library, game.gameplayPlugins, game.world.rows * game.world.cols);
+      if (JSON.stringify(previous.musicPlus) === JSON.stringify(game.musicPlus)) return;
+      if (asset) await prepareMusicAsset(asset);
+      if (editorManager.projectGeneration !== projectGeneration || !pluginManager?.has('music-plus')) throw Error('The project changed before the music was saved');
+      try {
+        await gameplayHost.load(game);
+        editorManager.restore(game as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+        editorManager.persistAuthoring();
+        editorManager.history.pushCurrentState();
+      } catch (error) {
+        await gameplayHost.load(previous);
+        editorManager.restore(previous as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+        throw error;
+      }
+    };
     const api: TinyRpgApi = {
       ...runtime,
       runtime,
@@ -252,40 +280,27 @@ class TinyRPGApplication {
           throw error;
         }
       },
-      setRoomMusic: async (roomIndex: number, asset: MusicAsset | null) => {
-        if (!editorManager || !gameplayHost) throw Error('Music+ editor is unavailable');
-        const plugin = pluginManager?.installed.find(item => item.id === 'music-plus' && (item.version === '1.0.0' || item.version === '1.0.1' || item.version === '1.0.2' || item.version === '1.0.3') && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
-        if (!plugin) throw Error('Music+ is unavailable');
-        const previous = gameEngine.exportGameData() as GameDefinition;
-        const roomCount = previous.world.rows * previous.world.cols;
-        if (!Number.isInteger(roomIndex) || roomIndex < 0 || roomIndex >= roomCount) throw Error('Invalid Music+ room');
-        const projectGeneration = editorManager.projectGeneration;
-        const game = structuredClone(previous);
-        const next = { ...game.musicPlus };
-        if (asset) next[String(roomIndex)] = asset;
-        else delete next[String(roomIndex)];
-        const hasMusic = Object.keys(next).length > 0 || game.musicPlusSmoothTransition === true ||
-          normalizeMusicPlusFadeDurationSeconds(game.musicPlusFadeDurationSeconds) !== DEFAULT_MUSIC_PLUS_FADE_SECONDS;
-        game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== 'music-plus');
-        if (hasMusic) game.gameplayPlugins.push({ id: 'music-plus', version: plugin.version ?? '1.0.3' });
-        game.musicPlus = normalizeMusicPlus(next, game.gameplayPlugins, roomCount);
-        if (JSON.stringify(previous.musicPlus ?? {}) === JSON.stringify(game.musicPlus ?? {})) return;
-        if (asset) await prepareMusicAsset(asset);
-        if (editorManager.projectGeneration !== projectGeneration || !pluginManager?.has('music-plus')) throw Error('The project changed before the music was saved');
-        try {
-          await gameplayHost.load(game);
-          editorManager.restore(game as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
-          editorManager.persistAuthoring();
-          editorManager.history.pushCurrentState();
-        } catch (error) {
-          await gameplayHost.load(previous);
-          editorManager.restore(previous as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
-          throw error;
-        }
+      addMusicPlusTrack: async (name: string, asset: MusicAsset) => {
+        const id = crypto.randomUUID();
+        await changeMusicPlus(library => { library.tracks.push({ id, name, asset }); }, asset);
       },
+      removeMusicPlusTrack: async (id: string) => changeMusicPlus(library => {
+        if (!library.tracks.some(track => track.id === id)) throw Error('Unknown Music+ track');
+        library.tracks = library.tracks.filter(track => track.id !== id);
+        for (const [room, assigned] of Object.entries(library.assignments)) if (assigned === id) delete library.assignments[room];
+      }),
+      assignMusicPlusTrack: async (id: string, roomIndex: number) => changeMusicPlus(library => {
+        if (!library.tracks.some(track => track.id === id)) throw Error('Unknown Music+ track');
+        if (Object.hasOwn(library.assignments, String(roomIndex))) throw Error('Music+ room is already assigned');
+        library.assignments[String(roomIndex)] = id;
+      }),
+      detachMusicPlusRoom: async (roomIndex: number) => changeMusicPlus(library => {
+        if (!Object.hasOwn(library.assignments, String(roomIndex))) throw Error('Music+ room is not assigned');
+        delete library.assignments[String(roomIndex)];
+      }),
       setMusicPlusSmoothTransition: async (enabled: boolean) => {
         if (!editorManager || !gameplayHost || typeof enabled !== 'boolean') throw Error('Music+ editor is unavailable');
-        const plugin = pluginManager?.installed.find(item => item.id === 'music-plus' && (item.version === '1.0.2' || item.version === '1.0.3') && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+        const plugin = pluginManager?.installed.find(item => item.id === 'music-plus' && item.version === '1.1.0' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
         if (!plugin) throw Error('Music+ smooth transition is unavailable');
         const previous = gameEngine.exportGameData() as GameDefinition;
         if ((previous.musicPlusSmoothTransition === true) === enabled) return;
@@ -293,8 +308,8 @@ class TinyRPGApplication {
         const game = structuredClone(previous);
         game.musicPlusSmoothTransition = enabled;
         game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== 'music-plus');
-        if (enabled || Object.keys(game.musicPlus ?? {}).length ||
-            normalizeMusicPlusFadeDurationSeconds(game.musicPlusFadeDurationSeconds) !== DEFAULT_MUSIC_PLUS_FADE_SECONDS) game.gameplayPlugins.push({ id: 'music-plus', version: plugin.version ?? '1.0.3' });
+        if (enabled || game.musicPlus?.tracks.length ||
+            normalizeMusicPlusFadeDurationSeconds(game.musicPlusFadeDurationSeconds) !== DEFAULT_MUSIC_PLUS_FADE_SECONDS) game.gameplayPlugins.push({ id: 'music-plus', version: plugin.version ?? '1.1.0' });
         if (editorManager.projectGeneration !== projectGeneration || !pluginManager?.has('music-plus')) throw Error('The project changed before the setting was saved');
         try {
           await gameplayHost.load(game);
@@ -310,7 +325,7 @@ class TinyRPGApplication {
       setMusicPlusFadeDurationSeconds: async (seconds: number) => {
         if (!editorManager || !gameplayHost) throw Error('Music+ editor is unavailable');
         const duration = normalizeMusicPlusFadeDurationSeconds(seconds);
-        const plugin = pluginManager?.installed.find(item => item.id === 'music-plus' && item.version === '1.0.3' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+        const plugin = pluginManager?.installed.find(item => item.id === 'music-plus' && item.version === '1.1.0' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
         if (!plugin) throw Error('Music+ fade duration is unavailable');
         const previous = gameEngine.exportGameData() as GameDefinition;
         if (normalizeMusicPlusFadeDurationSeconds(previous.musicPlusFadeDurationSeconds) === duration) return;
@@ -318,8 +333,8 @@ class TinyRPGApplication {
         const game = structuredClone(previous);
         game.musicPlusFadeDurationSeconds = duration;
         game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== 'music-plus');
-        if (duration !== DEFAULT_MUSIC_PLUS_FADE_SECONDS || game.musicPlusSmoothTransition || Object.keys(game.musicPlus ?? {}).length) {
-          game.gameplayPlugins.push({ id: 'music-plus', version: plugin.version ?? '1.0.3' });
+        if (duration !== DEFAULT_MUSIC_PLUS_FADE_SECONDS || game.musicPlusSmoothTransition || game.musicPlus?.tracks.length) {
+          game.gameplayPlugins.push({ id: 'music-plus', version: plugin.version ?? '1.1.0' });
         }
         if (editorManager.projectGeneration !== projectGeneration || !pluginManager?.has('music-plus')) throw Error('The project changed before the setting was saved');
         try {
@@ -614,10 +629,10 @@ class TinyRPGApplication {
     };
 
     const updateVisibility = () => {
-      const game = gameEngine.getGame() as { backgroundMusicVideoId?: string; musicPlus?: Record<string, unknown> };
+      const game = gameEngine.getGame() as GameDefinition;
       const isDesktop = desktopQuery?.matches ?? false;
       const isGameMode = document.body.classList.contains('game-mode');
-      const hasMusic = (typeof game.backgroundMusicVideoId === 'string' && game.backgroundMusicVideoId.trim().length > 0) || Boolean(game.musicPlus && Object.keys(game.musicPlus).length);
+      const hasMusic = (typeof game.backgroundMusicVideoId === 'string' && game.backgroundMusicVideoId.trim().length > 0) || Boolean(game.musicPlus && Object.keys(game.musicPlus.assignments).length);
       controls.hidden = (!isDesktop && !isExportMode) || !isGameMode || !hasMusic;
       if (!controls.hidden) {
         syncValue(gameEngine.backgroundMusicEngine.getVolume());

@@ -1,5 +1,6 @@
 export type MusicAsset = { format: 'midi' | 'mp3' | 'wav'; data: string };
-export type MusicPlusMap = Record<string, MusicAsset>;
+export type MusicTrack = { id: string; name: string; asset: MusicAsset };
+export type MusicPlusLibrary = { version: 1; tracks: MusicTrack[]; assignments: Record<string, string> };
 export type MusicMidiNote = { start: number; duration: number; pitch: number; velocity: number };
 export type MusicMidiSequence = { notes: MusicMidiNote[]; duration: number };
 
@@ -65,25 +66,51 @@ export async function prepareMusicAsset(asset: MusicAsset): Promise<void> {
   }
 }
 
-export function normalizeMusicPlus(value: unknown, dependencies: { id: string; version: string }[] = [], roomCount = 9): MusicPlusMap | undefined {
+export function normalizeMusicPlus(value: unknown, dependencies: { id: string; version: string }[] = [], roomCount = 9): MusicPlusLibrary | undefined {
   if (value === undefined) return undefined;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid Music+ map');
-  const entries = Object.entries(value);
-  if (entries.length && !dependencies.some(item => item.id === 'music-plus' && (item.version === '1.0.0' || item.version === '1.0.1' || item.version === '1.0.2' || item.version === '1.0.3'))) throw Error('Music+ gameplay dependency is required');
-  const result: MusicPlusMap = {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('Invalid Music+ library');
+  const raw = value as Record<string, unknown>;
+  const isLibrary = 'version' in raw || 'tracks' in raw || 'assignments' in raw;
+  if (isLibrary && (raw.version !== 1 || !Array.isArray(raw.tracks) || !raw.assignments || typeof raw.assignments !== 'object' || Array.isArray(raw.assignments) || Object.keys(raw).some(key => !['version', 'tracks', 'assignments'].includes(key)))) throw Error('Invalid Music+ schema version or library');
+  const legacyEntries = isLibrary ? [] : Object.entries(raw);
+  const tracks: MusicTrack[] = [];
+  const assignments = Object.create(null) as Record<string, string>;
+  if (isLibrary) {
+    for (const track of raw.tracks as MusicTrack[]) tracks.push(track);
+    Object.assign(assignments, raw.assignments);
+  } else {
+    for (const [room, item] of legacyEntries) {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) throw Error('Invalid music file');
+      const asset = item as MusicAsset;
+      const existing = tracks.find(track => track.asset.format === asset.format && track.asset.data === asset.data);
+      const id = existing?.id ?? `legacy-${room}`;
+      if (!existing) tracks.push({ id, name: `Imported ${String(asset.format).toUpperCase()} track ${tracks.length + 1}.${asset.format === 'midi' ? 'mid' : asset.format}`, asset });
+      assignments[room] = id;
+    }
+  }
+  if (!tracks.length && !Object.keys(assignments).length) return undefined;
+  if (!dependencies.some(item => item.id === 'music-plus' && ['1.0.0', '1.0.1', '1.0.2', '1.0.3', '1.1.0'].includes(item.version))) throw Error('Music+ gameplay dependency is required');
   let total = 0;
-  for (const [key, raw] of entries) {
-    if (!/^(0|[1-9]\d*)$/.test(key) || Number(key) >= roomCount || !raw || typeof raw !== 'object' || Array.isArray(raw)) throw Error('Invalid Music+ room');
-    const asset = raw as Record<string, unknown>;
-    if (Object.keys(asset).some(field => field !== 'format' && field !== 'data') || typeof asset.data !== 'string' ||
-        (asset.format !== 'midi' && asset.format !== 'mp3' && asset.format !== 'wav')) throw Error('Invalid music file');
+  const ids = new Set<string>();
+  for (const entry of tracks as unknown[]) {
+    const track = entry as MusicTrack | null;
+    if (!track || typeof track !== 'object' || Array.isArray(track) || Object.keys(track).some(key => !['id', 'name', 'asset'].includes(key)) ||
+      typeof track.id !== 'string' || !/^[A-Za-z0-9_-]{1,80}$/.test(track.id) || ids.has(track.id)) throw Error('Invalid Music+ track ID');
+    ids.add(track.id);
+    if (typeof track.name !== 'string' || !track.name.trim() || track.name.length > 255 || /[\x00-\x1f\x7f]/.test(track.name)) throw Error('Invalid Music+ track name');
+    const asset = track.asset as unknown as Record<string, unknown> | null;
+    if (!asset || typeof asset !== 'object' || Array.isArray(asset) || Object.keys(asset).some(field => field !== 'format' && field !== 'data') || typeof asset.data !== 'string' ||
+      (asset.format !== 'midi' && asset.format !== 'mp3' && asset.format !== 'wav')) throw Error('Invalid music file');
     const bytes = decodeMusicBytes(asset.data);
-    validateMusicBytes(asset.format, bytes);
+    validateMusicBytes(asset.format as MusicAsset['format'], bytes);
     total += bytes.length;
     if (total > MAX_MUSIC_TOTAL_BYTES) throw Error('Music+ project exceeds 2 MB');
-    result[key] = { format: asset.format, data: asset.data };
   }
-  return entries.length ? result : undefined;
+  for (const [room, id] of Object.entries(assignments)) {
+    if (!/^(0|[1-9]\d*)$/.test(room) || Number(room) >= roomCount) throw Error('Invalid Music+ room');
+    if (typeof id !== 'string' || !ids.has(id)) throw Error('Unknown Music+ track reference');
+  }
+  return { version: 1, tracks: tracks.map(track => ({ id: track.id, name: track.name, asset: { ...track.asset } })), assignments: { ...assignments } };
 }
 
 export function parseMusicMidi(bytes: Uint8Array): MusicMidiSequence {

@@ -23,10 +23,10 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
-    id: '2026-10-10-world-object-persistence',
-    date: '2026-10-10',
-    title: 'Objects stay in their rooms',
-    description: 'Keys and magical doors in larger worlds now stay in the right room when a saved project is reopened. Resizing a world also keeps magical doors independently editable, and older projects with conflicting door IDs are repaired when opened.',
+    id: '2026-10-12-music-plus-library',
+    date: '2026-10-12',
+    title: 'Same songs between different rooms: Music+ 1.1.0',
+    description: 'Upload songs and assign them to several rooms. Room labels make assignments easy to manage, and music continues playing when you move between rooms that share a song.',
   },
   {
     id: '2026-10-09-chest-activation',

@@ -1,10 +1,83 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackgroundMusicEngine } from '../../runtime/services/BackgroundMusicEngine';
 
 describe('BackgroundMusicEngine', () => {
+  it('continues one assigned track across rooms', () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const engine = new BackgroundMusicEngine();
+    engine.syncFromGame({ musicPlus: { version: 1, tracks: [{ id: 'a', name: 'a.mp3', asset: { format: 'mp3', data: 'AAAA' } }], assignments: { '0': 'a', '1': 'a' } } });
+    engine.play();
+    engine.setRoomIndex(1);
+    expect(play).toHaveBeenCalledTimes(1);
+    engine.destroy();
+  });
+  it.each([false, true])('keeps shared audio running with smooth transition %s', smooth => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const engine = new BackgroundMusicEngine();
+    engine.syncFromGame({ musicPlusSmoothTransition: smooth, musicPlus: { version: 1,
+      tracks: [{ id: 'a', name: 'a.mp3', asset: { format: 'mp3', data: 'AAAA' } }], assignments: { '0': 'a', '1': 'a' } } });
+    engine.play(); engine.setRoomIndex(1);
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(pause).not.toHaveBeenCalled();
+    engine.destroy();
+  });
+  it('keeps one MIDI scheduler for rooms sharing a track', async () => {
+    const close = vi.fn().mockResolvedValue(undefined);
+    const gain = { gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() };
+    const oscillator = { type: 'sine', frequency: { value: 0 }, connect: vi.fn(), disconnect: vi.fn(), start: vi.fn(), stop: vi.fn(), onended: null };
+    const Context = vi.fn(function () { return { currentTime: 0, destination: {}, createGain: () => gain, createOscillator: () => oscillator, resume: () => Promise.resolve(), close }; });
+    vi.stubGlobal('AudioContext', Context);
+    const midi = btoa(String.fromCharCode(...[
+      77, 84, 104, 100, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96,
+      77, 84, 114, 107, 0, 0, 0, 12,
+      0, 0x90, 60, 100, 96, 0x80, 60, 0, 0, 0xff, 0x2f, 0,
+    ]));
+    const engine = new BackgroundMusicEngine();
+    try {
+      engine.syncFromGame({ musicPlus: { version: 1, tracks: [{ id: 'a', name: 'a.mid', asset: { format: 'midi', data: midi } }], assignments: { '0': 'a', '1': 'a' } } });
+      engine.play();
+      await Promise.resolve();
+      engine.setRoomIndex(1);
+      expect(Context).toHaveBeenCalledTimes(1);
+      expect(close).not.toHaveBeenCalled();
+    } finally { engine.destroy(); vi.unstubAllGlobals(); }
+  });
+  it('restarts playback when a track ID keeps its name but its audio data changes', () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const engine = new BackgroundMusicEngine();
+    const library = (data: string) => ({ version: 1 as const, tracks: [{ id: 'a', name: 'a.mp3', asset: { format: 'mp3' as const, data } }], assignments: { '0': 'a' } });
+    engine.syncFromGame({ musicPlus: library('AAAA') });
+    engine.play();
+    engine.syncFromGame({ musicPlus: library('BBBB') });
+    expect(play).toHaveBeenCalledTimes(2);
+    engine.destroy();
+  });
+  it('cancels a pending fade when returning to the active track', () => {
+    vi.useFakeTimers();
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const engine = new BackgroundMusicEngine();
+    try {
+      engine.syncFromGame({ musicPlusSmoothTransition: true, musicPlusFadeDurationSeconds: 0.3, musicPlus: { version: 1,
+        tracks: [{ id: 'a', name: 'a.mp3', asset: { format: 'mp3', data: 'AAAA' } }, { id: 'b', name: 'b.mp3', asset: { format: 'mp3', data: 'BBBB' } }],
+        assignments: { '0': 'a', '1': 'b', '2': 'a' } } });
+      engine.play(); engine.setRoomIndex(1);
+      vi.advanceTimersByTime(150);
+      engine.setRoomIndex(2);
+      expect(play).toHaveBeenCalledTimes(1);
+      expect(pause).not.toHaveBeenCalled();
+      expect((play.mock.instances[0] as HTMLMediaElement).volume).toBe(1);
+      vi.advanceTimersByTime(600);
+      expect(play).toHaveBeenCalledTimes(1);
+    } finally { engine.destroy(); vi.useRealTimers(); }
+  });
   beforeEach(() => {
     document.body.innerHTML = '';
   });
+  afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
   it('creates a hidden looping YouTube iframe when playback starts', () => {
     const engine = new BackgroundMusicEngine();
@@ -220,6 +293,27 @@ describe('BackgroundMusicEngine', () => {
       vi.advanceTimersByTime(300);
       expect(played).toHaveLength(2);
       expect(pause).toHaveBeenCalledTimes(2);
+    } finally { engine.destroy(); vi.useRealTimers(); }
+  });
+
+  it('fades in a song when entering from a room without music', () => {
+    vi.useFakeTimers();
+    const played: HTMLMediaElement[] = [];
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) { played.push(this); return Promise.resolve(); });
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const engine = new BackgroundMusicEngine();
+    try {
+      engine.syncFromGame({ backgroundMusicVolume: 80, musicPlusSmoothTransition: true, musicPlusFadeDurationSeconds: 0.3,
+        musicPlus: { version: 1, tracks: [{ id: 'a', name: 'a.mp3', asset: { format: 'mp3', data: 'AAAA' } }], assignments: { '1': 'a' } } });
+      engine.play();
+      engine.setRoomIndex(1);
+      engine.play();
+      expect(played).toHaveLength(1);
+      expect(played[0].volume).toBe(0);
+      vi.advanceTimersByTime(150);
+      expect(played[0].volume).toBeCloseTo(0.4);
+      vi.advanceTimersByTime(150);
+      expect(played[0].volume).toBeCloseTo(0.8);
     } finally { engine.destroy(); vi.useRealTimers(); }
   });
 

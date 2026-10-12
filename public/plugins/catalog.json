@@ -46,11 +46,11 @@
     {
       "id": "music-plus",
       "title": "Music+",
-      "shortDescription": "Assign looping MP3, WAV, or MIDI music to each room.",
-        "fullDescription": "Upload a track for each room in Project > Plugins. Rooms without an upload use the project's YouTube track. Enable smooth transition and choose the fade duration in seconds. Music is saved with the project and included in standalone exports.",
+      "shortDescription": "Upload songs once and assign them to rooms.",
+        "fullDescription": "Upload looping MP3, WAV, or MIDI songs and assign each one to any number of rooms. Unassigned songs remain in your project. Rooms without a song use the project's YouTube track. Music is included in saved projects and standalone exports.",
       "capabilities": ["editor", "gameplay"],
-        "version": "1.0.3",
-        "file": "music-plus/1.0.3/plugin.html"
+        "version": "1.1.0",
+        "file": "music-plus/1.1.0/plugin.html"
     },
     {
       "id": "sounds-plus",

@@ -1,6 +1,6 @@
 import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry, SkillCustomizationMap, OnlineConfig } from '../../../types/gameState';
 import { normalizeSoundsPlus, type SoundsPlusMap } from '../../services/SoundsPlus';
-import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, normalizeMusicPlus, normalizeMusicPlusFadeDurationSeconds, type MusicPlusMap } from '../../services/MusicPlus';
+import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, normalizeMusicPlus, normalizeMusicPlusFadeDurationSeconds, type MusicPlusLibrary } from '../../services/MusicPlus';
 import type { StateWorldManager } from './StateWorldManager';
 import type { StateObjectManager, ObjectEntry } from './StateObjectManager';
 import type { StateVariableManager } from './StateVariableManager';
@@ -38,7 +38,7 @@ type StateDataManagerOptions = {
 type ImportData = {
     gameplayPlugins?: { id: string; version: string }[];
     soundsPlus?: SoundsPlusMap;
-    musicPlus?: MusicPlusMap;
+    musicPlus?: MusicPlusLibrary | Record<string, unknown>;
     musicPlusSmoothTransition?: boolean;
     musicPlusFadeDurationSeconds?: number;
     title?: string;
@@ -116,7 +116,7 @@ class StateDataManager {
         const result: ImportData = {
             ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
             ...(this.game.soundsPlus && Object.keys(this.game.soundsPlus).length ? { soundsPlus: this.game.soundsPlus } : {}),
-            ...(this.game.musicPlus && Object.keys(this.game.musicPlus).length ? { musicPlus: this.game.musicPlus } : {}),
+            ...(this.game.musicPlus?.tracks.length ? { musicPlus: this.game.musicPlus } : {}),
             ...(this.game.musicPlusSmoothTransition ? { musicPlusSmoothTransition: true } : {}),
             ...(this.game.musicPlusFadeDurationSeconds !== undefined && this.game.musicPlusFadeDurationSeconds !== DEFAULT_MUSIC_PLUS_FADE_SECONDS
                 ? { musicPlusFadeDurationSeconds: this.game.musicPlusFadeDurationSeconds } : {}),
