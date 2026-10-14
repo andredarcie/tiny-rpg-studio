@@ -6,6 +6,7 @@ import type { StubNpcManager } from './StubNpcManager'
 export class StubRenderer {
   introData: unknown = null
   overlayRects: Array<{ x: number; y: number; width: number; height: number }> = []
+  resolveHudPresentation = vi.fn()
   draw = vi.fn()
   spriteFactory = {
     invalidate: vi.fn()

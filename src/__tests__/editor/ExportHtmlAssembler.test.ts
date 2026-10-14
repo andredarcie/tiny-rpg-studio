@@ -86,3 +86,15 @@ describe('ExportHtmlAssembler', () => {
         expect(decoded.tileCollisions).toEqual({ [String(tile.id)]: true });
     });
 });
+
+import hudPackage from '../../../public/plugins/hud-plus/1.0.1/plugin.html?raw';
+import { parsePluginHtml } from '../../editor/manager/PluginManager';
+it('embeds saved HUD settings and executable package without extending share URLs', () => {
+  const plugin = parsePluginHtml(hudPackage);
+  const result = assembleExportHtml({...makeOptions(),bundledProject:{game:{gameplayPlugins:[{id:'hud-plus',version:'1.0.1'}],pluginData:{'hud-plus':{mode:'overlay',visible:{health:false}}}},plugins:[plugin]}});
+  const document = new DOMParser().parseFromString(result.html,'text/html');
+  const saved = JSON.parse(document.getElementById('tiny-rpg-project')?.textContent ?? '{}') as { game:{pluginData:Record<string,unknown>}; plugins:{payload:{gameplayJavascript:string}}[] };
+  expect(saved.game.pluginData['hud-plus']).toEqual({mode:'overlay',visible:{health:false}});
+  expect(saved.plugins[0].payload.gameplayJavascript).toBe(plugin.payload?.gameplayJavascript);
+  expect(document.getElementById('btn-open-studio')?.hidden).toBe(true);
+});

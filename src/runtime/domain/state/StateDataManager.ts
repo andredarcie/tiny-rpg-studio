@@ -1,3 +1,4 @@
+import { normalizePluginData, type PluginData } from './PluginData';
 import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry, SkillCustomizationMap, OnlineConfig } from '../../../types/gameState';
 import { normalizeSoundsPlus, type SoundsPlusMap } from '../../services/SoundsPlus';
 import { DEFAULT_MUSIC_PLUS_FADE_SECONDS, normalizeMusicPlus, normalizeMusicPlusFadeDurationSeconds, type MusicPlusLibrary } from '../../services/MusicPlus';
@@ -36,6 +37,7 @@ type StateDataManagerOptions = {
 };
 
 type ImportData = {
+    pluginData?: PluginData;
     gameplayPlugins?: { id: string; version: string }[];
     soundsPlus?: SoundsPlusMap;
     musicPlus?: MusicPlusLibrary | Record<string, unknown>;
@@ -114,6 +116,7 @@ class StateDataManager {
 
     exportGameData(): ImportData {
         const result: ImportData = {
+            ...(this.game.pluginData ? { pluginData: this.game.pluginData } : {}),
             ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
             ...(this.game.soundsPlus && Object.keys(this.game.soundsPlus).length ? { soundsPlus: this.game.soundsPlus } : {}),
             ...(this.game.musicPlus?.tracks.length ? { musicPlus: this.game.musicPlus } : {}),
@@ -198,6 +201,7 @@ class StateDataManager {
         if (data.online?.enabled && data.gameplayPlugins?.some(plugin => plugin.id === 'variables-plus')) {
             throw Error('Variables+ projects cannot use online mode');
         }
+        const pluginData = normalizePluginData(data.pluginData, data.gameplayPlugins);
         const soundsPlus = normalizeSoundsPlus(data.soundsPlus, data.gameplayPlugins);
 
         const dimension = (value: unknown) => {
@@ -245,6 +249,7 @@ class StateDataManager {
                 : undefined;
 
         Object.assign(this.game, {
+            pluginData,
             gameplayPlugins: data.gameplayPlugins?.map(p => ({ id: p.id, version: p.version })),
             soundsPlus,
             musicPlus,

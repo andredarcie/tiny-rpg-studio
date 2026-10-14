@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { GameplayPluginHost } from '../../runtime/infra/GameplayPluginHost';
+import { GameplayPluginHost, type GameplayContext } from '../../runtime/infra/GameplayPluginHost';
 import type { GameEngine } from '../../runtime/services/GameEngine';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
 import { assembleExportHtml } from '../../editor/modules/export/ExportHtmlAssembler';
@@ -115,4 +115,47 @@ it('reactivates the previous variable presets before rollback import', async () 
   expect(current).toEqual(previous);
   expect(presetsActive).toBe(true);
   expect(importGameData).toHaveBeenLastCalledWith(previous);
+});
+
+import hudSource from '../../../public/plugins/hud-plus/1.0.1/plugin.html?raw';
+import { parsePluginHtml } from '../../editor/manager/PluginManager';
+import { DEFAULT_HEARTS, DEFAULT_HUD_PRESENTATION, type HudPresentationProvider } from '../../runtime/adapters/renderer/HudPresentation';
+it('activates the packaged HUD before import, validates incoming data, and restores prior rendering on failure', async () => {
+  const hud = parsePluginHtml(hudSource);
+  let project: { gameplayPlugins?: {id:string;version:string}[]; pluginData?: Record<string,unknown> } = {};
+  let provider: HudPresentationProvider | undefined;
+  const cleanup = vi.fn(() => {provider = undefined;});
+  const resolve = (data: typeof project) => provider?.({palette:Array.from({length:16},(_,index) => String(index)),hearts:DEFAULT_HEARTS,data:data.pluginData?.['hud-plus']}) ?? DEFAULT_HUD_PRESENTATION;
+  const imported: unknown[] = [];
+  const engine = {
+    exportGameData:() => structuredClone(project),
+    importGameData:(data: typeof project) => { imported.push(resolve(data)); project = structuredClone(data); },
+    registerHudPresentation:(_id: string,next:HudPresentationProvider) => { provider = next; return cleanup; },
+    validateHudPresentation:(data:typeof project) => {resolve(data);},
+  } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine,() => [hud],source => {
+    const factory = new Function(source.replace('export function activate','function activate') + ';return {activate};') as () => { activate(context: GameplayContext):void };
+    return Promise.resolve(factory());
+  });
+  const dependencies = [{id:'hud-plus',version:'1.0.1'}];
+  await host.load({gameplayPlugins:dependencies,pluginData:{'hud-plus':{mode:'overlay',visible:{health:false}}}});
+  expect(imported[0]).toMatchObject({mode:'overlay',visible:{health:false}});
+  await expect(host.load({gameplayPlugins:dependencies,pluginData:{'hud-plus':{mode:'bad'}}})).rejects.toThrow('HUD+ mode');
+  expect(resolve(project)).toMatchObject({mode:'overlay',visible:{health:false}});
+  host.destroy(); expect(cleanup).toHaveBeenCalled(); expect(resolve(project).mode).toBe('bars');
+  await host.load({}); expect(resolve(project).visible.health).toBe(true);
+});
+
+it('does not import an obsolete HUD mutation after project replacement', async () => {
+  let finish: (() => void) | undefined;
+  const pause = new Promise<void>(resolve => {finish = resolve;});
+  const importGameData = vi.fn();
+  const engine = {exportGameData:() => ({title:'old'}),importGameData} as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine,() => [plugin],async () => { await pause; return {activate:() => {}}; });
+  const obsolete = host.load({title:'obsolete',gameplayPlugins:[{id:'maps',version:'1'}]});
+  await host.load({title:'current'});
+  finish?.();
+  await expect(obsolete).rejects.toThrow('changed');
+  expect(importGameData).toHaveBeenCalledTimes(1);
+  expect(importGameData).toHaveBeenCalledWith({title:'current'});
 });

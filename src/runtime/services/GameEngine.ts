@@ -1,3 +1,5 @@
+import type { GameDefinition } from '../../types/gameState';
+import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
 import { DialogManager } from './engine/DialogManager';
 import { EnemyManager } from './engine/EnemyManager';
 import { soundEngine } from './SoundEngine';
@@ -491,7 +493,16 @@ export class GameEngine {
     game.customTileEffects = normalized.length ? normalized : undefined;
   }
 
+  registerHudPresentation(id: string, provider: HudPresentationProvider): () => void {
+    return this.renderer.registerHudPresentation(id, provider);
+  }
+
+  validateHudPresentation(data: unknown): void {
+    this.renderer.resolveHudPresentation(data as Partial<GameDefinition>);
+  }
+
   importGameData(data: unknown): void {
+    this.validateHudPresentation(data);
     this.inputManager.cancelHeldMovement();
     this.backgroundMusicEngine.stop();
     this.gameState.importGameData(data);

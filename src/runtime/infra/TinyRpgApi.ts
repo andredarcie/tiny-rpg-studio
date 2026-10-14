@@ -1,3 +1,5 @@
+import type { HudResources } from '../adapters/renderer/HudPresentation';
+import type { JsonValue } from '../domain/state/PluginData';
 import type { BaseRuntimeApi } from './BaseRuntimeApi';
 import type { AuthoringApi } from './AuthoringApi';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
@@ -13,6 +15,8 @@ type TinyRpgApi = {
   loadProjectData?: (data: unknown, packages?: InstalledPlugin[]) => Promise<void>;
   resizeWorld?: (rows: number, cols: number, pluginId: string) => Promise<void>;
   enableVariablesPlus?: () => Promise<void>;
+  getHudResources?: () => HudResources;
+  setPluginData?: (pluginId: string, data: JsonValue | undefined) => Promise<void>;
   setSoundOverride?: (name: SoundName, asset: SoundOverride | null) => Promise<void>;
   addMusicPlusTrack?: (name: string, asset: MusicAsset) => Promise<void>;
   removeMusicPlusTrack?: (id: string) => Promise<void>;

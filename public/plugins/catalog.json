@@ -69,6 +69,18 @@
       "capabilities": ["editor", "gameplay"],
       "version": "1.0.0",
       "file": "variables-plus/1.0.0/plugin.html"
+    },
+    {
+      "id": "hud-plus",
+      "title": "HUD+",
+      "version": "1.0.1",
+      "capabilities": [
+        "editor",
+        "gameplay"
+      ],
+      "shortDescription": "Customize HUD visibility, overlay mode, and heart artwork.",
+      "fullDescription": "Choose which HUD elements appear, draw them over the room, and paint full and empty hearts. Settings and palette-index artwork stay in local saves and standalone HTML exports.",
+      "file": "hud-plus/1.0.1/plugin.html"
     }
   ]
 }

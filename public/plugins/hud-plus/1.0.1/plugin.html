@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>HUD+</title>
+<script id="tiny-rpg-plugin" type="application/json">
+{
+  "id":"hud-plus", "title":"HUD+", "version":"1.0.1", "apiVersion":1,
+  "capabilities":["editor","gameplay"],
+  "shortDescription":"Customize HUD visibility, overlay mode, and heart artwork.",
+  "fullDescription":"Choose which HUD elements appear, draw them over the room, and paint full and empty hearts. Settings and palette-index artwork stay in local saves and standalone HTML exports."
+}
+</script>
+<style data-tiny-rpg-plugin>
+#tab-editor .hud-plus-settings { display:grid; gap:8px; }
+#tab-editor .hud-plus-settings label { display:flex; gap:8px; align-items:center; }
+#tab-editor .hud-plus-art { display:grid; gap:8px; }
+#tab-editor .hud-plus-palette { display:flex; flex-wrap:wrap; gap:3px; }
+#tab-editor .hud-plus-palette button { width:24px; height:24px; border:2px solid var(--border); }
+#tab-editor .hud-plus-palette button[aria-pressed="true"] { outline:2px solid var(--accent); }
+#tab-editor .hud-plus-grid { display:grid; grid-template-columns:repeat(8,20px); width:max-content; touch-action:none; user-select:none; }
+#tab-editor .hud-plus-grid button { width:20px; height:20px; padding:0; border:1px solid #777; }
+#tab-editor .hud-plus-preview { display:grid; grid-template-columns:repeat(8,6px); width:48px; }
+#tab-editor .hud-plus-preview span { width:6px; height:6px; }
+#tab-editor .hud-plus-error:empty { display:none; }
+</style>
+<script type="module" data-tiny-rpg-gameplay-plugin>
+const parts = ['health','level','xp','minimap','items','gear'];
+function artwork(value) {
+  if (!Array.isArray(value) || value.length !== 8 || value.some(row => !Array.isArray(row) || row.length !== 8 || row.some(pixel => pixel !== null && (!Number.isInteger(pixel) || pixel < 0 || pixel > 15)))) throw Error('HUD+ hearts must be 8 × 8 palette-index matrices (0–15 or null)');
+  return value;
+}
+export function activate({ registerHudPresentation }) {
+  registerHudPresentation(({ data, palette, hearts }) => {
+    if (data !== undefined && (!data || typeof data !== 'object' || Array.isArray(data))) throw Error('Invalid HUD+ settings');
+    const settings = data ?? {};
+    if (Object.keys(settings).some(key => !['visible','mode','hearts','size'].includes(key))) throw Error('Unknown HUD+ setting');
+    const visible = Object.fromEntries(parts.map(part => [part,true]));
+    if (settings.visible !== undefined) {
+      if (!settings.visible || typeof settings.visible !== 'object' || Array.isArray(settings.visible)) throw Error('Invalid HUD+ visibility');
+      for (const [part,value] of Object.entries(settings.visible)) {
+        if (!parts.includes(part) || typeof value !== 'boolean') throw Error('Invalid HUD+ visibility');
+        visible[part] = value;
+      }
+    }
+    const mode = settings.mode ?? 'bars';
+    if (!['bars','overlay'].includes(mode)) throw Error('Invalid HUD+ mode');
+    const size = settings.size === undefined ? 1 : settings.size;
+    if (typeof size !== 'number' || !Number.isFinite(size) || size < 0.1 || size > 1) throw Error('HUD+ size must be a number from 0.1 to 1');
+    let art = hearts;
+    if (settings.hearts !== undefined) {
+      if (!settings.hearts || typeof settings.hearts !== 'object' || Array.isArray(settings.hearts) || Object.keys(settings.hearts).some(key => !['full','empty'].includes(key))) throw Error('Invalid HUD+ heart artwork');
+      art = { full: artwork(settings.hearts.full), empty: artwork(settings.hearts.empty) };
+    }
+    const resolved = Object.fromEntries(Object.entries(art).map(([key,matrix]) => [key,matrix.map(row => row.map(index => index === null ? null : palette[index]))]));
+    return { visible, mode, scale:size, inventoryOpacity:mode === 'overlay' ? 0.5 : 1, hearts:resolved };
+  });
+}
+</script>
+<script type="module" data-tiny-rpg-plugin>
+const parts = [['health','Health hearts'],['level','Level'],['xp','XP bar'],['minimap','Minimap'],['items','Items'],['gear','Gear']];
+export function activate({ api, onCleanup, registerSettings }) {
+  if (!api.setPluginData || !api.getHudResources) throw Error('HUD+ requires the HUD and plugin data APIs');
+  let removed = false;
+  let busy = false;
+  let generation = 0;
+  let container;
+  let error;
+  const controls = new Map();
+  const drafts = new Map();
+  const cleanups = [];
+  const listen = (element, event, handler) => { element.addEventListener(event,handler); cleanups.push(() => element.removeEventListener(event,handler)); };
+  const settings = () => structuredClone(api.exportGameData()?.pluginData?.['hud-plus'] ?? {});
+  const button = (text, action, parent) => {
+    const node = document.createElement('button'); node.type = 'button'; node.textContent = text;
+    listen(node,'click',action); parent.append(node); return node;
+  };
+  const refresh = () => {
+    if (removed || !container) return;
+    generation++;
+    const value = settings();
+    for (const [part,input] of controls) input.checked = value.visible?.[part] ?? true;
+    container.querySelector('select').value = value.mode ?? 'bars';
+    container.querySelector('[aria-label="Size"]').value = String(value.size ?? 1);
+    for (const draft of drafts.values()) draft.close();
+    for (const [kind,draft] of drafts) draft.preview(value.hearts?.[kind] ?? api.getHudResources().hearts[kind]);
+  };
+  const save = async transform => {
+    if (removed || busy) return;
+    const ticket = generation;
+    busy = true; error.textContent = '';
+    container.querySelectorAll('button,input,select').forEach(node => { node.disabled = true; });
+    try {
+      await api.setPluginData('hud-plus',transform(settings()));
+      if (!removed && ticket === generation) refresh();
+    } catch (cause) {
+      if (!removed && ticket === generation) { error.textContent = cause instanceof Error ? cause.message : String(cause); refresh(); }
+    } finally {
+      busy = false;
+      if (!removed) container.querySelectorAll('button,input,select').forEach(node => { node.disabled = false; });
+    }
+  };
+  registerSettings(parent => {
+    controls.clear(); drafts.clear();
+    container = document.createElement('div'); container.className = 'hud-plus-settings'; parent.append(container);
+    for (const [part,text] of parts) {
+      const label = document.createElement('label');
+      const input = document.createElement('input'); input.type = 'checkbox'; input.dataset.hudPart = part;
+      label.append(input,document.createTextNode(text)); container.append(label); controls.set(part,input);
+      listen(input,'change',() => { const checked = input.checked; void save(value => ({ ...value,visible:{ ...value.visible,[part]:checked } })); });
+    }
+    const label = document.createElement('label'); label.textContent = 'HUD mode';
+    const mode = document.createElement('select'); mode.setAttribute('aria-label','HUD mode');
+    for (const [value,text] of [['bars','Black bars'],['overlay','Overlay']]) { const option = document.createElement('option'); option.value=value; option.textContent=text; mode.append(option); }
+    label.append(mode); container.append(label);
+    listen(mode,'change',() => { const selected = mode.value; void save(value => ({ ...value,mode:selected })); });
+    const sizeLabel = document.createElement('label'); sizeLabel.textContent = 'Size';
+    const size = document.createElement('input'); size.type = 'number'; size.min = '0.1'; size.max = '1'; size.step = '0.1'; size.setAttribute('aria-label','Size');
+    sizeLabel.append(size); container.append(sizeLabel);
+    listen(size,'change',() => {
+      const value = size.valueAsNumber;
+      if (!Number.isFinite(value) || value < 0.1 || value > 1) { error.textContent = 'Size must be from 0.1 to 1'; size.value = String(settings().size ?? 1); return; }
+      void save(settings => ({...settings,size:value}));
+    });
+    for (const kind of ['full','empty']) {
+      const section = document.createElement('div'); section.className = 'hud-plus-art'; section.dataset.heart = kind;
+      const title = document.createElement('strong'); title.textContent = `${kind === 'full' ? 'Full' : 'Empty'} heart`; section.append(title);
+      const preview = document.createElement('div'); preview.className = 'hud-plus-preview'; preview.setAttribute('aria-label',`${kind} heart preview`); section.append(preview);
+      const editor = document.createElement('div'); editor.hidden = true;
+      let matrix; let color = 8; let stroke = null;
+      const palette = document.createElement('div'); palette.className = 'hud-plus-palette'; editor.append(palette);
+      const grid = document.createElement('div'); grid.className = 'hud-plus-grid'; editor.append(grid);
+      const paintPreview = art => {
+        const resources = api.getHudResources(); preview.replaceChildren();
+        for (const row of art) for (const index of row) { const pixel = document.createElement('span'); pixel.style.backgroundColor = index === null ? 'transparent' : resources.palette[index]; preview.append(pixel); }
+      };
+      const paintGrid = () => {
+        const resources = api.getHudResources();
+        [...grid.children].forEach((pixel,i) => { const index = matrix[Math.floor(i/8)][i%8]; pixel.style.backgroundColor = index === null ? 'transparent' : resources.palette[index]; });
+        paintPreview(matrix);
+      };
+      const paint = index => {
+        if (!matrix || busy || removed) return;
+        const previous = stroke?.last ?? index;
+        const fromX = previous % 8, fromY = Math.floor(previous / 8);
+        const toX = index % 8, toY = Math.floor(index / 8);
+        const steps = Math.max(Math.abs(toX-fromX),Math.abs(toY-fromY),1);
+        for (let step = 0; step <= steps; step++) matrix[Math.round(fromY+(toY-fromY)*step/steps)][Math.round(fromX+(toX-fromX)*step/steps)] = color;
+        if (stroke) stroke.last = index;
+        paintGrid();
+      };
+      const pixelIndex = target => {
+        const pixel = target?.closest?.('[data-heart-pixel]');
+        return pixel && grid.contains(pixel) ? Number(pixel.dataset.heartPixel) : null;
+      };
+      for (let i = 0; i < 64; i++) {
+        const pixel = button('',() => paint(i),grid);
+        pixel.dataset.heartPixel = String(i);
+        pixel.setAttribute('aria-label',`${kind} heart pixel ${Math.floor(i/8)+1}, ${i%8+1}`);
+      }
+      listen(grid,'pointerdown',event => {
+        const index = pixelIndex(event.target);
+        if (event.button !== 0 || index === null || !matrix || busy) return;
+        event.preventDefault(); stroke = {pointerId:event.pointerId,last:index}; paint(index);
+        if (event.pointerId !== undefined) grid.setPointerCapture?.(event.pointerId);
+      });
+      listen(grid,'pointerover',event => { if (!stroke || event.buttons === 0) return; const index = pixelIndex(event.target); if (index !== null) paint(index); });
+      listen(grid,'pointermove',event => {
+        if (!stroke || event.pointerId !== stroke.pointerId) return;
+        const index = pixelIndex(document.elementFromPoint(event.clientX,event.clientY));
+        if (index !== null) paint(index);
+      });
+      const stop = () => { if (stroke && grid.hasPointerCapture?.(stroke.pointerId)) grid.releasePointerCapture(stroke.pointerId); stroke = null; };
+      listen(document,'pointerup',stop); listen(document,'pointercancel',stop); listen(grid,'lostpointercapture',stop); listen(window,'blur',stop);
+      const close = () => { stop(); editor.hidden = true; matrix = undefined; };
+      button('Edit artwork',() => {
+        matrix = structuredClone(settings().hearts?.[kind] ?? api.getHudResources().hearts[kind]); color = 8;
+        palette.replaceChildren();
+        const colors = api.getHudResources().palette;
+        for (let index = 0; index < 16; index++) {
+          const swatch = button(String(index),() => { color = index; [...palette.children].forEach(node => node.setAttribute('aria-pressed',String(node === swatch))); },palette);
+          swatch.style.backgroundColor = colors[index]; swatch.setAttribute('aria-label',`Palette color ${index}`); swatch.setAttribute('aria-pressed',String(index === color));
+        }
+        button('Erase',() => { color = null; [...palette.children].forEach(node => node.setAttribute('aria-pressed','false')); },palette);
+        editor.hidden = false; paintGrid();
+      },section);
+      button('Save artwork',() => {
+        const art = structuredClone(matrix);
+        void save(value => ({ ...value,hearts:{ ...api.getHudResources().hearts,...value.hearts,[kind]:art } }));
+      },editor);
+      button('Cancel',() => { close(); paintPreview(settings().hearts?.[kind] ?? api.getHudResources().hearts[kind]); },editor);
+      button('Reset artwork',() => { void save(value => {
+        if (!value.hearts) return value;
+        value.hearts[kind] = api.getHudResources().hearts[kind]; return value;
+      }); },section);
+      section.append(editor); container.append(section); drafts.set(kind,{ close,preview:paintPreview });
+    }
+    button('Reset HUD settings',() => { if (window.confirm('Are you sure?')) void save(() => undefined); },container);
+    error = document.createElement('p'); error.className = 'hud-plus-error'; error.setAttribute('role','alert'); container.append(error);
+    refresh();
+  });
+  listen(document,'tiny-rpg-project-restored',refresh);
+  onCleanup(() => { removed = true; generation++; cleanups.forEach(cleanup => cleanup()); controls.clear(); drafts.clear(); container?.remove(); });
+}
+</script>
+</head>
+<body></body>
+</html>

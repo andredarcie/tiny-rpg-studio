@@ -713,3 +713,20 @@ describe('StateDataManager - customSprites', () => {
     expect(game.customSprites).toBeUndefined();
   });
 });
+
+import { GameState } from '../../runtime/domain/GameState';
+it('clones generic plugin JSON, requires dependencies, and clears absent data on replacement', () => {
+  const state = new GameState();
+  const data = (state.exportGameData() as GameDefinition);
+  const pluginData = {'hud-plus':{mode:'overlay',visible:{health:false},indices:[7,8,null]}};
+  state.importGameData({...data,gameplayPlugins:[{id:'hud-plus',version:'1.0.1'}],pluginData});
+  pluginData['hud-plus'].indices[0] = 2;
+  expect((state.exportGameData() as GameDefinition).pluginData).toEqual({'hud-plus':{mode:'overlay',visible:{health:false},indices:[7,8,null]}});
+  const exported = (state.exportGameData() as GameDefinition);
+  if (exported.pluginData) exported.pluginData['hud-plus'] = null;
+  expect((state.exportGameData() as GameDefinition).pluginData?.['hud-plus']).not.toBeNull();
+  expect(() => state.importGameData({...data,pluginData})).toThrow('dependency');
+  expect(() => state.importGameData({...data,gameplayPlugins:[{id:'hud-plus',version:'1.0.1'}],pluginData:{'hud-plus':{bad:NaN}}})).toThrow('JSON');
+  state.importGameData(data);
+  expect((state.exportGameData() as GameDefinition).pluginData).toBeUndefined();
+});

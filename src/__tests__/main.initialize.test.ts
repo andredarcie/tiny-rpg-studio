@@ -1,3 +1,7 @@
+import hudPackage from '../../public/plugins/hud-plus/1.0.1/plugin.html?raw';
+import { parsePluginHtml, type PluginManager } from '../editor/manager/PluginManager';
+import { GameplayPluginHost, GameplayLoadSupersededError } from '../runtime/infra/GameplayPluginHost';
+import type { GameDefinition } from '../types/gameState';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type MockEngine = {
@@ -43,6 +47,11 @@ const mocks = vi.hoisted(() => {
 
   const editorManagerInstance = {
     projectGeneration: 0,
+    restore: vi.fn(),
+    persistAuthoring: vi.fn(),
+    history: { pushCurrentState: vi.fn() },
+    state: { activeRoomIndex: 0 },
+    saveGameplayRemovalBackup: vi.fn(() => true),
     createAuthoring: vi.fn(() => ({ capabilities: vi.fn(), begin: vi.fn() })),
     pluginUi: { createModal: vi.fn(), text: vi.fn() },
     renderAll: vi.fn(),
@@ -112,6 +121,56 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     document.body.innerHTML = '';
     delete (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE;
   });
+
+it('saves HUD data with dependencies/history, rolls back errors, resets, and backs up removal', async () => {
+  localStorage.clear(); vi.clearAllMocks();
+  document.body.innerHTML = '<canvas id="game-canvas"></canvas><div id="tab-editor"></div>';
+  const hud = parsePluginHtml(hudPackage);
+  localStorage.setItem(PLUGIN_STORAGE_KEY,JSON.stringify([hud]));
+  let project = {title:'Game',world:{rows:3,cols:3}} as GameDefinition;
+  mocks.engine.exportGameData.mockImplementation(() => structuredClone(project));
+  mocks.engine.importGameData.mockImplementation((data:GameDefinition) => {project = structuredClone(data);});
+  mocks.editorManagerInstance.projectGeneration = 0;
+  vi.spyOn(TinyRPGApplication,'setupTabs').mockImplementation(() => {});
+  vi.spyOn(TinyRPGApplication,'loadSharedGameIfAvailable').mockImplementation(() => {});
+  vi.spyOn(PluginRuntime.prototype,'start').mockImplementation(() => {});
+  const load = vi.spyOn(GameplayPluginHost.prototype,'load').mockImplementation(data => {
+    project = structuredClone(data as GameDefinition); return Promise.resolve();
+  });
+  const listeners = vi.spyOn(document,'addEventListener');
+  await TinyRPGApplication.initializeApplication();
+  document.dispatchEvent(new CustomEvent('editor-tab-activated',{detail:{initial:false}}));
+  await vi.waitFor(() => expect(mocks.editorManagerInstance.renderAll).toHaveBeenCalled());
+  const api = getTinyRpgApi();
+  if (!api?.setPluginData) throw Error('Missing plugin data API');
+  await expect(api.setPluginData('missing',{})).rejects.toThrow('unavailable');
+  await api.setPluginData('hud-plus',{mode:'overlay'});
+  expect(project.pluginData).toEqual({'hud-plus':{mode:'overlay'}});
+  expect(project.gameplayPlugins).toEqual([{id:'hud-plus',version:'1.0.1'}]);
+  expect(mocks.editorManagerInstance.persistAuthoring).toHaveBeenCalled();
+  expect(mocks.editorManagerInstance.history.pushCurrentState).toHaveBeenCalledTimes(1);
+  load.mockRejectedValueOnce(Error('Malformed settings'));
+  await expect(api.setPluginData('hud-plus',{mode:'bad'})).rejects.toThrow('Malformed');
+  expect(project.pluginData).toEqual({'hud-plus':{mode:'overlay'}});
+  expect(mocks.editorManagerInstance.history.pushCurrentState).toHaveBeenCalledTimes(1);
+  const callsBeforeSuperseded = load.mock.calls.length;
+  load.mockRejectedValueOnce(new GameplayLoadSupersededError());
+  await expect(api.setPluginData('hud-plus',{mode:'bars'})).rejects.toThrow('changed');
+  expect(load.mock.calls.length).toBe(callsBeforeSuperseded + 1);
+  await api.setPluginData('hud-plus',undefined);
+  expect(project.pluginData).toBeUndefined(); expect(project.gameplayPlugins).toEqual([]);
+  await api.setPluginData('hud-plus',{mode:'overlay'});
+  const manager = vi.mocked(PluginsModal).mock.calls.at(-1)?.[0] as PluginManager | undefined;
+  if (!manager) throw Error('No manager');
+  const before = structuredClone(project);
+  manager.remove('hud-plus');
+  expect(mocks.editorManagerInstance.saveGameplayRemovalBackup).toHaveBeenCalledWith(before);
+  expect(project.pluginData).toBeUndefined(); expect(project.gameplayPlugins).toEqual([]);
+  for (const [type,listener,options] of listeners.mock.calls) document.removeEventListener(type,listener,options);
+  listeners.mockRestore();
+  localStorage.clear(); load.mockRestore();
+  mocks.engine.exportGameData.mockImplementation(() => ({title:'Game'})); mocks.engine.importGameData.mockReset();
+});
 
   it('initializeApplication returns early when #game-canvas is missing or invalid', () => {
     document.body.innerHTML = `<div id="game-canvas"></div>`;
@@ -250,5 +309,8 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
 
     expect(initSpy).toHaveBeenCalled();
     expect(responsiveSpy).toHaveBeenCalled();
+    initSpy.mockRestore();
+    responsiveSpy.mockRestore();
   });
+
 });

@@ -1,3 +1,4 @@
+import { DEFAULT_HEARTS, DEFAULT_HUD_PRESENTATION, type HudPresentation } from './HudPresentation';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
 import { FONT_SIZE } from '../../../config/FontConfig';
@@ -5,6 +6,7 @@ import { bitmapFont } from './BitmapFont';
 import { TextResources } from '../TextResources';
 
 class RendererHudRenderer {
+    presentation: HudPresentation = DEFAULT_HUD_PRESENTATION;
     gameState: GameStateApi;
     entityRenderer: EntityRendererApi;
     paletteManager: PaletteManagerApi;
@@ -32,60 +34,42 @@ class RendererHudRenderer {
 
     // Getter to always generate health icons with current palette
     get healthIconDefinitions(): Record<string, (string | null)[][]> {
-        const white = this.paletteManager.getColor(7);
-        const red = this.paletteManager.getColor(8);
-        return {
-            full: [
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null,red,red, null,red,red, null ],
-                [ null,red,red,red,red,red,white,red ],
-                [ null,red,red,red,red,red,red,red ],
-                [ null, null,red,red,red,red,red, null ],
-                [ null, null, null,red,red,red, null, null ],
-                [ null, null, null, null,red, null, null, null ]
-            ],
-            empty: [
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null, null, null, null, null, null, null ],
-                [ null, null,red,red, null,red,red, null ],
-                [ null,red,null,null,red,null,null,red ],
-                [ null,red,null,null,null,null,null,red ],
-                [ null, null,red,null,null,null,red, null ],
-                [ null, null, null,red,null,red, null, null ],
-                [ null, null, null, null,red, null, null, null ]
-            ]
-        };
+        if (this.presentation.hearts) return this.presentation.hearts;
+        return Object.fromEntries(Object.entries(DEFAULT_HEARTS).map(([key, matrix]) =>
+            [key, matrix.map(row => row.map(index => index === null ? null : this.paletteManager.getColor(index)))]));
     }
 
     drawHUD(ctx: CanvasRenderingContext2D, area: HudArea = {}) {
-        const width = area.width ?? ctx.canvas.width;
+        const scale = this.presentation.scale ?? 1;
+        const actualWidth = area.width ?? ctx.canvas.width;
+        const width = actualWidth / scale;
         const height = area.height ?? 16;
         const padding = area.padding ?? this.padding;
         const accent = this.paletteManager.getColor(7);
 
         ctx.save();
         ctx.fillStyle = this.backgroundColor;
-        ctx.fillRect(0, 0, width, height);
+        if (this.presentation.mode === 'bars') ctx.fillRect(0, 0, actualWidth, height);
 
         if (this.gameState.isGameOver()) {
             ctx.restore();
             return;
         }
 
-        const label = this.getLevelLabel();
+        if (scale !== 1) ctx.scale(scale, scale);
+        const label = this.presentation.visible.level ? this.getLevelLabel() : null;
         const fontSize = area.fontSize ?? FONT_SIZE;
 
         const world = this.gameState.getGame().world;
         const mapDimension = Math.max(world?.rows || 3, world?.cols || 3);
         const mapCellSize = Math.max(4, Math.floor((height - padding * 2) / mapDimension));
-        const miniMapSize = mapCellSize * mapDimension;
+        const miniMapSize = this.presentation.visible.minimap ? mapCellSize * mapDimension : 0;
         const miniMapX = width - padding - miniMapSize;
         const miniMapY = Math.round(height / 2 - miniMapSize / 2);
 
         const labelWidth = label ? bitmapFont.measureText(label, fontSize) : 0;
         const labelGap = label ? this.gap : 0;
-        const rightReserved = miniMapSize + this.gap + labelWidth + labelGap;
+        const rightReserved = miniMapSize + (miniMapSize ? this.gap : 0) + labelWidth + labelGap + (!miniMapSize && this.presentation.visible.xp ? 30 : 0);
         const availableWidth = Math.max(0, width - padding - rightReserved);
 
         const heartBaseSize = this.canvasHelper.getTilePixelSize();
@@ -98,7 +82,7 @@ class RendererHudRenderer {
             Math.floor(availableWidth / Math.max(heartStride, 1))
         );
 
-        this.drawHealth(ctx, {
+        if (this.presentation.visible.health) this.drawHealth(ctx, {
             offsetX: padding - 4,
             offsetY: padding + Math.max(0, (height - padding * 2 - heartSize) / 2) - 2,
             heartsPerRow,
@@ -112,14 +96,16 @@ class RendererHudRenderer {
             bitmapFont.drawText(ctx, label, miniMapX - this.gap, height / 2, fontSize, accent);
         }
 
-        this.drawMiniMap(ctx, miniMapX, miniMapY, mapCellSize, miniMapSize);
-        this.drawXpBar(ctx,miniMapX-30,miniMapY+miniMapSize)
+        if (this.presentation.visible.minimap) this.drawMiniMap(ctx, miniMapX, miniMapY, mapCellSize, miniMapSize);
+        if (this.presentation.visible.xp) this.drawXpBar(ctx, miniMapX - 30, miniMapSize ? miniMapY + miniMapSize : height - padding);
 
         ctx.restore();
     }
 
     drawInventory(ctx: CanvasRenderingContext2D, area: HudArea = {}) {
-        const width = area.width ?? ctx.canvas.width;
+        const scale = this.presentation.scale ?? 1;
+        const actualWidth = area.width ?? ctx.canvas.width;
+        const width = actualWidth / scale;
         const height = area.height ?? 16;
         const padding = area.padding ?? this.padding;
         const offsetX = area.x ?? 0;
@@ -133,7 +119,10 @@ class RendererHudRenderer {
         ctx.save();
         ctx.translate(offsetX, offsetY);
         ctx.fillStyle = this.backgroundColor;
-        ctx.fillRect(0, 0, width, height);
+        if (this.presentation.mode === 'bars') ctx.fillRect(0, 0, actualWidth, height);
+        if (scale !== 1) { ctx.translate(0, height * (1 - scale)); ctx.scale(scale, scale); }
+        const opacity = this.presentation.inventoryOpacity ?? 1;
+        if (opacity !== 1) ctx.globalAlpha *= opacity;
 
         if (this.gameState.isGameOver()) {
             ctx.restore();
@@ -155,7 +144,7 @@ class RendererHudRenderer {
         const startX = padding;
         const startY = padding + Math.max(0, (height - padding * 2 - gridHeight) / 2);
         const keySprite = this.objectSprites[ITEM_TYPES.KEY];
-        if (keys > 0 && keySprite) {
+        if (this.presentation.visible.items && keys > 0 && keySprite) {
             const totalKeys = Math.min(keys, maxSlots);
             for (let i = 0; i < totalKeys; i++) {
                 const row = Math.floor(i / iconsPerRow);
@@ -174,7 +163,7 @@ class RendererHudRenderer {
         let equipX = width - padding;
 
         const swordSprite = this.getSwordHudSprite(swordType);
-        if (swordType && swordSprite) {
+        if (this.presentation.visible.gear && swordType && swordSprite) {
             equipX -= equipSize;
             this.canvasHelper.drawSprite(ctx, swordSprite, equipX, equipY, equipStep);
             // Current remaining hits — same square markers as enemy lives, above the icon.
@@ -189,14 +178,14 @@ class RendererHudRenderer {
         }
 
         const bootsSprite = this.objectSprites[ITEM_TYPES.BOOTS];
-        if (this.gameState.hasBoots?.() && bootsSprite) {
+        if (this.presentation.visible.gear && this.gameState.hasBoots?.() && bootsSprite) {
             equipX -= equipSize;
             this.canvasHelper.drawSprite(ctx, bootsSprite, equipX, equipY, equipStep);
             equipX -= gap;
         }
 
         const armorSprite = this.objectSprites[ITEM_TYPES.ARMOR];
-        if (this.gameState.hasArmor?.() && armorSprite) {
+        if (this.presentation.visible.gear && this.gameState.hasArmor?.() && armorSprite) {
             equipX -= equipSize;
             this.canvasHelper.drawSprite(ctx, armorSprite, equipX, equipY, equipStep);
             this.drawDurabilityMarkers(

@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-14-hud-plus',
+    date: '2026-10-14',
+    title: 'Customize your game HUD with HUD+',
+    description: 'Show only the HUD elements you need, overlay them on the room, and paint full and empty hearts using your game palette. Customizations stay in saved projects and standalone HTML exports.',
+  },
+  {
     id: '2026-10-12-music-plus-library',
     date: '2026-10-12',
     title: 'Same songs between different rooms: Music+ 1.1.0',

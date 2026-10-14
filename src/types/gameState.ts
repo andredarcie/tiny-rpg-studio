@@ -1,3 +1,4 @@
+import type { PluginData } from '../runtime/domain/state/PluginData';
 import type { Tileset } from '../runtime/domain/definitions/tileTypes';
 import type { CustomTileEffectDefinition } from '../runtime/domain/definitions/customTileEffects';
 import type { ObjectEntry } from '../runtime/domain/state/StateObjectManager';
@@ -208,6 +209,7 @@ export type OnlineConfig = {
 };
 
 export type GameDefinition = {
+    pluginData?: PluginData;
     gameplayPlugins?: { id: string; version: string }[];
     soundsPlus?: SoundsPlusMap;
     musicPlus?: MusicPlusLibrary;

@@ -369,3 +369,20 @@ describe('EditorShareService', () => {
 });
 
 
+
+import hudPackage from '../../../public/plugins/hud-plus/1.0.1/plugin.html?raw';
+import { PluginManager, parsePluginHtml } from '../../editor/manager/PluginManager';
+it('disables Generate URL immediately for HUD+, after reload, and until the last gameplay plugin is removed', () => {
+  localStorage.clear();
+  document.body.innerHTML = '<button id="btn-generate-url"></button><div id="generate-url-wrapper"></div><span id="generate-url-help"></span>';
+  const manager = new PluginManager();
+  const service = new EditorShareService(asShareServiceManager(makeManager()),manager);
+  const button = document.getElementById('btn-generate-url') as HTMLButtonElement;
+  expect(button.disabled).toBe(false);
+  manager.install(parsePluginHtml(hudPackage)); expect(button.disabled).toBe(true);
+  const reloaded = new PluginManager(); service.attachPluginManager(reloaded); expect(button.disabled).toBe(true);
+  reloaded.install({...parsePluginHtml(hudPackage),id:'another-hud'});
+  reloaded.remove('hud-plus'); expect(button.disabled).toBe(true);
+  reloaded.remove('another-hud'); expect(button.disabled).toBe(false);
+  localStorage.clear();
+});

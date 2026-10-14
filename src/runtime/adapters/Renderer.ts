@@ -1,3 +1,6 @@
+import { DEFAULT_HEARTS, DEFAULT_HUD_PRESENTATION, type HudPresentation, type HudResources, type HudPresentationProvider } from './renderer/HudPresentation';
+import { PICO8_COLORS } from '../domain/definitions/TileDefinitions';
+import type { GameDefinition } from '../../types/gameState';
 import { RendererPalette } from './renderer/RendererPalette';
 import { RendererSpriteFactory } from './renderer/RendererSpriteFactory';
 import { RendererCanvasHelper } from './renderer/RendererCanvasHelper';
@@ -32,6 +35,7 @@ type RendererGameState = {
     isLevelUpCelebrationActive?: () => boolean;
     isLevelUpOverlayActive?: () => boolean;
     getGame?: () => { hideHud?: boolean; disablePixelFont?: boolean };
+    getDialog?: () => { active?: boolean };
     getPlayer?: () => { roomIndex: number; x: number; y: number } | null;
     getEnemies?: () => { id?: string; roomIndex: number; x: number; y: number; lastX: number; lastY?: number }[];
     isGameOver: () => boolean;
@@ -51,6 +55,28 @@ type TileManagerApi = {
  * Renderer coordinates specialized modules to draw the scene.
  */
 class Renderer {
+    private hudProviders = new Map<string, HudPresentationProvider>();
+    private hudPresentation: HudPresentation = DEFAULT_HUD_PRESENTATION;
+
+    getHudResources(project?: Partial<GameDefinition>): HudResources {
+        const palette = project ? (project.customPalette?.length === 16 ? project.customPalette : PICO8_COLORS) : this.paletteManager.getActivePalette();
+        return { palette: [...palette], hearts: structuredClone(DEFAULT_HEARTS) };
+    }
+
+    registerHudPresentation(id: string, provider: HudPresentationProvider): () => void {
+        if (this.hudProviders.has(id)) throw Error(`HUD provider ${id} already registered`);
+        this.hudProviders.set(id, provider);
+        return () => { this.hudProviders.delete(id); this.hudPresentation = DEFAULT_HUD_PRESENTATION; };
+    }
+
+    resolveHudPresentation(project: Partial<GameDefinition>): HudPresentation {
+        let result = DEFAULT_HUD_PRESENTATION;
+        for (const [id, provider] of this.hudProviders) {
+            result = provider({ ...this.getHudResources(project), data: structuredClone(project.pluginData?.[id]) });
+        }
+        return result;
+    }
+
     canvas!: HTMLCanvasElement;
     ctx!: CanvasRenderingContext2D | null;
     hudBarHeight!: number;
@@ -161,27 +187,30 @@ class Renderer {
             GameConfig.canvas.minTileSize,
             Math.floor(this.canvas.width / GameConfig.world.roomSize)
         );
+        if (this.hudProviders.size) this.hudPresentation = this.resolveHudPresentation(this.gameState.getGame?.() ?? {});
+        else this.hudPresentation = DEFAULT_HUD_PRESENTATION;
+        const { visible, mode } = this.hudPresentation;
         const hideHud = this.shouldHideHud();
-        this.hudBarHeight = hideHud
+        this.hudBarHeight = hideHud || !(visible.health || visible.level || visible.xp || visible.minimap)
             ? 0
             : Math.max(
                 GameConfig.canvas.minHudHeight,
                 Math.round(tilePixelSize * GameConfig.canvas.hudHeightMultiplier)
             );
-        this.inventoryBarHeight = hideHud
+        this.inventoryBarHeight = hideHud || !(visible.items || visible.gear)
             ? 0
             : Math.max(
                 GameConfig.canvas.minInventoryHeight,
                 Math.round(tilePixelSize * GameConfig.canvas.inventoryHeightMultiplier)
             );
-        this.totalHudHeight = this.hudBarHeight + this.inventoryBarHeight;
+        this.totalHudHeight = mode === 'overlay' ? 0 : this.hudBarHeight + this.inventoryBarHeight;
         this.gameplayHeight = tilePixelSize * GameConfig.world.roomSize;
         const desiredHeight = this.gameplayHeight + this.totalHudHeight;
         if (this.canvas.height !== desiredHeight) {
             this.canvas.height = desiredHeight;
         }
-        this.gameplayOffsetY = this.hudBarHeight;
-        this.inventoryOffsetY = this.hudBarHeight + this.gameplayHeight;
+        this.gameplayOffsetY = mode === 'overlay' ? 0 : this.hudBarHeight;
+        this.inventoryOffsetY = mode === 'overlay' ? this.gameplayHeight - this.inventoryBarHeight : this.hudBarHeight + this.gameplayHeight;
         this.gameplayCanvasBounds = {
             width: this.canvas.width,
             height: this.gameplayHeight
@@ -269,10 +298,11 @@ class Renderer {
         }
     }
 
-    draw() {
+    draw(includeHud = true) {
         const ctx = this.ctx;
         if (!ctx) return;
         this.applyCanvasLayout();
+        this.hudRenderer.presentation = this.hudPresentation;
         ctx.imageSmoothingEnabled = false;
         this.entityRenderer.setViewportOffset(this.gameplayOffsetY);
         this.dialogRenderer.setViewportOffset(this.gameplayOffsetY);
@@ -342,25 +372,27 @@ class Renderer {
             height: this.inventoryBarHeight
         };
 
-        if (introActive && !this.shouldHideHud()) {
+        const overlayHud = this.hudPresentation.mode === 'overlay';
+        const suppressOverlayHud = overlayHud && (!includeHud || introActive || pickupOverlayActive || levelUpOverlayActive || levelUpCelebrationActive || Boolean(this.gameState.getDialog?.().active));
+        if (introActive && !this.shouldHideHud() && !overlayHud) {
             ctx.save();
             ctx.fillStyle = '#000000';
             ctx.fillRect(0, 0, topHudArea.width, topHudArea.height);
             ctx.fillRect(bottomHudArea.x, bottomHudArea.y, bottomHudArea.width, bottomHudArea.height);
             ctx.restore();
-        } else if (!levelUpOverlayActive && !this.shouldHideHud()) {
-            this.hudRenderer.drawHUD(ctx, topHudArea);
-            this.hudRenderer.drawInventory(ctx, bottomHudArea);
+        } else if (!levelUpOverlayActive && !this.shouldHideHud() && !suppressOverlayHud) {
+            if (this.hudBarHeight) this.hudRenderer.drawHUD(ctx, topHudArea);
+            if (this.inventoryBarHeight) this.hudRenderer.drawInventory(ctx, bottomHudArea);
         }
 
         // During the level-up modal the top HUD is hidden behind the overlay, but
         // the inventory bar stays visible below it.
-        if (levelUpOverlayActive && !this.shouldHideHud()) {
-            this.hudRenderer.drawInventory(ctx, bottomHudArea);
+        if (levelUpOverlayActive && !this.shouldHideHud() && !overlayHud) {
+            if (this.inventoryBarHeight) this.hudRenderer.drawInventory(ctx, bottomHudArea);
         }
         // The level-up skill screen is an HTML overlay (crisp web font) rather than
         // canvas pixel text. Drawn every frame so it shows/hides with the state.
-        this.levelUpOverlay.setBottomReserve(this.shouldHideHud() ? 0 : this.inventoryBarHeight);
+        this.levelUpOverlay.setBottomReserve(this.shouldHideHud() || overlayHud ? 0 : this.inventoryBarHeight);
         this.levelUpOverlay.draw(ctx);
 
         if (this.gameState.isGameOver()) {
@@ -448,17 +480,24 @@ class Renderer {
         buffer.height = height;
         const bufferCtx = buffer.getContext('2d');
         if (!bufferCtx) return null;
-        bufferCtx.drawImage(
-            this.canvas,
-            0,
-            this.gameplayOffsetY,
-            width,
-            height,
-            0,
-            0,
-            width,
-            height
-        );
+        this.applyCanvasLayout();
+        const overlayHud = this.hudPresentation.mode === 'overlay';
+        if (overlayHud) this.draw(false);
+        try {
+            bufferCtx.drawImage(
+                this.canvas,
+                0,
+                this.gameplayOffsetY,
+                width,
+                height,
+                0,
+                0,
+                width,
+                height
+            );
+        } finally {
+            if (overlayHud) this.draw();
+        }
         return buffer;
     }
 

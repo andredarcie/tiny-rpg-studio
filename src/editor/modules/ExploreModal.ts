@@ -8,7 +8,6 @@ import { Modal } from '../../ui/Modal';
 
 const PREVIEW_CANVAS_WIDTH = 128;
 const GAMEPLAY_SIZE = 128;
-const GAMEPLAY_OFFSET_Y = 28;
 
 const BACKUP_KEY = 'tiny-rpg-explore-backup';
 
@@ -36,7 +35,7 @@ function renderGamePreview(gameData: Record<string, unknown>): string {
   const engine = new GameEngine(src, { soundOwner: false });
   engine.importGameData(gameData);
 
-  const offsetY = gameData.hideHud ? 0 : GAMEPLAY_OFFSET_Y;
+  const offsetY = engine.renderer.gameplayOffsetY;
 
   const out = document.createElement('canvas');
   out.width = GAMEPLAY_SIZE;

@@ -1,3 +1,4 @@
+import { upgradeHudPlusDependency } from './editor/manager/upgradeHudPlusDependency';
 import { createBaseRuntimeApi } from './runtime/infra/BaseRuntimeApi';
 import './styles.css';
 import { BootLoadingScreen } from './BootLoadingScreen';
@@ -9,7 +10,7 @@ import { PluginRuntime } from './editor/manager/PluginRuntime';
 import { PluginManager } from './editor/manager/PluginManager';
 import { upgradeDialoguePlusDependency } from './editor/manager/upgradeDialoguePlusDependency';
 import { upgradeMusicPlusDependency } from './editor/manager/upgradeMusicPlusDependency';
-import { GameplayPluginHost } from './runtime/infra/GameplayPluginHost';
+import { GameplayPluginHost, GameplayLoadSupersededError } from './runtime/infra/GameplayPluginHost';
 import { StateWorldManager } from './runtime/domain/state/StateWorldManager';
 import type { GameDefinition } from './types/gameState';
 import { PluginsModal } from './editor/modules/PluginsModal';
@@ -112,7 +113,7 @@ class TinyRPGApplication {
     if (savedProject?.startsWith('snapshot:') && !globalThis.location.hash && !(globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE && gameplayHost) {
       const snapshot = ShareUtils.readStoredProject(savedProject);
       if (snapshot) {
-        try { await gameplayHost.load(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(snapshot, pluginManager?.installed ?? []), pluginManager?.installed ?? [])); }
+        try { await gameplayHost.load(upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(snapshot, pluginManager?.installed ?? []), pluginManager?.installed ?? []), pluginManager?.installed ?? [])); }
         catch (error) { console.error('[TinyRPG] Unable to restore gameplay project.', error); }
       }
     } else {
@@ -204,7 +205,7 @@ class TinyRPGApplication {
       runtime,
       exportGameData: () => gameEngine.exportGameData(),
       importGameData: (data: unknown) => {
-        if (data && typeof data === 'object') data = upgradeMusicPlusDependency(data, pluginManager?.installed ?? []);
+        if (data && typeof data === 'object') data = upgradeHudPlusDependency(upgradeMusicPlusDependency(data, pluginManager?.installed ?? []), pluginManager?.installed ?? []);
         const required = (data as { gameplayPlugins?: { id: string; version: string }[] } | null)?.gameplayPlugins ?? [];
         for (const dependency of required) {
           if (!gameplayHost?.isActive(dependency.id, dependency.version)) throw Error(`Required gameplay plugin ${dependency.id}@${dependency.version} is not active`);
@@ -214,7 +215,7 @@ class TinyRPGApplication {
         gameEngine.importGameData(data);
       },
       loadProjectData: async (data: unknown, packages) => {
-        if (data && typeof data === 'object') data = upgradeMusicPlusDependency(data, packages ?? pluginManager?.installed ?? []);
+        if (data && typeof data === 'object') data = upgradeHudPlusDependency(upgradeMusicPlusDependency(data, packages ?? pluginManager?.installed ?? []), packages ?? pluginManager?.installed ?? []);
         if (editorManager) await editorManager.loadProjectData(data as Record<string, unknown>, {}, packages);
         else if (gameplayHost) await gameplayHost.load(data, packages);
         else gameEngine.importGameData(data);
@@ -250,6 +251,38 @@ class TinyRPGApplication {
         editorManager?.history.pushCurrentState();
         editorManager?.persistAuthoring();
         gameEngine.draw();
+      },
+      getHudResources: () => gameEngine.renderer.getHudResources(),
+      setPluginData: async (pluginId, value) => {
+        if (!editorManager || !gameplayHost || !pluginManager) throw Error('Plugin editor is unavailable');
+        const plugin = pluginManager.installed.find(item => item.id === pluginId && item.version && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+        if (!plugin) throw Error(`Gameplay plugin ${pluginId} is unavailable`);
+        const projectEditor = editorManager;
+        const previous = gameEngine.exportGameData() as GameDefinition;
+        const generation = editorManager.projectGeneration;
+        const game = structuredClone(previous);
+        game.pluginData = { ...game.pluginData };
+        game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== pluginId);
+        if (value !== undefined) {
+          game.pluginData[pluginId] = structuredClone(value);
+          game.gameplayPlugins.push({ id: pluginId, version: plugin.version ?? '' });
+        } else delete game.pluginData[pluginId];
+        if (!Object.keys(game.pluginData).length) delete game.pluginData;
+        if (JSON.stringify(previous.pluginData) === JSON.stringify(game.pluginData)) return;
+        if (generation !== editorManager.projectGeneration || !pluginManager.has(pluginId)) throw Error('The project changed before settings were saved');
+        try {
+          await gameplayHost.load(game, undefined, true, () => generation === projectEditor.projectGeneration && pluginManager.installed.some(item => item.id === pluginId && item.version === plugin.version));
+          if (generation !== editorManager.projectGeneration || !pluginManager.has(pluginId)) throw Error('The project changed before settings were saved');
+          editorManager.restore(game as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+          editorManager.persistAuthoring();
+          editorManager.history.pushCurrentState();
+        } catch (error) {
+          if (!(error instanceof GameplayLoadSupersededError) && generation === editorManager.projectGeneration) {
+            await gameplayHost.load(previous);
+            editorManager.restore(previous as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+          }
+          throw error;
+        }
       },
       setSoundOverride: async (name: SoundName, asset: SoundOverride | null) => {
         if (!editorManager || !gameplayHost || !SOUND_NAMES.includes(name)) throw Error('Sounds+ editor is unavailable');
@@ -396,7 +429,7 @@ class TinyRPGApplication {
         const current = gameEngine.exportGameData() as GameDefinition;
         const dependencies = current.gameplayPlugins ?? [];
         const removed = dependencies.filter(item => !pluginManager.has(item.id));
-        const upgraded = upgradeMusicPlusDependency(upgradeDialoguePlusDependency(current, pluginManager.installed), pluginManager.installed);
+        const upgraded = upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(current, pluginManager.installed), pluginManager.installed), pluginManager.installed);
         if (!removed.length && upgraded !== current && gameplayHost) {
           void gameplayHost.load(upgraded).then(() => {
             if (editorManager) {
@@ -415,12 +448,14 @@ class TinyRPGApplication {
         }
         const retained = dependencies.filter(item => pluginManager.has(item.id));
         const resize = removed.some(item => item.id === 'maps-plus') && (current.world.rows !== 3 || current.world.cols !== 3);
-        if ((resize || removed.some(item => item.id === 'variables-plus' || item.id === 'sounds-plus' || item.id === 'music-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
+        if ((resize || removed.some(item => current.pluginData?.[item.id] !== undefined || item.id === 'variables-plus' || item.id === 'sounds-plus' || item.id === 'music-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
           alert('Could not save a backup of the project. Reinstall the plugin to recover it.');
           return;
         }
         const game = JSON.parse(JSON.stringify(current)) as GameDefinition;
         game.gameplayPlugins = retained;
+        for (const dependency of removed) if (game.pluginData) delete game.pluginData[dependency.id];
+        if (game.pluginData && !Object.keys(game.pluginData).length) delete game.pluginData;
         if (removed.some(item => item.id === 'sounds-plus')) delete game.soundsPlus;
         if (removed.some(item => item.id === 'music-plus')) { delete game.musicPlus; delete game.musicPlusSmoothTransition; delete game.musicPlusFadeDurationSeconds; }
         const activeRoom = editorManager?.state.activeRoomIndex ?? 0;

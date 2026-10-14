@@ -408,3 +408,70 @@ it('draws every cell of a rectangular world minimap', () => {
   renderer.drawMiniMap(asCanvasCtx(ctx), 0, 0, 4, 20);
   expect(ctx.fillRect).toHaveBeenCalledTimes(15);
 });
+
+import { DEFAULT_HUD_PRESENTATION } from '../../runtime/adapters/renderer/HudPresentation';
+it('independently gates health, minimap, level, and XP without reserving hidden map space', () => {
+  const { renderer } = makeFixture();
+  const health = vi.spyOn(renderer,'drawHealth').mockImplementation(() => {});
+  const map = vi.spyOn(renderer,'drawMiniMap').mockImplementation(() => {});
+  const xp = vi.spyOn(renderer,'drawXpBar').mockImplementation(() => {});
+  const label = vi.spyOn(renderer,'getLevelLabel').mockReturnValue(null);
+  for (const part of ['health','minimap','level','xp'] as const) {
+    vi.clearAllMocks();
+    renderer.presentation = structuredClone(DEFAULT_HUD_PRESENTATION);
+    renderer.presentation.visible[part] = false;
+    renderer.drawHUD(asCanvasCtx(createCtx()));
+    expect(health).toHaveBeenCalledTimes(part === 'health' ? 0 : 1);
+    expect(map).toHaveBeenCalledTimes(part === 'minimap' ? 0 : 1);
+    expect(xp).toHaveBeenCalledTimes(part === 'xp' ? 0 : 1);
+    expect(label).toHaveBeenCalledTimes(part === 'level' ? 0 : 1);
+  }
+  health.mockRestore(); map.mockRestore(); xp.mockRestore(); label.mockRestore();
+});
+it('separates item and gear drawing and skips overlay backgrounds', () => {
+  const { renderer,canvasHelper } = makeFixture({ keys:1,swordType:ITEM_TYPES.SWORD_WOOD,hasBoots:true,hasArmor:true });
+  renderer.presentation = structuredClone(DEFAULT_HUD_PRESENTATION);
+  renderer.presentation.mode = 'overlay';
+  renderer.presentation.visible.items = false;
+  const ctx = createCtx(); renderer.drawInventory(asCanvasCtx(ctx));
+  expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(3);
+  expect(ctx.fillRect).not.toHaveBeenCalled();
+  canvasHelper.drawSprite.mockClear();
+  renderer.presentation.visible.items = true; renderer.presentation.visible.gear = false;
+  renderer.drawInventory(asCanvasCtx(ctx));
+  expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(1);
+  renderer.presentation.visible.items = false;
+  canvasHelper.drawSprite.mockClear(); renderer.drawInventory(asCanvasCtx(ctx));
+  expect(canvasHelper.drawSprite).not.toHaveBeenCalled();
+});
+it('draws custom heart sprites through the existing pixel helper', () => {
+  const {renderer,canvasHelper} = makeFixture();
+  renderer.presentation = {...DEFAULT_HUD_PRESENTATION,hearts:{full:[[null,'#123']],empty:[['#456']]}};
+  renderer.drawHealth(asCanvasCtx(createCtx()));
+  expect(canvasHelper.drawSprite.mock.calls[0][1]).toEqual([[null,'#123']]);
+});
+
+it('scales inventory with edge anchors and applies opacity only to elements', () => {
+  const {renderer,canvasHelper} = makeFixture({keys:1,hasBoots:true});
+  const ctx = {...createCtx(),scale:vi.fn(),globalAlpha:1};
+  renderer.presentation = {...DEFAULT_HUD_PRESENTATION,mode:'overlay',scale:0.5,inventoryOpacity:0.5};
+  renderer.drawInventory(asCanvasCtx(ctx),{width:128,height:40,y:128});
+  expect(ctx.scale).toHaveBeenCalledWith(0.5,0.5);
+  expect(ctx.translate.mock.calls).toEqual([[0,128],[0,20]]);
+  expect(ctx.globalAlpha).toBe(0.5);
+  expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(2);
+  expect(ctx.fillRect).not.toHaveBeenCalled();
+});
+it('scales all top HUD elements while keeping the right edge anchored', () => {
+  const {renderer} = makeFixture();
+  const ctx = {...createCtx(),scale:vi.fn()};
+  renderer.presentation = {...DEFAULT_HUD_PRESENTATION,scale:0.5};
+  vi.spyOn(renderer,'getLevelLabel').mockReturnValue(null);
+  const health = vi.spyOn(renderer,'drawHealth').mockImplementation(() => {});
+  const map = vi.spyOn(renderer,'drawMiniMap').mockImplementation(() => {});
+  const xp = vi.spyOn(renderer,'drawXpBar').mockImplementation(() => {});
+  renderer.drawHUD(asCanvasCtx(ctx),{width:128,height:28});
+  expect(ctx.scale).toHaveBeenCalledWith(0.5,0.5);
+  expect(ctx.fillRect).toHaveBeenCalledWith(0,0,128,28);
+  expect(health).toHaveBeenCalled(); expect(map.mock.calls[0][1]).toBeGreaterThan(128); expect(xp).toHaveBeenCalled();
+});
