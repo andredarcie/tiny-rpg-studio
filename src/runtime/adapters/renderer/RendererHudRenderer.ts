@@ -43,13 +43,14 @@ class RendererHudRenderer {
         const scale = this.presentation.scale ?? 1;
         const actualWidth = area.width ?? ctx.canvas.width;
         const width = actualWidth / scale;
-        const height = area.height ?? 16;
+        const actualHeight = area.height ?? 16;
+        const height = this.presentation.mode === 'bars' ? actualHeight / scale : actualHeight;
         const padding = area.padding ?? this.padding;
         const accent = this.paletteManager.getColor(7);
 
         ctx.save();
         ctx.fillStyle = this.backgroundColor;
-        if (this.presentation.mode === 'bars') ctx.fillRect(0, 0, actualWidth, height);
+        if (this.presentation.mode === 'bars') ctx.fillRect(0, 0, actualWidth, actualHeight);
 
         if (this.gameState.isGameOver()) {
             ctx.restore();
@@ -106,7 +107,8 @@ class RendererHudRenderer {
         const scale = this.presentation.scale ?? 1;
         const actualWidth = area.width ?? ctx.canvas.width;
         const width = actualWidth / scale;
-        const height = area.height ?? 16;
+        const actualHeight = area.height ?? 16;
+        const height = this.presentation.mode === 'bars' ? actualHeight / scale : actualHeight;
         const padding = area.padding ?? this.padding;
         const offsetX = area.x ?? 0;
         const offsetY = area.y ?? 0;
@@ -119,8 +121,11 @@ class RendererHudRenderer {
         ctx.save();
         ctx.translate(offsetX, offsetY);
         ctx.fillStyle = this.backgroundColor;
-        if (this.presentation.mode === 'bars') ctx.fillRect(0, 0, actualWidth, height);
-        if (scale !== 1) { ctx.translate(0, height * (1 - scale)); ctx.scale(scale, scale); }
+        if (this.presentation.mode === 'bars') ctx.fillRect(0, 0, actualWidth, actualHeight);
+        if (scale !== 1) {
+            if (this.presentation.mode === 'overlay') ctx.translate(0, height * (1 - scale));
+            ctx.scale(scale, scale);
+        }
         const opacity = this.presentation.inventoryOpacity ?? 1;
         if (opacity !== 1) ctx.globalAlpha *= opacity;
 

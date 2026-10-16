@@ -190,19 +190,20 @@ class Renderer {
         if (this.hudProviders.size) this.hudPresentation = this.resolveHudPresentation(this.gameState.getGame?.() ?? {});
         else this.hudPresentation = DEFAULT_HUD_PRESENTATION;
         const { visible, mode } = this.hudPresentation;
+        const barScale = mode === 'bars' ? this.hudPresentation.scale ?? 1 : 1;
         const hideHud = this.shouldHideHud();
         this.hudBarHeight = hideHud || !(visible.health || visible.level || visible.xp || visible.minimap)
             ? 0
-            : Math.max(
+            : Math.ceil(barScale * Math.max(
                 GameConfig.canvas.minHudHeight,
                 Math.round(tilePixelSize * GameConfig.canvas.hudHeightMultiplier)
-            );
+            ));
         this.inventoryBarHeight = hideHud || !(visible.items || visible.gear)
             ? 0
-            : Math.max(
+            : Math.ceil(barScale * Math.max(
                 GameConfig.canvas.minInventoryHeight,
                 Math.round(tilePixelSize * GameConfig.canvas.inventoryHeightMultiplier)
-            );
+            ));
         this.totalHudHeight = mode === 'overlay' ? 0 : this.hudBarHeight + this.inventoryBarHeight;
         this.gameplayHeight = tilePixelSize * GameConfig.world.roomSize;
         const desiredHeight = this.gameplayHeight + this.totalHudHeight;
@@ -373,7 +374,7 @@ class Renderer {
         };
 
         const overlayHud = this.hudPresentation.mode === 'overlay';
-        const suppressOverlayHud = overlayHud && (!includeHud || introActive || pickupOverlayActive || levelUpOverlayActive || levelUpCelebrationActive || Boolean(this.gameState.getDialog?.().active));
+        const suppressOverlayHud = overlayHud && (!includeHud || introActive || pickupOverlayActive || levelUpOverlayActive || levelUpCelebrationActive);
         if (introActive && !this.shouldHideHud() && !overlayHud) {
             ctx.save();
             ctx.fillStyle = '#000000';

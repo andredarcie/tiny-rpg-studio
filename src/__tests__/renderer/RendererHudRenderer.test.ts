@@ -475,3 +475,25 @@ it('scales all top HUD elements while keeping the right edge anchored', () => {
   expect(ctx.fillRect).toHaveBeenCalledWith(0,0,128,28);
   expect(health).toHaveBeenCalled(); expect(map.mock.calls[0][1]).toBeGreaterThan(128); expect(xp).toHaveBeenCalled();
 });
+
+it('shrinks bar backgrounds without shrinking HUD contents twice or displacing inventory', () => {
+  const {renderer,canvasHelper} = makeFixture({keys:1});
+  const ctx = {...createCtx(),scale:vi.fn()};
+  vi.spyOn(renderer,'getLevelLabel').mockReturnValue(null);
+  vi.spyOn(renderer,'drawMiniMap').mockImplementation(() => {});
+  vi.spyOn(renderer,'drawXpBar').mockImplementation(() => {});
+  const health = vi.spyOn(renderer,'drawHealth').mockImplementation(() => {});
+  renderer.drawHUD(asCanvasCtx(ctx),{width:128,height:28});
+  renderer.drawInventory(asCanvasCtx(ctx),{width:128,height:40,y:156});
+  const healthLayout = health.mock.calls[0][1];
+  const itemLayout = canvasHelper.drawSprite.mock.calls[0].slice(2);
+  health.mockClear(); canvasHelper.drawSprite.mockClear(); ctx.translate.mockClear(); ctx.fillRect.mockClear();
+  renderer.presentation = {...DEFAULT_HUD_PRESENTATION,scale:0.5};
+  renderer.drawHUD(asCanvasCtx(ctx),{width:128,height:14});
+  renderer.drawInventory(asCanvasCtx(ctx),{width:128,height:20,y:142});
+  expect(ctx.fillRect.mock.calls).toEqual([[0,0,128,14],[0,0,128,20]]);
+  expect(health.mock.calls[0][1]).toMatchObject({heartSize:healthLayout?.heartSize,offsetY:healthLayout?.offsetY,gap:healthLayout?.gap});
+  expect(canvasHelper.drawSprite.mock.calls[0].slice(2)).toEqual(itemLayout);
+  expect(ctx.translate.mock.calls).toEqual([[0,142]]);
+  expect(ctx.scale.mock.calls).toEqual([[0.5,0.5],[0.5,0.5]]);
+});

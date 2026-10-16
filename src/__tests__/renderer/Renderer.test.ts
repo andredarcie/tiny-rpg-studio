@@ -326,11 +326,25 @@ it.each([64,128,256])('keeps overlay scale and HUD offsets at width %i, collapse
     const remove = renderer.registerHudPresentation('hud-plus',() => presentation);
     const layout = () => (renderer as unknown as {applyCanvasLayout():void}).applyCanvasLayout();
     layout(); expect(canvas.height).toBe(defaultHeight);
+    const topHeight = renderer.hudBarHeight;
+    const bottomHeight = renderer.inventoryBarHeight;
+    for (const scale of [0.1,0.5,1]) {
+      presentation.scale = scale; layout();
+      expect(renderer.hudBarHeight).toBe(Math.ceil(topHeight * scale));
+      expect(renderer.inventoryBarHeight).toBe(Math.ceil(bottomHeight * scale));
+      expect(renderer.gameplayOffsetY).toBe(renderer.hudBarHeight);
+      expect(renderer.inventoryOffsetY).toBe(renderer.hudBarHeight + width);
+      expect(canvas.height).toBe(width + renderer.hudBarHeight + renderer.inventoryBarHeight);
+    }
+    presentation.scale = 0.5;
     presentation.mode = 'overlay'; layout();
+    expect(renderer.hudBarHeight).toBe(topHeight);
+    expect(renderer.inventoryBarHeight).toBe(bottomHeight);
     expect(canvas.height).toBe(width);
     expect(renderer.gameplayOffsetY).toBe(0);
     expect(renderer.inventoryOffsetY + renderer.inventoryBarHeight).toBe(width);
     expect(renderer.totalHudHeight).toBe(0);
+    presentation.scale = 1;
     presentation.mode = 'bars'; presentation.visible = {health:false,level:false,xp:false,minimap:false,items:true,gear:true}; layout();
     expect(renderer.hudBarHeight).toBe(0);
     expect(canvas.height).toBe(width + renderer.inventoryBarHeight);
@@ -338,6 +352,38 @@ it.each([64,128,256])('keeps overlay scale and HUD offsets at width %i, collapse
     remove(); layout(); expect(canvas.height).toBe(defaultHeight);
     game.hideHud = true; layout(); expect(canvas.height).toBe(width); expect(renderer.gameplayOffsetY).toBe(0);
   } finally { spy.mockRestore(); drawSpy.mockRestore(); }
+});
+
+it('keeps overlay HUD visible when dialogue opens and closes, and honors hideHud', () => {
+  const ctx = {imageSmoothingEnabled:false,clearRect:vi.fn(),save:vi.fn(),restore:vi.fn(),translate:vi.fn(),fillRect:vi.fn(),strokeRect:vi.fn()} as unknown as CanvasRenderingContext2D;
+  const canvas = {width:128,height:128,getContext:() => ctx} as unknown as HTMLCanvasElement;
+  const loop = vi.spyOn(Renderer.prototype,'startTileAnimationLoop').mockImplementation(() => {});
+  try {
+    const state = new GameState();
+    const renderer = new Renderer(canvas,state,{getAnimationFrameCount:() => 1,advanceAnimationFrame:() => 0},{});
+    renderer.registerHudPresentation('hud-plus',() => ({...DEFAULT_HUD_PRESENTATION,mode:'overlay'}));
+    const top = vi.spyOn(renderer.hudRenderer,'drawHUD');
+    const bottom = vi.spyOn(renderer.hudRenderer,'drawInventory');
+    const dialog = vi.spyOn(renderer.dialogRenderer,'drawDialog');
+    renderer.draw();
+    const bounds = {width:canvas.width,height:canvas.height,offset:renderer.gameplayOffsetY};
+    for (const active of [false,true,false]) {
+      vi.spyOn(state,'getDialog').mockReturnValue({...state.getDialog(),active});
+      top.mockClear(); bottom.mockClear(); dialog.mockClear();
+      renderer.draw();
+      expect(top).toHaveBeenCalledTimes(1);
+      expect(bottom).toHaveBeenCalledTimes(1);
+      expect(dialog).toHaveBeenCalledTimes(1);
+      expect({width:canvas.width,height:canvas.height,offset:renderer.gameplayOffsetY}).toEqual(bounds);
+    }
+    state.getGame().hideHud = true;
+    vi.spyOn(state,'getDialog').mockReturnValue({...state.getDialog(),active:true});
+    top.mockClear(); bottom.mockClear(); dialog.mockClear();
+    renderer.draw();
+    expect(top).not.toHaveBeenCalled();
+    expect(bottom).not.toHaveBeenCalled();
+    expect(dialog).toHaveBeenCalledTimes(1);
+  } finally {loop.mockRestore();}
 });
 
 it('excludes overlay HUD from transition snapshots and restores it after capture', () => {
