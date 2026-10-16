@@ -439,3 +439,11 @@ main {
         display: flex;
     }
 }
+
+[data-game-font] * {
+    font-family: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    font-variation-settings: inherit;
+    font-synthesis: none;
+}

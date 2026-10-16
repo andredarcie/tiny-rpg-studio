@@ -73,11 +73,16 @@ export function applyFontConfig(): void {
  * Switches the editor UI font between the pixel font and system monospace.
  * Instant — no page reload needed.
  */
-export function setEditorFontDisabled(disabled: boolean): void {
+export function setEditorFontDisabled(disabled: boolean, custom?: { family: string; weight: string; style: string; variationSettings: string }): void {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     root.style.setProperty(
         '--ui-font-family',
         disabled ? 'monospace' : `"${FONT_NAME}", monospace`
     );
+    document.body.toggleAttribute('data-editor-custom-font', Boolean(custom));
+    for (const [name, value] of Object.entries({ family: custom?.family, weight: custom?.weight, style: custom?.style, variations: custom?.variationSettings })) {
+        if (value) root.style.setProperty(`--editor-custom-font-${name}`, value);
+        else root.style.removeProperty(`--editor-custom-font-${name}`);
+    }
 }

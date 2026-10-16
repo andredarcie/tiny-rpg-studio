@@ -1,3 +1,4 @@
+import type { FontsPlus, FontCapabilities } from '../services/FontsPlus';
 import type { HudResources } from '../adapters/renderer/HudPresentation';
 import type { JsonValue } from '../domain/state/PluginData';
 import type { BaseRuntimeApi } from './BaseRuntimeApi';
@@ -17,6 +18,8 @@ type TinyRpgApi = {
   enableVariablesPlus?: () => Promise<void>;
   getHudResources?: () => HudResources;
   setPluginData?: (pluginId: string, data: JsonValue | undefined) => Promise<void>;
+  setFontsPlus?: (asset: Partial<FontsPlus> | null) => Promise<void>;
+  getFontsPlusCapabilities?: () => FontCapabilities | undefined;
   setSoundOverride?: (name: SoundName, asset: SoundOverride | null) => Promise<void>;
   addMusicPlusTrack?: (name: string, asset: MusicAsset) => Promise<void>;
   removeMusicPlusTrack?: (id: string) => Promise<void>;

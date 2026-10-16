@@ -1,3 +1,4 @@
+import { normalizeFontsPlus, type FontsPlus } from '../../services/FontsPlus';
 import { normalizePluginData, type PluginData } from './PluginData';
 import type { GameDefinition, RoomDefinition, VariableDefinition, CustomSpriteEntry, SkillCustomizationMap, OnlineConfig } from '../../../types/gameState';
 import { normalizeSoundsPlus, type SoundsPlusMap } from '../../services/SoundsPlus';
@@ -39,6 +40,7 @@ type StateDataManagerOptions = {
 type ImportData = {
     pluginData?: PluginData;
     gameplayPlugins?: { id: string; version: string }[];
+    fontsPlus?: FontsPlus;
     soundsPlus?: SoundsPlusMap;
     musicPlus?: MusicPlusLibrary | Record<string, unknown>;
     musicPlusSmoothTransition?: boolean;
@@ -118,6 +120,7 @@ class StateDataManager {
         const result: ImportData = {
             ...(this.game.pluginData ? { pluginData: this.game.pluginData } : {}),
             ...(this.game.gameplayPlugins?.length ? { gameplayPlugins: this.game.gameplayPlugins } : {}),
+            ...(this.game.fontsPlus ? { fontsPlus: { ...this.game.fontsPlus } } : {}),
             ...(this.game.soundsPlus && Object.keys(this.game.soundsPlus).length ? { soundsPlus: this.game.soundsPlus } : {}),
             ...(this.game.musicPlus?.tracks.length ? { musicPlus: this.game.musicPlus } : {}),
             ...(this.game.musicPlusSmoothTransition ? { musicPlusSmoothTransition: true } : {}),
@@ -202,6 +205,7 @@ class StateDataManager {
             throw Error('Variables+ projects cannot use online mode');
         }
         const pluginData = normalizePluginData(data.pluginData, data.gameplayPlugins);
+        const fontsPlus = normalizeFontsPlus(data.fontsPlus, data.gameplayPlugins);
         const soundsPlus = normalizeSoundsPlus(data.soundsPlus, data.gameplayPlugins);
 
         const dimension = (value: unknown) => {
@@ -251,6 +255,7 @@ class StateDataManager {
         Object.assign(this.game, {
             pluginData,
             gameplayPlugins: data.gameplayPlugins?.map(p => ({ id: p.id, version: p.version })),
+            fontsPlus,
             soundsPlus,
             musicPlus,
             musicPlusSmoothTransition: data.musicPlusSmoothTransition === true,

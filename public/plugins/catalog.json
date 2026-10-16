@@ -2,6 +2,18 @@
   "schemaVersion": 1,
   "plugins": [
     {
+      "id": "fonts-plus",
+      "title": "Fonts+",
+      "shortDescription": "Upload a TrueType font for your game and editor.",
+      "fullDescription": "Keep one .ttf font in each project and standalone HTML export. Apply it independently to the game and editor. Bold and italic switches are available when the uploaded variable font supports them; fixed faces keep their original styles.",
+      "version": "1.0.0",
+      "capabilities": [
+        "editor",
+        "gameplay"
+      ],
+      "file": "fonts-plus/1.0.0/plugin.html"
+    },
+    {
       "id": "dialogue-plus",
       "title": "Dialogue+",
       "shortDescription": "Add multiple NPC alternatives and choices.",

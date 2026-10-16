@@ -1,3 +1,4 @@
+import { FontLifecycle } from '../adapters/renderer/FontLifecycle';
 import type { GameDefinition } from '../../types/gameState';
 import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
 import { DialogManager } from './engine/DialogManager';
@@ -72,6 +73,7 @@ type GameData = {
 };
 
 export class GameEngine {
+  readonly fonts = new FontLifecycle();
   setNpcDialogueSequence(sequence: NpcDialogueSequence | null): void {
     this.gameState.npcDialogueSequence = sequence;
     this.interactionManager.setNpcDialogueSequence(sequence);
@@ -506,6 +508,7 @@ export class GameEngine {
     this.inputManager.cancelHeldMovement();
     this.backgroundMusicEngine.stop();
     this.gameState.importGameData(data);
+    this.fonts.sync(this.gameState.getGame().fontsPlus, () => this.draw());
     if (this.soundOwner) soundEngine.sync(this, this.gameState.getGame().soundsPlus);
     this.npcManager.ensureDefaultNPCs();
     this.npcManager.resetNPCs();
@@ -1012,6 +1015,7 @@ export class GameEngine {
   }
 
   destroy(): void {
+    this.fonts.destroy();
     if (this.isDestroyed) return;
     this.isDestroyed = true;
     if (this.soundOwner) soundEngine.release(this);

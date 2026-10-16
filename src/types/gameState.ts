@@ -1,3 +1,4 @@
+import type { FontsPlus } from '../runtime/services/FontsPlus';
 import type { PluginData } from '../runtime/domain/state/PluginData';
 import type { Tileset } from '../runtime/domain/definitions/tileTypes';
 import type { CustomTileEffectDefinition } from '../runtime/domain/definitions/customTileEffects';
@@ -211,6 +212,7 @@ export type OnlineConfig = {
 export type GameDefinition = {
     pluginData?: PluginData;
     gameplayPlugins?: { id: string; version: string }[];
+    fontsPlus?: FontsPlus;
     soundsPlus?: SoundsPlusMap;
     musicPlus?: MusicPlusLibrary;
     musicPlusSmoothTransition?: boolean;

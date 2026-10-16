@@ -1,4 +1,5 @@
-import { FONT_NAME, FONT_SIZE } from '../../../config/FontConfig';
+import { applyGameFont, getGameFontRevision } from './FontPresentation';
+import { FONT_SIZE } from '../../../config/FontConfig';
 import { GameConfig } from '../../../config/GameConfig';
 import { soundEngine } from '../../services/SoundEngine';
 import type { DialogChoiceState } from '../../../types/gameState';
@@ -214,7 +215,7 @@ class RendererDialogRenderer {
         container.style.left = `${BOX_INSET * ratio}px`;
         container.style.right = `${BOX_INSET * ratio}px`;
         container.style.bottom = `${(inventoryInternal + BOX_INSET) * ratio}px`;
-        container.style.fontFamily = `"${FONT_NAME}", monospace`;
+        applyGameFont(container);
 
         // The dialog text scales with the canvas exactly like the canvas-drawn HUD
         // font, so it keeps the same relative size on every screen, up to a ceiling
@@ -249,7 +250,7 @@ class RendererDialogRenderer {
         const typewriter = this.requestRedraw !== null;
         const timestamp = this.now();
 
-        const pagesKey = `${fullText}|${this.textEl?.clientWidth ?? 0}|${Math.round(this.fontPx * 100)}`;
+        const pagesKey = `${getGameFontRevision()}|${fullText}|${this.textEl?.clientWidth ?? 0}|${Math.round(this.fontPx * 100)}`;
         if (pagesKey !== this.pagesKey) {
             this.pages = this.computePages(this.animatedText.parse(fullText));
             this.pagesKey = pagesKey;
@@ -423,6 +424,10 @@ class RendererDialogRenderer {
         measurer.style.font = cs.font || `${cs.fontSize} ${cs.fontFamily}`;
         measurer.style.fontSize = cs.fontSize;
         measurer.style.fontFamily = cs.fontFamily;
+        measurer.style.fontWeight = cs.fontWeight;
+        measurer.style.fontStyle = cs.fontStyle;
+        measurer.style.fontVariationSettings = cs.fontVariationSettings;
+        measurer.style.fontSynthesis = 'none';
         measurer.style.lineHeight = cs.lineHeight;
         measurer.style.letterSpacing = cs.letterSpacing;
 

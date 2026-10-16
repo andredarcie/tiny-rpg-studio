@@ -1,10 +1,13 @@
 import hudPackage from '../../public/plugins/hud-plus/1.0.1/plugin.html?raw';
+import fontsPackage from '../../public/plugins/fonts-plus/1.0.0/plugin.html?raw';
+import { fontBytesToBase64, type FontsPlus } from '../runtime/services/FontsPlus';
 import { parsePluginHtml, type PluginManager } from '../editor/manager/PluginManager';
 import { GameplayPluginHost, GameplayLoadSupersededError } from '../runtime/infra/GameplayPluginHost';
 import type { GameDefinition } from '../types/gameState';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type MockEngine = {
+  fonts: { prepare: ReturnType<typeof vi.fn<(asset?: FontsPlus) => Promise<void>>> };
   exportGameData: ReturnType<typeof vi.fn>;
   importGameData: ReturnType<typeof vi.fn>;
   getState: ReturnType<typeof vi.fn>;
@@ -26,6 +29,7 @@ type MockEngine = {
 
 const mocks = vi.hoisted(() => {
   const engine: MockEngine = {
+    fonts: { prepare: vi.fn(() => Promise.resolve()) },
     exportGameData: vi.fn(() => ({ title: 'Game' })),
     importGameData: vi.fn(),
     getState: vi.fn(() => ({ hp: 10 })),
@@ -121,6 +125,70 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
     document.body.innerHTML = '';
     delete (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE;
   });
+
+it('saves Fonts+ atomically, rolls back quota errors, rejects late project edits, and backs up uninstall', async () => {
+  const { readFileSync } = await vi.importActual<{ readFileSync: (path: string) => Uint8Array }>('node:fs');
+  const data = fontBytesToBase64(new Uint8Array(readFileSync('tests/fixtures/fonts/pixel-operator.ttf')));
+  localStorage.clear();
+  localStorage.setItem(PLUGIN_STORAGE_KEY, JSON.stringify([parsePluginHtml(fontsPackage)]));
+  document.body.innerHTML = '<canvas id="game-canvas"></canvas><div id="tab-editor"></div>';
+  let project = { title: 'Game', world: { rows: 3, cols: 3 } } as GameDefinition;
+  mocks.engine.exportGameData.mockImplementation(() => structuredClone(project));
+  mocks.engine.importGameData.mockImplementation((next: GameDefinition) => { project = structuredClone(next); });
+  mocks.editorManagerInstance.projectGeneration = 0;
+  mocks.editorManagerInstance.restore.mockImplementation(() => { mocks.editorManagerInstance.projectGeneration++; });
+  vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
+  vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
+  vi.spyOn(PluginRuntime.prototype, 'start').mockImplementation(() => {});
+  const load = vi.spyOn(GameplayPluginHost.prototype, 'load').mockImplementation(next => { project = structuredClone(next as GameDefinition); return Promise.resolve(); });
+  const listeners = vi.spyOn(document, 'addEventListener');
+  TinyRPGApplication.initializeApplication();
+  document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));
+  await vi.waitFor(() => expect(mocks.editorManagerInstance.renderAll).toHaveBeenCalled());
+  const api = getTinyRpgApi();
+  if (!api?.setFontsPlus) throw Error('Missing Fonts+ API');
+  await api.setFontsPlus({ filename: 'regular.ttf', data });
+  expect(project.fontsPlus).toMatchObject({ filename: 'regular.ttf', applyGame: true, applyEditor: true, bold: false, italic: false });
+  expect(project.gameplayPlugins).toEqual([{ id: 'fonts-plus', version: '1.0.0' }]);
+  const previous = structuredClone(project);
+  mocks.editorManagerInstance.persistAuthoring.mockImplementationOnce(() => { throw Error('Storage full'); });
+  await expect(api.setFontsPlus({ ...project.fontsPlus, applyGame: false })).rejects.toThrow('Storage full');
+  expect(project).toEqual(previous);
+  expect(mocks.editorManagerInstance.history.pushCurrentState).toHaveBeenCalledTimes(1);
+  let finish!: () => void;
+  mocks.engine.fonts.prepare.mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; }));
+  const pending = api.setFontsPlus({ ...project.fontsPlus, filename: 'late.ttf' });
+  mocks.editorManagerInstance.projectGeneration++;
+  project = { title: 'Other project' } as GameDefinition;
+  finish();
+  await expect(pending).rejects.toThrow('project changed');
+  expect(project.title).toBe('Other project');
+  expect(project.fontsPlus).toBeUndefined();
+  project = previous;
+  load.mockImplementationOnce(() => {
+    mocks.editorManagerInstance.projectGeneration++;
+    project = { title: 'Project changed during plugin load' } as GameDefinition;
+    return Promise.reject(Error('Plugin load cancelled'));
+  });
+  await expect(api.setFontsPlus({ ...previous.fontsPlus, filename: 'cancelled.ttf' })).rejects.toThrow('cancelled');
+  expect(project.title).toBe('Project changed during plugin load');
+  project = previous;
+  await api.setFontsPlus({ ...project.fontsPlus, applyGame: false, applyEditor: false });
+  expect(project.gameplayPlugins).toHaveLength(1);
+  const manager = vi.mocked(PluginsModal).mock.calls.at(-1)?.[0] as PluginManager | undefined;
+  if (!manager) throw Error('No plugin manager');
+  const beforeRemoval = structuredClone(project);
+  manager.remove('fonts-plus');
+  expect(mocks.editorManagerInstance.saveGameplayRemovalBackup).toHaveBeenCalledWith(beforeRemoval);
+  expect(project.fontsPlus).toBeUndefined();
+  expect(project.gameplayPlugins).toEqual([]);
+  for (const [type, listener, options] of listeners.mock.calls) document.removeEventListener(type, listener, options);
+  listeners.mockRestore(); load.mockRestore();
+  mocks.editorManagerInstance.restore.mockReset();
+  mocks.engine.exportGameData.mockImplementation(() => ({ title: 'Game' }));
+  mocks.engine.importGameData.mockReset();
+  localStorage.clear();
+});
 
 it('saves HUD data with dependencies/history, rolls back errors, resets, and backs up removal', async () => {
   localStorage.clear(); vi.clearAllMocks();

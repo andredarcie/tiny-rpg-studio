@@ -1,4 +1,5 @@
-import { FONT_NAME, FONT_SIZE } from '../../../config/FontConfig';
+import { applyGameFont } from './FontPresentation';
+import { FONT_SIZE } from '../../../config/FontConfig';
 import { TextResources } from '../TextResources';
 import type { LevelUpChoice, LevelUpOverlayState } from '../../../types/gameState';
 
@@ -138,7 +139,7 @@ class RendererLevelUpOverlay {
         // the pixel web font crisp at the canvas' display scale.
         container.style.top = '0';
         container.style.bottom = `${this.bottomReserve * ratio}px`;
-        container.style.fontFamily = `"${FONT_NAME}", monospace`;
+        applyGameFont(container);
         container.style.fontSize = `${Math.max(8, FONT_SIZE * ratio)}px`;
 
         const accent = this.paletteManager.getColor(7) || '#FFF1E8';

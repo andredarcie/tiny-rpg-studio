@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-16-fonts-plus',
+    date: '2026-10-16',
+    title: 'Bring your own font with Fonts+',
+    description: 'Upload a TrueType font for each project and apply it independently to your game and editor. Supported variable fonts offer bold and italic switches. Fonts travel with saved projects and offline HTML exports.',
+  },
+  {
     id: '2026-10-14-hud-plus',
     date: '2026-10-14',
     title: 'Customize your game HUD with HUD+',

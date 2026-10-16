@@ -119,6 +119,7 @@ function makeManager(stateOverrides: Record<string, unknown> = {}) {
       renderWorldMetrics: vi.fn(),
     },
     gameEngine: {
+      fonts: { editorPresentation: undefined },
       getGame: vi.fn<() => EditorGameFixture>(() => ({
         title: 'Test Title',
         author: 'Test Author',

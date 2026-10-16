@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Fonts+</title>
+  <script id="tiny-rpg-plugin" type="application/json">
+    {
+      "id": "fonts-plus",
+      "title": "Fonts+",
+      "shortDescription": "Upload a TrueType font for your game and editor.",
+      "fullDescription": "Keep one .ttf font in each project and standalone HTML export. Apply it independently to the game and editor. Bold and italic switches are available when the uploaded variable font supports them; fixed faces keep their original styles.",
+      "version": "1.0.0",
+      "capabilities": ["editor", "gameplay"],
+      "apiVersion": 1
+    }
+  </script>
+  <style data-tiny-rpg-plugin>
+    .fonts-plus { display: grid; gap: 8px; min-width: 0; }
+    .fonts-plus label { display: flex; gap: 8px; align-items: center; }
+    .fonts-plus input[type="file"] { width: 100%; min-width: 0; }
+    .fonts-plus-filename { overflow-wrap: anywhere; }
+    .fonts-plus [role="alert"]:empty { display: none; }
+    .fonts-plus [hidden] { display: none; }
+    .fonts-plus button { color: #e06060; }
+  </style>
+  <script type="module" data-tiny-rpg-plugin>
+    export function activate({ api, onCleanup, registerSettings }) {
+      if (typeof api.setFontsPlus !== 'function' || typeof api.getFontsPlusCapabilities !== 'function') throw Error('Fonts+ needs the font settings API');
+      let removed = false;
+      let generation = 0;
+      let pending = false;
+      let refresh = () => {};
+      registerSettings(container => {
+        const root = document.createElement('div');
+        root.className = 'fonts-plus';
+        const upload = document.createElement('input');
+        upload.type = 'file';
+        upload.accept = '.ttf';
+        upload.setAttribute('aria-label', 'Upload TrueType font');
+        const file = document.createElement('div');
+        const filename = document.createElement('span');
+        filename.className = 'fonts-plus-filename';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'x';
+        remove.setAttribute('aria-label', 'Remove font');
+        file.append(filename, remove);
+        const status = document.createElement('span');
+        status.setAttribute('role', 'alert');
+        root.append(upload, file);
+        const controls = {};
+        for (const [key, title] of [['applyGame', 'Apply to game'], ['applyEditor', 'Apply to editor'], ['bold', 'Bold'], ['italic', 'Italic']]) {
+          const label = document.createElement('label');
+          const input = document.createElement('input');
+          input.type = 'checkbox';
+          if (key === 'bold' || key === 'italic') input.setAttribute('aria-describedby', 'fonts-plus-style-reason');
+          label.append(input, document.createTextNode(title));
+          root.append(label);
+          controls[key] = input;
+          input.addEventListener('change', () => {
+            const asset = api.exportGameData()?.fontsPlus;
+            if (asset) void save({ ...asset, [key]: input.checked });
+          });
+        }
+        const reason = document.createElement('small');
+        reason.id = 'fonts-plus-style-reason';
+        root.append(reason, status);
+        container.append(root);
+        refresh = () => {
+          if (removed) return;
+          const asset = api.exportGameData()?.fontsPlus;
+          const capabilities = api.getFontsPlusCapabilities();
+          filename.textContent = asset?.filename ?? '';
+          file.hidden = !asset;
+          upload.disabled = pending;
+          remove.disabled = pending;
+          for (const [key, input] of Object.entries(controls)) {
+            input.checked = Boolean(asset?.[key]);
+            input.disabled = pending || !asset || (key in (capabilities ?? {}) && !capabilities[key].switchable);
+          }
+          reason.textContent = asset ? 'Fixed font styles are preserved. A switch is enabled only when the font contains a matching variable axis.' : 'Choose one .ttf font, at most 1 MiB.';
+        };
+        const save = async asset => {
+          pending = true;
+          status.textContent = 'Loading font…';
+          refresh();
+          try { await api.setFontsPlus(asset); if (!removed) status.textContent = ''; }
+          catch (error) { if (!removed) status.textContent = error instanceof Error ? error.message : String(error); }
+          finally { pending = false; upload.value = ''; refresh(); }
+        };
+        upload.addEventListener('change', async () => {
+          const font = upload.files?.[0];
+          if (!font || pending) return;
+          const ticket = ++generation;
+          pending = true;
+          refresh();
+          status.textContent = '';
+          try {
+            if (!/\.ttf$/i.test(font.name)) throw Error('Choose a .ttf font file');
+            if (!font.size || font.size > 1024 * 1024) throw Error('Font must be nonempty and at most 1 MiB');
+            const bytes = new Uint8Array(await font.arrayBuffer());
+            if (removed || ticket !== generation) return;
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+            await save({ filename: font.name, data: btoa(binary) });
+          } catch (error) { if (!removed && ticket === generation) status.textContent = error instanceof Error ? error.message : String(error); }
+          finally { if (!removed && ticket === generation) { pending = false; upload.value = ''; refresh(); } }
+        });
+        remove.addEventListener('click', () => { void save(null); });
+        refresh();
+      });
+      const restored = () => { generation++; pending = false; refresh(); };
+      document.addEventListener('tiny-rpg-project-restored', restored);
+      document.addEventListener('tiny-rpg-project-changing', restored);
+      onCleanup(() => { removed = true; generation++; document.removeEventListener('tiny-rpg-project-restored', restored); document.removeEventListener('tiny-rpg-project-changing', restored); });
+    }
+  </script>
+  <script type="module" data-tiny-rpg-gameplay-plugin>
+    export function activate({ apiVersion }) {
+      if (apiVersion !== 1) throw Error('Fonts+ needs gameplay API version 1');
+    }
+  </script>
+</head>
+<body></body>
+</html>

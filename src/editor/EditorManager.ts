@@ -50,6 +50,8 @@ class EditorManager {
     }
     async loadProjectData(data: Record<string, unknown>, options: { skipHistory?: boolean } = {}, packages?: InstalledPlugin[]): Promise<void> {
         data = upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(data, packages ?? this.pluginManager?.installed ?? []), packages ?? this.pluginManager?.installed ?? []), packages ?? this.pluginManager?.installed ?? []);
+        this.projectGeneration++;
+        document.dispatchEvent(new Event('tiny-rpg-project-changing'));
         if (this.gameplayHost) await this.gameplayHost.load(data, packages);
         this.restore(data, { ...options, alreadyImported: Boolean(this.gameplayHost) });
     }
@@ -99,6 +101,7 @@ class EditorManager {
     customTileEffectEditorController: CustomTileEffectEditorController;
     private projectSaveManager?: ProjectSaveManager;
     private projectSaveUI?: ProjectSaveUI;
+    private readonly refreshFontUi = () => this.uiController.syncUI();
 
     constructor(gameEngine: GameEngine, pluginManager?: PluginManager) {
         this.gameEngine = gameEngine;
@@ -125,6 +128,7 @@ class EditorManager {
         this.customEffectsService = new EditorCustomEffectsService(this);
         this.worldService = new EditorWorldService(this);
         this.uiController = new EditorUIController(this);
+        document.addEventListener('tiny-rpg-font-ready', this.refreshFontUi);
         this.eventBinder = new EditorEventBinder(this);
         this.interactionController = new EditorInteractionController(this);
         this.npcEditModal = new NpcEditModal(this.renderService);
@@ -737,6 +741,7 @@ class EditorManager {
     }
 
     destroy(): void {
+        document.removeEventListener('tiny-rpg-font-ready', this.refreshFontUi);
         this.projectSaveUI?.destroy();
         this.projectSaveManager?.destroy();
     }

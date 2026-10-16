@@ -314,7 +314,7 @@ class EditorUIController extends EditorManagerModule {
     setDisablePixelFont(active: boolean = false) {
         this.gameEngine.setDisablePixelFont(Boolean(active));
         bitmapFont.setDisabled(active);
-        setEditorFontDisabled(active);
+        setEditorFontDisabled(active, this.gameEngine.fonts.editorPresentation);
         this.updateJSON();
     }
 
@@ -362,7 +362,7 @@ class EditorUIController extends EditorManagerModule {
         if (this.dom.projectRespawnableEnemies) this.dom.projectRespawnableEnemies.checked = game.respawnableEnemies === true;
         if (this.dom.projectRespawnableBosses) this.dom.projectRespawnableBosses.checked = game.respawnableBosses === true;
         bitmapFont.setDisabled(Boolean(game.disablePixelFont));
-        setEditorFontDisabled(Boolean(game.disablePixelFont));
+        setEditorFontDisabled(Boolean(game.disablePixelFont), this.gameEngine.fonts.editorPresentation);
         if (this.dom.projectOnlineEnabled) {
             this.dom.projectOnlineEnabled.checked = Boolean(game.online?.enabled);
         }

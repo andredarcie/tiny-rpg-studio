@@ -1,3 +1,4 @@
+import { getGameFont, hasCustomGameFont, setGameFontDisabled } from './FontPresentation';
 import { LINE_HEIGHT, FONT_SIZE, FONT_NAME } from '../../../config/FontConfig';
 
 /**
@@ -43,6 +44,7 @@ export class BitmapFont {
 
     setDisabled(disabled: boolean): void {
         this._disabled = disabled;
+        setGameFontDisabled(disabled);
     }
 
     /**
@@ -80,7 +82,12 @@ export class BitmapFont {
     }
 
     isReady(): boolean {
-        return this._disabled || this.ready;
+        return hasCustomGameFont() || this._disabled || this.ready;
+    }
+
+    private customSpec(size: number): string {
+        const font = getGameFont();
+        return `${font.style} ${font.weight} ${Math.max(1, size)}px ${font.family}`;
     }
 
     private getMeasureCtx(): CanvasRenderingContext2D | null {
@@ -101,6 +108,7 @@ export class BitmapFont {
      * the single guarantee that canvas text can never be drawn blurry/doubled.
      */
     snapSize(charSize: number): number {
+        if (hasCustomGameFont()) return Math.max(1, charSize);
         const multiple = Math.max(1, Math.round(charSize / FONT_SIZE));
         return multiple * FONT_SIZE;
     }
@@ -108,6 +116,15 @@ export class BitmapFont {
     /** Width (in target px) of the longest line at the given character size. */
     measureText(text: string, charSize: number): number {
         const value = String(text || '');
+        if (hasCustomGameFont()) {
+            const ctx = this.getMeasureCtx();
+            if (!ctx) return 0;
+            ctx.font = this.customSpec(charSize);
+            return value.split('\n').reduce((max, line) => {
+                const m = ctx.measureText(line);
+                return Math.max(max, m.width, (m.actualBoundingBoxLeft || 0) + (m.actualBoundingBoxRight || m.width));
+            }, 0);
+        }
         if (this._disabled) {
             const lines = value.split('\n');
             return lines.reduce((max, line) => Math.max(max, line.length * charSize * 0.6), 0);
@@ -127,6 +144,12 @@ export class BitmapFont {
 
     /** Advance width (in target px) of a single character. */
     getCharAdvance(charCode: number, charSize: number): number {
+        if (hasCustomGameFont()) {
+            const ctx = this.getMeasureCtx();
+            if (!ctx) return 0;
+            ctx.font = this.customSpec(charSize);
+            return ctx.measureText(String.fromCodePoint(charCode)).width;
+        }
         if (this._disabled) return charSize * 0.6;
         if (!this.ready) return 0;
         const ctx = this.getMeasureCtx();
@@ -155,6 +178,19 @@ export class BitmapFont {
         color = '#ffffff',
     ): void {
         if (!text) return;
+        if (hasCustomGameFont()) {
+            ctx.save();
+            ctx.font = this.customSpec(charSize);
+            ctx.fillStyle = color;
+            const lines = String(text).split('\n');
+            const lineH = charSize * (LINE_HEIGHT / FONT_SIZE);
+            const height = (lines.length - 1) * lineH + charSize;
+            const top = ctx.textBaseline === 'middle' ? y - height / 2 : ctx.textBaseline === 'bottom' || ctx.textBaseline === 'alphabetic' ? y - height : y;
+            ctx.textBaseline = 'top';
+            lines.forEach((line, index) => ctx.fillText(line, x, top + index * lineH));
+            ctx.restore();
+            return;
+        }
 
         if (this._disabled) {
             ctx.save();

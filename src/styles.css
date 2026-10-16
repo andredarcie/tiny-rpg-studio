@@ -6010,3 +6010,22 @@ body.editor-mode .plugins-modal button.plugin-action[data-action="update"]:hover
         font-size: 0.9em;
     }
 }
+
+/* Uploaded editor fonts are scoped independently of game overlays. */
+body[data-editor-custom-font] :is(#tab-editor, .tab-button),
+body[data-editor-custom-font] :is(#tab-editor, .tab-button) *,
+body.editor-mode[data-editor-custom-font] :is(.tiny-modal, .modal-overlay),
+body.editor-mode[data-editor-custom-font] :is(.tiny-modal, .modal-overlay) * {
+    font-family: var(--editor-custom-font-family) !important;
+    font-weight: var(--editor-custom-font-weight) !important;
+    font-style: var(--editor-custom-font-style) !important;
+    font-variation-settings: var(--editor-custom-font-variations) !important;
+    font-synthesis: none !important;
+}
+[data-game-font] * {
+    font-family: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    font-variation-settings: inherit;
+    font-synthesis: none;
+}

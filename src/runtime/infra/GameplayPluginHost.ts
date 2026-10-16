@@ -1,3 +1,4 @@
+import { normalizeFontsPlus } from '../services/FontsPlus';
 import { normalizePluginData } from '../domain/state/PluginData';
 import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
 import type { GameEngine } from '../services/GameEngine';
@@ -68,6 +69,9 @@ export class GameplayPluginHost {
     const assertCurrent = () => {
       if (generation !== this.loadGeneration || !isCurrent()) throw new GameplayLoadSupersededError();
     };
+    const font = normalizeFontsPlus(project.fontsPlus, dependencies);
+    if (font) await this.engine.fonts.prepare(font);
+    assertCurrent();
     this.clear();
     const hudRegistrations: string[] = [];
     try {

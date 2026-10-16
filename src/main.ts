@@ -1,3 +1,4 @@
+import { normalizeFontsPlus, inspectFont, decodeFontBytes } from './runtime/services/FontsPlus';
 import { upgradeHudPlusDependency } from './editor/manager/upgradeHudPlusDependency';
 import { createBaseRuntimeApi } from './runtime/infra/BaseRuntimeApi';
 import './styles.css';
@@ -200,6 +201,7 @@ class TinyRPGApplication {
         throw error;
       }
     };
+    let fontMutation = 0;
     const api: TinyRpgApi = {
       ...runtime,
       runtime,
@@ -280,6 +282,45 @@ class TinyRPGApplication {
           if (!(error instanceof GameplayLoadSupersededError) && generation === editorManager.projectGeneration) {
             await gameplayHost.load(previous);
             editorManager.restore(previous as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+          }
+          throw error;
+        }
+      },
+      getFontsPlusCapabilities: () => {
+        const font = gameEngine.gameState.game.fontsPlus;
+        return font ? inspectFont(decodeFontBytes(font.data)) : undefined;
+      },
+      setFontsPlus: async asset => {
+        if (!editorManager || !gameplayHost || !pluginManager) throw Error('Fonts+ editor is unavailable');
+        const editor = editorManager;
+        const plugin = pluginManager.installed.find(item => item.id === 'fonts-plus' && item.version === '1.0.0' && item.capabilities?.includes('gameplay') && item.payload?.gameplayJavascript);
+        if (!plugin) throw Error('Fonts+ 1.0.0 is unavailable');
+        const previous = gameEngine.exportGameData() as GameDefinition;
+        const generation = editor.projectGeneration;
+        const ticket = ++fontMutation;
+        const current = () => ticket === fontMutation && generation === editor.projectGeneration && pluginManager.installed.some(item => JSON.stringify(item) === JSON.stringify(plugin));
+        const game = structuredClone(previous);
+        game.gameplayPlugins = (game.gameplayPlugins ?? []).filter(item => item.id !== 'fonts-plus');
+        if (asset) game.gameplayPlugins.push({ id: 'fonts-plus', version: '1.0.0' });
+        game.fontsPlus = normalizeFontsPlus(asset, game.gameplayPlugins);
+        if (JSON.stringify(previous.fontsPlus) === JSON.stringify(game.fontsPlus)) return;
+        await gameEngine.fonts.prepare(game.fontsPlus);
+        if (!current()) throw Error('The project changed before the font was saved');
+        let imported = false;
+        try {
+          await gameplayHost.load(game, undefined, true, current);
+          if (!current()) throw new GameplayLoadSupersededError();
+          imported = true;
+          editor.restore(game as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
+          if (editor.projectGeneration !== generation + 1 || ticket !== fontMutation) throw new GameplayLoadSupersededError();
+          editor.persistAuthoring();
+          editor.history.pushCurrentState();
+        } catch (error) {
+          // restore() advances the generation; only roll back our own imported project.
+          if (!(error instanceof GameplayLoadSupersededError) && ticket === fontMutation &&
+              (editor.projectGeneration === generation || (imported && editor.projectGeneration === generation + 1))) {
+            await gameplayHost.load(previous);
+            editor.restore(previous as unknown as Record<string, unknown>, { alreadyImported: true, skipHistory: true });
           }
           throw error;
         }
@@ -428,7 +469,7 @@ class TinyRPGApplication {
       pluginManager.subscribe(() => {
         const current = gameEngine.exportGameData() as GameDefinition;
         const dependencies = current.gameplayPlugins ?? [];
-        const removed = dependencies.filter(item => !pluginManager.has(item.id));
+        const removed = dependencies.filter(item => !pluginManager.has(item.id) || (item.id === 'fonts-plus' && !pluginManager.installed.some(plugin => plugin.id === item.id && plugin.version === item.version && plugin.capabilities?.includes('gameplay'))));
         const upgraded = upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(current, pluginManager.installed), pluginManager.installed), pluginManager.installed);
         if (!removed.length && upgraded !== current && gameplayHost) {
           void gameplayHost.load(upgraded).then(() => {
@@ -446,9 +487,9 @@ class TinyRPGApplication {
           }
           return;
         }
-        const retained = dependencies.filter(item => pluginManager.has(item.id));
+        const retained = dependencies.filter(item => !removed.includes(item));
         const resize = removed.some(item => item.id === 'maps-plus') && (current.world.rows !== 3 || current.world.cols !== 3);
-        if ((resize || removed.some(item => current.pluginData?.[item.id] !== undefined || item.id === 'variables-plus' || item.id === 'sounds-plus' || item.id === 'music-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
+        if ((resize || removed.some(item => current.pluginData?.[item.id] !== undefined || item.id === 'variables-plus' || item.id === 'fonts-plus' || item.id === 'sounds-plus' || item.id === 'music-plus')) && !editorManager?.saveGameplayRemovalBackup(current as unknown as Record<string, unknown>)) {
           alert('Could not save a backup of the project. Reinstall the plugin to recover it.');
           return;
         }
@@ -456,6 +497,7 @@ class TinyRPGApplication {
         game.gameplayPlugins = retained;
         for (const dependency of removed) if (game.pluginData) delete game.pluginData[dependency.id];
         if (game.pluginData && !Object.keys(game.pluginData).length) delete game.pluginData;
+        if (removed.some(item => item.id === 'fonts-plus')) delete game.fontsPlus;
         if (removed.some(item => item.id === 'sounds-plus')) delete game.soundsPlus;
         if (removed.some(item => item.id === 'music-plus')) { delete game.musicPlus; delete game.musicPlusSmoothTransition; delete game.musicPlusFadeDurationSeconds; }
         const activeRoom = editorManager?.state.activeRoomIndex ?? 0;
