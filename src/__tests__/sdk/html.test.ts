@@ -30,3 +30,16 @@ describe('SDK HTML export', () => {
         expect(result.sections.total).toBe(new TextEncoder().encode(result.html).length);
     });
 });
+
+
+it('preserves NPC movement settings in exported HTML project and share payloads', () => {
+    const game = new TinyRPG();
+    game.room(0).addNPC({ type: 'villager-man', x: 2, y: 2, wander: false, wanderSpeed: 0 });
+    const { html } = exportHtml(game.toProjectData(), { runtimeJavaScript: '', css: '', fontDataUrl: 'data:font/woff;base64,AA==' });
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const json = doc.getElementById('tiny-rpg-project')?.textContent;
+    if (!json) throw Error('Missing bundled project');
+    const embedded = JSON.parse(json) as { game: { sprites: unknown[] } };
+    expect(embedded.game.sprites[0]).toMatchObject({ wander: false, wanderSpeed: 0 });
+    expect(html).toContain(`globalThis.__TINY_RPG_SHARED_CODE=${JSON.stringify(game.toShareCode())};`);
+});

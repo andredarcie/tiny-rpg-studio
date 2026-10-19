@@ -730,3 +730,12 @@ it('clones generic plugin JSON, requires dependencies, and clears absent data on
   state.importGameData(data);
   expect((state.exportGameData() as GameDefinition).pluginData).toBeUndefined();
 });
+
+
+it('exports wandering NPC authored positions without mutating runtime positions', () => {
+  const game = makeGame();
+  game.sprites = [{ id: 'npc-1', wander: true, wanderSpeed: 0.5, x: 5, y: 4, roomIndex: 0, initialX: 2, initialY: 3, initialRoomIndex: 0 } as GameDefinition['sprites'][number]];
+  const manager = new StateDataManager({ game, worldManager: {} as StateWorldManager, objectManager: {} as StateObjectManager, variableManager: {} as StateVariableManager });
+  expect(manager.exportGameData().sprites?.[0]).toMatchObject({ x: 2, y: 3, wander: true, wanderSpeed: 0.5 });
+  expect(game.sprites[0]).toMatchObject({ x: 5, y: 4 });
+});

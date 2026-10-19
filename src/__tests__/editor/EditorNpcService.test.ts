@@ -60,6 +60,7 @@ function makeManager(ov: Record<string, unknown> = {}) {
     },
     getSprites: vi.fn((): TestNpcSprite[] => []),
     getVariableDefinitions: vi.fn((): VariableDef[] => [{ id: 'var-1', name: 'Flag 1' }, { id: 'var-2', name: '' }]),
+    updateNPC: vi.fn(),
     draw: vi.fn(),
   };
   return { state, renderService, history, gameEngine, domCache: { editorCanvas: canvas }, enemyService: { deactivatePlacement: vi.fn() }, objectService: { togglePlacement: vi.fn() }, updateJSON: vi.fn(), hideRepositionIndicator: vi.fn() };
@@ -242,3 +243,18 @@ describe('setVariantFilter', () => {
   it('accepts elf dwarf fixed', () => { for (const v of ['elf','dwarf','fixed']) { const {service} = makeService({npcVariantFilter:'human'}); service.setVariantFilter(v); expect(service.state.npcVariantFilter).toBe(v); } });
 });
 
+
+
+it('updates selected NPC movement through the engine and records each change', () => {
+  const { service, manager } = makeService({ selectedNpcId: 'npc-1' });
+  manager.gameEngine.getSprites.mockReturnValue([{ id: 'npc-1', type: 'villager', roomIndex: 0 }]);
+  service.updateNpcWander(true);
+  service.updateNpcWanderSpeed(0);
+  service.updateNpcWander(false);
+  expect(manager.gameEngine.updateNPC.mock.calls).toEqual([
+    ['npc-1', { wander: true }], ['npc-1', { wanderSpeed: 0 }], ['npc-1', { wander: false }],
+  ]);
+  expect(manager.updateJSON).toHaveBeenCalledTimes(3);
+  expect(manager.history.pushCurrentState).toHaveBeenCalledTimes(3);
+  expect(manager.renderService.renderWorldGrid).toHaveBeenCalledTimes(3);
+});

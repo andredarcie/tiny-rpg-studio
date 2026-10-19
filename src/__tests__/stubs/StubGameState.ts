@@ -1,4 +1,5 @@
 export class StubGameState {
+  lifecycle = { pauseRevision: 0 }
   onMagicDoorOpened: (() => void) | null = null
   state = { game: { title: 'Unit Test', author: 'Tester' } }
   resetCalled = false

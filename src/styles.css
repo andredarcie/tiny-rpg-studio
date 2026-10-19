@@ -5018,6 +5018,34 @@ body.game-mode .tab-button.active {
     cursor: pointer;
 }
 
+.npc-movement-row,
+.npc-movement-row .npc-movement-speed {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.npc-movement-row {
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.npc-movement-row .object-config-label--checkbox {
+    margin-top: 0;
+}
+
+.npc-movement-speed input {
+    width: 88px;
+    flex: 0 0 88px;
+}
+
+.npc-edit-modal__body > hr {
+    width: 100%;
+    margin: 4px 0;
+}
+
+
 .npc-dialog-heading {
     display: flex;
     align-items: center;

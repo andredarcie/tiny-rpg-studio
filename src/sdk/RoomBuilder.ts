@@ -50,6 +50,8 @@ function validateCoord(axis: 'x' | 'y', value: number): void {
 
 export type NpcOptions = {
     name?: string;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     type: NpcType;
     x: number;
@@ -246,6 +248,7 @@ class RoomBuilder {
         validateCoord('y', opts.y);
         const sprite: SdkSprite = {
             type: opts.type, x: opts.x, y: opts.y, roomIndex: 0,
+            wander: opts.wander, wanderSpeed: opts.wanderSpeed,
             text: opts.text ?? '', placed: true, name: opts.name, disappearAfterDialog: opts.disappearAfterDialog, id: `npc-${opts.type}`,
         };
         if (opts.conditionVariable !== undefined) {

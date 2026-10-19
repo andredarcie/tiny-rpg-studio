@@ -1,3 +1,4 @@
+import { updateNpcWanderFacing } from '../../runtime/domain/npcMovement';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { EnemyDefinitions } from '../../runtime/domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../runtime/domain/constants/itemTypes';
@@ -432,6 +433,45 @@ describe('RendererEntityRenderer', () => {
     expect(canvasHelper.drawSprite).toHaveBeenCalledTimes(5);
     expect(canvasHelper.drawWaterReflectionForSprite).toHaveBeenCalledTimes(5);
     expect(original).toEqual([['1', null], ['2', '3']]);
+  });
+
+  it('wandering NPCs ignore player position before their first horizontal move', () => {
+    const { renderer, game, player, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    const original: SpriteMatrix = [['1', null], ['2', '3']];
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({ villager: original });
+    vi.mocked(spriteFactory.turnSpriteHorizontally).mockImplementation(matrix => matrix.map(row => [...row].reverse()));
+    game.sprites = [{ placed: true, roomIndex: 1, x: 2, y: 3, type: 'villager', wander: true }];
+    for (const [index, playerX] of [0, 7, 1].entries()) {
+      player.x = playerX;
+      renderer.drawNPCs(asCanvasCtx(ctx));
+      expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(index + 1, ctx, original, 32, 48, 2);
+    }
+  });
+
+  it.each([-1, 1])('wandering NPCs retain heading %s independently of player position and vertical moves', dx => {
+    const { renderer, game, player, spriteFactory, canvasHelper } = makeFixture();
+    const ctx = createCtx();
+    const original: SpriteMatrix = [['1', null], ['2', '3']];
+    const mirrored: SpriteMatrix = [[null, '1'], ['3', '2']];
+    vi.mocked(spriteFactory.getNpcSprites).mockReturnValue({ villager: original });
+    vi.mocked(spriteFactory.turnSpriteHorizontally).mockImplementation(matrix => matrix.map(row => [...row].reverse()));
+    const npc = { placed: true, roomIndex: 1, x: 2, y: 3, type: 'villager', wander: true };
+    game.sprites = [npc];
+    updateNpcWanderFacing(npc, dx);
+    for (const [index, playerX] of [0, 7, 1].entries()) {
+      player.x = playerX;
+      npc.y = 3 + index;
+      updateNpcWanderFacing(npc, 0);
+      renderer.drawNPCs(asCanvasCtx(ctx));
+      const expected = dx < 0 ? mirrored : original;
+      expect(canvasHelper.drawSprite).toHaveBeenNthCalledWith(index + 1, ctx, expected, 32, npc.y * 16, 2);
+      expect(canvasHelper.drawWaterReflectionForSprite).toHaveBeenNthCalledWith(index + 1, ctx, expected, 32, npc.y * 16, 2, 1, 2, npc.y);
+    }
+    npc.wander = false;
+    player.x = dx < 0 ? 7 : 0;
+    renderer.drawNPCs(asCanvasCtx(ctx));
+    expect(canvasHelper.drawSprite).toHaveBeenLastCalledWith(ctx, dx < 0 ? original : mirrored, 32, npc.y * 16, 2);
   });
 
   it('drawNPCs skips npc when neither typed nor default sprite exists', () => {

@@ -23,6 +23,12 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
+    id: '2026-10-19-wandering-npcs',
+    date: '2026-10-19',
+    title: 'Let your NPCs wander',
+    description: 'Give each NPC its own wandering speed, from a standstill to twice normal speed. In solo games they explore the current room, avoid obstacles, and pause for dialogue. Movement settings travel with projects, shared games, HTML exports, and the SDK.',
+  },
+  {
     id: '2026-10-16-fonts-plus',
     date: '2026-10-16',
     title: 'Bring your own font with Fonts+',

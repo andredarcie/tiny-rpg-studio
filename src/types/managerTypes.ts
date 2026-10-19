@@ -145,6 +145,7 @@ export type RoomState = {
 };
 
 export type NpcLike = {
+  disappeared?: boolean;
   placed?: boolean;
   roomIndex: number;
   x: number;

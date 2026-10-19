@@ -151,6 +151,11 @@ class StateDataManager {
             start: this.game.start,
             sprites: this.game.sprites.map((sprite) => {
                 const copy = { ...sprite } as Record<string, unknown>;
+                if (sprite.wander) {
+                    copy.x = Number.isFinite(sprite.initialX) ? sprite.initialX : sprite.x;
+                    copy.y = Number.isFinite(sprite.initialY) ? sprite.initialY : sprite.y;
+                    copy.roomIndex = Number.isFinite(sprite.initialRoomIndex) ? sprite.initialRoomIndex : sprite.roomIndex;
+                }
                 delete copy.disappeared;
                 return copy;
             }),

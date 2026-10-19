@@ -26,6 +26,8 @@ type EditorNpc = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string | null;
@@ -113,6 +115,39 @@ class NpcEditModal extends EditorRendererBase {
         this.removeHintsBubble();
         const body = document.createElement('div');
         body.className = 'object-edit-modal__config npc-edit-modal__body';
+
+        const movement = document.createElement('div');
+        movement.className = 'npc-movement-row';
+        const wanderLabel = document.createElement('label');
+        wanderLabel.className = 'object-config-label object-config-label--checkbox';
+        wanderLabel.htmlFor = 'npc-wander';
+        const wander = document.createElement('input');
+        wander.id = 'npc-wander';
+        wander.type = 'checkbox';
+        wander.checked = npc.wander === true;
+        wander.addEventListener('change', () => this.manager.npcService.updateNpcWander(wander.checked));
+        wanderLabel.append(wander, ` ${this.t('npc.movement.wander', 'Wander')}`);
+        const speedLabel = document.createElement('label');
+        speedLabel.className = 'object-config-label npc-movement-speed';
+        speedLabel.htmlFor = 'npc-wander-speed';
+        const speed = document.createElement('input');
+        speed.id = 'npc-wander-speed';
+        speed.type = 'number';
+        speed.className = 'object-config-input';
+        speed.min = '0';
+        speed.max = '2';
+        speed.step = '0.1';
+        speed.value = String(npc.wanderSpeed ?? 1);
+        speed.addEventListener('change', () => {
+            if (speed.value === '' || !speed.checkValidity()) {
+                speed.value = String(npc.wanderSpeed ?? 1);
+                return;
+            }
+            this.manager.npcService.updateNpcWanderSpeed(speed.valueAsNumber);
+        });
+        speedLabel.append(this.t('npc.movement.speed', 'Speed'), speed);
+        movement.append(wanderLabel, speedLabel);
+        body.append(movement, document.createElement('hr'));
 
         // Main dialogue heading and disappearance option
         const dialogGroup = document.createElement('div');

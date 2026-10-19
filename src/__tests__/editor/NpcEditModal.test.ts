@@ -12,6 +12,8 @@ describe('NpcEditModal disappearance option', () => {
     const npcService = {
       populateVariableSelect: vi.fn(),
       updateNpcText: vi.fn(),
+      updateNpcWander: vi.fn(),
+      updateNpcWanderSpeed: vi.fn(),
       updateNpcConditionalText: vi.fn(),
       updateNpcChoicePrompt: vi.fn(),
       updateNpcChoiceYesText: vi.fn(),
@@ -51,6 +53,24 @@ describe('NpcEditModal disappearance option', () => {
     const hintsButton = body.querySelector<HTMLButtonElement>('.npc-dialog-hints__button');
     const hintsBubble = document.body.querySelector<HTMLElement>('.npc-dialog-hints__bubble');
 
+    const wander = body.querySelector<HTMLInputElement>('#npc-wander');
+    const speed = body.querySelector<HTMLInputElement>('#npc-wander-speed');
+    if (!wander || !speed) throw Error('Missing NPC movement controls');
+    expect(wander.checked).toBe(false);
+    expect(speed.value).toBe('1');
+    expect([speed.min, speed.max, speed.step]).toEqual(['0', '2', '0.1']);
+    expect(body.querySelector('label[for="npc-wander"]')).not.toBeNull();
+    expect(body.querySelector('label[for="npc-wander-speed"]')).not.toBeNull();
+    expect(body.children[0].className).toBe('npc-movement-row');
+    expect(body.children[1].tagName).toBe('HR');
+    expect(body.children[2].querySelector('.npc-dialog-heading')).not.toBeNull();
+    expect(speed.disabled).toBe(false);
+    speed.value = '0.5';
+    speed.dispatchEvent(new Event('change'));
+    expect(npcService.updateNpcWanderSpeed).toHaveBeenCalledWith(0.5);
+    wander.checked = true;
+    wander.dispatchEvent(new Event('change'));
+    expect(npcService.updateNpcWander).toHaveBeenCalledWith(true);
     expect(checkbox?.checked).toBe(true);
     expect(body.querySelector('label[for="npc-default-dialog"]')).not.toBeNull();
     expect(body.querySelector('label[for="npc-disappear-after-dialog"]')).not.toBeNull();

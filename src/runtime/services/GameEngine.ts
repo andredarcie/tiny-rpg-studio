@@ -2,6 +2,7 @@ import { FontLifecycle } from '../adapters/renderer/FontLifecycle';
 import type { GameDefinition } from '../../types/gameState';
 import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
 import { DialogManager } from './engine/DialogManager';
+import { NpcMovementManager } from './engine/NpcMovementManager';
 import { EnemyManager } from './engine/EnemyManager';
 import { soundEngine } from './SoundEngine';
 import { InteractionManager } from './engine/InteractionManager';
@@ -44,6 +45,8 @@ type NpcInput = {
   roomIndex?: number;
   x?: number;
   y?: number;
+  wander?: boolean;
+  wanderSpeed?: number;
 };
 
 type EnemyInput = {
@@ -87,6 +90,7 @@ export class GameEngine {
   dialogManager: DialogManager;
   interactionManager: InteractionManager;
   enemyManager: EnemyManager;
+  npcMovementManager: NpcMovementManager;
   movementManager: MovementManager;
   inputManager: InputManager;
   combatStunManager: CombatStunManager;
@@ -169,6 +173,15 @@ export class GameEngine {
       },
     });
     this.online = new OnlineCoordinator(this);
+    this.npcMovementManager = new NpcMovementManager({
+      gameState: this.gameState,
+      npcManager: this.npcManager,
+      enemyManager: this.enemyManager,
+      draw: () => this.draw(),
+      isOnline: () => this.online.isOnline(),
+    });
+    this.npcManager.onReset = () => this.npcMovementManager.reset();
+    this.gameState.onEditorModeChange = () => this.startEnemyLoop();
     this.inputManager = new InputManager(this, options.inputRoot);
     this.backgroundMusicEngine = new BackgroundMusicEngine();
     this.gameState.onPlayerRoomChange = () => this.syncRoomMusic();
@@ -1000,6 +1013,9 @@ export class GameEngine {
   }
 
   startEnemyLoop(): void {
+    if (this.isDestroyed) return;
+    if (this.isEditorModeActive() || this.online.isOnline()) this.npcMovementManager.stop(this.online.isOnline());
+    else this.npcMovementManager.start();
     // Do not run the enemy simulation while editing. Halt the timer entirely
     // instead of relying on a per-tick no-op so nothing ticks in the background.
     if (this.isEditorModeActive()) {
@@ -1021,6 +1037,7 @@ export class GameEngine {
     if (this.soundOwner) soundEngine.release(this);
     this.inputManager.destroy();
     this.enemyManager.stop();
+    this.npcMovementManager.stop();
     this.gameState.hideLevelUpCelebration({ skipResume: true });
     this.backgroundMusicEngine.destroy();
     // Releases the tile-animation interval AND every overlay rAF loop (intro
@@ -1045,6 +1062,7 @@ export class GameEngine {
     this.online.notifyPlayerDefeated();
     this.gameState.prepareNecromancerRevive();
     this.enemyManager.stop();
+    this.npcMovementManager.stop();
     this.gameState.pauseGame('game-over');
     this.gameState.setGameOver(true, 'defeat');
     this.awaitingRestart = true;
@@ -1061,6 +1079,7 @@ export class GameEngine {
     }
     soundEngine.play('victory');
     this.enemyManager.stop();
+    this.npcMovementManager.stop();
     this.gameState.pauseGame('game-over');
     this.gameState.setGameOver(true, 'victory');
     this.awaitingRestart = true;
@@ -1077,7 +1096,7 @@ export class GameEngine {
       const revived = this.gameState.reviveFromNecromancer();
       if (revived) {
         this.awaitingRestart = false;
-        this.enemyManager.start();
+        this.startEnemyLoop();
         this.renderer.draw();
         // Tell the other online player we're alive again (no-op in solo).
         this.online.notifyRespawned();

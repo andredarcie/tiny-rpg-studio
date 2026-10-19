@@ -55,6 +55,8 @@ export type SdkObject = SdkObjectFields & { id?: string; experience?: number };
 export type SdkSprite = {
     id?: string;
     name?: string;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     type: string;
     x: number;

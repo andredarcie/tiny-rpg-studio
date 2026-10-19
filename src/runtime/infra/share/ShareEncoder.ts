@@ -423,10 +423,12 @@ class ShareEncoder {
                 n?: string;
                 yv?: string | null;
                 nv?: string | null;
+                w?: 1;
+                s?: number;
                 d?: 1;
             }> = {};
             sprites.forEach((npc, index) => {
-                if (npc.choiceEnabled || npc.disappearAfterDialog) {
+                if (npc.choiceEnabled || npc.disappearAfterDialog || npc.wander || npc.wanderSpeed !== 1) {
                     const entry: (typeof choiceMap)[number] = {};
                     if (npc.choiceEnabled) {
                         Object.assign(entry, {
@@ -437,6 +439,8 @@ class ShareEncoder {
                         nv: npc.choiceNoVariableId ?? null
                         });
                     }
+                    if (npc.wander) entry.w = 1;
+                    if (npc.wanderSpeed !== 1) entry.s = npc.wanderSpeed;
                     if (npc.disappearAfterDialog) entry.d = 1;
                     choiceMap[index] = entry;
                 }

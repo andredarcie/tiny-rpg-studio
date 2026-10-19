@@ -327,3 +327,19 @@ describe('SDK custom sprites', () => {
             .toThrow(/rectangular/);
     });
 });
+
+
+describe('SDK NPC wandering', () => {
+    it('preserves wandering through project and URL serialization', () => {
+        const g = new TinyRPG();
+        g.room(0).addNPC({ type: 'villager-man', x: 2, y: 2, wander: true, wanderSpeed: 1.5 } as never);
+        expect(g.toProjectData().sprites[0]).toMatchObject({ wander: true, wanderSpeed: 1.5 });
+        expect(roundTrip(g).sprites).toEqual(expect.arrayContaining([expect.objectContaining({ wander: true, wanderSpeed: 1.5 })]));
+        expect(TinyRPG.fromProjectData(g.toProjectData()).toProjectData().sprites[0]).toMatchObject({ wander: true, wanderSpeed: 1.5 });
+    });
+    it.each([-1, 3, NaN, Infinity, '1', null])('rejects invalid speed %s atomically', (wanderSpeed) => {
+        const g = new TinyRPG();
+        expect(() => g.room(0).addNPC({ type: 'villager-man', x: 2, y: 2, wanderSpeed } as never)).toThrow();
+        expect(g.toProjectData().sprites).toHaveLength(0);
+    });
+});

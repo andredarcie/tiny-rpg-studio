@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   setupShareGlobals,
   ShareConstants,
@@ -8,6 +8,8 @@ import {
 } from './shareTestUtils';
 
 type DecodedNpc = {
+  wander?: boolean;
+  wanderSpeed?: number;
   disappearAfterDialog?: boolean;
   choiceEnabled?: boolean;
   choicePrompt?: string;
@@ -88,4 +90,40 @@ describe('VERSION_40 disappearing NPCs', () => {
     expect(decodeNpc(withoutFlag)?.disappearAfterDialog).toBe(false);
     expect(decodeNpc(malformed)?.disappearAfterDialog).toBe(false);
   });
+});
+
+
+describe('V47 NPC movement metadata', () => {
+  it.each([[true, 0], [true, 0.5], [true, 1], [true, 2], [false, 0], [false, 1.5], [false, 1]])('round-trips wander=%s speed=%s without choices', (wander, wanderSpeed) => {
+    const code = ShareEncoder.buildShareCode(buildGame({ wander, wanderSpeed }));
+    expect(decodeNpc(code)).toMatchObject({ wander, wanderSpeed, choiceEnabled: false });
+    expect(ShareConstants.VERSION).toBe(ShareConstants.VERSION_47);
+  });
+  it('defaults old metadata and normalizes malformed movement metadata', () => {
+    const code = ShareEncoder.buildShareCode(buildGame({ disappearAfterDialog: true }));
+    expect(decodeNpc(code)).toMatchObject({ wander: false, wanderSpeed: 1 });
+    expect(decodeNpc(replaceNpcMetadata(code, { 0: { w: '1', s: '0' } }))).toMatchObject({ wander: false, wanderSpeed: 1 });
+    expect(decodeNpc(replaceNpcMetadata(code, { 0: { w: 1, s: 5 } }))).toMatchObject({ wander: true, wanderSpeed: 2 });
+  });
+  it('coexists with choices and disappearance', () => {
+    const code = ShareEncoder.buildShareCode(buildGame({ wander: true, wanderSpeed: 1.5, choiceEnabled: true, choicePrompt: 'Stay?', disappearAfterDialog: true }));
+    expect(decodeNpc(code)).toMatchObject({ wander: true, wanderSpeed: 1.5, choiceEnabled: true, choicePrompt: 'Stay?', disappearAfterDialog: true });
+  });
+});
+
+
+it('omits default metadata and decodes multiple NPCs through both construction branches', () => {
+  const stationary = ShareEncoder.buildShareCode(buildGame({}));
+  expect(stationary.split('.').some(part => part.startsWith('9'))).toBe(false);
+  const game = buildGame({ wander: true, wanderSpeed: 0 });
+  game.sprites.push({ ...game.sprites[0], id: 'npc-2', x: 3, wander: false, wanderSpeed: 2 } as typeof game.sprites[number]);
+  const code = ShareEncoder.buildShareCode(game);
+  const expected = [{ wander: true, wanderSpeed: 0 }, { wander: false, wanderSpeed: 2 }];
+  const normal = ShareDecoder.decodeShareCode(code) as { sprites: unknown[] };
+  expect(normal.sprites).toMatchObject(expected);
+  const spy = vi.spyOn(ShareConstants, 'NPC_DEFINITIONS', 'get').mockReturnValue([]);
+  try {
+    const fallback = ShareDecoder.decodeShareCode(code) as { sprites: unknown[] };
+    expect(fallback.sprites).toMatchObject(expected);
+  } finally { spy.mockRestore(); }
 });

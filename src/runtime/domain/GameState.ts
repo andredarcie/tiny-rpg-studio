@@ -392,8 +392,11 @@ class GameState {
         return this.dialogManager.hasNpcChoiceAnswered(npcId);
     }
 
+    onEditorModeChange: (() => void) | null = null;
+
     setEditorMode(active = false): void {
         this.editorMode = Boolean(active);
+        this.onEditorModeChange?.();
     }
 
     isEditorModeActive(): boolean {

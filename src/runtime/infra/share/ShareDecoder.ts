@@ -1,3 +1,4 @@
+import { normalizeNpcWanderSpeed } from '../../domain/npcMovement';
 import { applyAuthoringMetadata } from './ShareAuthoringMetadata';
 
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
@@ -319,7 +320,7 @@ class ShareDecoder {
         const npcConditionalRewardIndexes = version >= ShareConstants.NPC_CONDITIONAL_REWARD_VERSION
             ? decodeVarRef(payload.h, npcPositions.length)
             : [];
-        type ChoiceDialogEntry = { p?: string; y?: string; n?: string; yv?: string | null; nv?: string | null; d?: unknown };
+        type ChoiceDialogEntry = { p?: string; y?: string; n?: string; yv?: string | null; nv?: string | null; d?: unknown; w?: unknown; s?: unknown };
         let npcChoiceMap: Record<string, ChoiceDialogEntry | undefined> = {};
         if (version >= ShareConstants.NPC_CHOICE_DIALOG_VERSION && payload['9']) {
             try {
@@ -337,6 +338,8 @@ class ShareDecoder {
             const choiceEnabled = isChoiceEntry && ['p', 'y', 'n', 'yv', 'nv']
                 .some((key) => Object.prototype.hasOwnProperty.call(choice, key));
             return {
+                wander: isChoiceEntry && choice?.w === 1,
+                wanderSpeed: normalizeNpcWanderSpeed(isChoiceEntry ? choice?.s : undefined),
                 disappearAfterDialog: version >= ShareConstants.NPC_DISAPPEAR_VERSION
                     && isChoiceEntry
                     && choice?.d === 1,

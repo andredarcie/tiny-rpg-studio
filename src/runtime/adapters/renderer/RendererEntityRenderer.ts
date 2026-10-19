@@ -1,3 +1,4 @@
+import { getNpcWanderFacing } from '../../domain/npcMovement';
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { GameConfig } from '../../../config/GameConfig';
@@ -248,7 +249,9 @@ class RendererEntityRenderer {
             let sprite = npcSprites[npc.type] || npcSprites.default;
             if (!sprite) continue;
             if (npc.type !== 'thought-bubble' && npc.type !== 'wooden-sign') {
-                sprite = this.adjustSpriteHorizontally(player.x, npc.x, sprite);
+                sprite = npc.wander
+                    ? this.adjustSpriteHorizontally(getNpcWanderFacing(npc), 0, sprite)
+                    : this.adjustSpriteHorizontally(player.x, npc.x, sprite);
             }
             this.drawWorldSprite(ctx, sprite, px, py, step, npc.roomIndex, npc.x, npc.y);
             if (game.showNewDialogExclamation !== false && shouldDrawUnreadNpcDialogMarker(this.gameState, npc)) {
@@ -676,6 +679,7 @@ type PlayerState = {
 };
 
 type NpcState = {
+    wander?: boolean;
     id?: string;
     placed?: boolean;
     disappeared?: boolean;

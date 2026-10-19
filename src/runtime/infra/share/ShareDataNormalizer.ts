@@ -1,4 +1,5 @@
 
+import { normalizeNpcWanderSpeed } from '../../domain/npcMovement';
 import { EnemyDefinitions } from '../../domain/definitions/EnemyDefinitions';
 import { ITEM_TYPES } from '../../domain/constants/itemTypes';
 import { StateObjectManager } from '../../domain/state/StateObjectManager';
@@ -32,6 +33,8 @@ type ShareSpriteInput = {
     onCompleteVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
     alternativeRewardVariableId?: string | null;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string;
@@ -106,6 +109,8 @@ type NormalizedSprite = {
     conditionText: string;
     rewardVariableId: string | null;
     conditionalRewardVariableId: string | null;
+    wander: boolean;
+    wanderSpeed: number;
     disappearAfterDialog: boolean;
     choiceEnabled: boolean;
     choicePrompt: string;
@@ -217,6 +222,8 @@ class ShareDataNormalizer {
                     : (typeof npc.conditionalText === 'string' ? npc.conditionalText : ''),
                 rewardVariableId: hasRewardId ? rewardId : null,
                 conditionalRewardVariableId: hasConditionalRewardId ? conditionalRewardId : null,
+                wander: npc.wander === true,
+                wanderSpeed: normalizeNpcWanderSpeed(npc.wanderSpeed),
                 disappearAfterDialog: npc.disappearAfterDialog === true,
                 choiceEnabled: npc.choiceEnabled === true,
                 choicePrompt: typeof npc.choicePrompt === 'string' ? npc.choicePrompt : '',

@@ -97,7 +97,8 @@ export function validateBaseProject(input: unknown): void {
         position(sprite);
         text(sprite.name, 80);
         for (const key of ['text', 'conditionText', 'choicePrompt', 'choiceYesText', 'choiceNoText']) text(sprite[key]);
-        for (const key of ['placed', 'disappearAfterDialog', 'choiceEnabled']) if (sprite[key] !== undefined && typeof sprite[key] !== 'boolean') throw Error('Invalid NPC flag');
+        for (const key of ['placed', 'disappearAfterDialog', 'choiceEnabled', 'wander']) if (sprite[key] !== undefined && typeof sprite[key] !== 'boolean') throw Error('Invalid NPC flag');
+        if (sprite.wanderSpeed !== undefined && (typeof sprite.wanderSpeed !== 'number' || !Number.isFinite(sprite.wanderSpeed) || sprite.wanderSpeed < 0 || sprite.wanderSpeed > 2)) throw Error('Invalid NPC wander speed');
         if (sprite.placed !== false) {
             if (npcTypes.has(sprite.type)) throw Error('Each NPC type can be placed only once');
             npcTypes.add(sprite.type);

@@ -9,6 +9,7 @@ class GameStateLifecycle {
     gameState: GameState;
     screenManager: GameStateScreenManager;
     pauseReasons: Set<string>;
+    pauseRevision = 0;
     timeToResetAfterGameOver: number;
 
     constructor(gameState: GameState, screenManager: GameStateScreenManager, options: LifecycleOptions = {}) {
@@ -24,6 +25,7 @@ class GameStateLifecycle {
     }
 
     pauseGame(reason = 'manual'): void {
+        this.pauseRevision++;
         const label = reason || 'manual';
         this.pauseReasons.add(label);
         this.updatePlayingLock();

@@ -1,4 +1,5 @@
 
+import { getNpcWanderFacing, normalizeNpcWanderSpeed, resetNpcWanderFacing, updateNpcWanderFacing } from '../domain/npcMovement';
 import { NPCDefinitions } from '../domain/definitions/NPCDefinitions';
 import { TextResources } from '../adapters/TextResources';
 import type { Npc } from '../domain/entities/Npc';
@@ -36,6 +37,8 @@ type NPCInstance = {
     conditionText: string;
     rewardVariableId: string | null;
     conditionalRewardVariableId: string | null;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     disappeared?: boolean;
     choiceEnabled: boolean;
@@ -70,6 +73,8 @@ type NPCInput = {
     onCompleteVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
     alternativeRewardVariableId?: string | null;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     disappeared?: boolean;
     choiceEnabled?: boolean;
@@ -184,6 +189,7 @@ function allocateSequentialId() {
 
 class NPCManager {
     private readonly gameState: GameState;
+    onReset: (() => void) | null = null;
 
     constructor(gameState: GameState) {
         this.gameState = gameState;
@@ -223,7 +229,9 @@ class NPCManager {
 
         for (const npc of this.sprites) {
             if (!npc.type || !allowedTypes.has(npc.type)) continue;
-            normalized.push(this.normalizeNPC(npc));
+            const entry = this.normalizeNPC(npc);
+            updateNpcWanderFacing(entry, getNpcWanderFacing(npc));
+            normalized.push(entry);
         }
 
         this.sprites = normalized;
@@ -289,6 +297,8 @@ class NPCManager {
             conditionText,
             rewardVariableId,
             conditionalRewardVariableId,
+            wander: npc.wander === true,
+            wanderSpeed: normalizeNpcWanderSpeed(npc.wanderSpeed),
             disappearAfterDialog,
             disappeared,
             choiceEnabled,
@@ -320,6 +330,8 @@ class NPCManager {
             conditionText: '',
             rewardVariableId: null,
             conditionalRewardVariableId: null,
+            wander: false,
+            wanderSpeed: 1,
             disappearAfterDialog: false,
             disappeared: false,
             choiceEnabled: false,
@@ -332,7 +344,9 @@ class NPCManager {
     }
 
     resetNPCs() {
+        this.onReset?.();
         for (const npc of this.sprites) {
+            resetNpcWanderFacing(npc);
             npc.x = npc.initialX;
             npc.y = npc.initialY;
             npc.roomIndex = npc.initialRoomIndex;
@@ -412,6 +426,7 @@ class NPCManager {
 
         npc.x = clamp(Number(x), 0, 7, npc.x);
         npc.y = clamp(Number(y), 0, 7, npc.y);
+        resetNpcWanderFacing(npc);
         npc.initialX = npc.x;
         npc.initialY = npc.y;
         npc.placed = true;

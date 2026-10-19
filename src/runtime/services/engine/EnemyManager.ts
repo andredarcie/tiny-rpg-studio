@@ -743,7 +743,7 @@ class EnemyManager {
 
   isNpcAt(game: GameData, roomIndex: number, x: number, y: number): boolean {
     if (!Array.isArray(game.sprites)) return false;
-    return game.sprites.some((npc) => npc.placed && npc.roomIndex === roomIndex && npc.x === x && npc.y === y);
+    return game.sprites.some((npc) => npc.placed && !npc.disappeared && npc.roomIndex === roomIndex && npc.x === x && npc.y === y);
   }
 
   resolvePostMove(roomIndex: number, x: number, y: number, enemyIndex: number): boolean {

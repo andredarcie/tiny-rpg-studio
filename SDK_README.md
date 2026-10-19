@@ -126,3 +126,20 @@ Use `readFileSync(new URL(import.meta.resolve(...)), 'utf8')` for runtime/CSS pa
 - Art overrides replace the same group/key/variant. Frames use 8 by 8 palette indices 0 through 15 or null. Custom tile definitions can use string IDs.
 
 SDK 2 removes `enableVariablesPlus`, `MAX_VARIABLES_PLUS`, and configurable extended variable limits. Maps+, Dialogue+, Variables+, gameplay dependencies, renderer internals, debug instrumentation and editor layout are outside the base contract. Existing plugin projects remain supported in Studio through its plugin APIs. Load base projects with `TinyRPG.fromProjectData`, and edit loaded variable slots with `setVariableDefault`. The major release also corrects enemy limits, tightens metadata/asset validation, preserves IDs and names, and copies authoring data. Nothing is published automatically by the build.
+
+### Wandering NPCs
+
+```ts
+game.room(0).addNPC({
+    type: 'villager-man', x: 2, y: 2,
+    wander: true, wanderSpeed: 1.5,
+});
+```
+
+`wander` defaults to `false`; `wanderSpeed` defaults to `1`. Speed accepts finite
+numbers from `0` to `2`, including fractions: `0` stops movement, `1` uses normal
+enemy wandering cadence, and `2` doubles it. Speed is retained when wandering is
+disabled. NPCs stay in the active room, avoid occupied tiles, and pause during
+dialogue. Wandering currently runs in solo games only; online host and guest NPCs
+remain stationary. Both settings persist in project data, shared URLs, and HTML
+exports with SDK 2.0.0.

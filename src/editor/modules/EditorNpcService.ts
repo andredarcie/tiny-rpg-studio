@@ -19,6 +19,8 @@ type SpriteInstance = {
     conditionVariableId?: string | null;
     rewardVariableId?: string | null;
     conditionalRewardVariableId?: string | null;
+    wander?: boolean;
+    wanderSpeed?: number;
     disappearAfterDialog?: boolean;
     choiceEnabled?: boolean;
     choicePrompt?: string | null;
@@ -349,6 +351,25 @@ class EditorNpcService {
         this.manager.history.pushCurrentState();
         this.gameEngine.draw();
         return normalized;
+    }
+
+    updateNpcWander(enabled: boolean) {
+        this.updateNpcMovement({ wander: enabled });
+    }
+
+    updateNpcWanderSpeed(speed: number) {
+        this.updateNpcMovement({ wanderSpeed: speed });
+    }
+
+    private updateNpcMovement(data: { wander?: boolean; wanderSpeed?: number }) {
+        const npc = this.getSelectedNpc();
+        if (!npc) return;
+        this.gameEngine.updateNPC(npc.id, data);
+        this.manager.renderService.renderNpcs();
+        this.manager.renderService.renderWorldGrid();
+        this.manager.renderService.renderEditor();
+        this.manager.updateJSON();
+        this.manager.history.pushCurrentState();
     }
 
     updateNpcDisappearAfterDialog(enabled: boolean) {

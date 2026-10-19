@@ -97,3 +97,23 @@ describe('NPCManager - Multiple Instances Per Type', () => {
     expect(npc1Final?.roomIndex).toBe(0);
   });
 });
+
+
+describe('NPC wandering configuration', () => {
+  it('defaults to stationary at 1x and keeps instance settings independent', () => {
+    const manager = new NPCManager(makeGameState() as never);
+    const first = manager.createNPC('old-mage');
+    const second = manager.createNPC('old-mage');
+    if (!first || !second) throw Error('Missing NPC instances');
+    expect(first).toMatchObject({ wander: false, wanderSpeed: 1 });
+    manager.updateNPC(first.id, { wander: true, wanderSpeed: 0.5 });
+    expect(first).toMatchObject({ wander: true, wanderSpeed: 0.5 });
+    expect(second).toMatchObject({ wander: false, wanderSpeed: 1 });
+    manager.updateNPC(first.id, { wander: false });
+    expect(first).toMatchObject({ wander: false, wanderSpeed: 0.5 });
+  });
+  it.each([[0, 0], [2, 2], [0.5, 0.5], [-1, 0], [3, 2], [NaN, 1], [Infinity, 1], ['1', 1], [null, 1]])('normalizes speed %s to %s', (input, expected) => {
+    const manager = new NPCManager(makeGameState() as never);
+    expect(manager.normalizeNPC({ type: 'old-mage', wanderSpeed: input } as never)).toMatchObject({ wanderSpeed: expected });
+  });
+});
