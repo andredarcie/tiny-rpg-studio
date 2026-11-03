@@ -226,10 +226,18 @@ class NPCManager {
     ensureDefaultNPCs() {
         const allowedTypes = new Set(NPC_MANAGER_DEFINITIONS.map((def) => def.type));
         const normalized: NPCInstance[] = [];
+        const reservedIds = new Set(this.sprites.map(npc => typeof npc.id === 'string' ? npc.id.trim() : ''));
+        const usedIds = new Set<string>();
 
         for (const npc of this.sprites) {
             if (!npc.type || !allowedTypes.has(npc.type)) continue;
             const entry = this.normalizeNPC(npc);
+            if (usedIds.has(entry.id)) {
+                do {
+                    entry.id = this.generateId();
+                } while (reservedIds.has(entry.id) || usedIds.has(entry.id));
+            }
+            usedIds.add(entry.id);
             updateNpcWanderFacing(entry, getNpcWanderFacing(npc));
             normalized.push(entry);
         }

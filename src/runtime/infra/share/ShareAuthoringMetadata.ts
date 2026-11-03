@@ -40,8 +40,10 @@ export function applyAuthoringMetadata(result: Data, metadata: Data): void {
     result.respawnableEnemies = metadata.respawnableEnemies === true;
     result.respawnableBosses = metadata.respawnableBosses === true;
     if (Array.isArray(metadata.palette)) result.palette = metadata.palette;
+    const spriteMetadata = list(metadata.sprites).slice();
     for (const npc of list(result.sprites)) {
-        const source = list(metadata.sprites).find(entry => entry.type === npc.type);
+        const sourceIndex = spriteMetadata.findIndex(entry => entry.type === npc.type);
+        const source = sourceIndex >= 0 ? spriteMetadata.splice(sourceIndex, 1)[0] : undefined;
         if (source) Object.assign(npc, fields(source, ['id', 'name']));
     }
     for (const kind of ['enemies', 'objects']) for (const entry of list(result[kind])) {
