@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BitmapFont } from '../../runtime/adapters/renderer/BitmapFont';
+import { setGameFont } from '../../runtime/adapters/renderer/FontPresentation';
 
 // The new BitmapFont renders the Pixel Operator font via the Canvas 2D text
 // API. The global test setup mocks HTMLCanvasElement.getContext, so measureText
@@ -29,6 +30,29 @@ function loadReady(font: BitmapFont): Promise<void> {
 }
 
 describe('BitmapFont (Pixel Operator)', () => {
+    it('renders custom UI fonts in HTML at display resolution and clears stale text', () => {
+        const font = new BitmapFont();
+        const parent = document.createElement('div');
+        const canvas = document.createElement('canvas');
+        parent.appendChild(canvas);
+        document.body.appendChild(parent);
+        Object.defineProperty(canvas, 'offsetHeight', { value: canvas.height * 3 });
+        const ctx = { ...makeCtx(), canvas, globalAlpha: 1, getTransform: () => ({ a: 1, d: 1, e: 0, f: 20 }) } as unknown as CanvasRenderingContext2D;
+        setGameFont({ family: 'CustomFont', weight: '700', style: 'normal', variationSettings: '"wdth" 75' });
+        try {
+            font.drawUiText(ctx, 'Title', 40, 10, 16);
+            const span = parent.querySelector('.game-ui-text-overlay span') as HTMLElement;
+            expect(span.textContent).toBe('Title');
+            expect(span.style.fontSize).toBe('48px');
+            expect(span.style.top).toBe('90px');
+            expect(span.style.fontVariationSettings).toBe('"wdth" 75');
+            expect(ctx.fillText).not.toHaveBeenCalled();
+            font.clearHtmlText(canvas);
+            expect(parent.querySelector('.game-ui-text-overlay')?.textContent).toBe('');
+            font.destroyHtmlText(canvas);
+            expect(parent.querySelector('.game-ui-text-overlay')).toBeNull();
+        } finally { setGameFont(); parent.remove(); }
+    });
     let font: BitmapFont;
     let originalFonts: unknown;
 

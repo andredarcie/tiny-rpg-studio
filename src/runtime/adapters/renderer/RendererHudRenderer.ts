@@ -94,7 +94,7 @@ class RendererHudRenderer {
         if (label) {
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
-            bitmapFont.drawText(ctx, label, miniMapX - this.gap, height / 2, fontSize, accent);
+            bitmapFont.drawUiText(ctx, label, miniMapX - this.gap, height / 2, fontSize, accent);
         }
 
         if (this.presentation.visible.minimap) this.drawMiniMap(ctx, miniMapX, miniMapY, mapCellSize, miniMapSize);

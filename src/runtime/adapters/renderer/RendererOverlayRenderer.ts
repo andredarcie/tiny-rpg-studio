@@ -90,7 +90,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
         const titleLines = this.wrapText(title, maxTextWidth, titleSize, maxTitleLines);
         const titleTop = height * 0.33 - ((titleLines.length - 1) * titleLineHeight) / 2;
         titleLines.forEach((line, i) => {
-            bitmapFont.drawText(ctx, line, centerX, titleTop + i * titleLineHeight, titleSize, '#FFFFFF');
+            bitmapFont.drawUiText(ctx, line, centerX, titleTop + i * titleLineHeight, titleSize, '#FFFFFF');
         });
         const titleBottom = titleTop + (titleLines.length - 1) * titleLineHeight + titleLineHeight / 2;
 
@@ -99,7 +99,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
         const byline = toDisplayCaps(formatOverlayText('intro.byline', { author }, `por ${author}`));
         const bylineLines = this.wrapText(byline, maxTextWidth, FONT_SIZE, 2);
         bylineLines.forEach((line, i) => {
-            bitmapFont.drawText(ctx, line, centerX, titleBottom + 8 + i * LINE_HEIGHT, FONT_SIZE, 'rgba(255, 255, 255, 0.72)');
+            bitmapFont.drawUiText(ctx, line, centerX, titleBottom + 8 + i * LINE_HEIGHT, FONT_SIZE, 'rgba(255, 255, 255, 0.72)');
         });
 
         const renderer = this.overlayRenderer;
@@ -119,7 +119,7 @@ class RendererOverlayRenderer extends RendererModuleBase {
             const startLines = this.wrapText(startLabel, maxTextWidth, FONT_SIZE, 2);
             const startTop = height * 0.84 - ((startLines.length - 1) * LINE_HEIGHT) / 2;
             startLines.forEach((line, i) => {
-                bitmapFont.drawText(ctx, line, centerX, startTop + i * LINE_HEIGHT, FONT_SIZE, startColor);
+                bitmapFont.drawUiText(ctx, line, centerX, startTop + i * LINE_HEIGHT, FONT_SIZE, startColor);
             });
             // Drive a smooth 60fps redraw while the prompt pulses (the engine
             // otherwise only repaints on sparse tile-animation ticks).

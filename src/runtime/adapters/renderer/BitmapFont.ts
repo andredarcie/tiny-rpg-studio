@@ -1,4 +1,4 @@
-import { getGameFont, hasCustomGameFont, setGameFontDisabled } from './FontPresentation';
+import { applyGameFont, getGameFont, hasCustomGameFont, setGameFontDisabled } from './FontPresentation';
 import { LINE_HEIGHT, FONT_SIZE, FONT_NAME } from '../../../config/FontConfig';
 
 /**
@@ -28,6 +28,51 @@ type GlyphCacheEntry = {
 };
 
 export class BitmapFont {
+    private htmlLayers = new WeakMap<HTMLCanvasElement, HTMLElement>();
+
+    clearHtmlText(canvas: HTMLCanvasElement): void {
+        this.htmlLayers.get(canvas)?.replaceChildren();
+    }
+
+    destroyHtmlText(canvas: HTMLCanvasElement): void {
+        this.htmlLayers.get(canvas)?.remove();
+        this.htmlLayers.delete(canvas);
+    }
+
+    drawUiText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color = '#ffffff'): void {
+        const canvas = (ctx as Partial<CanvasRenderingContext2D>).canvas;
+        const parent = canvas?.parentElement;
+        if (!hasCustomGameFont() || !canvas || !parent || typeof ctx.getTransform !== 'function') {
+            this.drawText(ctx, text, x, y, size, color);
+            return;
+        }
+        let layer = this.htmlLayers.get(canvas);
+        if (!layer) {
+            layer = document.createElement('div');
+            layer.className = 'game-ui-text-overlay';
+            Object.assign(layer.style, { position: 'absolute', pointerEvents: 'none', overflow: 'hidden' });
+            if (getComputedStyle(parent).position === 'static') parent.style.position = 'relative';
+            parent.appendChild(layer);
+            this.htmlLayers.set(canvas, layer);
+        }
+        const rx = (canvas.offsetWidth || canvas.width) / canvas.width;
+        const ry = (canvas.offsetHeight || canvas.height) / canvas.height;
+        Object.assign(layer.style, { left: `${canvas.offsetLeft}px`, top: `${canvas.offsetTop}px`, width: `${canvas.width * rx}px`, height: `${canvas.height * ry}px` });
+        const transform = ctx.getTransform();
+        const el = document.createElement('span');
+        el.textContent = text;
+        applyGameFont(el);
+        const align = ctx.textAlign === 'center' ? -50 : ctx.textAlign === 'right' || ctx.textAlign === 'end' ? -100 : 0;
+        const baseline = ctx.textBaseline === 'middle' ? -50 : ctx.textBaseline === 'bottom' || ctx.textBaseline === 'alphabetic' ? -100 : 0;
+        Object.assign(el.style, {
+            position: 'absolute', whiteSpace: 'pre', color, fontSize: `${size * transform.d * ry}px`,
+            lineHeight: String(LINE_HEIGHT / FONT_SIZE),
+            left: `${(transform.a * x + transform.e) * rx}px`, top: `${(transform.d * y + transform.f) * ry}px`,
+            transform: `translate(${align}%, ${baseline}%)`, opacity: String(ctx.globalAlpha),
+        });
+        layer.appendChild(el);
+    }
+
     private ready = false;
     private loading = false;
     private readyCallbacks = new Set<() => void>();

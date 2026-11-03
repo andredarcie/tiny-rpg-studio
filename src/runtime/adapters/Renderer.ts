@@ -303,6 +303,7 @@ class Renderer {
         const ctx = this.ctx;
         if (!ctx) return;
         this.applyCanvasLayout();
+        bitmapFont.clearHtmlText(this.canvas);
         this.hudRenderer.presentation = this.hudPresentation;
         ctx.imageSmoothingEnabled = false;
         this.entityRenderer.setViewportOffset(this.gameplayOffsetY);
@@ -522,6 +523,7 @@ class Renderer {
      * thumbnails) leave timers/animation frames running on a dead engine.
      */
     destroy() {
+        bitmapFont.destroyHtmlText(this.canvas);
         this.dialogRenderer.destroy(); this.levelUpOverlay.destroy();
         this.transitionManager.transition.onComplete = undefined;
         this.transitionManager.finish();

@@ -87,6 +87,23 @@ const makeChoice = (selectedIndex = 0): DialogChoiceState => ({
 });
 
 describe('RendererDialogRenderer (HTML overlay)', () => {
+  it('paginates an unbroken word instead of clipping CSS-wrapped lines', () => {
+    const restore = installFakeTextLayout(5 * 16 + 1);
+    try {
+      const text = 'A'.repeat(5 * (GameConfig.dialog.maxLines + 1));
+      const dialog: TestDialog = { active: true, text, page: 1 };
+      const { renderer, ctx } = setup(dialog);
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+      expect(dialog.maxPages).toBe(2);
+      const firstPage = document.querySelector('.game-dialog-text')?.textContent ?? '';
+      dialog.page = 2;
+      renderer.drawDialog(ctx, { width: 128, height: 160 });
+      const lastPage = document.querySelector('.game-dialog-text')?.textContent ?? '';
+      expect(lastPage).toBe('AAAAA');
+      expect((firstPage + lastPage).replaceAll('\n', '')).toBe(text);
+    } finally { restore(); }
+  });
+
   beforeEach(() => {
     document.body.innerHTML = '';
   });
@@ -229,7 +246,7 @@ describe('RendererDialogRenderer (HTML overlay)', () => {
 
   describe('pagination and box height', () => {
     // Ten characters per line: the column is 10 glyphs wide at any font size.
-    const TEN_PER_LINE = (fontPx: number) => 10 * fontPx;
+    const TEN_PER_LINE = (fontPx: number) => 10 * fontPx + 1;
     const WORD = 'ABCDEFGHIJ';
 
     it('paginates a message the same way at every canvas size', () => {
@@ -407,7 +424,7 @@ describe('RendererDialogRenderer (HTML overlay)', () => {
     });
 
     it('ignores tags while wrapping and preserves effects on later pages', () => {
-      const restore = installFakeTextLayout(10 * 16);
+      const restore = installFakeTextLayout(10 * 16 + 1);
       try {
         const message = Array.from({ length: 9 }, () => 'ABCDEFGHIJ').join(' ');
         const dialog: TestDialog = {

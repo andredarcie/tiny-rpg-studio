@@ -456,6 +456,19 @@ class RendererDialogRenderer {
                     } else {
                         line = candidate;
                     }
+                    // CSS also wraps inside words; account for those lines before pagination.
+                    measurer.textContent = this.animatedText.toText(line);
+                    while (line.length > 1 && measurer.offsetWidth > availWidth) {
+                        let end = 1;
+                        while (end < line.length) {
+                            measurer.textContent = this.animatedText.toText(line.slice(0, end + 1));
+                            if (measurer.offsetWidth > availWidth) break;
+                            end++;
+                        }
+                        wrappedLines.push(line.slice(0, end));
+                        line = line.slice(end);
+                        measurer.textContent = this.animatedText.toText(line);
+                    }
                 }
                 wrappedLines.push(line);
             }
