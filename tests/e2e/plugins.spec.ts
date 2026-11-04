@@ -1,5 +1,200 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import path from 'node:path';
+import type { TinyRpgApi } from '../../src/runtime/infra/TinyRpgApi';
+
+async function turn(page: Page, key: 'ArrowLeft' | 'ArrowRight') {
+  await page.keyboard.press(key);
+  await page.waitForTimeout(330);
+}
+
+test('3D Renderer keeps keyboard dialogue, HUD+, pickups, doors and D-pad controls', async ({ page }, testInfo) => {
+  await page.goto('/'); await page.click('button[data-tab="editor"]');
+  await page.click('#btn-plugins');
+  for (const [id, query] of [['3d-renderer', '3D Renderer'], ['hud-plus', 'HUD+'], ['dialogue-plus', 'Dialogue+']]) {
+    await page.fill('#plugins-query', query);
+    await page.locator(`[data-plugin-id="${id}"] [data-action="install"]`).click();
+    await expect(page.locator(`[data-plugin-id="${id}"] [data-action="installed"]`)).toBeDisabled();
+  }
+  await page.click('#plugins-modal .tiny-modal__close');
+  await page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    const api = getTinyRpgApi(); const game = api.exportGameData();
+    game.title = 'First person interactions'; game.start = { x: 2, y: 2, roomIndex: 0 };
+    game.sprites = [{ id: 'guide', type: 'old-mage', x: 3, y: 2, roomIndex: 0, placed: true, text: 'Welcome', disappearAfterDialog: true }];
+    game.objects = [{ id: 'key', type: 'key', roomIndex: 0, x: 4, y: 2 }, { id: 'door', type: 'door', roomIndex: 0, x: 5, y: 2 }];
+    game.enemies = []; game.items = []; game.exits = [];
+    const brick = Array.from({ length: 8 }, (_, y) => Array.from({ length: 8 }, (_, x) => y % 4 === 0 || (x + (y < 4 ? 0 : 4)) % 8 === 0 ? '#5f574f' : '#ab5236'));
+    game.tileset.tiles.push({ id: 'test-brick', name: 'Brick', collision: true, frames: [brick] });
+    for (let x = 0; x < 8; x++) { game.tileset.maps[0].ground[1][x] = 'test-brick'; game.tileset.maps[0].ground[3][x] = 'test-brick'; }
+    await api.loadProjectData(game);
+    await api.setPluginData('hud-plus', { mode: 'overlay' });
+    await api.setNpcDialogueBlocks('guide', [{ id: 'greeting', kind: 'alternative', conditionVariableId: null, text: 'Welcome', rewardVariableId: null, disappearAfterDialog: true }], 'dialogue-plus');
+  });
+  await page.click('button[data-tab="game"]'); await page.keyboard.press('Enter'); await page.waitForTimeout(50);
+  const state = () => page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    const api = getTinyRpgApi(); const state = api.getState();
+    return { x: state.player.x, y: state.player.y, dialog: state.dialog.active, pickup: api.runtime.isPickupOverlayActive(),
+      opened: api.runtime.getObjects().find(object => object.id === 'door')?.opened };
+  });
+  await turn(page, 'ArrowRight'); await page.keyboard.press('ArrowUp');
+  await expect.poll(async () => (await state()).dialog).toBe(true);
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  await expect.poll(async () => (await state()).dialog).toBe(false);
+  await page.keyboard.press('ArrowUp'); await expect.poll(async () => (await state()).x).toBe(3);
+  await page.keyboard.press('ArrowUp'); await expect.poll(async () => (await state()).pickup).toBe(true);
+  await page.keyboard.press('Enter'); await expect.poll(async () => (await state()).pickup).toBe(false);
+  await page.keyboard.press('ArrowUp'); await expect.poll(async () => (await state()).opened).toBe(true);
+  await expect.poll(async () => (await state()).x).toBe(5);
+  await page.screenshot({ path: testInfo.outputPath('3d-renderer-textured-corridor.png') });
+  await page.setViewportSize({ width: 480, height: 800 });
+  const left = page.locator('.game-touch-pad .pad-button[data-direction="left"]');
+  await left.dispatchEvent('pointerdown', { button: 0, pointerId: 1 });
+  await left.dispatchEvent('pointerup', { button: 0, pointerId: 1 });
+  await page.waitForTimeout(330);
+  await page.keyboard.press('ArrowDown'); await expect.poll(async () => (await state()).y).toBe(2);
+  await expect.poll(async () => (await state()).x).toBe(5);
+  await turn(page, 'ArrowRight'); await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => (await state()).x).toBe(4);
+  const enemyLives = () => page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    return getTinyRpgApi().runtime.getActiveEnemies().reduce((sum, enemy) => sum + Math.max(0, enemy.lives ?? 1), 0);
+  });
+  await page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    const api = getTinyRpgApi(); const game = api.exportGameData();
+    game.sprites = []; game.objects = [];
+    game.start = { x: 4, y: 2, roomIndex: 0 };
+    game.enemies = [{ id: 'rat', type: 'giant-rat', x: 4, y: 1, roomIndex: 0 }];
+    game.tileset.maps[0].ground[1][4] = null; game.rooms[0].walls[1][4] = false;
+    await api.loadProjectData(game);
+  });
+  await page.keyboard.press('Enter'); await page.waitForTimeout(50);
+  const lives = await enemyLives();
+  await page.keyboard.press('ArrowUp');
+  await expect.poll(enemyLives).toBeLessThan(lives);
+});
+
+test('3D Renderer installs from the catalog, preserves authoring, navigates by keyboard, reloads and exports offline', async ({ page, browser }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await page.click('button[data-tab="editor"]');
+  await page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    const api = getTinyRpgApi();
+    const data = api.exportGameData();
+    data.title = 'Raycast test'; data.start = { x: 3, y: 3, roomIndex: 0 };
+    data.sprites = []; data.enemies = []; data.objects = []; data.items = []; data.exits = [];
+    data.rooms.forEach(room => { room.walls = Array.from({ length: 8 }, () => Array(8).fill(false)); });
+    data.rooms[0].walls[1][3] = true;
+    await api.loadProjectData(data); api.renderAll();
+    Reflect.set(window, 'before3d', document.querySelector('#editor-canvas'));
+  });
+  const editorImage = () => page.locator('#editor-canvas').evaluate((canvas: HTMLCanvasElement) => {
+    const image = document.createElement('canvas'); image.width = 128; image.height = 128;
+    const ctx = image.getContext('2d')!; ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(canvas, 0, 0, 128, 128); return image.toDataURL();
+  });
+  await page.waitForTimeout(400);
+  const editorBefore = await editorImage();
+  await page.click('#btn-plugins');
+  await page.fill('#plugins-query', '3D Renderer');
+  await page.locator('[data-plugin-id="3d-renderer"] [data-action="install"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+  const dependency = () => page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    return getTinyRpgApi().exportGameData().gameplayPlugins ?? [];
+  });
+  await expect.poll(dependency).toEqual([{ id: '3d-renderer', version: '1.0.0' }]);
+  expect(await editorImage()).toBe(editorBefore);
+  expect(await page.evaluate(() => Reflect.get(window, 'before3d') === document.querySelector('#editor-canvas'))).toBe(true);
+  await page.click('[data-project-tab-button="plugins"]');
+  await expect(page.locator('[data-plugin-settings-group="3d-renderer"] > summary')).toHaveText('3D Renderer');
+  await page.getByLabel('Top void', { exact: true }).selectOption('8');
+  await expect(page.getByLabel('Top void', { exact: true })).toBeEnabled();
+  await page.getByLabel('Bottom void', { exact: true }).selectOption('12');
+  await expect(page.getByLabel('Bottom void', { exact: true })).toBeEnabled();
+  await page.click('[data-project-tab-button="export"]');
+  await expect(page.locator('#btn-generate-url')).toBeDisabled();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('#btn-generate-html')]);
+  const filename = testInfo.outputPath('3d-renderer.html'); await download.saveAs(filename);
+  await page.click('button[data-tab="game"]');
+  await page.keyboard.press('Enter');
+  const position = () => page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    const p = getTinyRpgApi().getState().player; return { x: p.x, y: p.y, roomIndex: p.roomIndex };
+  });
+  await expect.poll(position).toEqual({ x: 3, y: 3, roomIndex: 0 });
+  await page.keyboard.press('ArrowUp'); await expect.poll(position).toEqual({ x: 3, y: 2, roomIndex: 0 });
+  await page.keyboard.press('ArrowUp'); await expect.poll(position).toEqual({ x: 3, y: 2, roomIndex: 0 });
+  await turn(page, 'ArrowRight'); await expect.poll(position).toEqual({ x: 3, y: 2, roomIndex: 0 });
+  await page.keyboard.press('ArrowDown'); await expect.poll(position).toEqual({ x: 2, y: 2, roomIndex: 0 });
+  await page.keyboard.press('w'); await expect.poll(position).toEqual({ x: 3, y: 2, roomIndex: 0 });
+  for (let step = 0; step < 5; step++) await page.keyboard.press('ArrowUp');
+  await expect.poll(position).toEqual({ x: 0, y: 2, roomIndex: 1 });
+  await page.keyboard.press('ArrowUp'); await expect.poll(position).toEqual({ x: 1, y: 2, roomIndex: 1 });
+  await page.click('#btn-reset'); await page.keyboard.press('Enter'); await page.waitForTimeout(50);
+  await page.keyboard.press('ArrowUp'); await expect.poll(position).toEqual({ x: 3, y: 2, roomIndex: 0 });
+  await page.screenshot({ path: testInfo.outputPath('3d-renderer-wide.png') });
+  await page.setViewportSize({ width: 480, height: 800 });
+  await page.screenshot({ path: testInfo.outputPath('3d-renderer-narrow.png') });
+
+  const offline = await browser.newContext({ offline: true });
+  const exported = await offline.newPage(); exported.on('pageerror', error => errors.push(error.message));
+  await exported.goto(`file:///${path.resolve(filename).replaceAll('\\', '/')}`);
+  await exported.waitForFunction(() => Boolean((globalThis as unknown as { __TINY_RPG_API?: unknown }).__TINY_RPG_API));
+  await exported.keyboard.press('Enter'); await exported.waitForTimeout(50);
+  const exportedPosition = () => exported.evaluate(() => {
+    const api = (globalThis as unknown as { __TINY_RPG_API: NonNullable<TinyRpgApi['runtime']> }).__TINY_RPG_API;
+    const p = api.getState().player; return { x: p.x, y: p.y };
+  });
+  await turn(exported, 'ArrowRight'); await expect.poll(exportedPosition).toEqual({ x: 3, y: 3 });
+  await exported.keyboard.press('ArrowDown'); await expect.poll(exportedPosition).toEqual({ x: 2, y: 3 });
+  await exported.keyboard.press('ArrowUp'); await expect.poll(exportedPosition).toEqual({ x: 3, y: 3 });
+  const voidPixel = await exported.evaluate(() => {
+    const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
+    return [...canvas.getContext('2d')!.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height * 0.3), 1, 1).data];
+  });
+  expect(voidPixel[0]).toBeGreaterThan(41); expect(voidPixel[0]).toBeLessThan(255);
+  expect(voidPixel[1]).toBeGreaterThan(0); expect(voidPixel[1]).toBeLessThan(173);
+  expect(voidPixel[2]).toBeGreaterThan(77); expect(voidPixel[2]).toBeLessThan(255);
+  expect(voidPixel[3]).toBe(255);
+  await exported.screenshot({ path: testInfo.outputPath('3d-renderer-offline.png') });
+  await offline.close();
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.reload(); await page.click('button[data-tab="editor"]');
+  await expect.poll(dependency).toEqual([{ id: '3d-renderer', version: '1.0.0' }]);
+  await page.click('[data-project-tab-button="plugins"]');
+  await expect(page.getByLabel('Top void', { exact: true })).toHaveValue('8');
+  await expect(page.getByLabel('Bottom void', { exact: true })).toHaveValue('12');
+  await page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    const api = getTinyRpgApi(); const other = api.exportGameData();
+    other.gameplayPlugins = []; delete other.pluginData; other.title = 'Another project';
+    await api.loadProjectData(other);
+  });
+  await expect.poll(dependency).toEqual([{ id: '3d-renderer', version: '1.0.0' }]);
+  await expect(page.getByLabel('Top void', { exact: true })).toHaveValue('');
+  await expect(page.getByLabel('Bottom void', { exact: true })).toHaveValue('');
+  await page.click('#btn-reset');
+  await expect.poll(async () => page.evaluate(async () => {
+    const { getTinyRpgApi } = await import('/src/runtime/infra/TinyRpgApi.ts');
+    return getTinyRpgApi().exportGameData().title;
+  })).not.toBe('Another project');
+  await expect.poll(dependency).toEqual([{ id: '3d-renderer', version: '1.0.0' }]);
+  await page.click('#btn-plugins'); await page.click('#plugins-manage');
+  await page.locator('[data-plugin-id="3d-renderer"] [data-action="remove"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await expect.poll(dependency).toEqual([]);
+  await page.click('[data-project-tab-button="export"]'); await expect(page.locator('#btn-generate-url')).toBeEnabled();
+  await page.click('#btn-plugins'); await page.fill('#plugins-query', '3D Renderer');
+  await page.locator('[data-plugin-id="3d-renderer"] [data-action="install"]').click();
+  await page.click('#plugins-modal .tiny-modal__close');
+  await expect.poll(dependency).toEqual([{ id: '3d-renderer', version: '1.0.0' }]);
+  expect(errors).toEqual([]);
+});
 
 for (const base of ['/', '/studio/']) {
   for (const mode of ['search', 'manage']) {
@@ -130,7 +325,7 @@ for (const base of ['/', '/studio/']) {
     await page.click('button[data-tab="editor"]');
     await expect(page.locator('.tile-card').first()).toBeVisible();
     await page.click('#btn-plugins');
-    await expect(page.locator('.plugin-card h3')).toHaveText(['Custom Themes', 'Example plugin', 'Maps+', 'Minimalist UI']);
+    await expect(page.locator('.plugin-card h3')).toHaveText(['3D Renderer', 'Custom Themes', 'Dialogue+', 'Example plugin', 'Fonts+', 'HUD+', 'Maps+', 'Minimalist UI', 'Music+', 'Sounds+']);
     await expect(page.locator('.plugin-card[data-plugin-id="maps-plus"] .plugin-capabilities')).toHaveText('editor + gameplay');
     expect(catalogRequests).toHaveLength(1);
     expect(packageRequests).toHaveLength(0);
@@ -233,7 +428,7 @@ test('Maps+ controls stay synchronized with Minimalist UI hiding World', async (
   await page.goto('/');
   await page.click('button[data-tab="editor"]');
   await page.click('#btn-plugins');
-  await page.setInputFiles('#plugins-file', path.resolve('examples/minimalist-ui.html'));
+  await page.setInputFiles('#plugins-file', path.resolve('public/plugins/minimalist-ui/1.0.4/plugin.html'));
   await expect(page.locator('.plugin-card[data-plugin-id="minimalist-ui"]')).toBeVisible();
   await page.setInputFiles('#plugins-file', path.resolve('public/plugins/maps-plus/1.0.0/plugin.html'));
   await expect(page.locator('.plugin-card[data-plugin-id="maps-plus"]')).toBeVisible();

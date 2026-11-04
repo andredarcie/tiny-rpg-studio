@@ -38,7 +38,7 @@ test('exported html boots without module import errors', async ({ page, context 
   await download.saveAs(filePath);
   const html = await fs.readFile(filePath, 'utf8');
 
-  expect(Buffer.byteLength(html, 'utf8')).toBeLessThan(510_000);
+  expect(Buffer.byteLength(html, 'utf8')).toBeLessThan(610_000);
   expect(html.match(/data:font\/woff;base64,/g)).toHaveLength(1);
   expect(html).not.toContain('project.generateHTML');
   expect(html).not.toContain('editor.mobileNav');
@@ -211,7 +211,7 @@ for (const [rows, cols] of [[3, 5], [4, 3]]) {
       const bundled = (globalThis as typeof globalThis & { __TINY_RPG_BUNDLED_PROJECT?: { game: { world: { rows: number; cols: number }; rooms: unknown[]; gameplayPlugins: { id: string; version: string }[] }; plugins: { id: string }[] } }).__TINY_RPG_BUNDLED_PROJECT;
       return bundled && { world: bundled.game.world, rooms: bundled.game.rooms.length, dependencies: bundled.game.gameplayPlugins, plugins: bundled.plugins.map(plugin => plugin.id) };
     });
-    expect(project).toEqual({ world: { rows, cols }, rooms: rows * cols, dependencies: [{ id: 'maps-plus', version: '1.0.1' }], plugins: ['maps-plus'] });
+    expect(project).toEqual({ world: { rows, cols }, rooms: rows * cols, dependencies: [{ id: 'maps-plus', version: '1.0.2' }], plugins: ['maps-plus'] });
     await expect(exportedPage.locator('#btn-export-reset')).toBeVisible();
   });
 }

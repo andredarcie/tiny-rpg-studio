@@ -129,6 +129,13 @@ class RendererFloatingText extends RendererModuleBase {
         this.activeTexts = [];
     }
 
+    snapshot() {
+        const now = performance.now();
+        this.activeTexts = this.activeTexts.filter(entry => now - entry.startTime < entry.duration);
+        return this.activeTexts.map(entry => ({ text: entry.text, x: entry.x / 16, y: entry.y / 16,
+            color: entry.color, opacity: Math.max(0, 1 - (now - entry.startTime) / entry.duration) }));
+    }
+
     /**
      * Get count of active floating texts
      */

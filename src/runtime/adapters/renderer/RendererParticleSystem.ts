@@ -191,6 +191,13 @@ class RendererParticleSystem extends RendererModuleBase {
         this.particles = [];
     }
 
+    snapshot() {
+        const result = this.particles.map(particle => ({ x: particle.x / 16, y: particle.y / 16,
+            color: particle.color, opacity: Math.max(0, particle.life / particle.maxLife) }));
+        this.update(16);
+        return result;
+    }
+
     /**
      * Get count of active particles
      */

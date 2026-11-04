@@ -286,6 +286,8 @@ class CombatManager {
     cameraShake: CameraShakeApi,
     enemyAttackMissed: boolean
   ): void {
+    this.renderer.recordIncomingAttack?.(enemy);
+    this.renderer.draw();
     const direction = this.calculateKnockbackDirection(player, enemy);
 
     combatAnimator.startKnockback('player', direction, () => {
@@ -358,6 +360,7 @@ class CombatManager {
     finishCombatOnSurvive = true
   ): number {
     soundEngine.play('playerHit');
+    this.renderer.recordPlayerHit?.(enemy);
     // Combat plays its own death sequence before the game-over screen, so opt
     // out of the auto game-over that damagePlayer applies for non-combat paths.
     const playerLives = this.gameState.damagePlayer(damage, { autoGameOver: false });
@@ -458,6 +461,7 @@ class CombatManager {
       this.showMissFeedback();
     } else {
       // Combat runs its own death sequence; opt out of auto game-over.
+      this.renderer.recordPlayerHit?.(enemy);
       playerLives = this.gameState.damagePlayer(damage, { autoGameOver: false });
       const reduction = this.gameState.consumeLastDamageReduction();
 

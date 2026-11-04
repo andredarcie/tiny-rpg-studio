@@ -1,6 +1,8 @@
 import { normalizeFontsPlus } from '../services/FontsPlus';
 import { normalizePluginData } from '../domain/state/PluginData';
+import type { JsonValue } from '../domain/state/PluginData';
 import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
+import type { GameplayPresentation } from '../adapters/renderer/GameplayPresentation';
 import type { GameEngine } from '../services/GameEngine';
 import type { GameDefinition } from '../../types/gameState';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
@@ -15,9 +17,12 @@ export type GameplayDependency = { id: string; version: string };
 export type GameplayContext = {
   apiVersion: 1;
   getWorld(): { rows: number; cols: number };
+  getPresentationResources(): { palette: readonly string[]; data?: JsonValue };
   resizeWorld(rows: number, cols: number): void;
   registerNpcDialogueSequence(sequence: NpcDialogueSequence): void;
   registerHudPresentation(provider: HudPresentationProvider): void;
+  registerGameplayPresentation(provider: GameplayPresentation): () => void;
+  requestRedraw(): void;
   registerVariablePresets(presets: VariablePreset[]): void;
   onCleanup(callback: () => void): void;
 };
@@ -32,7 +37,7 @@ export const loadGameplayModule: GameplayLoader = async source => {
 
 export class GameplayPluginHost {
   private loadGeneration = 0;
-  private active = new Map<string, { version: string; cleanup: (() => void)[] }>();
+  private active = new Map<string, { version: string; cleanup: (() => void)[]; package: InstalledPlugin }>();
   private engine: GameEngine;
   private packages: () => InstalledPlugin[];
   private loader: GameplayLoader;
@@ -63,7 +68,8 @@ export class GameplayPluginHost {
     });
     normalizePluginData(project.pluginData, dependencies);
     const previous = this.engine.exportGameData();
-    const previousPackages = this.packages();
+    const previousPackages = [...this.active.values()].map(entry => entry.package);
+    previousPackages.push(...this.packages().filter(plugin => !previousPackages.some(item => item.id === plugin.id)));
     const previousDependencies = (previous as GameDefinition).gameplayPlugins ?? [];
     const generation = ++this.loadGeneration;
     const assertCurrent = () => {
@@ -83,10 +89,14 @@ export class GameplayPluginHost {
         const module = await this.loader(source);
         assertCurrent();
         if (typeof module.activate !== 'function') throw Error(`Gameplay plugin ${plugin.id} must export activate(context)`);
-        this.active.set(plugin.id, { version, cleanup });
+        this.active.set(plugin.id, { version, cleanup, package: plugin });
         await module.activate({
           apiVersion: 1,
           getWorld: () => ({ ...(this.engine.getGame() as unknown as GameDefinition).world }),
+          getPresentationResources: () => ({
+            palette: [...this.engine.renderer.paletteManager.getActivePalette()],
+            data: structuredClone(this.engine.gameState.getGame().pluginData?.[plugin.id]),
+          }),
           resizeWorld: (rows, cols) => {
             assertCurrent();
             this.engine.gameState.worldManager.resizeWorld(rows, cols);
@@ -105,6 +115,16 @@ export class GameplayPluginHost {
             cleanup.push(this.engine.registerHudPresentation(plugin.id, provider));
             hudRegistrations.push(plugin.id);
           },
+          registerGameplayPresentation: provider => {
+            assertCurrent();
+            if (typeof provider.draw !== 'function' || typeof provider.direction !== 'function' || typeof provider.reset !== 'function') {
+              throw Error('Gameplay presentation requires draw, direction and reset functions');
+            }
+            const unregister = this.engine.registerGameplayPresentation(provider);
+            cleanup.push(unregister);
+            return unregister;
+          },
+          requestRedraw: () => { assertCurrent(); this.engine.draw(); },
           registerVariablePresets: presets => {
             assertCurrent();
             cleanup.push(this.engine.registerVariablePresets(presets));

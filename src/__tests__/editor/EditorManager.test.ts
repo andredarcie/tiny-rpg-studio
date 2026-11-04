@@ -87,6 +87,9 @@ vi.mock('../../editor/modules/EnemyEditModal', () => ({
 
 import { EditorManager } from '../../editor/EditorManager';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
+import { PluginManager, parsePluginHtml } from '../../editor/manager/PluginManager';
+import type { GameplayPluginHost } from '../../runtime/infra/GameplayPluginHost';
+import rendererSource from '../../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
 
 type EditorManagerGameEngine = ConstructorParameters<typeof EditorManager>[0];
 type GameEngineFixture = ReturnType<typeof makeGameEngine>;
@@ -672,6 +675,24 @@ describe('EditorManager', () => {
     expect(data.sprites).toEqual([]);
     expect(localStorage.getItem('tiny-rpg-projects-history')).toContain(shareUrl);
     mgr.destroy();
+  });
+
+  it('activates the installed renderer before restoring new and switched projects', async () => {
+    localStorage.clear();
+    gameEngine = makeGameEngine({ exportGameData: vi.fn(() => ({ title: 'Previous' })) });
+    const mgr = new EditorManager(asEditorManagerGameEngine(gameEngine));
+    mgr.pluginManager = new PluginManager(); mgr.pluginManager.install(parsePluginHtml(rendererSource));
+    const load = vi.fn<GameplayPluginHost['load']>(() => Promise.resolve());
+    mgr.gameplayHost = { load } as unknown as GameplayPluginHost;
+    const restore = vi.spyOn(mgr, 'restore').mockImplementation(() => {});
+    vi.spyOn(mgr, 'persistAuthoring').mockImplementation(() => {});
+    expect(mgr.createNewGame()).toBe(true);
+    await vi.waitFor(() => expect(restore).toHaveBeenCalled());
+    expect(load.mock.calls[0]?.[0]).toMatchObject({ title: 'New Game', gameplayPlugins: [{ id: '3d-renderer', version: '1.0.0' }] });
+    await mgr.loadProjectData({ title: 'Other', gameplayPlugins: [] });
+    expect(restore).toHaveBeenLastCalledWith({ title: 'Other', gameplayPlugins: [{ id: '3d-renderer', version: '1.0.0' }] }, { alreadyImported: true });
+    expect(load.mock.invocationCallOrder[1]).toBeLessThan(restore.mock.invocationCallOrder[1]);
+    mgr.pluginManager.remove('3d-renderer'); localStorage.clear();
   });
 });
 

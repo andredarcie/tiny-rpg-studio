@@ -171,6 +171,15 @@ class RendererEffectsManager extends RendererModuleBase {
         ctx.restore();
     }
 
+    drawPresentationEdgeFlash(ctx: CanvasRenderingContext2D, bounds: { width: number; height: number }): void {
+        if (!this.edgeFlash.direction || this.edgeFlash.expiresAt <= Date.now()) return;
+        const size = Math.max(2, Math.floor(bounds.width / 40));
+        ctx.save(); ctx.fillStyle = this.edgeFlash.color;
+        ctx.fillRect(0, 0, bounds.width, size); ctx.fillRect(0, bounds.height - size, bounds.width, size);
+        ctx.fillRect(0, 0, size, bounds.height); ctx.fillRect(bounds.width - size, 0, size, bounds.height);
+        ctx.restore();
+    }
+
 }
 
 export { RendererEffectsManager };

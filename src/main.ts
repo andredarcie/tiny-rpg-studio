@@ -1,3 +1,4 @@
+import { applyInstalled3dRenderer } from './editor/manager/applyInstalled3dRenderer';
 import { normalizeFontsPlus, inspectFont, decodeFontBytes } from './runtime/services/FontsPlus';
 import { upgradeHudPlusDependency } from './editor/manager/upgradeHudPlusDependency';
 import { createBaseRuntimeApi } from './runtime/infra/BaseRuntimeApi';
@@ -114,11 +115,19 @@ class TinyRPGApplication {
     if (savedProject?.startsWith('snapshot:') && !globalThis.location.hash && !(globalThis as Record<string, unknown>).__TINY_RPG_SHARED_CODE && gameplayHost) {
       const snapshot = ShareUtils.readStoredProject(savedProject);
       if (snapshot) {
-        try { await gameplayHost.load(upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(snapshot, pluginManager?.installed ?? []), pluginManager?.installed ?? []), pluginManager?.installed ?? [])); }
+        try { await gameplayHost.load(applyInstalled3dRenderer(upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(snapshot, pluginManager?.installed ?? []), pluginManager?.installed ?? []), pluginManager?.installed ?? []), pluginManager?.installed ?? [])); }
         catch (error) { console.error('[TinyRPG] Unable to restore gameplay project.', error); }
       }
     } else {
       performanceProfiler.time('boot.loadShared', () => this.loadSharedGameIfAvailable(gameEngine));
+    }
+    if (gameplayHost) {
+      const current = gameEngine.exportGameData() as GameDefinition;
+      const presented = applyInstalled3dRenderer(current, pluginManager?.installed ?? []);
+      if (presented !== current) {
+        try { await gameplayHost.load(presented); }
+        catch (error) { console.error('[TinyRPG] Unable to activate 3D Renderer.', error); }
+      }
     }
     this.setupPerformanceProfiler(gameEngine);
     const pluginRuntime = pluginManager ? new PluginRuntime(pluginManager) : null;
@@ -207,7 +216,7 @@ class TinyRPGApplication {
       runtime,
       exportGameData: () => gameEngine.exportGameData(),
       importGameData: (data: unknown) => {
-        if (data && typeof data === 'object') data = upgradeHudPlusDependency(upgradeMusicPlusDependency(data, pluginManager?.installed ?? []), pluginManager?.installed ?? []);
+        if (data && typeof data === 'object') data = applyInstalled3dRenderer(upgradeHudPlusDependency(upgradeMusicPlusDependency(data, pluginManager?.installed ?? []), pluginManager?.installed ?? []), pluginManager?.installed ?? []);
         const required = (data as { gameplayPlugins?: { id: string; version: string }[] } | null)?.gameplayPlugins ?? [];
         for (const dependency of required) {
           if (!gameplayHost?.isActive(dependency.id, dependency.version)) throw Error(`Required gameplay plugin ${dependency.id}@${dependency.version} is not active`);
@@ -217,7 +226,7 @@ class TinyRPGApplication {
         gameEngine.importGameData(data);
       },
       loadProjectData: async (data: unknown, packages) => {
-        if (data && typeof data === 'object') data = upgradeHudPlusDependency(upgradeMusicPlusDependency(data, packages ?? pluginManager?.installed ?? []), packages ?? pluginManager?.installed ?? []);
+        if (data && typeof data === 'object') data = applyInstalled3dRenderer(upgradeHudPlusDependency(upgradeMusicPlusDependency(data, packages ?? pluginManager?.installed ?? []), packages ?? pluginManager?.installed ?? []), packages ?? pluginManager?.installed ?? []);
         if (editorManager) await editorManager.loadProjectData(data as Record<string, unknown>, {}, packages);
         else if (gameplayHost) await gameplayHost.load(data, packages);
         else gameEngine.importGameData(data);
@@ -466,19 +475,35 @@ class TinyRPGApplication {
         gameplayHost?.destroy();
       };
       globalThis.addEventListener('pagehide', teardownPlugins);
+      let previousRenderer = pluginManager.installed.find(plugin => plugin.id === '3d-renderer');
       pluginManager.subscribe(() => {
+        const rollbackRenderer = previousRenderer;
+        previousRenderer = pluginManager.installed.find(plugin => plugin.id === '3d-renderer');
+        const rendererChanged = JSON.stringify(rollbackRenderer) !== JSON.stringify(previousRenderer);
+        const rendererAvailable = Boolean(previousRenderer?.version && previousRenderer.capabilities?.includes('gameplay') && previousRenderer.payload?.gameplayJavascript);
         const current = gameEngine.exportGameData() as GameDefinition;
         const dependencies = current.gameplayPlugins ?? [];
-        const removed = dependencies.filter(item => !pluginManager.has(item.id) || (item.id === 'fonts-plus' && !pluginManager.installed.some(plugin => plugin.id === item.id && plugin.version === item.version && plugin.capabilities?.includes('gameplay'))));
-        const upgraded = upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(current, pluginManager.installed), pluginManager.installed), pluginManager.installed);
-        if (!removed.length && upgraded !== current && gameplayHost) {
-          void gameplayHost.load(upgraded).then(() => {
+        const removed = dependencies.filter(item => !pluginManager.has(item.id) || (item.id === '3d-renderer' && !rendererAvailable) || (item.id === 'fonts-plus' && !pluginManager.installed.some(plugin => plugin.id === item.id && plugin.version === item.version && plugin.capabilities?.includes('gameplay'))));
+        const upgraded = applyInstalled3dRenderer(upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(current, pluginManager.installed), pluginManager.installed), pluginManager.installed), pluginManager.installed, true);
+        if (!removed.length && (upgraded !== current || (rendererChanged && rendererAvailable)) && gameplayHost) {
+          const generation = editorManager?.projectGeneration;
+          const signature = JSON.stringify(pluginManager.installed);
+          let loaded = false;
+          void gameplayHost.load(upgraded, undefined, true, () => generation === editorManager?.projectGeneration && signature === JSON.stringify(pluginManager.installed)).then(() => {
+            loaded = true;
             if (editorManager) {
               editorManager.projectGeneration++;
               editorManager.restore(upgraded as unknown as Record<string, unknown>, { alreadyImported: true });
               editorManager.persistAuthoring();
             } else gameEngine.draw();
-          }).catch(error => console.error('[TinyRPG] Unable to update the Dialogue+ project dependency.', error));
+          }).catch(error => {
+            if (error instanceof GameplayLoadSupersededError) return;
+            if (!loaded && rendererChanged && generation === editorManager?.projectGeneration && signature === JSON.stringify(pluginManager.installed)) {
+              if (rollbackRenderer) pluginManager.install(rollbackRenderer);
+              else pluginManager.remove('3d-renderer');
+            }
+            console.error('[TinyRPG] Unable to update the gameplay project dependencies.', error);
+          });
           return;
         }
         if (!removed.length) {

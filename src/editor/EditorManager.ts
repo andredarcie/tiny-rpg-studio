@@ -1,3 +1,4 @@
+import { applyInstalled3dRenderer } from './manager/applyInstalled3dRenderer';
 import { upgradeHudPlusDependency } from './manager/upgradeHudPlusDependency';
 
 import { EnemyDefinitions } from '../runtime/domain/definitions/EnemyDefinitions';
@@ -50,9 +51,10 @@ class EditorManager {
     }
     async loadProjectData(data: Record<string, unknown>, options: { skipHistory?: boolean } = {}, packages?: InstalledPlugin[]): Promise<void> {
         data = upgradeHudPlusDependency(upgradeMusicPlusDependency(upgradeDialoguePlusDependency(data, packages ?? this.pluginManager?.installed ?? []), packages ?? this.pluginManager?.installed ?? []), packages ?? this.pluginManager?.installed ?? []);
-        this.projectGeneration++;
+        data = applyInstalled3dRenderer(data, packages ?? this.pluginManager?.installed ?? []);
+        const generation = ++this.projectGeneration;
         document.dispatchEvent(new Event('tiny-rpg-project-changing'));
-        if (this.gameplayHost) await this.gameplayHost.load(data, packages);
+        if (this.gameplayHost) await this.gameplayHost.load(data, packages, true, () => generation === this.projectGeneration);
         this.restore(data, { ...options, alreadyImported: Boolean(this.gameplayHost) });
     }
     projectGeneration = 0;
@@ -788,8 +790,12 @@ class EditorManager {
                 }
             }
         };
-        this.gameplayHost?.destroy();
-        this.restore(data);
+        if (applyInstalled3dRenderer(data, this.pluginManager?.installed ?? []) !== data && this.gameplayHost) {
+            void this.loadProjectData(data).then(() => this.persistAuthoring()).catch(error => console.error('[TinyRPG] Unable to create project.', error));
+        } else {
+            this.gameplayHost?.destroy();
+            this.restore(data);
+        }
         return true;
     }
 }

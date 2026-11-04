@@ -217,6 +217,7 @@ class EnemyManager {
       }
     } else {
       if (enemy.id) {
+        this.renderer.recordIncomingAttack?.(enemy);
         this.triggerEnemyWindup(enemy.id, { x: enemy.x, y: enemy.y }, { x: target.x, y: target.y });
         const timer = setTimeout(() => {
           this.windupTimers.delete(timer);

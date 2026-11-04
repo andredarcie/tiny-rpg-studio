@@ -44,6 +44,7 @@ type TileManagerApi = {
 
 type RendererApi = {
   draw: () => void;
+  supportsRoomTransitions?: () => boolean;
   captureGameplayFrame: () => unknown;
   startRoomTransition: (payload: Record<string, unknown>) => boolean;
   flashEdge: (direction: string, payload: Record<string, unknown>) => void;
@@ -162,6 +163,22 @@ class MovementManager {
     this.combatStunManager = combatStunManager ?? null;
     this.options = options ?? {};
     this.transitioning = false;
+  }
+
+  canAcceptPresentationCommand(): boolean {
+    return this.gameState.playing && !this.transitioning && !this.gameState.isGameOver()
+      && !this.gameState.isLevelUpCelebrationActive?.() && !this.gameState.isLevelUpOverlayActive?.()
+      && !this.gameState.isPickupOverlayActive?.() && !this.combatStunManager?.isStunned()
+      && !this.gameState.getDialog().active && Boolean(this.gameState.getPlayer());
+  }
+
+  isPresentationBlocker(object: GameObjectState): boolean {
+    if (object.type === 'push-box') return true;
+    if (object.isLockedDoor && !object.opened) return true;
+    if (object.isVariableDoor && (!object.variableId || !this.gameState.isVariableOn(object.variableId))) return true;
+    if (object.type === 'trap' && object.solid && isTrapActive(object, id => this.gameState.isVariableOn(id))) return true;
+    return object.type === 'chest' && !isChestAccessible(object, id => this.gameState.isVariableOn(id),
+      this.gameState.normalizeVariableId ? id => this.gameState.normalizeVariableId?.(id) ?? null : undefined);
   }
 
   tryMove(dx: number, dy: number): void {
@@ -408,7 +425,7 @@ class MovementManager {
       }
     }
 
-    const supportsTransition = enteringNewRoom;
+    const supportsTransition = enteringNewRoom && (this.renderer.supportsRoomTransitions?.() ?? true);
     const fromFrame = supportsTransition ? this.renderer.captureGameplayFrame() : null;
 
     // Push-box reset on room exit is host-authoritative. The guest must not reset

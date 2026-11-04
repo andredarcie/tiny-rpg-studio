@@ -26,6 +26,7 @@ import type {
 import { GameConfig } from '../../config/GameConfig';
 import { bitmapFont } from './renderer/BitmapFont';
 import { DebugFlags } from '../debug/DebugFlags';
+import type { GameplayPresentation, GameplayScene } from './renderer/GameplayPresentation';
 
 type SpriteMatrix = (string | null)[][];
 type SpriteMap = Record<string, SpriteMatrix | undefined>;
@@ -44,6 +45,7 @@ type RendererGameState = {
 
 type RendererEngine = {
     isIntroVisible?: () => boolean;
+    getGameplayScene?: () => GameplayScene;
 };
 
 type TileManagerApi = {
@@ -55,6 +57,75 @@ type TileManagerApi = {
  * Renderer coordinates specialized modules to draw the scene.
  */
 class Renderer {
+    gameplayPresentation: GameplayPresentation | null = null;
+    private gameplayAnimationFrame: number | null = null;
+    private gameplayFrameTime: number | null = null;
+    private playerHitSequence = 0;
+    private playerHit: { sequence: number; sourceId?: string; roomIndex: number; x: number; y: number } | null = null;
+    private incomingAttack: { sequence: number; sourceId?: string; roomIndex: number; x: number; y: number } | null = null;
+
+    recordIncomingAttack(source: { id?: string; roomIndex: number; x: number; y: number }): void {
+        if (!this.gameplayPresentation) return;
+        this.incomingAttack = { sequence: ++this.playerHitSequence, sourceId: source.id,
+            roomIndex: source.roomIndex, x: source.x, y: source.y };
+    }
+
+    recordPlayerHit(source: { id?: string; roomIndex: number; x: number; y: number }): void {
+        if (!this.gameplayPresentation) return;
+        this.playerHit = { sequence: ++this.playerHitSequence, sourceId: source.id,
+            roomIndex: source.roomIndex, x: source.x, y: source.y };
+    }
+
+    private cancelGameplayAnimation(): void {
+        if (this.gameplayAnimationFrame === null) return;
+        globalThis.cancelAnimationFrame(this.gameplayAnimationFrame);
+        this.gameplayAnimationFrame = null;
+    }
+
+    registerGameplayPresentation(provider: GameplayPresentation): () => void {
+        if (this.gameplayPresentation) throw Error('A gameplay scene provider is already registered');
+        provider.reset();
+        this.gameplayFrameTime = null;
+        this.playerHit = null;
+        this.incomingAttack = null;
+        this.gameplayPresentation = provider;
+        return () => {
+            if (this.gameplayPresentation !== provider) return;
+            this.cancelGameplayAnimation(); this.gameplayFrameTime = null; this.playerHit = null; this.incomingAttack = null; this.gameplayPresentation = null; provider.reset();
+        };
+    }
+
+    resetGameplayPresentation(): void { this.cancelGameplayAnimation(); this.gameplayFrameTime = null; this.playerHit = null; this.incomingAttack = null; this.gameplayPresentation?.reset(); }
+
+    private drawGameplayPresentation(ctx: CanvasRenderingContext2D, showEntities: boolean): void {
+        const scene = this.gameEngine?.getGameplayScene?.();
+        if (!scene || !this.gameplayPresentation) return;
+        const player = this.gameState.getPlayer?.();
+        const originX = scene.player.x - (player?.x ?? 0) - 0.5;
+        const originY = scene.player.y - (player?.y ?? 0) - 0.5;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(0, 0, this.canvas.width, this.gameplayHeight); ctx.clip();
+        const timeMs = performance.now();
+        const deltaMs = this.gameplayFrameTime === null ? 0 : Math.max(0, timeMs - this.gameplayFrameTime);
+        this.gameplayFrameTime = timeMs;
+        const attackFeedback = (hit: typeof this.playerHit) => hit && scene.world ? { sequence: hit.sequence, sourceId: hit.sourceId,
+            x: (hit.roomIndex % scene.world.cols) * scene.world.roomSize + hit.x + 0.5,
+            y: Math.floor(hit.roomIndex / scene.world.cols) * scene.world.roomSize + hit.y + 0.5 } : null;
+        const animate = this.gameplayPresentation.draw({ ctx, width: this.canvas.width, height: this.gameplayHeight,
+            timeMs, deltaMs,
+            scene: showEntities ? scene : { ...scene, entities: [] },
+            feedback: { playerHit: attackFeedback(this.playerHit), incomingAttack: attackFeedback(this.incomingAttack),
+                playerFlash: this.entityRenderer.getFlashColor('player'), attacking: this.swordSwing.isActive() || Boolean(this.attackTelegraph.getWindupOffset('player')),
+                texts: [...this.floatingText.snapshot(), ...this.entityRenderer.snapshotLifeLoss()].map(text => ({ ...text, x: text.x + originX, y: text.y + originY })),
+                particles: this.particleSystem.snapshot().map(particle => ({ ...particle, x: particle.x + originX, y: particle.y + originY })) } });
+        ctx.restore();
+        if (animate === true && !document.hidden) {
+            this.gameplayAnimationFrame = globalThis.requestAnimationFrame(() => {
+                this.gameplayAnimationFrame = null;
+                if (this.gameplayPresentation && !this.gameState.isEditorModeActive?.() && !document.hidden) this.draw();
+            });
+        }
+    }
     private hudProviders = new Map<string, HudPresentationProvider>();
     private hudPresentation: HudPresentation = DEFAULT_HUD_PRESENTATION;
 
@@ -300,6 +371,7 @@ class Renderer {
     }
 
     draw(includeHud = true) {
+        this.cancelGameplayAnimation();
         const ctx = this.ctx;
         if (!ctx) return;
         this.applyCanvasLayout();
@@ -323,31 +395,39 @@ class Renderer {
         if (this.transitionManager.isActive()) {
             this.transitionManager.drawFrame(ctx, gameplayCanvas);
         } else {
-            this.tileRenderer.clearCanvas(ctx, gameplayCanvas);
-            this.tileRenderer.drawBackground(ctx, gameplayCanvas);
-            this.tileRenderer.drawTiles(ctx, gameplayCanvas);
-            this.tileRenderer.drawWalls(ctx);
-            this.effectsManager.drawEdgeFlash(ctx, gameplayCanvas);
+            const customScene = this.gameplayPresentation && !this.gameState.isEditorModeActive?.();
+            if (customScene) {
+                this.drawGameplayPresentation(ctx, !introActive && !this.gameState.isGameOver());
+            } else {
+                this.tileRenderer.clearCanvas(ctx, gameplayCanvas);
+                this.tileRenderer.drawBackground(ctx, gameplayCanvas);
+                this.tileRenderer.drawTiles(ctx, gameplayCanvas);
+                this.tileRenderer.drawWalls(ctx);
+            }
+            if (customScene) this.effectsManager.drawPresentationEdgeFlash(ctx, gameplayCanvas);
+            else this.effectsManager.drawEdgeFlash(ctx, gameplayCanvas);
 
             if (!introActive && !this.gameState.isGameOver()) {
-                this.entityRenderer.drawObjects(ctx);
-                this.entityRenderer.drawItems(ctx);
-                this.entityRenderer.drawNPCs(ctx);
-                // Debug: Draw enemy vision overlay before enemies
-                this.drawEnemyVisionDebug(ctx);
-                this.entityRenderer.drawEnemies(ctx);
-                this.entityRenderer.drawPlayer(ctx);
-                this.entityRenderer.drawRemotePlayers(ctx);
-                // Draw the sword swing on top of the player while attacking
-                this.swordSwing.draw(ctx);
-                // Draw enemy life markers AFTER player to ensure they're always visible on top
-                this.entityRenderer.drawAllEnemyLivesMarkers(ctx);
-                // Draw combat effects after entities
-                this.particleSystem.draw(ctx);
-                this.entityRenderer.drawFlyingLifeSquares(ctx);
-                this.floatingText.draw(ctx);
-                if (this.drawIconIdNextFrame) {
-                    this.drawTileIconOnPlayer(ctx, this.drawIconIdNextFrame);
+                if (!customScene) {
+                    this.entityRenderer.drawObjects(ctx);
+                    this.entityRenderer.drawItems(ctx);
+                    this.entityRenderer.drawNPCs(ctx);
+                    // Debug: Draw enemy vision overlay before enemies
+                    this.drawEnemyVisionDebug(ctx);
+                    this.entityRenderer.drawEnemies(ctx);
+                    this.entityRenderer.drawPlayer(ctx);
+                    this.entityRenderer.drawRemotePlayers(ctx);
+                    // Draw the sword swing on top of the player while attacking
+                    this.swordSwing.draw(ctx);
+                    // Draw enemy life markers AFTER player to ensure they're always visible on top
+                    this.entityRenderer.drawAllEnemyLivesMarkers(ctx);
+                    // Draw combat effects after entities
+                    this.particleSystem.draw(ctx);
+                    this.entityRenderer.drawFlyingLifeSquares(ctx);
+                    this.floatingText.draw(ctx);
+                    if (this.drawIconIdNextFrame) {
+                        this.drawTileIconOnPlayer(ctx, this.drawIconIdNextFrame);
+                    }
                 }
                 if (!pickupOverlayActive && !levelUpOverlayActive && !levelUpCelebrationActive) {
                     this.dialogRenderer.drawDialog(ctx, gameplayCanvas);
@@ -507,7 +587,12 @@ class Renderer {
         return this.transitionManager.isActive();
     }
 
+    supportsRoomTransitions(): boolean {
+        return !this.gameplayPresentation || Boolean(this.gameState.isEditorModeActive?.());
+    }
+
     startRoomTransition(options: Record<string, unknown> = {}) {
+        if (!this.supportsRoomTransitions()) return false;
         return this.transitionManager.start(options);
     }
 
@@ -523,6 +608,8 @@ class Renderer {
      * thumbnails) leave timers/animation frames running on a dead engine.
      */
     destroy() {
+        this.resetGameplayPresentation();
+        this.gameplayPresentation = null;
         bitmapFont.destroyHtmlText(this.canvas);
         this.dialogRenderer.destroy(); this.levelUpOverlay.destroy();
         this.transitionManager.transition.onComplete = undefined;

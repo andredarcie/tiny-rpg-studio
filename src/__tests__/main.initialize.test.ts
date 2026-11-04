@@ -1,4 +1,5 @@
 import hudPackage from '../../public/plugins/hud-plus/1.0.1/plugin.html?raw';
+import rendererPackage from '../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
 import fontsPackage from '../../public/plugins/fonts-plus/1.0.0/plugin.html?raw';
 import { fontBytesToBase64, type FontsPlus } from '../runtime/services/FontsPlus';
 import { parsePluginHtml, type PluginManager } from '../editor/manager/PluginManager';
@@ -124,6 +125,52 @@ describe('TinyRPGApplication.initializeApplication / boot', () => {
   afterEach(() => {
     document.body.innerHTML = '';
     delete (globalThis as Record<string, unknown>).__TINY_RPG_EXPORT_MODE;
+  });
+
+  it('activates installed 3D packages and recovers failed installation and replacement', async () => {
+    localStorage.clear();
+    document.body.innerHTML = '<canvas id="game-canvas"></canvas><div id="tab-editor"></div>';
+    let project = { title: 'Game', world: { rows: 3, cols: 3 } } as GameDefinition;
+    mocks.engine.exportGameData.mockImplementation(() => structuredClone(project));
+    mocks.engine.importGameData.mockImplementation((next: GameDefinition) => { project = structuredClone(next); });
+    mocks.editorManagerInstance.projectGeneration = 0;
+    mocks.editorManagerInstance.restore.mockImplementation(() => {});
+    mocks.editorManagerInstance.persistAuthoring.mockImplementation(() => {});
+    vi.spyOn(TinyRPGApplication, 'setupTabs').mockImplementation(() => {});
+    vi.spyOn(TinyRPGApplication, 'loadSharedGameIfAvailable').mockImplementation(() => {});
+    vi.spyOn(PluginRuntime.prototype, 'start').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    let failNext = false;
+    const load = vi.spyOn(GameplayPluginHost.prototype, 'load').mockImplementation(data => {
+      const next = data as GameDefinition;
+      if (failNext) { failNext = false; return Promise.reject(Error('Broken replacement')); }
+      if (next.gameplayPlugins?.some(item => item.version === '2.0.0')) return Promise.reject(Error('Broken scene'));
+      project = structuredClone(next); return Promise.resolve();
+    });
+    const listeners = vi.spyOn(document, 'addEventListener');
+    try {
+      TinyRPGApplication.initializeApplication();
+      document.dispatchEvent(new CustomEvent('editor-tab-activated', { detail: { initial: false } }));
+      await vi.waitFor(() => expect(mocks.editorManagerInstance.renderAll).toHaveBeenCalled());
+      const manager = vi.mocked(PluginsModal).mock.calls.at(-1)?.[0] as PluginManager | undefined;
+      if (!manager) throw Error('Missing plugin manager');
+      const plugin = parsePluginHtml(rendererPackage);
+      manager.install({ ...plugin, version: '2.0.0' });
+      await vi.waitFor(() => expect(manager.has('3d-renderer')).toBe(false));
+      expect(project.gameplayPlugins).toBeUndefined();
+      manager.install(plugin);
+      await vi.waitFor(() => expect(project.gameplayPlugins).toEqual([{ id: plugin.id, version: '1.0.0' }]));
+      failNext = true;
+      manager.install({ ...plugin, payload: { apiVersion: 1, gameplayJavascript: 'broken replacement' } });
+      await vi.waitFor(() => expect(manager.installed.find(item => item.id === plugin.id)?.payload?.gameplayJavascript).toBe(plugin.payload?.gameplayJavascript));
+      manager.install({ ...plugin, version: '2.0.0' });
+      await vi.waitFor(() => expect(manager.installed.find(item => item.id === plugin.id)?.version).toBe('1.0.0'));
+      expect(project.gameplayPlugins).toEqual([{ id: plugin.id, version: '1.0.0' }]);
+    } finally {
+      for (const [type, listener, options] of listeners.mock.calls) document.removeEventListener(type, listener, options);
+      load.mockRestore(); vi.restoreAllMocks(); localStorage.clear();
+      mocks.engine.exportGameData.mockImplementation(() => ({ title: 'Game' })); mocks.engine.importGameData.mockReset();
+    }
   });
 
 it('saves Fonts+ atomically, rolls back quota errors, rejects late project edits, and backs up uninstall', async () => {

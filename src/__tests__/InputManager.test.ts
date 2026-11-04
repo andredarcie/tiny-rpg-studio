@@ -3,6 +3,7 @@ import { GameConfig } from '../config/GameConfig';
 import { InputManager } from '../runtime/adapters/InputManager';
 
 type GameEngineStub = {
+  handleGameplayDirection?: (direction: 'left' | 'right' | 'up' | 'down') => boolean;
   gameState: {
     playing?: boolean;
     getDialog: () => { active: boolean; page: number; maxPages: number };
@@ -29,6 +30,20 @@ type GameEngineStub = {
   confirmLevelUpSelection?: () => void;
   pickLevelUpChoiceFromPointer?: (x: number, y: number) => number | null | undefined;
 };
+
+it('routes logical input through the presentation and cancels it on blur', () => {
+  const root = document.createElement('div'); document.body.append(root);
+  const handleGameplayDirection = vi.fn(() => true);
+  const engine = createEngine({ handleGameplayDirection });
+  const input = new InputManager(engine, root);
+  try {
+    root.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(handleGameplayDirection).toHaveBeenCalledWith('left');
+    expect(engine.tryMove).not.toHaveBeenCalled();
+    globalThis.dispatchEvent(new Event('blur'));
+    expect(root.querySelector('.is-pressed')).toBeNull();
+  } finally { input.destroy(); root.remove(); }
+});
 
 const createEngine = (overrides: Partial<GameEngineStub> = {}): GameEngineStub => {
   return {

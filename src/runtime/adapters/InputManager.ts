@@ -24,6 +24,7 @@ type GameEngineApi = {
   gameState: GameStateApi;
   renderer: RendererApi;
   tryMove: (dx: number, dy: number) => void;
+  handleGameplayDirection?: (direction: DirectionName) => boolean;
   closeDialog: () => void;
   advanceDialog: () => void;
   moveDialogChoice?: (direction: number) => void;
@@ -313,8 +314,10 @@ class InputManager {
   private moveEffectiveDirection(timestamp: number): void {
     const direction = this.getEffectiveDirection();
     if (!direction) return;
-    const [dx, dy] = DIRECTION_DELTAS[direction];
-    this.gameEngine.tryMove(dx, dy);
+    if (!this.gameEngine.handleGameplayDirection?.(direction)) {
+      const [dx, dy] = DIRECTION_DELTAS[direction];
+      this.gameEngine.tryMove(dx, dy);
+    }
     this.lastMovementTime = timestamp;
     if (!this.canAcceptHeldMovement()) this.cancelHeldMovement();
   }

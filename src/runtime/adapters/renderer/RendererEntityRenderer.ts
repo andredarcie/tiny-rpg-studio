@@ -6,6 +6,7 @@ import { isTrapActive } from '../../domain/state/TrapState';
 import { isChestAccessible } from '../../domain/state/ChestState';
 import { bitmapFont } from './BitmapFont';
 import { FONT_SIZE } from '../../../config/FontConfig';
+import type { GameplayBillboard } from './GameplayPresentation';
 import { drawExclamationMarker, drawLockMarker, shouldDrawUnreadNpcDialogMarker } from './RendererNpcDialogMarker';
 
 type FlashState = {
@@ -15,6 +16,8 @@ type FlashState = {
 };
 
 type FlyingLifeSquare = {
+    tileX: number;
+    tileY: number;
     x: number;
     y: number;
     size: number;
@@ -31,12 +34,17 @@ class RendererEntityRenderer {
     canvasHelper: CanvasHelperApi;
     paletteManager: PaletteManagerApi;
     viewportOffsetY?: number;
-    attackTelegraph?: { applyWindupOffset: (enemyId: string, x: number, y: number) => { x: number; y: number } };
+    attackTelegraph?: {
+        applyWindupOffset: (enemyId: string, x: number, y: number) => { x: number; y: number };
+        getWindupOffset?: (enemyId: string) => { x: number; y: number } | null;
+    };
     private flashStates: Map<string, FlashState>;
     private flyingLifeSquares: FlyingLifeSquare[];
     private remotePlayers: Array<{ id: string; name: string; roomIndex: number; x: number; y: number; alive: boolean; playerIndex: number; facing?: string }> = [];
     private localPlayerName: string = '';
     private localPlayerIndex: number = 0;
+    private presentationKeys = new WeakMap<object, string>();
+    private nextPresentationKey = 0;
 
     // Tint colors per player index (index 0 = Host/P1, index 1 = Guest/P2, etc.)
     private static readonly PLAYER_TINTS = ['#00e756', '#29adff', '#ff77a8', '#ffa300'];
@@ -82,7 +90,7 @@ class RendererEntityRenderer {
      * @param entityId Entity identifier
      * @returns Flash color if active, null otherwise
      */
-    private getFlashColor(entityId: string): string | null {
+    getFlashColor(entityId: string): string | null {
         const flash = this.flashStates.get(entityId);
         if (!flash) return null;
 
@@ -148,50 +156,11 @@ class RendererEntityRenderer {
             Number(a.type !== OT.PRESSURE_PLATE) -
             Number(b.type !== OT.PRESSURE_PLATE)
         );
-        const objectSprites = this.spriteFactory.getObjectSprites();
 
         for (const object of objectsByLayer) {
             if (object.roomIndex !== player.roomIndex) continue;
-            if (object.hiddenInRuntime) continue;
-            // Per-instance visibility toggle (e.g. logic gates hidden in-game but shown in editor)
-            if (object.hiddenInGame) continue;
-
-            if (object.hideWhenCollected && object.collected) continue;
-
-            if (object.hideWhenOpened && object.opened) continue;
-
-            if (object.hideWhenVariableOpen) {
-                const isOpen = object.variableId
-                    ? this.gameState.isVariableOn?.(object.variableId)
-                    : false;
-                if (isOpen) continue;
-            }
-            let sprite = objectSprites[object.type];
-            if (object.type === OT.SWITCH && object.on) {
-                sprite = objectSprites[`${object.type}--on`] || sprite;
-            }
-            if (object.isLed) {
-                const isOn = object.variableId
-                    ? this.gameState.isVariableOn?.(object.variableId) ?? false
-                    : false;
-                sprite = (isOn ? objectSprites[`${object.type}--on`] : objectSprites[object.type]) || sprite;
-            }
-            if (object.type === OT.CHEST && object.opened) {
-                sprite = objectSprites[`${object.type}--on`] || sprite;
-            }
-            if (object.type === OT.PRESSURE_PLATE) {
-                const isActive = object.variableId
-                    ? this.gameState.isVariableOn?.(object.variableId) ?? false
-                    : Boolean(object.activated);
-                sprite = (isActive ? objectSprites[`${object.type}--on`] : objectSprites[object.type]) || sprite;
-            }
-            if (object.type === OT.TRAP) {
-                const isActive = isTrapActive(
-                    object,
-                    (variableId) => this.gameState.isVariableOn?.(variableId) ?? false
-                );
-                sprite = (isActive ? objectSprites[object.type] : objectSprites[`${object.type}--on`]) || sprite;
-            }
+            if (!this.isObjectVisible(object)) continue;
+            const sprite = this.getObjectPresentationSprite(object);
             if (!sprite) continue;
             const px = object.x * tileSize;
             const floatOffset = object.isCollectible && !object.collected
@@ -212,6 +181,55 @@ class RendererEntityRenderer {
                 drawLockMarker(ctx, this.paletteManager, px, py, tileSize);
             }
         }
+    }
+
+    isObjectVisible(object: GameObjectState): boolean {
+        return !object.hiddenInRuntime && !object.hiddenInGame
+            && !(object.hideWhenCollected && object.collected)
+            && !(object.hideWhenOpened && object.opened)
+            && !(object.hideWhenVariableOpen && object.variableId && this.gameState.isVariableOn?.(object.variableId));
+    }
+
+    getObjectPresentationSprite(object: GameObjectState): Sprite | null {
+        const sprites = this.spriteFactory.getObjectSprites();
+        const variableOn = object.variableId ? this.gameState.isVariableOn?.(object.variableId) : false;
+        const on = object.type === ITEM_TYPES.TRAP
+            ? !isTrapActive(object, id => this.gameState.isVariableOn?.(id) ?? false)
+            : object.isLed || object.type === ITEM_TYPES.PRESSURE_PLATE
+                ? Boolean(object.variableId ? variableOn : object.activated)
+                : Boolean((object.type === ITEM_TYPES.SWITCH && object.on) || (object.type === ITEM_TYPES.CHEST && object.opened));
+        return (on ? sprites[`${object.type}--on`] : null) || sprites[object.type] || null;
+    }
+
+    getPresentationEntities(cols: number, roomSize: number): GameplayBillboard[] {
+        const game = this.gameState.getGame();
+        const result: GameplayBillboard[] = [];
+        const copies = new Map<Sprite, Sprite>();
+        const add = (entity: { roomIndex: number; x: number; y: number }, id: string, sprite: Sprite | null | undefined,
+            kind: GameplayBillboard['kind'], type: string, feedback = {}) => {
+            if (!sprite) return;
+            let key = this.presentationKeys.get(entity);
+            if (!key) { key = `entity-${++this.nextPresentationKey}`; this.presentationKeys.set(entity, key); }
+            let pixels = copies.get(sprite);
+            if (!pixels) { pixels = sprite.map(row => row.map(color => color === 'transparent' ? null : color)); copies.set(sprite, pixels); }
+            result.push({ id, key, kind, type, roomIndex: entity.roomIndex, localX: entity.x, localY: entity.y,
+                x: (entity.roomIndex % cols) * roomSize + entity.x + 0.5,
+                y: Math.floor(entity.roomIndex / cols) * roomSize + entity.y + 0.5, pixels, ...feedback });
+        };
+        for (const object of game.objects) if (this.isObjectVisible(object)) {
+            add(object, `object-${object.roomIndex}-${object.x}-${object.y}`, this.getObjectPresentationSprite(object), 'object', object.type);
+        }
+        const npcs = this.spriteFactory.getNpcSprites();
+        for (const npc of game.sprites) if (npc.placed && !npc.disappeared) add(npc, npc.id ?? 'npc', npcs[npc.type] || npcs.default, 'npc', npc.type);
+        for (const enemy of this.gameState.getEnemies?.() ?? []) {
+            if (typeof enemy.deathStartTime === 'number' || (enemy.lives ?? 1) <= 0) continue;
+            const id = (enemy as EnemyStateWithId).id || `${enemy.type}-${enemy.x}-${enemy.y}`;
+            add(enemy, id, this.spriteFactory.getEnemySprite(enemy.type), 'enemy', enemy.type, { lives: enemy.lives ?? 1,
+                warning: Boolean(this.attackTelegraph?.getWindupOffset?.(id) || enemy.playerInVision || (enemy.alertUntil ?? 0) > this.getNow()), flash: this.getFlashColor(id) });
+        }
+        for (const item of game.items) if (!item.collected) add(item, 'item', [[this.paletteManager.getColor(2)]], 'item', item.type ?? 'item');
+        for (const remote of this.remotePlayers) if (remote.alive) add(remote, remote.id, this.spriteFactory.getPlayerSprite(), 'remote-player', 'player');
+        return result;
     }
 
     drawItems(ctx: CanvasRenderingContext2D) {
@@ -584,6 +602,8 @@ class RendererEntityRenderer {
         const startY = Math.round(py - size - gap * 4);
 
         this.flyingLifeSquares.push({
+            tileX: px / tileSize + 0.5,
+            tileY: py / tileSize + 0.5,
             x: squareX,
             y: startY,
             size: size,
@@ -597,7 +617,7 @@ class RendererEntityRenderer {
     /**
      * Update and draw all flying life squares
      */
-    drawFlyingLifeSquares(ctx: CanvasRenderingContext2D): void {
+    private updateFlyingLifeSquares(): void {
         const now = this.getNow();
 
         // Update and draw each flying square
@@ -620,7 +640,19 @@ class RendererEntityRenderer {
             // Fade out (opacity from 1 to 0)
             square.opacity = 1 - progress;
 
-            // Draw the flying square
+        }
+    }
+
+    snapshotLifeLoss() {
+        this.updateFlyingLifeSquares();
+        return this.flyingLifeSquares.map(square => ({ text: '-1', x: square.tileX, y: square.tileY,
+            color: this.paletteManager.getColor(6), opacity: square.opacity }));
+    }
+
+    drawFlyingLifeSquares(ctx: CanvasRenderingContext2D): void {
+        this.updateFlyingLifeSquares();
+        for (let i = this.flyingLifeSquares.length - 1; i >= 0; i--) {
+            const square = this.flyingLifeSquares[i];
             ctx.save();
             ctx.globalAlpha = square.opacity;
 
@@ -717,6 +749,7 @@ type GameObjectState = {
 };
 
 type ItemState = {
+    type?: string;
     roomIndex: number;
     x: number;
     y: number;

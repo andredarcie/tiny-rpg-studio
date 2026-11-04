@@ -67,6 +67,8 @@ vi.mock('../../runtime/adapters/renderer/RendererEntityRenderer', () => ({
     drawAllEnemyLivesMarkers() {}
     drawFlyingLifeSquares() {}
     drawTileIconOnPlayer() {}
+    getFlashColor() { return null; }
+    snapshotLifeLoss() { return []; }
   },
 }));
 
@@ -95,6 +97,7 @@ vi.mock('../../runtime/adapters/renderer/RendererHudRenderer', () => ({
 vi.mock('../../runtime/adapters/renderer/RendererEffectsManager', () => ({
   RendererEffectsManager: class {
     drawEdgeFlash() {}
+    drawPresentationEdgeFlash() {}
     flashEdge() {}
     showCombatIndicator() {}
     flashScreen() {}
@@ -139,26 +142,91 @@ vi.mock('../../runtime/adapters/renderer/RendererCameraShake', () => ({
 vi.mock('../../runtime/adapters/renderer/RendererFloatingText', () => ({
   RendererFloatingText: class {
     draw() {}
+    snapshot() { return []; }
   },
 }));
 
 vi.mock('../../runtime/adapters/renderer/RendererParticleSystem', () => ({
   RendererParticleSystem: class {
     draw() {}
+    snapshot() { return []; }
   },
 }));
 
 vi.mock('../../runtime/adapters/renderer/RendererAttackTelegraph', () => ({
-  RendererAttackTelegraph: class {},
+  RendererAttackTelegraph: class { getWindupOffset() { return null; } },
 }));
 
 vi.mock('../../runtime/adapters/renderer/RendererSwordSwing', () => ({
   RendererSwordSwing: class {
     draw() {}
+    isActive() { return false; }
   },
 }));
 
 describe('Renderer', () => {
+  it('replaces only the gameplay scene, clips it, preserves dialogs/HUD and restores 2D', () => {
+    const canvas = document.createElement('canvas'); canvas.width = 160;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw Error('No context');
+    Object.assign(ctx, { clip: vi.fn() });
+    vi.spyOn(canvas, 'getContext').mockReturnValue(ctx);
+    const loop = vi.spyOn(Renderer.prototype, 'startTileAnimationLoop').mockImplementation(() => {});
+    let nextFrame: FrameRequestCallback | undefined;
+    const request = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(callback => { nextFrame = callback; return 99; });
+    const cancel = vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation(() => {});
+    let editing = false;
+    const renderer = new Renderer(canvas, { isGameOver: () => false, isEditorModeActive: () => editing,
+      getGame: () => ({}), getPlayer: () => ({ x: 1, y: 1, roomIndex: 0 }) },
+      { getAnimationFrameCount: () => 1, advanceAnimationFrame: () => 0 }, {},
+      { getGameplayScene: () => ({ width: 16, height: 8, world: { rows: 1, cols: 2, roomSize: 8, activeRoomIndex: 0 },
+        player: { x: 1.5, y: 1.5 }, cells: [], entities: [], ceiling: '#000', floor: '#000', boundary: '#000' }) });
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(100);
+    try {
+      const topDown = vi.spyOn(renderer.tileRenderer, 'drawTiles');
+      const player = vi.spyOn(renderer.entityRenderer, 'drawPlayer');
+      const dialog = vi.spyOn(renderer.dialogRenderer, 'drawDialog');
+      const hud = vi.spyOn(renderer.hudRenderer, 'drawHUD');
+      const provider = { draw: vi.fn(), direction: vi.fn(), reset: vi.fn() };
+      renderer.draw(); expect(topDown).toHaveBeenCalledOnce();
+      topDown.mockClear(); player.mockClear();
+      const remove = renderer.registerGameplayPresentation(provider);
+      renderer.draw();
+      expect(provider.draw).toHaveBeenCalledOnce(); expect(ctx.clip).toHaveBeenCalled();
+      expect(provider.draw).toHaveBeenLastCalledWith(expect.objectContaining({ timeMs: 100, deltaMs: 0 }));
+      expect(topDown).not.toHaveBeenCalled(); expect(player).not.toHaveBeenCalled();
+      expect(dialog).toHaveBeenCalledTimes(2); expect(hud).toHaveBeenCalledTimes(2);
+      const transition = vi.spyOn(renderer.transitionManager, 'start');
+      const transitionOptions = { direction: 'right', playerPath: { from: { x: 1, y: 1 }, to: { x: 2, y: 1 } } };
+      expect(renderer.startRoomTransition(transitionOptions)).toBe(false);
+      expect(transition).not.toHaveBeenCalled();
+      provider.draw.mockReturnValueOnce(true);
+      const attacker = { id: 'enemy', roomIndex: 1, x: 2, y: 3 };
+      renderer.recordPlayerHit(attacker); attacker.x = 7;
+      clock.mockReturnValue(116);
+      renderer.draw();
+      expect(provider.draw).toHaveBeenLastCalledWith(expect.objectContaining({ timeMs: 116, deltaMs: 16 }));
+      expect(provider.draw.mock.lastCall?.[0]).toHaveProperty('feedback.playerHit', { sequence: 1, sourceId: 'enemy', x: 10.5, y: 3.5 });
+      expect(request).toHaveBeenCalledOnce();
+      renderer.recordIncomingAttack({ id: 'other-enemy', roomIndex: 0, x: 1, y: 2 });
+      nextFrame?.(0);
+      expect(provider.draw.mock.lastCall?.[0]).toHaveProperty('feedback.incomingAttack', { sequence: 2, sourceId: 'other-enemy', x: 1.5, y: 2.5 });
+      expect(request).toHaveBeenCalledOnce();
+      provider.draw.mockReturnValueOnce(true);
+      renderer.draw(); renderer.resetGameplayPresentation();
+      expect(cancel).toHaveBeenCalledWith(99);
+      editing = true; renderer.draw(); expect(topDown).toHaveBeenCalledOnce();
+      editing = false; provider.draw.mockReturnValueOnce(true); renderer.draw();
+      expect(provider.draw).toHaveBeenLastCalledWith(expect.objectContaining({ deltaMs: 0 }));
+      expect(provider.draw.mock.lastCall?.[0]).toHaveProperty('feedback.playerHit', null);
+      expect(provider.draw.mock.lastCall?.[0]).toHaveProperty('feedback.incomingAttack', null);
+      remove(); renderer.draw(); expect(topDown).toHaveBeenCalledTimes(2);
+      expect(cancel).toHaveBeenCalledTimes(2);
+      expect(renderer.startRoomTransition(transitionOptions)).toBe(true);
+      expect(transition).toHaveBeenLastCalledWith(transitionOptions);
+      expect(provider.reset).toHaveBeenCalledTimes(3);
+    } finally { loop.mockRestore(); request.mockRestore(); cancel.mockRestore(); clock.mockRestore(); }
+  });
   it('removes reserved HUD space when hideHud is enabled', () => {
     const ctx = {
       imageSmoothingEnabled: true,

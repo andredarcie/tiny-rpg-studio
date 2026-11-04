@@ -1,5 +1,8 @@
 # Plugins
 
+For custom world rendering, see the [renderer plugin API guide](README.renderers.md),
+including scene data, frame timing, controls, secondary canvases, and cleanup.
+
 Import only trusted files. Executable plugins run in the editor page with its full
 DOM, storage, network and JavaScript privileges. There is no sandbox. Parsing an
 HTML file is inert; activation happens after installation and editor readiness.

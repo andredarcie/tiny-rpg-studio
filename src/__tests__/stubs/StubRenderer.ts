@@ -4,6 +4,7 @@ import type { StubTileManager } from './StubTileManager'
 import type { StubNpcManager } from './StubNpcManager'
 
 export class StubRenderer {
+  resetGameplayPresentation(): void {}
   introData: unknown = null
   overlayRects: Array<{ x: number; y: number; width: number; height: number }> = []
   resolveHudPresentation = vi.fn()

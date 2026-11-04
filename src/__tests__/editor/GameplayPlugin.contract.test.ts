@@ -4,8 +4,25 @@ import { StateWorldManager } from '../../runtime/domain/state/StateWorldManager'
 import { StateDataManager } from '../../runtime/domain/state/StateDataManager';
 import type { GameDefinition } from '../../types/gameState';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
+import rendererSource from '../../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
+import { applyInstalled3dRenderer } from '../../editor/manager/applyInstalled3dRenderer';
 
 beforeEach(() => localStorage.clear());
+
+it('persists renderer dependencies with the complete gameplay package and keeps URL sharing disabled', () => {
+  const manager = new PluginManager();
+  const renderer = parsePluginHtml(rendererSource);
+  manager.install(renderer);
+  const project = applyInstalled3dRenderer({ title: '3D project', pluginData: { '3d-renderer': { topColor: 0, bottomColor: 12 } } }, manager.installed);
+  const snapshot = ShareUtils.buildStoredProject(project);
+  expect(ShareUtils.readStoredProject(snapshot)).toEqual(project);
+  expect(ShareUtils.buildShareUrl(project)).toBe('');
+  const reloaded = new PluginManager();
+  expect(applyInstalled3dRenderer({ title: 'New project' }, reloaded.installed)).toMatchObject({ gameplayPlugins: [{ id: '3d-renderer', version: '1.0.0' }] });
+  expect(reloaded.installed[0].payload?.gameplayJavascript).toBe(renderer.payload?.gameplayJavascript);
+  reloaded.remove(renderer.id);
+  expect(applyInstalled3dRenderer({ title: '2D project' }, reloaded.installed)).not.toHaveProperty('gameplayPlugins');
+});
 
 it('validates and persists a gameplay package while retaining legacy editor packages', () => {
   const legacy = { id: 'old', title: 'Old', shortDescription: 'Old', fullDescription: 'Old' };

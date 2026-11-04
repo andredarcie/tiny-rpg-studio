@@ -1,6 +1,8 @@
 import { FontLifecycle } from '../adapters/renderer/FontLifecycle';
 import type { GameDefinition } from '../../types/gameState';
 import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
+import type { GameplayDirection, GameplayPresentation } from '../adapters/renderer/GameplayPresentation';
+import { buildGameplayScene } from './engine/GameplayScene';
 import { DialogManager } from './engine/DialogManager';
 import { NpcMovementManager } from './engine/NpcMovementManager';
 import { EnemyManager } from './engine/EnemyManager';
@@ -415,6 +417,7 @@ export class GameEngine {
   }
 
   resetGame(): void {
+    this.renderer.resetGameplayPresentation();
     if (this.soundOwner) soundEngine.cancelQueuedGameStart(this);
     this.inputManager.cancelHeldMovement();
     this.awaitingRestart = false;
@@ -512,11 +515,37 @@ export class GameEngine {
     return this.renderer.registerHudPresentation(id, provider);
   }
 
+  registerGameplayPresentation(provider: GameplayPresentation): () => void {
+    const cleanup = this.renderer.registerGameplayPresentation(provider);
+    let active = true;
+    this.inputManager.cancelHeldMovement();
+    return () => {
+      if (!active) return;
+      active = false;
+      cleanup(); this.inputManager.cancelHeldMovement(); if (!this.isDestroyed) this.draw();
+    };
+  }
+
+  getGameplayScene() { return buildGameplayScene(this); }
+
+  handleGameplayDirection(direction: GameplayDirection): boolean {
+    if (!this.renderer.gameplayPresentation || this.isEditorModeActive()) return false;
+    if (!this.movementManager.canAcceptPresentationCommand() || this.isIntroVisible() || this.renderer.isRoomTransitionActive()) return true;
+    const delta = this.renderer.gameplayPresentation.direction(direction);
+    if (delta) {
+      const [dx, dy] = delta;
+      if (!Number.isInteger(dx) || !Number.isInteger(dy) || Math.abs(dx) + Math.abs(dy) !== 1) throw Error('Gameplay direction must return a cardinal delta');
+      this.tryMove(dx, dy);
+    } else this.draw();
+    return true;
+  }
+
   validateHudPresentation(data: unknown): void {
     this.renderer.resolveHudPresentation(data as Partial<GameDefinition>);
   }
 
   importGameData(data: unknown): void {
+    this.renderer.resetGameplayPresentation();
     this.validateHudPresentation(data);
     this.inputManager.cancelHeldMovement();
     this.backgroundMusicEngine.stop();

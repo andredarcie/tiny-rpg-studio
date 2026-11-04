@@ -42,6 +42,8 @@ export type GameStateApi = {
 };
 
 export type RendererApi = {
+  recordPlayerHit?: (source: { id?: string; roomIndex: number; x: number; y: number }) => void;
+  recordIncomingAttack?: (source: { id?: string; roomIndex: number; x: number; y: number }) => void;
   draw: () => void;
   flashScreen: (payload: Record<string, unknown>) => void;
   showCombatIndicator: (text: string, options?: Record<string, unknown>) => void;

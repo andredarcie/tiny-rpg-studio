@@ -10,6 +10,61 @@ const plugin: InstalledPlugin = {
   capabilities: ['gameplay'], payload: { apiVersion: 1, gameplayJavascript: 'export function activate() {}' },
 };
 
+it('exposes live, detached palette and own-project settings to presentation modules', async () => {
+  let project = { gameplayPlugins: [{ id: 'maps', version: '1' }], pluginData: { maps: { topColor: 8 } } };
+  const palette = ['#000000', '#ffffff'];
+  let context!: GameplayContext;
+  const engine = {
+    exportGameData: () => structuredClone(project), importGameData: (data: typeof project) => { project = structuredClone(data); },
+    gameState: { getGame: () => project }, renderer: { paletteManager: { getActivePalette: () => palette } },
+  } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine, () => [plugin], () => Promise.resolve({ activate: next => { context = next; } }));
+  await host.load(project);
+  const resources = context.getPresentationResources();
+  expect(resources.data).toEqual({ topColor: 8 });
+  (resources.data as { topColor: number }).topColor = 1;
+  (resources.palette as string[])[0] = '#123456';
+  expect(context.getPresentationResources()).toEqual({ palette: ['#000000', '#ffffff'], data: { topColor: 8 } });
+  project.pluginData.maps.topColor = 3; palette[0] = '#abcdef';
+  expect(context.getPresentationResources()).toEqual({ palette: ['#abcdef', '#ffffff'], data: { topColor: 3 } });
+  host.destroy();
+});
+
+it('owns scene registrations and rejects obsolete asynchronous registration', async () => {
+  const cleanup = vi.fn();
+  const registerGameplayPresentation = vi.fn(() => cleanup);
+  const engine = { exportGameData: () => ({}), importGameData: vi.fn(), registerGameplayPresentation } as unknown as GameEngine;
+  let context!: GameplayContext;
+  const host = new GameplayPluginHost(engine, () => [plugin], () => Promise.resolve({ activate: next => { context = next; } }));
+  await host.load({ gameplayPlugins: [{ id: 'maps', version: '1' }] });
+  const provider = { draw: vi.fn(), direction: vi.fn(), reset: vi.fn() };
+  context.registerGameplayPresentation(provider);
+  expect(registerGameplayPresentation).toHaveBeenCalledWith(provider);
+  host.remove('maps');
+  expect(cleanup).toHaveBeenCalledOnce();
+  expect(() => context.registerGameplayPresentation(provider)).toThrow(/project changed/);
+});
+
+it('restores the active package and scene if a replacement fails after installation', async () => {
+  let current = { title: 'old', gameplayPlugins: [{ id: 'maps', version: '1' }] };
+  let registered = false;
+  let packages = [plugin];
+  const engine = {
+    exportGameData: () => current,
+    importGameData: (data: typeof current) => { current = data; },
+    registerGameplayPresentation: () => { registered = true; return () => { registered = false; }; },
+  } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine, () => packages, source => Promise.resolve({ activate: context => {
+    context.registerGameplayPresentation({ draw: vi.fn(), direction: vi.fn(), reset: vi.fn() });
+    if (source === 'broken') throw Error('Broken replacement');
+  } }));
+  await host.load(current);
+  packages = [{ ...plugin, version: '2', payload: { apiVersion: 1, gameplayJavascript: 'broken' } }];
+  await expect(host.load({ gameplayPlugins: [{ id: 'maps', version: '2' }] })).rejects.toThrow('Broken replacement');
+  expect(registered).toBe(true); expect(host.isActive('maps', '1')).toBe(true);
+  expect(current.gameplayPlugins).toEqual([{ id: 'maps', version: '1' }]);
+});
+
 it('rejects missing dependencies without replacing the current project', async () => {
   const importGameData = vi.fn();
   const engine = { exportGameData: () => ({ title: 'old' }), importGameData } as unknown as GameEngine;
