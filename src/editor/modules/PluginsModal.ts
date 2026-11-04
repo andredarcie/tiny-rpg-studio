@@ -245,13 +245,18 @@ export class PluginsModal {
   private actions(id: string): HTMLButtonElement[] {
     const installed = this.manager.installed.find(record => record.id === id);
     const update = installed && hasPluginUpdate(installed.version, this.catalogEntry(id)?.version);
-    const names = this.mode === 'manage' ? [...(update ? ['update'] : []), 'remove'] : [!installed ? 'install' : update ? 'update' : 'installed'];
+    const names = this.mode === 'manage' ? [...(update ? ['update'] : []), 'remove', 'download'] : [!installed ? 'install' : update ? 'update' : 'installed'];
     return names.map(name => {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'btn-secondary plugin-action';
       button.dataset.action = name;
       button.textContent = text(name);
+      if (name === 'download') {
+        button.setAttribute('aria-label', text('download'));
+        button.title = text('download');
+        button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></svg>';
+      }
       button.disabled = name === 'installed' || this.installController !== null;
       return button;
     });
@@ -263,7 +268,7 @@ export class PluginsModal {
       const action = (document.activeElement as HTMLElement | null)?.dataset.action;
       card.querySelectorAll('.plugin-action').forEach(button => button.remove());
       const buttons = this.actions(card.dataset.pluginId ?? '');
-      card.append(...buttons);
+      card.querySelector('.plugin-actions')?.replaceChildren(...buttons);
       const lifecycle = card.querySelector('.plugin-lifecycle');
       if (lifecycle) lifecycle.textContent = this.lifecycleText(card.dataset.pluginId ?? '');
       if (focused) (buttons.find(button => button.dataset.action === action && !button.disabled) ?? buttons.find(button => !button.disabled) ?? card.querySelector<HTMLButtonElement>('.plugin-read-more'))?.focus();
@@ -407,7 +412,10 @@ export class PluginsModal {
     const lifecycle = document.createElement('p');
     lifecycle.className = 'plugin-lifecycle';
     lifecycle.textContent = this.lifecycleText(plugin.id);
-    card.append(title, capabilities, summary, lifecycle, more, description, ...this.actions(plugin.id));
+    const actions = document.createElement('div');
+    actions.className = 'plugin-actions';
+    actions.append(...this.actions(plugin.id));
+    card.append(title, capabilities, summary, lifecycle, more, description, actions);
     return card;
   }
 
@@ -440,6 +448,10 @@ export class PluginsModal {
     if (!button.classList.contains('plugin-action') || button.disabled) return;
     const id = card.dataset.pluginId;
     if (!id) return;
+    if (button.dataset.action === 'download') {
+      this.downloadInstalled(id);
+      return;
+    }
     if (button.dataset.action === 'remove') this.manager.remove(id);
     else {
       const plugin = this.catalogEntry(id);
@@ -451,6 +463,25 @@ export class PluginsModal {
     const replacement = this.grid.children.item(Math.min(index, this.grid.children.length - 1));
     const focusTarget = replacement?.querySelector<HTMLButtonElement>('button:not(:disabled)');
     (focusTarget ?? this.manageButton).focus();
+  }
+
+  private downloadInstalled(id: string): void {
+    const plugin = this.manager.installed.find(record => record.id === id);
+    if (!plugin) return;
+    const { payload, ...metadata } = plugin;
+    const manifest = JSON.stringify({ ...metadata, ...(payload ? { apiVersion: payload.apiVersion } : {}) }).replace(/</g, '\\u003c');
+    const blocks = [`<script id="tiny-rpg-plugin" type="application/json">${manifest}</script>`];
+    if (payload?.javascript !== undefined) blocks.push(`<script type="module" data-tiny-rpg-plugin>${payload.javascript}</script>`);
+    if (payload?.gameplayJavascript !== undefined) blocks.push(`<script type="module" data-tiny-rpg-gameplay-plugin>${payload.gameplayJavascript}</script>`);
+    if (payload?.css !== undefined) blocks.push(`<style data-tiny-rpg-plugin>${payload.css}</style>`);
+    const url = URL.createObjectURL(new Blob([`<!doctype html>\n<html><head><meta charset="utf-8"></head><body>\n${blocks.join('\n')}\n</body></html>`], { type: 'text/html;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${id.replace(/[^a-z0-9_-]/gi, '_')}.html`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 
   private async install(plugin: Entry, button: HTMLButtonElement): Promise<void> {

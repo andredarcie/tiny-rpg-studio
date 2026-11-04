@@ -101,6 +101,7 @@ const TEXT_BUNDLES = {
         "plugins.install": "Instalar",
         "plugins.installed": "Instalado",
         "plugins.remove": "Remover",
+        "plugins.download": "Baixar HTML",
 
         'intro.byline': 'por {author}',
         'intro.startAdventure': 'Iniciar aventura',
@@ -781,6 +782,7 @@ const TEXT_BUNDLES = {
         "plugins.install": "Install",
         "plugins.installed": "Installed",
         "plugins.remove": "Remove",
+        "plugins.download": "Download HTML",
 
         'intro.byline': 'by {author}',
         'intro.startAdventure': 'Start adventure',
@@ -1461,6 +1463,7 @@ const TEXT_BUNDLES = {
         "plugins.install": "インストール",
         "plugins.installed": "インストール済み",
         "plugins.remove": "削除",
+        "plugins.download": "HTMLをダウンロード",
 
         'intro.byline': '作者：{author}',
         'intro.startAdventure': '开始冒险',
@@ -2141,6 +2144,7 @@ const TEXT_BUNDLES = {
         "plugins.install": "Zainstaluj",
         "plugins.installed": "Zainstalowano",
         "plugins.remove": "Usuń",
+        "plugins.download": "Pobierz HTML",
 
         'intro.byline': 'autor: {author}',
         'intro.startAdventure': 'Rozpocznij przygodę',
@@ -2821,6 +2825,7 @@ const TEXT_BUNDLES = {
         "plugins.install": "Instalar",
         "plugins.installed": "Instalado",
         "plugins.remove": "Eliminar",
+        "plugins.download": "Descargar HTML",
 
         'intro.byline': 'por {author}',
         'intro.startAdventure': 'Iniciar aventura',

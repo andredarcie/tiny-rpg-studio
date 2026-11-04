@@ -5867,7 +5867,17 @@ body.game-mode #game-container:has(#online-player-list-root) .game-screen {
     line-height: var(--lh-text);
 }
 .plugins-modal .plugin-description[hidden] { display: none; }
-.plugin-card .plugin-action { margin-top: auto; }
+.plugin-actions { display: flex; gap: 8px; margin-top: auto; width: 100%; }
+.plugins-modal .plugin-action[data-action="download"] {
+    margin-left: auto;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
 .plugins-modal .plugin-read-more,
 body.editor-mode .plugins-modal button.plugin-read-more {
     background: none;

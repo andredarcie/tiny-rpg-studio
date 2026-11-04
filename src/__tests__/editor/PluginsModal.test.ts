@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PluginRuntime } from '../../editor/manager/PluginRuntime';
 import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
 import { PluginsModal } from '../../editor/modules/PluginsModal';
-import { PluginManager } from '../../editor/manager/PluginManager';
+import { PluginManager, parsePluginHtml } from '../../editor/manager/PluginManager';
 import { type CatalogEntry, type downloadPlugin } from '../../editor/manager/pluginCatalog';
 import { TextResources } from '../../runtime/adapters/TextResources';
 
@@ -48,6 +48,35 @@ describe('PluginsModal', () => {
     search.mockClear();
   });
   afterEach(() => { modal.destroy(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = ''; });
+  it('downloads the installed HTML package without fetching or removing it', async () => {
+    const record = { ...installed, capabilities: ['editor', 'gameplay'] as ('editor' | 'gameplay')[], payload: { ...installed.payload, gameplayJavascript: 'export function activate() {}', css: 'body { color: red; }' } };
+    manager.install(record);
+    let blob!: Blob;
+    const createObjectURL = vi.fn((value: Blob) => { blob = value; return 'blob:plugin'; });
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { createObjectURL, revokeObjectURL });
+    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      expect(this.download).toBe('test.html');
+      expect(this.href).toBe('blob:plugin');
+    });
+    click('#plugins-manage');
+    const button = element('[data-action="download"]');
+    expect(button.previousElementSibling?.getAttribute('data-action')).toBe('remove');
+    expect(button.getAttribute('aria-label')).toBe('Download HTML');
+    click('[data-action="download"]');
+    expect(anchorClick).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:plugin');
+    vi.useRealTimers();
+    const source = await new Promise<string>(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.readAsText(blob);
+    });
+    expect(parsePluginHtml(source)).toEqual(record);
+    expect(manager.installed).toEqual([record]);
+    expect(download).not.toHaveBeenCalled();
+  });
   it.each([
     [undefined, '1.0.0', true], ['preview', '1.0.0', true],
     ['1.0.0', '1.0.0', false], ['1.0.10', '1.0.2', false],
