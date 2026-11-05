@@ -2,7 +2,7 @@ import { normalizeFontsPlus } from '../services/FontsPlus';
 import { normalizePluginData } from '../domain/state/PluginData';
 import type { JsonValue } from '../domain/state/PluginData';
 import type { HudPresentationProvider } from '../adapters/renderer/HudPresentation';
-import type { GameplayPresentation } from '../adapters/renderer/GameplayPresentation';
+import type { GameplayDirection, GameplayPresentation } from '../adapters/renderer/GameplayPresentation';
 import type { GameEngine } from '../services/GameEngine';
 import type { GameDefinition } from '../../types/gameState';
 import type { InstalledPlugin } from '../../editor/manager/PluginManager';
@@ -23,6 +23,7 @@ export type GameplayContext = {
   registerHudPresentation(provider: HudPresentationProvider): void;
   registerGameplayPresentation(provider: GameplayPresentation): () => void;
   requestRedraw(): void;
+  requestGameplayDirection(direction: GameplayDirection): void;
   registerVariablePresets(presets: VariablePreset[]): void;
   onCleanup(callback: () => void): void;
 };
@@ -80,6 +81,7 @@ export class GameplayPluginHost {
     assertCurrent();
     this.clear();
     const hudRegistrations: string[] = [];
+    let loaded = false;
     try {
       for (const plugin of required) {
         const cleanup: (() => void)[] = [];
@@ -89,7 +91,8 @@ export class GameplayPluginHost {
         const module = await this.loader(source);
         assertCurrent();
         if (typeof module.activate !== 'function') throw Error(`Gameplay plugin ${plugin.id} must export activate(context)`);
-        this.active.set(plugin.id, { version, cleanup, package: plugin });
+        const activation = { version, cleanup, package: plugin };
+        this.active.set(plugin.id, activation);
         await module.activate({
           apiVersion: 1,
           getWorld: () => ({ ...(this.engine.getGame() as unknown as GameDefinition).world }),
@@ -125,6 +128,10 @@ export class GameplayPluginHost {
             return unregister;
           },
           requestRedraw: () => { assertCurrent(); this.engine.draw(); },
+          requestGameplayDirection: direction => {
+            if (!loaded || this.active.get(plugin.id) !== activation || this.engine.isDestroyed) return;
+            this.engine.handleGameplayDirection(direction);
+          },
           registerVariablePresets: presets => {
             assertCurrent();
             cleanup.push(this.engine.registerVariablePresets(presets));
@@ -138,6 +145,7 @@ export class GameplayPluginHost {
       assertCurrent();
       if (hudRegistrations.length) this.engine.validateHudPresentation(data);
       this.engine.importGameData(data);
+      loaded = true;
     } catch (error) {
       if (generation !== this.loadGeneration) throw error;
       this.clear();

@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>3D Renderer</title>
+<script id="tiny-rpg-plugin" type="application/json">
+{
+  "id": "3d-renderer",
+  "title": "3D Renderer",
+  "shortDescription": "Explore your pixel-art world in first person.",
+  "fullDescription": "Play existing maps through a textured first-person raycaster. Left and Right animate a 90-degree turn, Up walks forward, and Down walks backward. Movement waits until the turn finishes so the camera and interactions stay aligned. Keyboard, WASD, D-pad and swipe controls work with the existing dialogs, combat and HUD. Installation enables 3D for your projects; removal restores top-down play. Choose top and bottom void colors from the project palette in Project > Plugins > 3D Renderer. Set Distance gradient from 0 (off) to 1 (full reach). Enable Mouse Support to look around with the mouse or a mobile drag while standing still; walking smoothly turns the view to the nearest compass direction before moving. Click the game to capture the mouse; press Escape to release it. Settings travel with projects and standalone offline HTML.",
+  "version": "1.1.0",
+  "capabilities": ["editor", "gameplay"],
+  "apiVersion": 1
+}
+</script>
+<style data-tiny-rpg-plugin>
+#tab-editor .three-d-renderer-settings { display:grid; gap:10px; }
+#tab-editor .three-d-renderer-settings label { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+#tab-editor .three-d-renderer-settings .distance-gradient-label { flex-wrap:nowrap; }
+#tab-editor .three-d-renderer-settings .distance-gradient-input { width:80px; min-width:0; flex:0 0 80px; padding:4px 6px; box-sizing:border-box; }
+#tab-editor .three-d-renderer-settings .mouse-support-input { width:auto; flex:none; }
+#tab-editor .three-d-renderer-settings select { flex:1; min-width:0; }
+#tab-editor .three-d-renderer-settings .color-preview { width:24px; height:24px; border:1px solid var(--border); }
+#tab-editor .three-d-renderer-settings [role="alert"]:empty { display:none; }
+</style>
+<script type="module" data-tiny-rpg-plugin>
+export function activate({ api, registerSettings, editorRoot, onCleanup }) {
+    if (!api.setPluginData || !api.getHudResources) throw Error('3D Renderer requires plugin settings and palette APIs');
+    const controls = new Map();
+    const cleanups = [];
+    let container;
+    let error;
+    let gradient;
+    let initialDirection;
+    let mouseSupport;
+    let removed = false;
+    let busy = false;
+    let generation = 0;
+    const listen = (target, event, handler) => {
+        target.addEventListener(event, handler);
+        cleanups.push(() => target.removeEventListener(event, handler));
+    };
+    const settings = () => {
+        const data = api.exportGameData()?.pluginData?.['3d-renderer'];
+        return data && typeof data === 'object' && !Array.isArray(data) ? structuredClone(data) : {};
+    };
+    const refresh = (clearError = true) => {
+        if (removed || !container) return;
+        generation++;
+        if (clearError) error.textContent = '';
+        const value = settings();
+        gradient.value = String(value.distanceGradient === false ? 0 : typeof value.distanceGradient === 'number' && Number.isFinite(value.distanceGradient) ? Math.max(0, Math.min(1, value.distanceGradient)) : 1); gradient.disabled = busy;
+        initialDirection.value = String(Number.isInteger(value.initialDirection) && value.initialDirection >= 0 && value.initialDirection < 4 ? value.initialDirection : 0);
+        initialDirection.disabled = busy;
+        mouseSupport.checked = value.mouseSupport === true; mouseSupport.disabled = busy;
+        const palette = api.getHudResources().palette;
+        const project = api.exportGameData();
+        const defaults = { topColor: project?.rooms?.[project?.start?.roomIndex ?? 0]?.bg ?? 0, bottomColor: 5 };
+        for (const [key, { select, preview }] of controls) {
+            select.replaceChildren();
+            const option = document.createElement('option'); option.value = ''; option.textContent = 'Default'; select.append(option);
+            palette.forEach((color, index) => {
+                const option = document.createElement('option'); option.value = String(index); option.id = `three-d-${key}-color-${index}`;
+                option.textContent = `Color ${index}: ${color}`; option.style.backgroundColor = color;
+                const rgb = parseInt(color.slice(1), 16);
+                option.style.color = (((rgb >> 16) & 255) * 0.299 + ((rgb >> 8) & 255) * 0.587 + (rgb & 255) * 0.114) > 128 ? '#000000' : '#ffffff';
+                select.append(option);
+            });
+            const index = Number.isInteger(value[key]) && value[key] >= 0 && value[key] < palette.length ? value[key] : undefined;
+            select.value = index === undefined ? '' : String(index); select.disabled = busy;
+            preview.style.backgroundColor = palette[index ?? defaults[key]] ?? palette[0];
+        }
+    };
+    const save = async (key, selected) => {
+        if (removed || busy) return;
+        const ticket = generation;
+        const value = settings();
+        if (selected === '') delete value[key]; else value[key] = typeof selected === 'boolean' ? selected : Number(selected);
+        busy = true; error.textContent = '';
+        gradient.disabled = true;
+        initialDirection.disabled = true;
+        mouseSupport.disabled = true;
+        for (const { select } of controls.values()) select.disabled = true;
+        try { await api.setPluginData('3d-renderer', value); }
+        catch (cause) {
+            if (!removed && ticket === generation) error.textContent = cause instanceof Error ? cause.message : String(cause);
+        } finally {
+            busy = false;
+            if (!removed) refresh(false);
+        }
+    };
+    registerSettings(parent => {
+        container = document.createElement('div'); container.className = 'three-d-renderer-settings'; parent.append(container);
+        for (const [key, title] of [['topColor', 'Top void'], ['bottomColor', 'Bottom void']]) {
+            const label = document.createElement('label'); label.append(document.createTextNode(title));
+            const select = document.createElement('select'); select.setAttribute('aria-label', title);
+            const preview = document.createElement('span'); preview.className = 'color-preview'; preview.setAttribute('aria-hidden', 'true');
+            label.append(select, preview); container.append(label); controls.set(key, { select, preview });
+            listen(select, 'change', () => { void save(key, select.value); });
+            listen(select, 'focus', () => refresh());
+        }
+        const label = document.createElement('label');
+        label.className = 'distance-gradient-label';
+        gradient = document.createElement('input'); gradient.className = 'distance-gradient-input'; gradient.type = 'number'; gradient.min = '0'; gradient.max = '1'; gradient.step = 'any'; gradient.setAttribute('aria-label', 'Distance gradient');
+        label.append(document.createTextNode('Distance gradient'), gradient); container.append(label);
+        listen(gradient, 'change', () => {
+            if (gradient.value === '' || !Number.isFinite(gradient.valueAsNumber)) { refresh(); return; }
+            void save('distanceGradient', Math.max(0, Math.min(1, gradient.valueAsNumber)));
+        });
+        const mouseLabel = document.createElement('label');
+        mouseSupport = document.createElement('input'); mouseSupport.type = 'checkbox'; mouseSupport.className = 'mouse-support-input'; mouseSupport.setAttribute('aria-label', 'Mouse Support');
+        mouseLabel.append(document.createTextNode('Mouse Support'), mouseSupport); container.append(mouseLabel);
+        listen(mouseSupport, 'change', () => { void save('mouseSupport', mouseSupport.checked); });
+        const directionLabel = document.createElement('label'); directionLabel.append(document.createTextNode('Initial direction'));
+        initialDirection = document.createElement('select'); initialDirection.setAttribute('aria-label', 'Initial direction');
+        for (const [value, title] of [[0, 'North'], [2, 'South'], [3, 'West'], [1, 'East']]) {
+            const option = document.createElement('option'); option.value = String(value); option.textContent = title; initialDirection.append(option);
+        }
+        directionLabel.append(initialDirection); container.append(directionLabel);
+        listen(initialDirection, 'change', () => { void save('initialDirection', initialDirection.value); });
+        error = document.createElement('p'); error.setAttribute('role', 'alert'); container.append(error);
+        refresh();
+    });
+    listen(document, 'tiny-rpg-project-restored', () => refresh());
+    const tab = editorRoot.querySelector('[data-project-tab-button="plugins"]');
+    if (tab) listen(tab, 'click', () => refresh());
+    onCleanup(() => { removed = true; generation++; cleanups.forEach(cleanup => cleanup()); controls.clear(); container?.remove(); });
+}
+</script>
+<script type="module" data-tiny-rpg-gameplay-plugin>
+export function activate(context) {
+    const directions = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    const turnDurationMs = 300;
+    const planeScale = Math.tan(Math.PI / 6);
+    const maxDistance = 32;
+    let heading = 0;
+    let freeAngle = null;
+    const nearestHeading = angle => ((Math.round(angle / (Math.PI / 2)) % 4) + 4) % 4;
+    const mouseEnabled = () => context.getPresentationResources?.()?.data?.mouseSupport === true;
+    let initialDirectionPending = true;
+    let turn = null;
+    let pendingMove = null;
+    let lastHitSequence = null;
+    let canvas = null;
+    let buffer = null;
+    let image = null;
+    let depth = new Float64Array(0);
+    const colors = new Map();
+    const textures = new Map();
+    const rayHits = [];
+
+    function cameraAngle() {
+        if (initialDirectionPending) {
+            const data = context.getPresentationResources?.()?.data;
+            const value = data && typeof data === 'object' && !Array.isArray(data) ? data.initialDirection : undefined;
+            heading = Number.isInteger(value) && value >= 0 && value < 4 ? value : 0;
+            initialDirectionPending = false;
+        }
+        if (freeAngle !== null) {
+            if (mouseEnabled()) return freeAngle;
+            heading = nearestHeading(freeAngle); freeAngle = null;
+        }
+        if (!turn) return heading * Math.PI / 2;
+        const progress = Math.max(0, Math.min(1, (performance.now() - turn.started) / turnDurationMs));
+        if (progress >= 1) {
+            turn = null;
+            const move = pendingMove;
+            if (move) queueMicrotask(() => {
+                if (pendingMove !== move) return;
+                pendingMove = null;
+                context.requestGameplayDirection(move.command);
+            });
+            return heading * Math.PI / 2;
+        }
+        const eased = progress * progress * (3 - 2 * progress);
+        return turn.from + (turn.to - turn.from) * eased;
+    }
+
+    function rgb(color) {
+        if (!colors.has(color)) {
+            const hex = String(color || '#000000').replace('#', '');
+            const expanded = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+            const value = parseInt(expanded, 16) || 0;
+            if (colors.size >= 512) colors.clear();
+            colors.set(color, [(value >> 16) & 255, (value >> 8) & 255, value & 255]);
+        }
+        return colors.get(color);
+    }
+
+    function texture(pixels, frameTextures) {
+        if (!pixels || !pixels.length) return null;
+        if (frameTextures.has(pixels)) return frameTextures.get(pixels);
+        const key = JSON.stringify(pixels);
+        let result = textures.get(key);
+        if (!result) {
+            result = pixels.map(row => row.map(color => color === null ? null : rgb(color)));
+            result.opaque = result.every(row => row.every(color => color !== null));
+            if (textures.size >= 256) textures.clear();
+            textures.set(key, result);
+        }
+        frameTextures.set(pixels, result);
+        return result;
+    }
+
+    function sample(pixels, u, v, fallback) {
+        if (!pixels || !pixels.length) return fallback;
+        const row = pixels[Math.min(pixels.length - 1, Math.max(0, Math.floor(v * pixels.length)))];
+        if (!row || !row.length) return fallback;
+        return row[Math.min(row.length - 1, Math.max(0, Math.floor(u * row.length)))] || fallback;
+    }
+
+    function cellAt(scene, x, y) {
+        if (x < 0 || y < 0 || x >= scene.width || y >= scene.height) return null;
+        return scene.cells[y * scene.width + x] || null;
+    }
+
+    function cast(scene, rx, ry, frameTextures) {
+        rayHits.length = 0;
+        const { x: px, y: py } = scene.player;
+        let x = Math.floor(px), y = Math.floor(py);
+        const stepX = rx < 0 ? -1 : 1, stepY = ry < 0 ? -1 : 1;
+        const deltaX = rx === 0 ? Infinity : Math.abs(1 / rx);
+        const deltaY = ry === 0 ? Infinity : Math.abs(1 / ry);
+        let sideX = (rx < 0 ? px - x : x + 1 - px) * deltaX;
+        let sideY = (ry < 0 ? py - y : y + 1 - py) * deltaY;
+        let distance = 0, side = 0, cell = cellAt(scene, x, y);
+        for (let steps = 0; steps < 128; steps++) {
+            if (sideX < sideY) {
+                distance = sideX; sideX += deltaX; x += stepX; side = 0;
+            } else if (sideY < sideX) {
+                distance = sideY; sideY += deltaY; y += stepY; side = 1;
+            } else {
+                distance = sideX;
+                const nextX = cellAt(scene, x + stepX, y);
+                const nextY = cellAt(scene, x, y + stepY);
+                if (!nextX || nextX.solid) { x += stepX; side = 0; }
+                else if (!nextY || nextY.solid) { y += stepY; side = 1; }
+                else { x += stepX; y += stepY; side = 0; }
+                sideX += deltaX; sideY += deltaY;
+            }
+            cell = cellAt(scene, x, y);
+            if (!cell || distance > maxDistance) break;
+            if (cell.solid) {
+                const pixels = texture(cell.wall, frameTextures);
+                const hit = side === 0 ? py + distance * ry : px + distance * rx;
+                rayHits.push({ distance: Math.max(0.001, distance), side, pixels, u: hit - Math.floor(hit) });
+                if (!pixels || pixels.opaque) break;
+            }
+        }
+    }
+
+    function draw({ ctx, width, height, scene, feedback }) {
+        const hit = !feedback.incomingAttack || feedback.playerHit?.sequence > feedback.incomingAttack.sequence
+            ? feedback.playerHit : feedback.incomingAttack;
+        if (hit && hit.sequence !== lastHitSequence) {
+            lastHitSequence = hit.sequence;
+            const offsetX = hit.x - scene.player.x, offsetY = hit.y - scene.player.y;
+            if (Number.isFinite(offsetX) && Number.isFinite(offsetY) && (offsetX !== 0 || offsetY !== 0)) {
+                const target = (Math.round(Math.atan2(offsetX, -offsetY) / (Math.PI / 2)) + 4) % 4;
+                pendingMove = null;
+                const from = cameraAngle();
+                const delta = Math.atan2(Math.sin(target * Math.PI / 2 - from), Math.cos(target * Math.PI / 2 - from));
+                freeAngle = null;
+                heading = target;
+                turn = Math.abs(delta) > 0.000001 ? { from, to: from + delta, started: performance.now() } : null;
+            }
+        }
+        const w = 160;
+        const h = Math.max(64, Math.min(240, Math.round(w * height / width)));
+        if (!canvas) { canvas = document.createElement('canvas'); buffer = canvas.getContext('2d'); }
+        if (!buffer) return;
+        if (!image || image.width !== w || image.height !== h) {
+            canvas.width = w; canvas.height = h;
+            image = buffer.createImageData(w, h);
+            depth = new Float64Array(w * h);
+        }
+        const data = image.data;
+        depth.fill(Infinity);
+        const angle = cameraAngle();
+        const dx = Math.sin(angle), dy = -Math.cos(angle);
+        const planeX = -dy * planeScale, planeY = dx * planeScale;
+        const focal = w / (2 * planeScale);
+        const frameTextures = new WeakMap();
+        const resources = context.getPresentationResources?.();
+        const settings = resources?.data && typeof resources.data === 'object' && !Array.isArray(resources.data) ? resources.data : {};
+        const paletteColor = (index, fallback) => rgb(Number.isInteger(index) && index >= 0 && index < 16 ? resources?.palette?.[index] ?? fallback : fallback);
+        const ceiling = paletteColor(settings.topColor, scene.ceiling), floor = paletteColor(settings.bottomColor, scene.floor), boundary = rgb(scene.boundary);
+        const gradientIntensity = settings.distanceGradient === false ? 0
+            : typeof settings.distanceGradient === 'number' && Number.isFinite(settings.distanceGradient)
+                ? Math.max(0, Math.min(1, settings.distanceGradient)) : 1;
+        function put(x, y, color, shade = 1, visibility = 1) {
+            const offset = (y * w + x) * 4;
+            const blend = y / Math.max(1, h - 1);
+            for (let channel = 0; channel < 3; channel++) {
+                const fog = ceiling[channel] + (floor[channel] - ceiling[channel]) * blend;
+                data[offset + channel] = color[channel] * shade * visibility + fog * (1 - visibility);
+            }
+            data[offset + 3] = 255;
+        }
+        const voidColor = [0, 0, 0];
+        for (let y = 0; y < h; y++) {
+            const below = y + 0.5 - h / 2;
+            const distance = below > 0 ? focal * 0.5 / below : maxDistance + 1;
+            const blend = y / Math.max(1, h - 1);
+            for (let channel = 0; channel < 3; channel++) voidColor[channel] = ceiling[channel] + (floor[channel] - ceiling[channel]) * blend;
+            for (let x = 0; x < w; x++) {
+                if (below <= 0 || distance > maxDistance) { put(x, y, voidColor); continue; }
+                const camera = 2 * (x + 0.5) / w - 1;
+                const fx = scene.player.x + distance * (dx + planeX * camera);
+                const fy = scene.player.y + distance * (dy + planeY * camera);
+                const cell = cellAt(scene, Math.floor(fx), Math.floor(fy));
+                if (!cell) { put(x, y, voidColor); continue; }
+                const color = sample(texture(cell.floor, frameTextures), fx - Math.floor(fx), fy - Math.floor(fy), rgb(cell.color));
+                put(x, y, color, 1, Math.max(0.25, 1 / (1 + distance * gradientIntensity * 1.6)));
+            }
+        }
+        for (let x = 0; x < w; x++) {
+            const camera = 2 * (x + 0.5) / w - 1;
+            cast(scene, dx + planeX * camera, dy + planeY * camera, frameTextures);
+            for (let layer = rayHits.length - 1; layer >= 0; layer--) {
+                const hit = rayHits[layer];
+                const wallHeight = focal / hit.distance;
+                const top = (h - wallHeight) / 2;
+                const visibility = Math.max(0.2, 1 / (1 + hit.distance * gradientIntensity * 1.28));
+                for (let y = Math.max(0, Math.ceil(top)); y < Math.min(h, top + wallHeight); y++) {
+                    const color = sample(hit.pixels, hit.u, (y - top) / wallHeight, hit.pixels ? null : boundary);
+                    if (!color) continue;
+                    put(x, y, color, hit.side ? 0.78 : 1, visibility);
+                    depth[y * w + x] = hit.distance;
+                }
+            }
+        }
+
+        function project(x, y) {
+            const relativeX = x - scene.player.x, relativeY = y - scene.player.y;
+            const z = relativeX * dx + relativeY * dy;
+            if (z <= 0.05 || z > maxDistance) return null;
+            return { z, x: w / 2 + focal * (relativeX * -dy + relativeY * dx) / z, size: focal / z };
+        }
+        const billboards = scene.entities.map(entity => ({ entity, p: project(entity.x, entity.y) }))
+            .filter(entry => entry.p).sort((a, b) => b.p.z - a.p.z);
+        for (const { entity, p } of billboards) {
+            const pixels = texture(entity.pixels, frameTextures);
+            const left = p.x - p.size / 2, top = (h - p.size) / 2;
+            for (let x = Math.max(0, Math.ceil(left)); x < Math.min(w, left + p.size); x++) {
+                for (let y = Math.max(0, Math.ceil(top)); y < Math.min(h, top + p.size); y++) {
+                    const color = sample(pixels, (x - left) / p.size, (y - top) / p.size, null);
+                    if (color && p.z <= depth[y * w + x]) {
+                        put(x, y, entity.flash ? rgb(entity.flash) : color, 1, 1 / (1 + p.z * gradientIntensity * 0.96));
+                        depth[y * w + x] = p.z;
+                    }
+                }
+                const markerY = Math.max(0, Math.ceil(top) - 3);
+                if (entity.warning && p.z <= depth[markerY * w + x]) {
+                    put(x, markerY, rgb('#ffa300')); depth[markerY * w + x] = p.z;
+                }
+                const lifeY = Math.min(h - 1, markerY + 1);
+                if (entity.lives && x - left < Math.min(entity.lives, 8) * p.size / 8 && p.z <= depth[lifeY * w + x]) {
+                    put(x, lifeY, rgb('#ff004d')); depth[lifeY * w + x] = p.z;
+                }
+            }
+        }
+        for (const particle of feedback.particles) {
+            const p = project(particle.x, particle.y);
+            if (!p) continue;
+            const x = Math.round(p.x), y = Math.round(h / 2);
+            if (x >= 0 && x < w && p.z <= depth[y * w + x]) put(x, y, rgb(particle.color), particle.opacity);
+        }
+        buffer.putImageData(image, 0, 0);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(canvas, 0, 0, width, height);
+        ctx.save();
+        if (feedback.playerFlash) { ctx.globalAlpha = 0.25; ctx.fillStyle = feedback.playerFlash; ctx.fillRect(0, 0, width, height); }
+        if (feedback.attacking) {
+            ctx.globalAlpha = 0.85; ctx.fillStyle = '#fff1e8';
+            ctx.fillRect(width * 0.6, height * 0.65, width * 0.04, height * 0.35);
+        }
+        ctx.font = `${Math.max(12, Math.round(width / 25))}px monospace`;
+        ctx.textAlign = 'center';
+        for (const text of feedback.texts) {
+            const own = Math.hypot(text.x - scene.player.x, text.y - scene.player.y) < 1;
+            const p = project(text.x, text.y);
+            const textY = h * (0.4 - (1 - text.opacity) * 0.1);
+            if (!own && (!p || p.x < 0 || p.x >= w || p.z > depth[Math.floor(textY) * w + Math.floor(p.x)])) continue;
+            ctx.globalAlpha = text.opacity; ctx.fillStyle = text.color;
+            ctx.fillText(text.text, own ? width / 2 : p.x * width / w, textY * height / h);
+        }
+        ctx.restore();
+        return turn !== null;
+    }
+
+    context.registerGameplayPresentation({
+        draw,
+        direction(command) {
+            const angle = cameraAngle();
+            if (turn || pendingMove) return null;
+            if (freeAngle !== null) {
+                heading = nearestHeading(freeAngle); freeAngle = null;
+                const delta = Math.atan2(Math.sin(heading * Math.PI / 2 - angle), Math.cos(heading * Math.PI / 2 - angle));
+                if ((command === 'up' || command === 'down') && Math.abs(delta) > 0.000001) {
+                    pendingMove = { command };
+                    turn = { from: angle, to: angle + delta, started: performance.now() };
+                    return null;
+                }
+            }
+            if (command === 'left' || command === 'right') {
+                const sign = command === 'left' ? -1 : 1;
+                const from = heading * Math.PI / 2;
+                turn = { from, to: from + sign * Math.PI / 2, started: performance.now() };
+                heading = (heading + (sign < 0 ? 3 : 1)) % 4;
+                return null;
+            }
+            const sign = command === 'down' ? -1 : 1;
+            return directions[heading].map(value => value === 0 ? 0 : value * sign);
+        },
+        look(deltaRadians) {
+            if (!mouseEnabled()) return false;
+            if (deltaRadians === 0 || !Number.isFinite(deltaRadians)) return true;
+            const from = cameraAngle();
+            if (turn || pendingMove) return true;
+            freeAngle = Math.atan2(Math.sin(from + deltaRadians), Math.cos(from + deltaRadians));
+            return true;
+        },
+        reset() { pendingMove = null; freeAngle = null; heading = 0; initialDirectionPending = true; turn = null; lastHitSequence = null; }
+    });
+    context.onCleanup(() => { pendingMove = null; canvas = null; buffer = null; image = null; depth = new Float64Array(0); textures.clear(); colors.clear(); rayHits.length = 0; });
+}
+</script>
+</html>

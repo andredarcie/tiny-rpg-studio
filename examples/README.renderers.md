@@ -29,6 +29,22 @@ camera change without moving. Arbitrary movement vectors, teleportation, and
 direct state mutation are not supported. The engine retains collision,
 interactions, combat, and the rules for accepting input.
 
+An optional `look(deltaRadians)` handles horizontal mouse movement over the game
+canvas and mobile drags. Clicking the canvas captures the mouse when look is
+enabled; Escape releases it. Captured movement uses relative mouse deltas, so
+rotation continues beyond screen edges. Browsers without pointer lock use mouse
+movement over the canvas. Positive deltas turn right; dragging across the canvas
+width sends PI radians. Return `true` when look support is enabled, or `false`
+to keep normal touch swipe movement. A zero delta queries support and must not
+change the camera. The engine suppresses rotation while movement controls are
+held or gameplay input is blocked, and redraws after accepted look input. Keep
+free camera angles inside the plugin and snap them in `direction()` before
+returning a cardinal movement delta. To finish a turn before a requested step,
+return `null` while animating and call `context.requestGameplayDirection(input)`
+after the last frame. The engine checks normal movement rules again. Cancel any
+pending request on reset, cleanup, or an interrupted turn, and dispatch it after
+`draw()` returns to avoid drawing recursively.
+
 `reset()` resets presentation state such as camera heading and interpolation.
 It runs before registration, on game resets/project imports, and on unregister.
 It must tolerate repeated calls. Use `context.onCleanup(callback)` to dispose

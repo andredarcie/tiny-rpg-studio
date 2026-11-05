@@ -1,25 +1,47 @@
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { PluginManager, parsePluginHtml } from '../../editor/manager/PluginManager';
 import { StateWorldManager } from '../../runtime/domain/state/StateWorldManager';
 import { StateDataManager } from '../../runtime/domain/state/StateDataManager';
 import type { GameDefinition } from '../../types/gameState';
 import { ShareUtils } from '../../runtime/infra/share/ShareUtils';
-import rendererSource from '../../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
+import rendererSource from '../../../public/plugins/3d-renderer/1.1.0/plugin.html?raw';
+import { assembleExportHtml } from '../../editor/modules/export/ExportHtmlAssembler';
+import type { GameplayPresentation } from '../../runtime/adapters/renderer/GameplayPresentation';
+import type { GameplayContext } from '../../runtime/infra/GameplayPluginHost';
 import { applyInstalled3dRenderer } from '../../editor/manager/applyInstalled3dRenderer';
 
 beforeEach(() => localStorage.clear());
 
-it('persists renderer dependencies with the complete gameplay package and keeps URL sharing disabled', () => {
+it('persists renderer dependencies with the complete gameplay package and keeps URL sharing disabled', async () => {
   const manager = new PluginManager();
   const renderer = parsePluginHtml(rendererSource);
   manager.install(renderer);
-  const project = applyInstalled3dRenderer({ title: '3D project', pluginData: { '3d-renderer': { topColor: 0, bottomColor: 12 } } }, manager.installed);
+  const project = applyInstalled3dRenderer({ title: '3D project', pluginData: { '3d-renderer': { topColor: 0, bottomColor: 12, mouseSupport: true } } }, manager.installed);
   const snapshot = ShareUtils.buildStoredProject(project);
   expect(ShareUtils.readStoredProject(snapshot)).toEqual(project);
   expect(ShareUtils.buildShareUrl(project)).toBe('');
   const reloaded = new PluginManager();
-  expect(applyInstalled3dRenderer({ title: 'New project' }, reloaded.installed)).toMatchObject({ gameplayPlugins: [{ id: '3d-renderer', version: '1.0.0' }] });
+  expect(applyInstalled3dRenderer({ title: 'New project' }, reloaded.installed)).toMatchObject({ gameplayPlugins: [{ id: '3d-renderer', version: renderer.version }] });
   expect(reloaded.installed[0].payload?.gameplayJavascript).toBe(renderer.payload?.gameplayJavascript);
+  const { html } = assembleExportHtml({ css: '', editableInStudio: false, fontDataUrl: '', gameCode: '', gameMarkup: '',
+    locale: 'en', openStudioLabel: '', runtimeJavaScript: '', title: '3D project', bundledProject: { game: project, plugins: reloaded.installed } });
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const exported = JSON.parse(doc.getElementById('tiny-rpg-project')?.textContent ?? '{}') as {
+    game: typeof project; plugins: typeof reloaded.installed;
+  };
+  expect(exported.game.pluginData['3d-renderer'].mouseSupport).toBe(true);
+  let presentation!: GameplayPresentation;
+  const javascript = exported.plugins[0].payload?.gameplayJavascript ?? '';
+  const factory = new Function(javascript.replace('export function activate', 'function activate') + ';return activate;') as () => (context: Partial<GameplayContext>) => void;
+  const activate = factory();
+  const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+  const request = vi.fn((command: Parameters<GameplayPresentation['direction']>[0]) => presentation.direction(command));
+  activate({ requestGameplayDirection: request, getPresentationResources: () => ({ palette: [], data: exported.game.pluginData['3d-renderer'] }),
+    registerGameplayPresentation: provider => { presentation = provider; return () => {}; }, onCleanup: () => {} });
+  expect(presentation.look?.(Math.PI / 3)).toBe(true);
+  expect(presentation.direction('up')).toBeNull();
+  clock.mockReturnValue(300); presentation.direction('up'); await Promise.resolve();
+  expect(request).toHaveLastReturnedWith([1, 0]); clock.mockRestore();
   reloaded.remove(renderer.id);
   expect(applyInstalled3dRenderer({ title: '2D project' }, reloaded.installed)).not.toHaveProperty('gameplayPlugins');
 });

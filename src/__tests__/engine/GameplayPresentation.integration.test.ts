@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { GameEngine } from '../../runtime/services/GameEngine';
 import { GameplayPluginHost, type GameplayContext } from '../../runtime/infra/GameplayPluginHost';
 import { parsePluginHtml } from '../../editor/manager/PluginManager';
-import source from '../../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
+import source from '../../../public/plugins/3d-renderer/1.1.0/plugin.html?raw';
 
 let engine: GameEngine;
 beforeEach(() => {
@@ -19,13 +19,13 @@ beforeEach(() => {
 });
 afterEach(() => { engine.destroy(); vi.clearAllTimers(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
-const activate = async () => {
+const activate = async (isCurrent: () => boolean = () => true) => {
     const plugin = parsePluginHtml(source);
     const host = new GameplayPluginHost(engine, () => [plugin], javascript => {
         const factory = new Function(javascript.replace('export function activate', 'function activate') + ';return {activate};') as () => { activate(context: GameplayContext): void };
         return Promise.resolve(factory());
     });
-    await host.load({ ...engine.exportGameData() as GameDefinition, gameplayPlugins: [{ id: plugin.id, version: plugin.version }] });
+    await host.load({ ...engine.exportGameData() as GameDefinition, gameplayPlugins: [{ id: plugin.id, version: plugin.version }] }, undefined, true, isCurrent);
     engine.dismissIntroScreen(); vi.advanceTimersByTime(25);
     return host;
 };
@@ -332,3 +332,93 @@ it('resolves rectangular worlds, custom sprites, palette edits and remote player
     expect(engine.getGameplayScene().entities.find(entity => entity.id === 'guide')?.pixels[0][0]).toBe('#123456');
 });
 
+
+
+it('animates free look before movement and blocks looking while movement is held, stunned, or transitioning', async () => {
+    const host = await activate(); engine.enemyManager.stop();
+    engine.gameState.game.pluginData = { '3d-renderer': { mouseSupport: true } };
+    const provider = engine.renderer.gameplayPresentation;
+    if (!provider?.look) throw Error('Missing free look');
+    const look = vi.spyOn(provider, 'look');
+    expect(engine.handleGameplayLook(Math.PI / 3)).toBe(true);
+    engine.handleGameplayDirection('up');
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 3, y: 3 });
+    vi.advanceTimersByTime(300); provider.direction('up'); await Promise.resolve();
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 4, y: 3 });
+    engine.handleGameplayDirection('down');
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 3, y: 3 });
+    const previousMode = document.body.className;
+    document.body.className = 'game-mode';
+    try {
+        engine.inputManager.beginHeldDirection('test', 'up');
+        expect(engine.inputManager.isMovementHeld()).toBe(true);
+        engine.handleGameplayLook(Math.PI / 2); expect(look).toHaveBeenLastCalledWith(0);
+        engine.inputManager.endHeldDirection('test');
+        engine.handleGameplayLook(-0.1); expect(look).toHaveBeenLastCalledWith(-0.1);
+        engine.movementManager.transitioning = true;
+        engine.handleGameplayLook(Math.PI); expect(look).toHaveBeenLastCalledWith(0);
+        engine.movementManager.transitioning = false;
+        vi.spyOn(engine.combatStunManager, 'isStunned').mockReturnValue(true);
+        engine.handleGameplayLook(Math.PI); expect(look).toHaveBeenLastCalledWith(0);
+        vi.mocked(engine.combatStunManager.isStunned).mockReturnValue(false);
+        const dialog = engine.gameState.getDialog();
+        vi.spyOn(engine.gameState, 'getDialog').mockReturnValue({ ...dialog, active: true });
+        engine.handleGameplayLook(Math.PI); expect(look).toHaveBeenLastCalledWith(0);
+        vi.mocked(engine.gameState.getDialog).mockRestore();
+        vi.spyOn(engine, 'isEditorModeActive').mockReturnValue(true);
+        look.mockClear(); expect(engine.handleGameplayLook(Math.PI)).toBe(false); expect(look).not.toHaveBeenCalled();
+        vi.mocked(engine.isEditorModeActive).mockRestore();
+        expect(engine.handleGameplayLook(Number.NaN)).toBe(false);
+        host.remove('3d-renderer');
+        expect(engine.handleGameplayLook(Math.PI)).toBe(false);
+        expect(engine.inputManager.isMovementHeld()).toBe(false);
+    } finally { document.body.className = previousMode; }
+});
+
+
+it.each(['up', 'down'] as const)('finishes a free-look alignment animation before a single %s step', async command => {
+    await activate(); engine.enemyManager.stop();
+    engine.gameState.game.pluginData = { '3d-renderer': { mouseSupport: true } };
+    const ctx = engine.renderer.ctx; if (!ctx) throw Error('Missing context');
+    Object.assign(ctx, { clip: vi.fn() });
+    vi.mocked(engine.renderer.draw).mockRestore();
+    engine.handleGameplayLook(Math.PI / 3);
+    engine.handleGameplayDirection(command);
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 3, y: 3 });
+    await vi.advanceTimersByTimeAsync(150);
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 3, y: 3 });
+    await vi.advanceTimersByTimeAsync(182);
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: command === 'up' ? 4 : 2, y: 3 });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: command === 'up' ? 4 : 2, y: 3 });
+});
+
+
+it.each(['wall', 'stun', 'reset', 'remove'] as const)('rechecks movement and cancels pending alignment steps on %s', async interruption => {
+    const host = await activate(); engine.enemyManager.stop();
+    engine.gameState.game.pluginData = { '3d-renderer': { mouseSupport: true } };
+    const ctx = engine.renderer.ctx; if (!ctx) throw Error('Missing context');
+    Object.assign(ctx, { clip: vi.fn() }); vi.mocked(engine.renderer.draw).mockRestore();
+    engine.handleGameplayLook(Math.PI / 3); engine.handleGameplayDirection('up');
+    await vi.advanceTimersByTimeAsync(100);
+    if (interruption === 'wall') engine.gameState.game.rooms[0].walls[3][4] = true;
+    if (interruption === 'stun') vi.spyOn(engine.combatStunManager, 'isStunned').mockReturnValue(true);
+    if (interruption === 'reset') engine.resetGame();
+    if (interruption === 'remove') host.remove('3d-renderer');
+    await vi.advanceTimersByTimeAsync(400);
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 3, y: 3 });
+});
+
+
+it('completes animated movement after the editor loading transaction has expired', async () => {
+    let current = true;
+    await activate(() => current); engine.enemyManager.stop();
+    current = false;
+    engine.gameState.game.pluginData = { '3d-renderer': { mouseSupport: true } };
+    const ctx = engine.renderer.ctx; if (!ctx) throw Error('Missing context');
+    Object.assign(ctx, { clip: vi.fn() }); vi.mocked(engine.renderer.draw).mockRestore();
+    engine.handleGameplayLook(Math.PI / 3); engine.handleGameplayDirection('up');
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 3, y: 3 });
+    await vi.advanceTimersByTimeAsync(332);
+    expect(engine.gameState.getPlayer()).toMatchObject({ x: 4, y: 3 });
+});

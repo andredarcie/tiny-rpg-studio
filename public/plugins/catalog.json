@@ -5,10 +5,10 @@
       "id": "3d-renderer",
       "title": "3D Renderer",
       "shortDescription": "Explore your pixel-art world in first person.",
-      "fullDescription": "Play existing maps through a textured first-person raycaster. Left and Right animate a 90-degree turn, Up walks forward, and Down walks backward. Movement waits until the turn finishes so the camera and interactions stay aligned. Keyboard, WASD, D-pad and swipe controls work with the existing dialogs, combat and HUD. Installation enables 3D for your projects; removal restores top-down play. Choose top and bottom void colors from the project palette in Project > Plugins > 3D Renderer. Settings travel with projects and standalone offline HTML.",
-      "version": "1.0.0",
+      "fullDescription": "Play existing maps through a textured first-person raycaster. Left and Right animate a 90-degree turn, Up walks forward, and Down walks backward. Movement waits until the turn finishes so the camera and interactions stay aligned. Keyboard, WASD, D-pad and swipe controls work with the existing dialogs, combat and HUD. Installation enables 3D for your projects; removal restores top-down play. Choose top and bottom void colors from the project palette in Project > Plugins > 3D Renderer. Set Distance gradient from 0 (off) to 1 (full reach). Enable Mouse Support to look around with the mouse or a mobile drag while standing still; walking smoothly turns the view to the nearest compass direction before moving. Click the game to capture the mouse; press Escape to release it. Settings travel with projects and standalone offline HTML.",
+      "version": "1.1.0",
       "capabilities": ["editor", "gameplay"],
-      "file": "3d-renderer/1.0.0/plugin.html"
+      "file": "3d-renderer/1.1.0/plugin.html"
     },
     {
       "id": "fonts-plus",

@@ -23,12 +23,6 @@ export type DevlogEntry = {
 
 export const DEVLOG_ENTRIES: DevlogEntry[] = [
   {
-    id: '2026-11-04-renderer-plugin-scene-data',
-    date: '2026-11-04',
-    title: 'Build more kinds of renderer plugins',
-    description: 'Custom renderer plugins can now read original tile layers, artwork and animation frames, visual effects, room bounds, player artwork, entity types and stable runtime identities. Frame timing and a new developer guide help plugin authors create their own visual styles while the engine keeps handling game rules and restores default rendering when a plugin is removed.',
-  },
-  {
     id: '2026-11-04-3d-renderer',
     date: '2026-11-04',
     title: 'Explore your worlds in first person',

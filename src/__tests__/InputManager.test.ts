@@ -3,6 +3,7 @@ import { GameConfig } from '../config/GameConfig';
 import { InputManager } from '../runtime/adapters/InputManager';
 
 type GameEngineStub = {
+  handleGameplayLook?: (deltaRadians: number) => boolean;
   handleGameplayDirection?: (direction: 'left' | 'right' | 'up' | 'down') => boolean;
   gameState: {
     playing?: boolean;
@@ -746,5 +747,181 @@ describe('InputManager', () => {
       expect(engine.advanceDialog).not.toHaveBeenCalled();
       expect(setDialogPage).not.toHaveBeenCalled();
     });
+  });
+});
+
+
+describe('presentation mouse and mobile look', () => {
+  beforeEach(() => { document.body.className = 'game-mode'; });
+  afterEach(() => { document.body.innerHTML = ''; document.body.className = ''; vi.restoreAllMocks(); });
+
+  it('routes mouse movement only from the game canvas, resets on exit and blur, and removes listeners', () => {
+    const look = vi.fn(() => true);
+    const engine = createEngine({ handleGameplayLook: look });
+    const canvas = engine.canvas; if (!canvas) throw Error('Missing canvas');
+    canvas.width = 400; document.body.append(canvas);
+    const input = new InputManager(engine);
+    const move = (x: number, target: HTMLElement = canvas) => target.dispatchEvent(new MouseEvent('mousemove', { clientX: x, bubbles: true }));
+    try {
+      move(100); move(200);
+      expect(look).toHaveBeenLastCalledWith(Math.PI / 4);
+      look.mockClear(); move(250, document.body); expect(look).not.toHaveBeenCalled();
+      move(300); expect(look).toHaveBeenLastCalledWith(0);
+      canvas.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+      move(200); expect(look).toHaveBeenLastCalledWith(0);
+      globalThis.dispatchEvent(new Event('blur')); move(100); expect(look).toHaveBeenLastCalledWith(0);
+      engine.gameState.getDialog = () => ({ active: true, page: 1, maxPages: 1 });
+      look.mockClear(); move(150); expect(look).not.toHaveBeenCalled();
+      input.destroy(); move(250); expect(look).not.toHaveBeenCalled();
+      expect(engine.tryMove).not.toHaveBeenCalled();
+    } finally { input.destroy(); }
+  });
+
+  it('uses incremental mobile drag for look without starting swipe movement or rotating on touch release', () => {
+    const look = vi.fn(() => true);
+    const engine = createEngine({ handleGameplayLook: look });
+    if (!engine.canvas) throw Error('Missing canvas');
+    engine.canvas.width = 400;
+    const input = new InputManager(engine);
+    const touch = (x: number, identifier = 1) => createTouchEvent(x, 100, { target: engine.canvas, identifier });
+    try {
+      const start = touch(100); input.handleTouchStart(start);
+      expect(start.preventDefault).toHaveBeenCalled(); expect(look).toHaveBeenLastCalledWith(0);
+      input.handleTouchMove(touch(200)); expect(look).toHaveBeenLastCalledWith(Math.PI / 4);
+      input.handleTouchMove(touch(250)); expect(look).toHaveBeenLastCalledWith(Math.PI / 8);
+      look.mockClear(); input.handleTouchMove(touch(350, 2)); expect(look).not.toHaveBeenCalled();
+      input.handleTouchEnd(touch(300)); expect(look).not.toHaveBeenCalled();
+      expect(engine.tryMove).not.toHaveBeenCalled(); expect(input.isMovementHeld()).toBe(false);
+      input.handleTouchStart(touch(50)); input.handleTouchCancel(touch(50));
+      look.mockClear(); input.handleTouchMove(touch(200)); expect(look).not.toHaveBeenCalled();
+    } finally { input.destroy(); }
+  });
+});
+
+
+describe('canvas mouse capture', () => {
+  beforeEach(() => { document.body.className = 'game-mode'; });
+  afterEach(() => { document.body.innerHTML = ''; document.body.className = ''; vi.restoreAllMocks(); });
+
+  const setupCapture = () => {
+    const look = vi.fn<(deltaRadians: number) => boolean>(() => true);
+    const engine = createEngine({ handleGameplayLook: look });
+    const canvas = engine.canvas; if (!canvas) throw Error('Missing canvas');
+    canvas.width = 400; document.body.append(canvas);
+    let captured: Element | null = null;
+    const descriptor = Object.getOwnPropertyDescriptor(document, 'pointerLockElement');
+    Object.defineProperty(document, 'pointerLockElement', { configurable: true, get: () => captured });
+    const setCapture = (element: Element | null) => {
+      captured = element; document.dispatchEvent(new Event('pointerlockchange'));
+    };
+    const exitDescriptor = Object.getOwnPropertyDescriptor(document, 'exitPointerLock');
+    const release = vi.fn(() => setCapture(null));
+    Object.defineProperty(document, 'exitPointerLock', { configurable: true, value: release });
+    const request = vi.fn(() => { setCapture(canvas); return Promise.resolve(); });
+    Object.defineProperty(canvas, 'requestPointerLock', { configurable: true, value: request });
+    const input = new InputManager(engine);
+    const move = (dx: number) => {
+      const event = new MouseEvent('mousemove', { clientX: 100, bubbles: true });
+      Object.defineProperty(event, 'movementX', { value: dx }); canvas.dispatchEvent(event);
+    };
+    const cleanup = () => {
+      input.destroy();
+      if (descriptor) Object.defineProperty(document, 'pointerLockElement', descriptor);
+      else Reflect.deleteProperty(document, 'pointerLockElement');
+      if (exitDescriptor) Object.defineProperty(document, 'exitPointerLock', exitDescriptor);
+      else Reflect.deleteProperty(document, 'exitPointerLock');
+    };
+    return { engine, input, canvas, look, request, release, move, setCapture, cleanup };
+  };
+
+  it('captures on click and rotates using relative motion beyond the canvas until Escape releases it', async () => {
+    const view = setupCapture();
+    try {
+      view.move(200); expect(view.look).not.toHaveBeenCalled();
+      view.canvas.click(); await Promise.resolve();
+      expect(view.request).toHaveBeenCalledOnce(); expect(document.pointerLockElement).toBe(view.canvas);
+      view.move(800); expect(view.look).toHaveBeenLastCalledWith(2 * Math.PI);
+      view.move(0); expect(view.look).toHaveBeenLastCalledWith(0);
+      view.move(-200); expect(view.look).toHaveBeenLastCalledWith(-Math.PI / 2);
+      view.setCapture(null); view.look.mockClear();
+      view.move(200); expect(view.look).not.toHaveBeenCalled();
+      view.canvas.click(); await Promise.resolve(); expect(view.request).toHaveBeenCalledTimes(2);
+      globalThis.dispatchEvent(new Event('blur')); expect(document.pointerLockElement).toBeNull();
+    } finally { view.cleanup(); }
+  });
+
+  it('does not capture while disabled or blocked, releases on disabling and cleanup, and leaves other canvases alone', async () => {
+    const view = setupCapture();
+    try {
+      view.look.mockReturnValue(false); view.canvas.click(); expect(view.request).not.toHaveBeenCalled();
+      view.look.mockReturnValue(true);
+      const dialog = view.engine.gameState.getDialog;
+      view.engine.gameState.getDialog = () => ({ active: true, page: 1, maxPages: 1 });
+      view.canvas.click(); expect(view.request).not.toHaveBeenCalled();
+      view.engine.gameState.getDialog = dialog;
+      view.canvas.click(); await Promise.resolve();
+      view.look.mockReturnValue(false); view.move(20); expect(document.pointerLockElement).toBeNull();
+      view.look.mockReturnValue(true); view.canvas.click(); await Promise.resolve();
+      view.input.destroy(); expect(document.pointerLockElement).toBeNull();
+      view.release.mockClear(); view.setCapture(document.createElement('canvas'));
+      view.input.cancelHeldMovement(); expect(view.release).not.toHaveBeenCalled();
+      view.request.mockClear(); view.canvas.click(); expect(view.request).not.toHaveBeenCalled();
+    } finally { view.cleanup(); }
+  });
+
+  it('keeps capture through a paused dialog, stops held movement, and resumes looking after closing it', async () => {
+    const view = setupCapture();
+    try {
+      view.canvas.click(); await Promise.resolve();
+      view.input.beginHeldDirection('test', 'up');
+      view.engine.gameState.playing = false;
+      let active = true;
+      view.engine.gameState.getDialog = () => ({ active, page: 1, maxPages: 1 });
+      view.look.mockClear(); view.engine.tryMove = vi.fn();
+      view.move(100);
+      expect(view.look.mock.calls.every(([delta]) => delta === 0)).toBe(true);
+      expect(document.pointerLockElement).toBe(view.canvas);
+      view.input.beginHeldDirection('test', 'up');
+      expect(view.input.isMovementHeld()).toBe(false);
+      expect(view.engine.tryMove).not.toHaveBeenCalled();
+      view.input.handleKeyDown(createKeyEvent('Enter', view.canvas));
+      expect(view.engine.advanceDialog).toHaveBeenCalledOnce();
+      expect(document.pointerLockElement).toBe(view.canvas);
+      view.canvas.click(); expect(view.engine.advanceDialog).toHaveBeenCalledTimes(2);
+      expect(document.pointerLockElement).toBe(view.canvas); expect(view.release).not.toHaveBeenCalled();
+      active = false; view.engine.gameState.playing = true;
+      view.move(100); expect(view.look).toHaveBeenLastCalledWith(Math.PI / 4);
+      expect(view.request).toHaveBeenCalledOnce();
+    } finally { view.cleanup(); }
+  });
+
+  it('still releases capture on blur, editor entry, or removal during a dialog', async () => {
+    for (const action of ['blur', 'editor', 'remove'] as const) {
+      const view = setupCapture();
+      try {
+        view.canvas.click(); await Promise.resolve();
+        view.engine.gameState.playing = false;
+        view.engine.gameState.getDialog = () => ({ active: true, page: 1, maxPages: 1 });
+        if (action === 'blur') globalThis.dispatchEvent(new Event('blur'));
+        if (action === 'editor') document.dispatchEvent(new Event('editor-tab-activated'));
+        if (action === 'remove') view.input.cancelHeldMovement();
+        expect(document.pointerLockElement).toBeNull();
+      } finally { view.cleanup(); }
+    }
+  });
+
+  it('handles rejected or synchronous lock failures and releases a lock granted after destruction', async () => {
+    const view = setupCapture();
+    try {
+      view.request.mockRejectedValueOnce(Error('Lock denied'));
+      view.canvas.click(); await Promise.resolve(); await Promise.resolve();
+      expect(document.pointerLockElement).toBeNull();
+      view.request.mockImplementationOnce(() => { throw Error('Not supported'); });
+      expect(() => view.canvas.click()).not.toThrow();
+      let grant!: () => void;
+      view.request.mockImplementationOnce(() => new Promise<void>(resolve => { grant = resolve; }));
+      view.canvas.click(); view.input.destroy(); view.setCapture(view.canvas); grant();
+      await Promise.resolve(); expect(document.pointerLockElement).toBeNull();
+    } finally { view.cleanup(); }
   });
 });

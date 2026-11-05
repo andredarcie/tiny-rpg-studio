@@ -540,6 +540,16 @@ export class GameEngine {
     return true;
   }
 
+  handleGameplayLook(deltaRadians: number): boolean {
+    const presentation = this.renderer.gameplayPresentation;
+    if (!presentation?.look || this.isEditorModeActive() || !Number.isFinite(deltaRadians)) return false;
+    if (this.inputManager.isMovementHeld() || !this.movementManager.canAcceptPresentationCommand()
+      || this.isIntroVisible() || this.renderer.isRoomTransitionActive()) return presentation.look(0);
+    const handled = presentation.look(deltaRadians);
+    if (handled && deltaRadians !== 0) this.draw();
+    return handled;
+  }
+
   validateHudPresentation(data: unknown): void {
     this.renderer.resolveHudPresentation(data as Partial<GameDefinition>);
   }

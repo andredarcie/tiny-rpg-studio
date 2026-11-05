@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import source from '../../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
+import source from '../../../public/plugins/3d-renderer/1.1.0/plugin.html?raw';
 import { parsePluginHtml } from '../../editor/manager/PluginManager';
 import { applyInstalled3dRenderer } from '../../editor/manager/applyInstalled3dRenderer';
 import type { GameplayContext } from '../../runtime/infra/GameplayPluginHost';
@@ -11,8 +11,9 @@ const load = (getPresentationResources?: GameplayContext['getPresentationResourc
     const plugin = parsePluginHtml(source);
     const factory = new Function((plugin.payload?.gameplayJavascript ?? '').replace('export function activate', 'function activate') + ';return activate;') as () => (context: Partial<GameplayContext>) => void;
     let presentation!: GameplayPresentation;
-    factory()({ registerGameplayPresentation: provider => { presentation = provider; return () => {}; }, onCleanup: () => {}, requestRedraw: vi.fn(), getPresentationResources });
-    return { plugin, presentation };
+    const requests = vi.fn((command: Parameters<GameplayPresentation['direction']>[0]) => presentation.direction(command));
+    factory()({ requestGameplayDirection: requests, registerGameplayPresentation: provider => { presentation = provider; return () => {}; }, onCleanup: () => {}, requestRedraw: vi.fn(), getPresentationResources });
+    return { plugin, presentation, requests };
 };
 
 it('attaches only the installed renderer, preserves authored data and synchronizes replacements', () => {
@@ -116,14 +117,14 @@ const render = (getPresentationResources?: GameplayContext['getPresentationResou
     let needsFrame: boolean | void;
     const buffer = { createImageData: (w: number, h: number) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }), putImageData: (image: ImageData) => { data = image; } };
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(buffer as unknown as CanvasRenderingContext2D);
-    const { presentation } = load(getPresentationResources);
+    const { presentation, requests } = load(getPresentationResources);
     const ctx = { drawImage: vi.fn(), save: vi.fn(), restore: vi.fn(), fillRect: vi.fn(), fillText: vi.fn() } as unknown as CanvasRenderingContext2D;
     const draw = (world: GameplayScene, playerHit?: GameplayFeedback['playerHit']) => {
         needsFrame = presentation.draw({ ctx, width: 320, height: 320, scene: world, feedback: { playerHit, playerFlash: null, attacking: false, texts: [], particles: [] } });
         return data;
     };
     const at = (x: number, y: number) => Array.from(data.data.slice((y * data.width + x) * 4, (y * data.width + x) * 4 + 3));
-    return { draw, at, presentation, get needsFrame() { return needsFrame; } };
+    return { draw, at, presentation, requests, get needsFrame() { return needsFrame; } };
 };
 
 it.each([
@@ -199,9 +200,9 @@ it.each([
     expect(at(80, 79)[1]).toBeGreaterThan(0); expect(at(80, 79)[1]).toBeLessThan(255);
 });
 
-it.each(['wall', 'sprite', 'floor'] as const)('fades distant %s pixels subtly toward the live void gradient', surface => {
+it.each(['wall', 'sprite', 'floor'] as const)('fades distant %s pixels toward the live void gradient', surface => {
     const palette = Array<string>(16).fill('#000000');
-    const data = { topColor: 8, bottomColor: 12, distanceGradient: true };
+    const data = { topColor: 8, bottomColor: 12, distanceGradient: true as boolean | number };
     const { draw, at } = render(() => ({ palette, data }));
     const base = scene();
     const world = { ...base, cells: base.cells.map(cell => ({ ...cell, solid: surface === 'wall' && cell.solid,
@@ -218,7 +219,7 @@ it.each(['wall', 'sprite', 'floor'] as const)('fades distant %s pixels subtly to
     draw({ ...world, player: { x: 3.5, y: 2.5 } });
     const lightNear = at(80, surface === 'floor' ? 159 : 80)[0];
     expect(lightFar).toBeGreaterThan(lightNear); expect(lightNear).toBeGreaterThan(unshaded);
-    expect(lightFar).toBeLessThan(unshaded + 42); expect(darkFar).toBeGreaterThan(unshaded - 42);
+
     palette[12] = '#000000'; draw(world);
     const blended = at(80, farY)[0];
     expect(blended).toBeGreaterThan(darkFar); expect(blended).toBeLessThan(lightFar);
@@ -229,8 +230,42 @@ it.each(['wall', 'sprite', 'floor'] as const)('fades distant %s pixels subtly to
     expect(at(80, 0)).toEqual(sky);
     draw({ ...world, player: { x: 3.5, y: 2.5 } });
     expect(at(80, surface === 'floor' ? 159 : 80)).toEqual([unshaded, unshaded, unshaded]);
+    palette[12] = '#ffffff';
+    data.distanceGradient = 1; draw(world);
+    const fullIntensity = at(80, farY)[0];
+    data.distanceGradient = 0; draw(world);
+    expect(at(80, farY)).toEqual([unshaded, unshaded, unshaded]);
+    data.distanceGradient = 0.25; draw(world);
+    const lowIntensity = at(80, farY)[0];
+    data.distanceGradient = 0.75; draw(world);
+    const highIntensity = at(80, farY)[0];
+    expect(lowIntensity).toBeGreaterThan(unshaded);
+    expect(highIntensity).toBeGreaterThan(lowIntensity);
+    expect(highIntensity).toBeLessThan(fullIntensity);
+    expect(fullIntensity - unshaded).toBeGreaterThan((lowIntensity - unshaded) * 1.5);
+    data.distanceGradient = 1; draw(world);
+    expect(at(80, farY)[0]).toBe(fullIntensity);
+    expect(at(80, 0)).toEqual(sky);
+    palette[12] = '#000000';
     data.distanceGradient = true; draw(world);
     expect(at(80, farY)[0]).toBe(blended);
+});
+
+it('makes distant entities almost invisible at full gradient reach while zero keeps their color', () => {
+    const data = { distanceGradient: 1 };
+    const { draw, at } = render(() => ({ palette: [], data }));
+    const base = scene();
+    const world = { ...base, height: 24, ceiling: '#000000', floor: '#000000', player: { x: 3.5, y: 20.5 },
+        cells: Array.from({ length: 8 * 24 }, () => ({ ...base.cells[0], solid: false, color: '#000000' })),
+        entities: [{ id: 'distant-npc', x: 3.5, y: 0.5, pixels: [['#ffffff']] }] };
+    draw(world);
+    const faded = at(80, 80)[0];
+    expect(faded).toBeGreaterThan(0);
+    expect(faded).toBeLessThan(16);
+    data.distanceGradient = 0.5; draw(world);
+    expect(at(80, 80)[0]).toBeGreaterThan(faded);
+    data.distanceGradient = 0; draw(world);
+    expect(at(80, 80)).toEqual([255, 255, 255]);
 });
 
 it('projects axis-aligned walls without fish-eye, samples textures and bounds rays', () => {
@@ -239,7 +274,7 @@ it('projects axis-aligned walls without fish-eye, samples textures and bounds ra
     const middle = Math.floor(image.width / 2);
     const rows = (x: number) => Array.from({ length: image.height }, (_, y) => at(x, y)).filter(([r, g, b]) => r > g && r > b).length;
     expect(rows(8)).toBe(rows(middle));
-    expect(at(middle, Math.floor(image.height / 2))[0]).toBeGreaterThan(100);
+    expect(at(middle, Math.floor(image.height / 2))[0]).toBeGreaterThan(45);
     presentation.direction('right');
     const boundaryImage = draw({ ...scene(), cells: scene().cells.map(cell => ({ ...cell, solid: false })) });
     expect(Array.from(boundaryImage.data).every(Number.isFinite)).toBe(true);
@@ -299,10 +334,10 @@ it('preserves floor visibility through several transparent walls, actual black p
         wall: Math.floor(index / 8) === 1 ? [['#0000ff']] : [[null]], floor: [['#00ff00']],
     }));
     draw({ ...world, cells });
-    expect(at(80, 80)[2]).toBeGreaterThan(100);
+    expect(at(80, 80)[2]).toBeGreaterThan(45);
     expect(at(80, 150)[1]).toBeGreaterThan(at(80, 150)[0]);
     for (let x = 0; x < 8; x++) cells[3 * 8 + x].wall = [['#000000']];
-    draw({ ...world, cells }); expect(at(80, 80)).toEqual([0, 0, 0]);
+    draw({ ...world, cells }); expect(at(80, 80)).toEqual([3, 3, 3]);
     draw({ ...world, cells: cells.map(cell => ({ ...cell, wall: null })) });
     const fallback = at(80, 80);
     expect(fallback[0]).toBeGreaterThan(0); expect(fallback[0]).toBe(fallback[1]); expect(fallback[1]).toBe(fallback[2]);
@@ -319,8 +354,8 @@ it('bounds near-wall and corner rays and refreshes animated textures and floor c
         cells: world.cells.map((cell, index) => ({ ...cell, solid: index === 4 * 8 + 2, wall: [['#00ff00']] })) };
     draw(corner); expect(at(0, 80)[1]).toBeGreaterThan(at(0, 80)[0]);
     const blue = { ...world, cells: world.cells.map(cell => ({ ...cell, wall: [['#0000ff']], floor: [['#00ff00']] })) };
-    draw(blue); expect(at(80, 80)[2]).toBeGreaterThan(100); expect(at(80, 159)[1]).toBeGreaterThan(at(80, 159)[0]);
-    draw(world); expect(at(80, 80)[0]).toBeGreaterThan(100); expect(at(80, 80)[2]).toBeLessThan(5);
+    draw(blue); expect(at(80, 80)[2]).toBeGreaterThan(45); expect(at(80, 159)[1]).toBeGreaterThan(at(80, 159)[0]);
+    draw(world); expect(at(80, 80)[0]).toBeGreaterThan(45); expect(at(80, 80)[2]).toBeLessThanOrEqual(7);
 });
 
 it('reuses a bounded low-resolution buffer for dense scenes', () => {
@@ -329,4 +364,94 @@ it('reuses a bounded low-resolution buffer for dense scenes', () => {
     const first = draw(dense); const second = draw(dense);
     expect(second).toBe(first); expect(second.width).toBe(160);
     expect(second.data.length).toBeLessThanOrEqual(160 * 240 * 4);
+});
+
+
+it.each([
+    { angle: 0.6, expected: [0, -1] }, { angle: 1.1, expected: [1, 0] },
+    { angle: 2.8, expected: [0, 1] }, { angle: -1.1, expected: [-1, 0] },
+    { angle: -3.0, expected: [0, 1] }, { angle: -6.1, expected: [0, -1] },
+])('animates angle $angle to the closest heading before forward and backward movement', async ({ angle, expected }) => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const view = render(() => ({ palette: [], data: { mouseSupport: true } }));
+    const initial = Array.from(view.draw(scene()).data);
+    expect(view.presentation.look?.(angle)).toBe(true);
+    const looking = Array.from(view.draw(scene()).data);
+    expect(looking).not.toEqual(initial);
+    expect(view.needsFrame).toBe(false);
+    expect(view.presentation.direction('up')).toBeNull();
+    expect(Array.from(view.draw(scene()).data)).toEqual(looking);
+    expect(view.requests).not.toHaveBeenCalled();
+    clock.mockReturnValue(150);
+    const midway = Array.from(view.draw(scene()).data);
+    expect(midway).not.toEqual(looking); expect(view.needsFrame).toBe(true);
+    clock.mockReturnValue(300);
+    const aligned = Array.from(view.draw(scene()).data);
+    expect(aligned).not.toEqual(midway);
+    await Promise.resolve();
+    expect(view.requests).toHaveBeenCalledOnce();
+    expect(view.requests).toHaveBeenLastCalledWith('up');
+    expect(view.requests).toHaveLastReturnedWith(expected);
+    view.presentation.reset(); view.requests.mockClear(); view.presentation.look?.(angle);
+    expect(view.presentation.direction('down')).toBeNull();
+    clock.mockReturnValue(600); view.draw(scene()); await Promise.resolve();
+    expect(view.requests).toHaveBeenCalledOnce(); expect(view.requests).toHaveBeenLastCalledWith('down');
+    expect(view.requests).toHaveLastReturnedWith(expected.map(value => value === 0 ? 0 : -value));
+    expect(Array.from(view.draw(scene()).data)).toEqual(aligned);
+});
+
+it('defaults mouse support off, handles live changes, and resets free look to the initial direction', () => {
+    let data = { mouseSupport: false, initialDirection: 1 };
+    const view = render(() => ({ palette: [], data }));
+    const east = Array.from(view.draw(scene()).data);
+    expect(view.presentation.look?.(Math.PI / 3)).toBe(false);
+    expect(Array.from(view.draw(scene()).data)).toEqual(east);
+    data.mouseSupport = true;
+    expect(view.presentation.look?.(0)).toBe(true);
+    expect(Array.from(view.draw(scene()).data)).toEqual(east);
+    view.presentation.look?.(Math.PI / 3);
+    data.mouseSupport = false;
+    expect(view.presentation.direction('up')).toEqual([0, 1]);
+    data = { mouseSupport: true, initialDirection: 3 };
+    view.presentation.reset(); view.draw(scene());
+    expect(view.presentation.direction('up')).toEqual([-1, 0]);
+});
+
+it('ignores pointer rotation during animated turns and retargets hits from the free camera angle', () => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const view = render(() => ({ palette: [], data: { mouseSupport: true } }));
+    view.presentation.direction('right'); clock.mockReturnValue(150);
+    const midway = Array.from(view.draw(scene()).data);
+    view.presentation.look?.(Math.PI);
+    expect(Array.from(view.draw(scene()).data)).toEqual(midway);
+    clock.mockReturnValue(300); view.draw(scene());
+    view.presentation.look?.(-0.4);
+    const looking = Array.from(view.draw(scene()).data);
+    const hit = { sequence: 1, x: 2.5, y: 4.5 };
+    expect(Array.from(view.draw(scene(), hit).data)).toEqual(looking);
+    clock.mockReturnValue(600); view.draw(scene(), hit);
+    expect(view.presentation.direction('up')).toEqual([-1, 0]);
+});
+
+
+it.each(['reset', 'hit'] as const)('cancels the pending step when %s interrupts the alignment', async interruption => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const view = render(() => ({ palette: [], data: { mouseSupport: true } }));
+    view.presentation.look?.(1.1); view.presentation.direction('up');
+    clock.mockReturnValue(150);
+    if (interruption === 'reset') view.presentation.reset();
+    else view.draw(scene(), { sequence: 1, x: 2.5, y: 4.5 });
+    clock.mockReturnValue(500); view.draw(scene()); await Promise.resolve();
+    expect(view.requests).not.toHaveBeenCalled();
+});
+
+it('cancels a queued step on reset and moves immediately when already aligned', async () => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const view = render(() => ({ palette: [], data: { mouseSupport: true } }));
+    view.presentation.look?.(1.1); view.presentation.direction('up');
+    clock.mockReturnValue(300); view.draw(scene()); view.presentation.reset(); await Promise.resolve();
+    expect(view.requests).not.toHaveBeenCalled();
+    view.presentation.look?.(Math.PI / 2);
+    expect(view.presentation.direction('up')).toEqual([1, 0]);
+    expect(view.presentation.direction('down')).toEqual([-1, 0]);
 });

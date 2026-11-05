@@ -214,3 +214,55 @@ it('does not import an obsolete HUD mutation after project replacement', async (
   expect(importGameData).toHaveBeenCalledTimes(1);
   expect(importGameData).toHaveBeenCalledWith({title:'current'});
 });
+
+
+it('keeps runtime movement available after the original loading transaction expires', async () => {
+  let current = true;
+  let context!: GameplayContext;
+  const handleGameplayDirection = vi.fn();
+  const engine = { exportGameData: () => ({}), importGameData: vi.fn(), handleGameplayDirection } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine, () => [plugin], () => Promise.resolve({ activate: next => { context = next; } }));
+  await host.load({ gameplayPlugins: [{ id: 'maps', version: '1' }] }, undefined, true, () => current);
+  current = false;
+  expect(() => context.requestGameplayDirection('up')).not.toThrow();
+  expect(handleGameplayDirection).toHaveBeenCalledWith('up');
+  host.remove('unrelated-plugin');
+  expect(() => context.requestGameplayDirection('down')).not.toThrow();
+  expect(handleGameplayDirection).toHaveBeenLastCalledWith('down');
+  host.destroy();
+});
+
+it.each(['remove', 'replace', 'destroy'] as const)('ignores late runtime movement after %s without throwing or moving the new project', async action => {
+  const contexts: GameplayContext[] = [];
+  const handleGameplayDirection = vi.fn();
+  const engine = { exportGameData: () => ({}), importGameData: vi.fn(), handleGameplayDirection } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine, () => [plugin], () => Promise.resolve({ activate: next => { contexts.push(next); } }));
+  const project = { gameplayPlugins: [{ id: 'maps', version: '1' }] };
+  await host.load(project);
+  const obsolete = contexts[0];
+  if (action === 'remove') host.remove('maps');
+  if (action === 'replace') await host.load(project);
+  if (action === 'destroy') host.destroy();
+  expect(() => obsolete.requestGameplayDirection('up')).not.toThrow();
+  expect(handleGameplayDirection).not.toHaveBeenCalled();
+  if (action === 'replace') {
+    contexts[1].requestGameplayDirection('down');
+    expect(handleGameplayDirection).toHaveBeenCalledExactlyOnceWith('down');
+  }
+  host.destroy();
+});
+
+it('ignores runtime movement during activation and after activation failure', async () => {
+  let context!: GameplayContext;
+  const handleGameplayDirection = vi.fn();
+  const engine = { exportGameData: () => ({}), importGameData: vi.fn(), handleGameplayDirection } as unknown as GameEngine;
+  const host = new GameplayPluginHost(engine, () => [plugin], () => Promise.resolve({ activate: next => {
+    context = next;
+    context.requestGameplayDirection('up');
+    expect(handleGameplayDirection).not.toHaveBeenCalled();
+    throw Error('Activation failed');
+  } }));
+  await expect(host.load({ gameplayPlugins: [{ id: 'maps', version: '1' }] })).rejects.toThrow('Activation failed');
+  expect(() => context.requestGameplayDirection('down')).not.toThrow();
+  expect(handleGameplayDirection).not.toHaveBeenCalled();
+});

@@ -105,5 +105,7 @@ export type GameplayPresentation = {
     /** Return true to request another frame; the renderer owns animation scheduling. */
     draw(frame: GameplayFrame): boolean | void;
     direction(direction: GameplayDirection): readonly [number, number] | null;
+    /** Horizontal look in radians. Return whether supported; zero queries support without rotating. */
+    look?(deltaRadians: number): boolean;
     reset(): void;
 };

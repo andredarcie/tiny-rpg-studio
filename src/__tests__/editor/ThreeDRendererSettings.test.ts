@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import source from '../../../public/plugins/3d-renderer/1.0.0/plugin.html?raw';
+import source from '../../../public/plugins/3d-renderer/1.1.0/plugin.html?raw';
 import { PluginManager, parsePluginHtml } from '../../editor/manager/PluginManager';
 import { PluginRuntime, type PluginModule } from '../../editor/manager/PluginRuntime';
 import type { TinyRpgApi } from '../../runtime/infra/TinyRpgApi';
@@ -96,34 +96,56 @@ it('keeps the new project settings when a save from the previous project fails l
     expect(top.value).toBe('3'); expect(document.querySelector('[role="alert"]')?.textContent).toBe('');
 });
 
-it('defaults the distance gradient on, persists disabling it, and restores it across projects and failed saves', async () => {
+it('persists numeric gradient intensity across reopening, project changes, and failed saves', async () => {
     const { game, save, select } = await setup();
-    const checkbox = document.querySelector<HTMLInputElement>('input[aria-label="Distance gradient"]');
-    if (!checkbox) throw Error('Missing distance gradient checkbox');
-    expect(checkbox.checked).toBe(true);
-    checkbox.click();
-    await vi.waitFor(() => expect(checkbox.disabled).toBe(false));
-    expect(game.pluginData?.['3d-renderer']).toEqual({ distanceGradient: false });
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Distance gradient"]');
+    if (!input) throw Error('Missing distance gradient input');
+    expect(input.type).toBe('number');
+    expect(input.min).toBe('0'); expect(input.max).toBe('1');
+    expect(input.value).toBe('1');
+    input.value = '0.375'; input.dispatchEvent(new Event('change'));
+    await vi.waitFor(() => expect(input.disabled).toBe(false));
+    expect(game.pluginData?.['3d-renderer']).toEqual({ distanceGradient: 0.375 });
     const top = select('Top void'); top.value = '8'; top.dispatchEvent(new Event('change'));
     await vi.waitFor(() => expect(top.disabled).toBe(false));
-    expect(game.pluginData?.['3d-renderer']).toEqual({ distanceGradient: false, topColor: 8 });
     const saved = JSON.parse(JSON.stringify(game.pluginData)) as Record<string, JsonValue>;
     await runtime?.destroy();
     const reopened = await setup(saved);
     const restored = document.querySelector<HTMLInputElement>('input[aria-label="Distance gradient"]');
-    if (!restored) throw Error('Missing restored distance gradient checkbox');
-    expect(restored.checked).toBe(false);
+    if (!restored) throw Error('Missing restored distance gradient input');
+    expect(restored.value).toBe('0.375');
     reopened.save.mockRejectedValueOnce(Error('Storage full'));
-    restored.click();
+    restored.value = '0'; restored.dispatchEvent(new Event('change'));
     await vi.waitFor(() => expect(restored.disabled).toBe(false));
-    expect(restored.checked).toBe(false);
+    expect(restored.value).toBe('0.375');
     expect(document.querySelector('[role="alert"]')?.textContent).toContain('Storage full');
-    restored.click();
+    restored.value = '0'; restored.dispatchEvent(new Event('change'));
     await vi.waitFor(() => expect(restored.disabled).toBe(false));
-    expect(reopened.game.pluginData?.['3d-renderer']).toEqual({ distanceGradient: true, topColor: 8 });
+    expect(reopened.game.pluginData?.['3d-renderer']).toEqual({ distanceGradient: 0, topColor: 8 });
     reopened.game.pluginData = {}; document.dispatchEvent(new Event('tiny-rpg-project-restored'));
-    expect(restored.checked).toBe(true);
+    expect(restored.value).toBe('1');
     expect(save).toHaveBeenCalledTimes(2);
+});
+
+it.each([false, true, 0, 0.5, 1, -1, 2, 'invalid'])('normalizes saved gradient %s for the numeric control', async value => {
+    const { save } = await setup({ '3d-renderer': { distanceGradient: value } });
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Distance gradient"]');
+    expect(input?.value).toBe(String(value === false ? 0 : typeof value === 'number' ? Math.max(0, Math.min(1, value)) : 1));
+    expect(save).not.toHaveBeenCalled();
+});
+
+it('clamps gradient edits to the allowed range and restores an empty input without saving', async () => {
+    const { game, save } = await setup();
+    const input = document.querySelector<HTMLInputElement>('input[aria-label="Distance gradient"]');
+    if (!input) throw Error('Missing distance gradient input');
+    for (const [value, expected] of [['-0.5', 0], ['1.5', 1]] as const) {
+        input.value = value; input.dispatchEvent(new Event('change'));
+        await vi.waitFor(() => expect(input.disabled).toBe(false));
+        expect(game.pluginData?.['3d-renderer']).toEqual({ distanceGradient: expected });
+        expect(input.value).toBe(String(expected));
+    }
+    save.mockClear(); input.value = ''; input.dispatchEvent(new Event('change'));
+    expect(input.value).toBe('1'); expect(save).not.toHaveBeenCalled();
 });
 
 it('saves the initial direction independently and restores it after reopening, failures, and project changes', async () => {
@@ -149,4 +171,32 @@ it('saves the initial direction independently and restores it after reopening, f
     reopened.game.pluginData = { '3d-renderer': { initialDirection: 1 } };
     document.dispatchEvent(new Event('tiny-rpg-project-restored'));
     expect(reopened.select('Initial direction').value).toBe('1');
+});
+
+
+it('persists Mouse Support, restores failed saves and project changes, and cleans up on removal', async () => {
+    const { game, save, manager } = await setup();
+    const checkbox = document.querySelector<HTMLInputElement>('input[aria-label="Mouse Support"]');
+    if (!checkbox) throw Error('Missing Mouse Support');
+    expect(checkbox.type).toBe('checkbox'); expect(checkbox.checked).toBe(false);
+    checkbox.click();
+    expect(checkbox.disabled).toBe(true);
+    await vi.waitFor(() => expect(checkbox.disabled).toBe(false));
+    expect(game.pluginData?.['3d-renderer']).toEqual({ mouseSupport: true });
+    const snapshot = JSON.parse(JSON.stringify(game.pluginData)) as Record<string, JsonValue>;
+    await runtime?.destroy();
+    const reopened = await setup(snapshot);
+    const restored = document.querySelector<HTMLInputElement>('input[aria-label="Mouse Support"]');
+    if (!restored) throw Error('Missing restored Mouse Support');
+    expect(restored.checked).toBe(true);
+    reopened.save.mockRejectedValueOnce(Error('Storage full'));
+    restored.click(); await vi.waitFor(() => expect(restored.disabled).toBe(false));
+    expect(restored.checked).toBe(true);
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('Storage full');
+    reopened.game.pluginData = {}; document.dispatchEvent(new Event('tiny-rpg-project-restored'));
+    expect(restored.checked).toBe(false);
+    reopened.manager.remove('3d-renderer'); await runtime?.settled();
+    reopened.save.mockClear(); restored.click(); expect(reopened.save).not.toHaveBeenCalled();
+    expect(document.querySelector('input[aria-label="Mouse Support"]')).toBeNull();
+    expect(save).toHaveBeenCalledOnce(); expect(manager.installed).toHaveLength(1);
 });

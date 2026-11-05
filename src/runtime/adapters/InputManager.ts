@@ -24,6 +24,7 @@ type GameEngineApi = {
   gameState: GameStateApi;
   renderer: RendererApi;
   tryMove: (dx: number, dy: number) => void;
+  handleGameplayLook?: (deltaRadians: number) => boolean;
   handleGameplayDirection?: (direction: DirectionName) => boolean;
   closeDialog: () => void;
   advanceDialog: () => void;
@@ -56,6 +57,8 @@ type TouchStart = {
   identifier: number;
   x: number;
   y: number;
+  look: boolean;
+  lastX: number;
   prevented: boolean;
   direction: DirectionName | null;
 };
@@ -95,6 +98,7 @@ const DIRECTION_SWITCH_MARGIN = 8;
 class InputManager {
   private gameEngine: GameEngineApi;
   private touchStart: TouchStart | null = null;
+  private mouseX: number | null = null;
   private heldDirections = new Map<string, HeldDirection>();
   private pressOrder = 0;
   private lastMovementTime = 0;
@@ -130,6 +134,53 @@ class InputManager {
   private readonly clickListener = (ev: MouseEvent) => {
     if (!this.gameEngine.isDestroyed) this.handleClick(ev);
   };
+
+  private readonly mouseMoveListener = (ev: MouseEvent) => {
+    const canvas = this.gameEngine.canvas;
+    if (!this.canAcceptHeldMovement()) { this.stopBlockedMovement(); return; }
+    if (ev.target !== canvas) { this.mouseX = null; return; }
+    const captured = document.pointerLockElement === canvas;
+    if (this.supportsMouseCapture() && !captured) return;
+    const dx = captured ? (Number.isFinite(ev.movementX) ? ev.movementX : 0)
+      : Number.isFinite(ev.movementX) && ev.movementX !== 0 ? ev.movementX
+        : this.mouseX === null ? 0 : ev.clientX - this.mouseX;
+    this.mouseX = ev.clientX;
+    if (!this.rotateView(dx)) this.releaseMouseCapture();
+  };
+
+  private readonly pointerLockChangeListener = () => {
+    this.mouseX = null;
+    if (!this.canKeepMouseCapture()) this.releaseMouseCapture();
+  };
+
+  private canKeepMouseCapture(): boolean {
+    const canvas = this.gameEngine.canvas;
+    return Boolean(canvas) && document.pointerLockElement === canvas && !document.hidden
+      && this.canAcceptHeldMovement(true) && Boolean(this.gameEngine.handleGameplayLook?.(0));
+  }
+
+  private stopBlockedMovement(): void {
+    this.cancelHeldMovement(!this.canKeepMouseCapture());
+  }
+
+  private supportsMouseCapture(): boolean {
+    return typeof (this.gameEngine.canvas as { requestPointerLock?: unknown } | undefined)?.requestPointerLock === 'function';
+  }
+
+  private releaseMouseCapture(): void {
+    const canvas = this.gameEngine.canvas;
+    if (canvas && document.pointerLockElement === canvas) document.exitPointerLock();
+  }
+
+  private readonly mouseOutListener = (ev: MouseEvent) => {
+    if (ev.target === this.gameEngine.canvas) this.mouseX = null;
+  };
+
+  private rotateView(dx: number): boolean {
+    const canvas = this.gameEngine.canvas;
+    const width = canvas?.getBoundingClientRect().width || canvas?.width || 320;
+    return this.gameEngine.handleGameplayLook?.(dx / width * Math.PI) ?? false;
+  }
 
   private readonly blurListener = () => this.cancelHeldMovement();
 
@@ -167,7 +218,10 @@ class InputManager {
     this.inputRoot.addEventListener('touchend', this.touchEndListener as EventListener, { passive: false });
     this.inputRoot.addEventListener('touchcancel', this.touchCancelListener as EventListener, { passive: false });
     this.inputRoot.addEventListener('click', this.clickListener as EventListener);
+    this.inputRoot.addEventListener('mousemove', this.mouseMoveListener as EventListener);
+    this.inputRoot.addEventListener('mouseout', this.mouseOutListener as EventListener);
     document.addEventListener('visibilitychange', this.visibilityListener);
+    document.addEventListener('pointerlockchange', this.pointerLockChangeListener);
     this.inputRoot.addEventListener('focusin', this.focusInListener as EventListener);
     document.addEventListener('editor-tab-activated', this.editorActivatedListener);
     globalThis.addEventListener('blur', this.blurListener);
@@ -199,7 +253,7 @@ class InputManager {
         }
 
         if (this.gameEngine.gameState.getDialog().active) {
-          this.cancelHeldMovement();
+          this.stopBlockedMovement();
           activePointers.add(pointerId);
           button.classList.add('is-pressed');
           this.gameEngine.advanceDialog();
@@ -250,17 +304,18 @@ class InputManager {
     return effectiveDirection;
   }
 
-  private canAcceptHeldMovement(): boolean {
+  private canAcceptHeldMovement(allowDialog = false): boolean {
     if (this.destroyed || this.gameEngine.isDestroyed) return false;
     if (!this.isGameModeActive() || this.gameEngine.isEditorModeActive?.()) return false;
     if (this.isEditableTarget(document.activeElement)) return false;
     const transitionActive = this.gameEngine.renderer.isRoomTransitionActive?.() ?? false;
-    if (this.gameEngine.gameState.playing === false && !transitionActive) return false;
+    const dialogActive = this.gameEngine.gameState.getDialog().active;
+    if (this.gameEngine.gameState.playing === false && !transitionActive && !(allowDialog && dialogActive)) return false;
     if (this.gameEngine.isIntroVisible?.() || this.gameEngine.isGameOver?.()) return false;
     if (this.gameEngine.isPickupOverlayActive?.()) return false;
     if (this.gameEngine.isLevelUpCelebrationActive?.()) return false;
     if (this.gameEngine.isLevelUpOverlayActive?.()) return false;
-    return !this.gameEngine.gameState.getDialog().active;
+    return allowDialog || !dialogActive;
   }
 
   beginHeldDirection(sourceId: string, direction: DirectionName): void {
@@ -272,7 +327,7 @@ class InputManager {
     this.heldDirections.set(sourceId, { direction, order: ++this.pressOrder });
     const nextDirection = this.getEffectiveDirection();
     if (!this.canAcceptHeldMovement()) {
-      this.cancelHeldMovement();
+      this.stopBlockedMovement();
       return;
     }
 
@@ -293,7 +348,7 @@ class InputManager {
     }
     if (previousDirection !== nextDirection) {
       if (!this.canAcceptHeldMovement()) {
-        this.cancelHeldMovement();
+        this.stopBlockedMovement();
         return;
       }
       this.moveEffectiveDirection(this.now());
@@ -301,7 +356,11 @@ class InputManager {
     if (this.heldDirections.size > 0) this.scheduleFrame();
   }
 
-  cancelHeldMovement(): void {
+  isMovementHeld(): boolean { return this.heldDirections.size > 0; }
+
+  cancelHeldMovement(releaseCapture = true): void {
+    if (releaseCapture) this.releaseMouseCapture();
+    this.mouseX = null;
     this.heldDirections.clear();
     this.touchStart = null;
     this.stopFrame();
@@ -319,7 +378,7 @@ class InputManager {
       this.gameEngine.tryMove(dx, dy);
     }
     this.lastMovementTime = timestamp;
-    if (!this.canAcceptHeldMovement()) this.cancelHeldMovement();
+    if (!this.canAcceptHeldMovement()) this.stopBlockedMovement();
   }
 
   private now(): number {
@@ -343,7 +402,7 @@ class InputManager {
   private handleFrame(timestamp: number): void {
     this.frameHandle = null;
     if (!this.canAcceptHeldMovement()) {
-      this.cancelHeldMovement();
+      this.stopBlockedMovement();
       return;
     }
     if (timestamp - this.lastMovementTime >= GameConfig.input.heldMoveIntervalMs) {
@@ -398,7 +457,7 @@ class InputManager {
     const dialog = this.gameEngine.gameState.getDialog();
 
     if (dialog.active) {
-      this.cancelHeldMovement();
+      this.stopBlockedMovement();
       switch (ev.key.toLowerCase()) {
         case 'z':
         case 'enter':
@@ -474,7 +533,7 @@ class InputManager {
     }
     const dialog = this.gameEngine.gameState.getDialog();
     if (dialog.active) {
-      this.cancelHeldMovement();
+      this.stopBlockedMovement();
       ev.preventDefault();
       const dialogTouch = ev.changedTouches.item(0);
       if (dialogTouch && this.gameEngine.handleDialogPointer) {
@@ -490,11 +549,14 @@ class InputManager {
     if (!touch) return;
     this.touchStart = {
       identifier: touch.identifier,
+      look: this.gameEngine.handleGameplayLook?.(0) ?? false,
+      lastX: touch.clientX,
       x: touch.clientX,
       y: touch.clientY,
       prevented: false,
       direction: null,
     };
+    if (this.touchStart.look) ev.preventDefault();
   }
 
   handleTouchMove(ev: TouchEvent): void {
@@ -506,6 +568,13 @@ class InputManager {
     if (!start) return;
     const touch = this.findTouch(ev.changedTouches, start.identifier);
     if (!touch) return;
+    if (start.look) {
+      ev.preventDefault();
+      const dx = touch.clientX - start.lastX;
+      start.lastX = touch.clientX;
+      if (this.canAcceptHeldMovement()) this.rotateView(dx);
+      return;
+    }
     this.updateTouchGesture(ev, start, touch);
   }
 
@@ -515,8 +584,8 @@ class InputManager {
     const touch = this.findTouch(ev.changedTouches, start.identifier);
     if (!touch) return;
 
-    this.updateTouchGesture(ev, start, touch);
-    if (start.prevented || start.direction) ev.preventDefault();
+    if (!start.look) this.updateTouchGesture(ev, start, touch);
+    if (start.look || start.prevented || start.direction) ev.preventDefault();
     this.touchStart = null;
     this.endHeldDirection(`touch:${start.identifier}`);
   }
@@ -576,7 +645,24 @@ class InputManager {
     if (this.gameEngine.isLevelUpOverlayActive?.()) {
       ev.preventDefault();
       this.chooseLevelUpByPointer(ev.clientX, ev.clientY);
+      return;
     }
+    const canvas = this.gameEngine.canvas;
+    if (ev.button === 0 && ev.target === canvas && document.pointerLockElement === canvas
+      && this.gameEngine.gameState.getDialog().active) {
+      ev.preventDefault();
+      this.stopBlockedMovement();
+      this.gameEngine.advanceDialog();
+      return;
+    }
+    if (ev.button !== 0 || ev.target !== canvas || !this.supportsMouseCapture()
+      || document.pointerLockElement === canvas || !this.canAcceptHeldMovement()
+      || !this.gameEngine.handleGameplayLook?.(0)) return;
+    try {
+      void Promise.resolve(canvas.requestPointerLock()).then(() => {
+        if (!this.canKeepMouseCapture()) this.releaseMouseCapture();
+      }).catch(() => {});
+    } catch { /* Pointer lock may be denied or unavailable in embedded games. */ }
   }
 
   handleLevelUpKey(ev: KeyboardEvent): void {
@@ -654,7 +740,10 @@ class InputManager {
     this.inputRoot.removeEventListener('touchend', this.touchEndListener as EventListener);
     this.inputRoot.removeEventListener('touchcancel', this.touchCancelListener as EventListener);
     this.inputRoot.removeEventListener('click', this.clickListener as EventListener);
+    this.inputRoot.removeEventListener('mousemove', this.mouseMoveListener as EventListener);
+    this.inputRoot.removeEventListener('mouseout', this.mouseOutListener as EventListener);
     document.removeEventListener('visibilitychange', this.visibilityListener);
+    document.removeEventListener('pointerlockchange', this.pointerLockChangeListener);
     this.inputRoot.removeEventListener('focusin', this.focusInListener as EventListener);
     document.removeEventListener('editor-tab-activated', this.editorActivatedListener);
     globalThis.removeEventListener('blur', this.blurListener);
